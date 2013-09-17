@@ -55,8 +55,8 @@ public:
 
   static double rangedAngle(double angle);
 
-  bool getJointNames(std::vector<std::string> &names) const {kin_.getJointNames(names);};
-  bool getLinkNames(std::vector<std::string> &names) const {kin_.getLinkNames(names);};
+  bool getJointNames(std::vector<std::string> &names) const {return kin_.getJointNames(names);};
+  bool getLinkNames(std::vector<std::string> &names) const {return kin_.getLinkNames(names);};
   unsigned int numJoints() const {return kin_.numJoints();};
   bool calcAllFwdKin(const Eigen::VectorXd &joints, std::vector<KDL::Frame> &poses) const {return kin_.calcAllFwdKin(joints, poses);};
 

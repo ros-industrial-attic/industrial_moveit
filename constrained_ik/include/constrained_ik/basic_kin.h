@@ -47,39 +47,77 @@ public:
   BasicKin() : initialized_(false) {};
   ~BasicKin() {};
 
-  BasicKin& operator=(const BasicKin& rhs);
-
-  bool init(const urdf::Model &robot, const std::string &base_name, const std::string &tip_name);
-
-  bool calcFwdKin(const Eigen::VectorXd &joint_angles, Eigen::Affine3d &pose) const;
-
-  bool calcFwdKin(const Eigen::VectorXd &joint_angles, const std::string &base, const std::string &tip, KDL::Frame &pose);
-
+  //TODO document
+  //TODO test
   bool calcAllFwdKin(const Eigen::VectorXd &joint_angles, std::vector<KDL::Frame> &poses) const;
 
+  //TODO document
+  bool calcFwdKin(const Eigen::VectorXd &joint_angles, Eigen::Affine3d &pose) const;
+
+  //TODO document
+  //TODO test
+  bool calcFwdKin(  const Eigen::VectorXd &joint_angles,
+                    const std::string &base,
+                    const std::string &tip,
+                    KDL::Frame &pose);
+
+  //TODO document
   bool calcJacobian(const Eigen::VectorXd &joint_angles, Eigen::MatrixXd &jacobian) const;
 
-  bool solvePInv(const Eigen::MatrixXd &A, const Eigen::VectorXd &b, Eigen::VectorXd &x) const;
-
+  //TODO document
   bool checkInitialized() const { return initialized_; }
+
+  //TODO document
+  //TODO test
   bool checkJoints(const Eigen::VectorXd &vec) const;
 
-  unsigned int numJoints() const { return robot_chain_.getNrOfJoints(); }
+  //TODO document
+  //TODO test
+  bool getJointNames(std::vector<std::string> &names) const;
+
+  //TODO document
+  //TODO test
+  bool getJointNames(const KDL::Chain &chain, std::vector<std::string> &names) const;
+
+  //TODO document
   Eigen::MatrixXd getLimits() const { return joint_limits_; }
 
-  bool getJointNames(std::vector<std::string> &names) const;
+  //TODO document
+  //TODO test
   bool getLinkNames(std::vector<std::string> &names) const;
+
+  //TODO document
+  //TODO test
+  bool getLinkNames(const KDL::Chain &chain, std::vector<std::string> &names) const;
+
+  //TODO document
+  bool init(const urdf::Model &robot, const std::string &base_name, const std::string &tip_name);
+
+  //TODO document
+  unsigned int numJoints() const { return robot_chain_.getNrOfJoints(); }
+
+  //TODO document
+  BasicKin& operator=(const BasicKin& rhs);
+
+  //TODO document
+  bool solvePInv(const Eigen::MatrixXd &A, const Eigen::VectorXd &b, Eigen::VectorXd &x) const;
 
 private:
   bool initialized_;
   KDL::Chain  robot_chain_;
   KDL::Tree   kdl_tree_;
-  Eigen::MatrixXd joint_limits_;
+  std::vector<std::string> joint_list_, link_list_;
+  Eigen::Matrix<double, Eigen::Dynamic, 2> joint_limits_;
   boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_, subchain_fk_solver_;
   boost::scoped_ptr<KDL::ChainJntToJacSolver> jac_solver_;
 
+  //TODO document
   static void EigenToKDL(const Eigen::VectorXd &vec, KDL::JntArray &joints);
+
+  //TODO document
   static void KDLToEigen(const KDL::Frame &frame, Eigen::Affine3d &transform);
+
+  //TODO document
   static void KDLToEigen(const KDL::Jacobian &jacobian, Eigen::MatrixXd &matrix);
 
 }; // class BasicKin

@@ -23,4 +23,5 @@ catkin_generated*
 Makefile
 CMakeFiles
 *gtest*
+test_results
 

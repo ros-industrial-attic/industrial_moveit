@@ -19,8 +19,10 @@
 
 #include "constrained_ik/basic_kin.h"
 #include <ros/ros.h>
-//#include <eigen_conversions/eigen_kdl.h>
+#include <eigen_conversions/eigen_kdl.h>
 #include <kdl_parser/kdl_parser.hpp>
+#include <algorithm>
+
 
 namespace constrained_ik
 {
@@ -30,59 +32,27 @@ namespace basic_kin
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-BasicKin& BasicKin::operator=(const BasicKin& rhs)
+bool BasicKin::calcAllFwdKin(const VectorXd &joint_angles, std::vector<KDL::Frame> &poses) const
 {
-  initialized_  = rhs.initialized_;
-  robot_chain_  = rhs.robot_chain_;
-  joint_limits_ = rhs.joint_limits_;
-  fk_solver_.reset(new KDL::ChainFkSolverPos_recursive(robot_chain_));
-  jac_solver_.reset(new KDL::ChainJntToJacSolver(robot_chain_));
+    int n = joint_angles.size();
+    KDL::JntArray kdl_joints;
 
-  return *this;
-}
+    if (!checkInitialized()) return false;
+    if (!checkJoints(joint_angles)) return false;
 
-bool BasicKin::init(const urdf::Model &robot,
-                   const std::string &base_name, const std::string &tip_name)
-{
-  initialized_ = false;
+    EigenToKDL(joint_angles, kdl_joints);
 
-  if (!robot.getRoot())
-  {
-    ROS_ERROR("Invalid URDF in BasicKin::init call");
-    return false;
-  }
-
-//  KDL::Tree tree;
-  if (!kdl_parser::treeFromUrdfModel(robot, kdl_tree_))
-  {
-    ROS_ERROR("Failed to initialize KDL from URDF model");
-    return false;
-  }
-
-  if (!kdl_tree_.getChain(base_name, tip_name, robot_chain_))
-  {
-    ROS_ERROR_STREAM("Failed to initialize KDL between URDF links: '" <<
-                     base_name << "' and '" << tip_name <<"'");
-    return false;
-  }
-
-  joint_limits_.resize(robot_chain_.getNrOfJoints(), 2);
-  for (int i=0, j=0; i<robot_chain_.getNrOfSegments(); ++i)
-  {
-    const KDL::Segment &seg = robot_chain_.getSegment(i);
-    const KDL::Joint   &jnt = seg.getJoint();
-    if (jnt.getType() == KDL::Joint::None) continue;
-
-    joint_limits_(j,0) = robot.getJoint(jnt.getName())->limits->lower;
-    joint_limits_(j,1) = robot.getJoint(jnt.getName())->limits->upper;
-    j++;
-  }
-
-  fk_solver_.reset(new KDL::ChainFkSolverPos_recursive(robot_chain_));
-  jac_solver_.reset(new KDL::ChainJntToJacSolver(robot_chain_));
-
-  initialized_ = true;
-  return true;
+    // run FK solver
+    poses.resize(n);
+    for (unsigned int ii=0; ii<n; ++ii)
+    {
+        if (fk_solver_->JntToCart(kdl_joints, poses[ii], ii) < 0)
+        {
+            ROS_ERROR_STREAM("Failed to calculate FK for joint " << n);
+            return false;
+        }
+    }
+    return true;
 }
 
 bool BasicKin::calcFwdKin(const VectorXd &joint_angles, Eigen::Affine3d &pose) const
@@ -107,32 +77,10 @@ bool BasicKin::calcFwdKin(const VectorXd &joint_angles, Eigen::Affine3d &pose) c
   return true;
 }
 
-//TODO test calcAllFwdKin
-bool BasicKin::calcAllFwdKin(const VectorXd &joint_angles, std::vector<KDL::Frame> &poses) const
-{
-    int n = joint_angles.size();
-    KDL::JntArray kdl_joints;
-
-    if (!checkInitialized()) return false;
-    if (!checkJoints(joint_angles)) return false;
-
-    EigenToKDL(joint_angles, kdl_joints);
-
-    // run FK solver
-    poses.resize(n);
-    for (unsigned int ii=0; ii<n; ++ii)
-    {
-        if (fk_solver_->JntToCart(kdl_joints, poses[ii], ii) < 0)
-        {
-            ROS_ERROR_STREAM("Failed to calculate FK for joint " << n);
-            return false;
-        }
-    }
-    return true;
-}
-
-//TODO test this implementation of calcFwdKin
-bool BasicKin::calcFwdKin(const VectorXd &joint_angles, const std::string &base, const std::string &tip, KDL::Frame &pose)
+bool BasicKin::calcFwdKin(  const VectorXd &joint_angles,
+                            const std::string &base,
+                            const std::string &tip,
+                            KDL::Frame &pose)
 {
     KDL::Chain chain;
     if (!kdl_tree_.getChain(base, tip, chain))
@@ -140,6 +88,13 @@ bool BasicKin::calcFwdKin(const VectorXd &joint_angles, const std::string &base,
       ROS_ERROR_STREAM("Failed to initialize KDL between URDF links: '" <<
                        base << "' and '" << tip <<"'");
       return false;
+    }
+
+    if (joint_angles.size() != chain.getNrOfJoints())
+    {
+        ROS_ERROR_STREAM("Number of joint angles [" << joint_angles.size() <<
+                            "] must match number of joints [" << chain.getNrOfJoints() << "].");
+        return false;
     }
 
     subchain_fk_solver_.reset(new KDL::ChainFkSolverPos_recursive(chain));
@@ -165,45 +120,6 @@ bool BasicKin::calcJacobian(const VectorXd &joint_angles, MatrixXd &jacobian) co
   jac_solver_->JntToJac(kdl_joints, kdl_jacobian);
 
   KDLToEigen(kdl_jacobian, jacobian);
-  return true;
-}
-
-bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) const
-{
-  const double eps = 0.00001;  // TODO: Turn into class member var
-  const double lambda = 0.01;  // TODO: Turn into class member var
-
-  if ( (A.rows() == 0) || (A.cols() == 0) )
-  {
-    ROS_ERROR("Empty matrices not supported");
-    return false;
-  }
-
-  if ( A.rows() != b.size() )
-  {
-    ROS_ERROR("Matrix size mismatch: A(%d,%d), b(%d)",
-              A.rows(), A.cols(), b.size());
-    return false;
-  }
-
-  Eigen::JacobiSVD<MatrixXd> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
-  const MatrixXd &U = svd.matrixU();
-  const VectorXd &Sv = svd.singularValues();
-  const MatrixXd &V = svd.matrixV();
-
-  // calculate the reciprocal of Singular-Values
-  int nSv = Sv.size();
-  VectorXd inv_Sv(nSv);
-  for(int i=0; i<nSv; ++i)
-  {
-    if (fabs(Sv(i)) > eps)
-      inv_Sv(i) = 1/Sv(i);
-    else
-      inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
-  }
-
-  x = V * inv_Sv.asDiagonal() * U.transpose() * b;
-
   return true;
 }
 
@@ -239,6 +155,119 @@ void BasicKin::EigenToKDL(const VectorXd &vec, KDL::JntArray &joints)
 //    joints(i) = vec[i];
 }
 
+bool BasicKin::getJointNames(std::vector<std::string> &names) const
+{
+    if (!initialized_)
+    {
+        ROS_ERROR("Kinematics must be initialized before retrieving joint names");
+        return false;
+    }
+    names = joint_list_;
+    return true;
+}
+
+bool BasicKin::getJointNames(const KDL::Chain &chain, std::vector<std::string> &names) const
+{
+    if (!initialized_)
+    {
+        ROS_ERROR("Kinematics must be initialized before retrieving joint names");
+        return false;
+    }
+
+    unsigned int n = chain.getNrOfJoints();
+    names.resize(n);
+
+    KDL::Joint joint;
+    for (unsigned int ii=0; ii<n; ++ii)
+    {
+        joint = chain.getSegment(ii).getJoint();
+        if (joint.getType() != joint.None)
+            names[ii] = joint.getName();
+//        if (joint.getTypeName()[0] != 'R')
+//            ROS_ERROR_STREAM("Joint should be of type 'rotary', found type " << joint.getTypeName() << " at position " << ii);
+    }
+    return true;
+}
+
+bool BasicKin::getLinkNames(std::vector<std::string> &names) const
+{
+    if (!initialized_)
+    {
+        ROS_ERROR("Kinematics must be initialized before retrieving link names");
+        return false;
+    }
+    names = link_list_;
+    return true;
+}
+
+bool BasicKin::getLinkNames(const KDL::Chain &chain, std::vector<std::string> &names) const
+{
+    if (!initialized_)
+    {
+        ROS_ERROR("Kinematics must be initialized before retrieving link names");
+        return false;
+    }
+
+    unsigned int n = chain.getNrOfSegments();
+    names.resize(n);
+
+    for (unsigned int ii=0; ii<n; ++ii)
+    {
+        names[ii] = robot_chain_.getSegment(ii).getName();
+    }
+    return true;
+}
+
+bool BasicKin::init(const urdf::Model &robot,
+                   const std::string &base_name, const std::string &tip_name)
+{
+  initialized_ = false;
+
+  if (!robot.getRoot())
+  {
+    ROS_ERROR("Invalid URDF in BasicKin::init call");
+    return false;
+  }
+
+//  KDL::Tree tree;
+  if (!kdl_parser::treeFromUrdfModel(robot, kdl_tree_))
+  {
+    ROS_ERROR("Failed to initialize KDL from URDF model");
+    return false;
+  }
+
+  if (!kdl_tree_.getChain(base_name, tip_name, robot_chain_))
+  {
+    ROS_ERROR_STREAM("Failed to initialize KDL between URDF links: '" <<
+                     base_name << "' and '" << tip_name <<"'");
+    return false;
+  }
+
+  joint_list_.resize(robot_chain_.getNrOfJoints());
+  link_list_.resize(robot_chain_.getNrOfSegments());
+  joint_limits_.resize(robot_chain_.getNrOfJoints(), 2);
+
+  for (int i=0, j=0; i<robot_chain_.getNrOfSegments(); ++i)
+  {
+    const KDL::Segment &seg = robot_chain_.getSegment(i);
+    link_list_[i] = seg.getName();
+
+    const KDL::Joint   &jnt = seg.getJoint();
+    if (jnt.getType() == KDL::Joint::None) continue;
+
+    joint_list_[j] = jnt.getTypeName();
+    joint_limits_(j,0) = robot.getJoint(jnt.getName())->limits->lower;
+    joint_limits_(j,1) = robot.getJoint(jnt.getName())->limits->upper;
+    j++;
+  }
+
+  fk_solver_.reset(new KDL::ChainFkSolverPos_recursive(robot_chain_));
+  jac_solver_.reset(new KDL::ChainJntToJacSolver(robot_chain_));
+
+  initialized_ = true;
+  return true;
+}
+
 void BasicKin::KDLToEigen(const KDL::Frame &frame, Eigen::Affine3d &transform)
 {
   transform.setIdentity();
@@ -261,45 +290,54 @@ void BasicKin::KDLToEigen(const KDL::Jacobian &jacobian, MatrixXd &matrix)
       matrix(i,j) = jacobian(i,j);
 }
 
-bool BasicKin::getJointNames(std::vector<std::string> &names) const
+BasicKin& BasicKin::operator=(const BasicKin& rhs)
 {
-    if (!initialized_)
-    {
-        ROS_ERROR("Kinematics must be initialized before retrieving joint names");
-        return false;
-    }
+  initialized_  = rhs.initialized_;
+  robot_chain_  = rhs.robot_chain_;
+  joint_limits_ = rhs.joint_limits_;
+  fk_solver_.reset(new KDL::ChainFkSolverPos_recursive(robot_chain_));
+  jac_solver_.reset(new KDL::ChainJntToJacSolver(robot_chain_));
 
-    unsigned int n = numJoints();
-    names.clear();
-
-    KDL::Joint joint;
-    for (unsigned int ii=0; ii<n; ++ii)
-    {
-        joint = robot_chain_.getSegment(ii).getJoint();
-        if (joint.getType() != joint.None)
-            names.push_back(joint.getName());
-        if (joint.getTypeName()[0] != 'R')
-            ROS_ERROR_STREAM("Joint should be of type 'rotary', found type " << joint.getTypeName() << " at position " << ii);
-    }
-    return true;
+  return *this;
 }
 
-bool BasicKin::getLinkNames(std::vector<std::string> &names) const
+bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) const
 {
-    if (!initialized_)
-    {
-        ROS_ERROR("Kinematics must be initialized before retrieving link names");
-        return false;
-    }
+  const double eps = 0.00001;  // TODO: Turn into class member var
+  const double lambda = 0.01;  // TODO: Turn into class member var
 
-    unsigned int n = robot_chain_.getNrOfSegments();
-    names.clear();
+  if ( (A.rows() == 0) || (A.cols() == 0) )
+  {
+    ROS_ERROR("Empty matrices not supported");
+    return false;
+  }
 
-    for (unsigned int ii=0; ii<n; ++ii)
-    {
-        names.push_back(robot_chain_.getSegment(ii).getName());
-    }
-    return true;
+  if ( A.rows() != b.size() )
+  {
+    ROS_ERROR("Matrix size mismatch: A(%ld,%ld), b(%ld)",
+              A.rows(), A.cols(), b.size());
+    return false;
+  }
+
+  Eigen::JacobiSVD<MatrixXd> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
+  const MatrixXd &U = svd.matrixU();
+  const VectorXd &Sv = svd.singularValues();
+  const MatrixXd &V = svd.matrixV();
+
+  // calculate the reciprocal of Singular-Values
+  int nSv = Sv.size();
+  VectorXd inv_Sv(nSv);
+  for(int i=0; i<nSv; ++i)
+  {
+    if (fabs(Sv(i)) > eps)
+      inv_Sv(i) = 1/Sv(i);
+    else
+      inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
+  }
+
+  x = V * inv_Sv.asDiagonal() * U.transpose() * b;
+
+  return true;
 }
 
 } // namespace basic_kin
