@@ -37,6 +37,6 @@
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
-      <constrained_ik plugin="${prefix}/constrained_ik_plugin.xml"/>
+      <moveit_core plugin="${prefix}/constrained_ik_plugin.xml"/>
   </export>
 </package>
