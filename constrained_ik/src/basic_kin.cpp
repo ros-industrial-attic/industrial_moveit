@@ -18,9 +18,9 @@
 
 
 #include "constrained_ik/basic_kin.h"
-#include <eigen_conversions/eigen_kdl.h>
-#include <kdl_parser/kdl_parser.hpp>
 #include <ros/ros.h>
+//#include <eigen_conversions/eigen_kdl.h>
+#include <kdl_parser/kdl_parser.hpp>
 
 namespace constrained_ik
 {
@@ -52,14 +52,14 @@ bool BasicKin::init(const urdf::Model &robot,
     return false;
   }
 
-  KDL::Tree tree;
-  if (!kdl_parser::treeFromUrdfModel(robot, tree))
+//  KDL::Tree tree;
+  if (!kdl_parser::treeFromUrdfModel(robot, kdl_tree_))
   {
     ROS_ERROR("Failed to initialize KDL from URDF model");
     return false;
   }
 
-  if (!tree.getChain(base_name, tip_name, robot_chain_))
+  if (!kdl_tree_.getChain(base_name, tip_name, robot_chain_))
   {
     ROS_ERROR_STREAM("Failed to initialize KDL between URDF links: '" <<
                      base_name << "' and '" << tip_name <<"'");
@@ -87,7 +87,7 @@ bool BasicKin::init(const urdf::Model &robot,
 
 bool BasicKin::calcFwdKin(const VectorXd &joint_angles, Eigen::Affine3d &pose) const
 {
-  int n = joint_angles.size();
+//  int n = joint_angles.size();
   KDL::JntArray kdl_joints;
 
   if (!checkInitialized()) return false;
@@ -105,6 +105,50 @@ bool BasicKin::calcFwdKin(const VectorXd &joint_angles, Eigen::Affine3d &pose) c
 
   KDLToEigen(kdl_pose, pose);
   return true;
+}
+
+//TODO test calcAllFwdKin
+bool BasicKin::calcAllFwdKin(const VectorXd &joint_angles, std::vector<KDL::Frame> &poses) const
+{
+    int n = joint_angles.size();
+    KDL::JntArray kdl_joints;
+
+    if (!checkInitialized()) return false;
+    if (!checkJoints(joint_angles)) return false;
+
+    EigenToKDL(joint_angles, kdl_joints);
+
+    // run FK solver
+    poses.resize(n);
+    for (unsigned int ii=0; ii<n; ++ii)
+    {
+        if (fk_solver_->JntToCart(kdl_joints, poses[ii], ii) < 0)
+        {
+            ROS_ERROR_STREAM("Failed to calculate FK for joint " << n);
+            return false;
+        }
+    }
+    return true;
+}
+
+//TODO test this implementation of calcFwdKin
+bool BasicKin::calcFwdKin(const VectorXd &joint_angles, const std::string &base, const std::string &tip, KDL::Frame &pose)
+{
+    KDL::Chain chain;
+    if (!kdl_tree_.getChain(base, tip, chain))
+    {
+      ROS_ERROR_STREAM("Failed to initialize KDL between URDF links: '" <<
+                       base << "' and '" << tip <<"'");
+      return false;
+    }
+
+    subchain_fk_solver_.reset(new KDL::ChainFkSolverPos_recursive(chain));
+
+    KDL::JntArray joints;
+    joints.data = joint_angles;
+    if (subchain_fk_solver_->JntToCart(joints, pose) < 0)
+        return false;
+    return true;
 }
 
 bool BasicKin::calcJacobian(const VectorXd &joint_angles, MatrixXd &jacobian) const
@@ -188,10 +232,11 @@ bool BasicKin::checkJoints(const VectorXd &vec) const
 
 void BasicKin::EigenToKDL(const VectorXd &vec, KDL::JntArray &joints)
 {
-  joints.resize(vec.size());
-
-  for (int i=0; i<vec.size(); ++i)
-    joints(i) = vec[i];
+  joints.data = vec;
+//  joints.resize(vec.size());
+//
+//  for (int i=0; i<vec.size(); ++i)
+//    joints(i) = vec[i];
 }
 
 void BasicKin::KDLToEigen(const KDL::Frame &frame, Eigen::Affine3d &transform)
@@ -216,6 +261,46 @@ void BasicKin::KDLToEigen(const KDL::Jacobian &jacobian, MatrixXd &matrix)
       matrix(i,j) = jacobian(i,j);
 }
 
+bool BasicKin::getJointNames(std::vector<std::string> &names) const
+{
+    if (!initialized_)
+    {
+        ROS_ERROR("Kinematics must be initialized before retrieving joint names");
+        return false;
+    }
+
+    unsigned int n = numJoints();
+    names.clear();
+
+    KDL::Joint joint;
+    for (unsigned int ii=0; ii<n; ++ii)
+    {
+        joint = robot_chain_.getSegment(ii).getJoint();
+        if (joint.getType() != joint.None)
+            names.push_back(joint.getName());
+        if (joint.getTypeName()[0] != 'R')
+            ROS_ERROR_STREAM("Joint should be of type 'rotary', found type " << joint.getTypeName() << " at position " << ii);
+    }
+    return true;
+}
+
+bool BasicKin::getLinkNames(std::vector<std::string> &names) const
+{
+    if (!initialized_)
+    {
+        ROS_ERROR("Kinematics must be initialized before retrieving link names");
+        return false;
+    }
+
+    unsigned int n = robot_chain_.getNrOfSegments();
+    names.clear();
+
+    for (unsigned int ii=0; ii<n; ++ii)
+    {
+        names.push_back(robot_chain_.getSegment(ii).getName());
+    }
+    return true;
+}
 
 } // namespace basic_kin
 } // namespace constrained_ik

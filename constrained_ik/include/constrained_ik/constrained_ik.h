@@ -20,7 +20,7 @@
 #ifndef CONSTRAINED_IK_H
 #define CONSTRAINED_IK_H
 
-#include "basic_kin.h"
+#include "constrained_ik/basic_kin.h"
 #include <string>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -54,6 +54,11 @@ public:
   inline double getJtCnvTolerance() const {return joint_convergence_tol_;};
 
   static double rangedAngle(double angle);
+
+  bool getJointNames(std::vector<std::string> &names) const {kin_.getJointNames(names);};
+  bool getLinkNames(std::vector<std::string> &names) const {kin_.getLinkNames(names);};
+  unsigned int numJoints() const {return kin_.numJoints();};
+  bool calcAllFwdKin(const Eigen::VectorXd &joints, std::vector<KDL::Frame> &poses) const {return kin_.calcAllFwdKin(joints, poses);};
 
 protected:
   // gains and scaling factors

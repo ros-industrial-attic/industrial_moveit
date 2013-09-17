@@ -6,8 +6,9 @@
 
   <author email="clewis@swri.org">Chris Lewis</author>
   <author email="jzoss@swri.org">Jeremy Zoss</author>
+  <author email="dpsolomon@gmail.com">Dan Solomon</author>
   <maintainer email="jzoss@swri.org">Jeremy Zoss, SwRI</maintainer>
-  <license>BSD</license>
+  <license>Apache 2.0</license>
   <url type="website">http://ros.org/wiki/constrained_ik</url>
 
   <buildtool_depend>catkin</buildtool_depend>
@@ -19,16 +20,23 @@
   <build_depend>orocos_kdl</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>urdf</build_depend>
-
+  <build_depend>moveit_core</build_depend>
+  <build_depend>tf_conversion</build_depend>
+  <build_depend>pluginlib</build_depend>
+  
   <run_depend>boost</run_depend>
   <run_depend>eigen</run_depend>
   <run_depend>kdl_parser</run_depend>
   <run_depend>orocos_kdl</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>urdf</run_depend>
+  <run_depend>moveit_core</run_depend>
+  <run_depend>tf_conversion</run_depend>
+  <run_depend>pluginlib</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
+      <constrained_ik plugin="${prefix}/constrained_ik_plugin.xml"/>
   </export>
 </package>

@@ -65,6 +65,14 @@ add_library(constrained_ik_test
 )
 target_link_libraries(constrained_ik_test ${catkin_LIBRARIES})
 
+add_library(constrained_ik_plugin 
+            src/basic_kin.cpp
+            src/constrained_ik.cpp
+            src/basic_ik.cpp
+           src/constrained_ik_plugin.cpp
+)
+target_link_libraries(constrained_ik_plugin ${catkin_LIBRARIES})
+
 ## Declare a cpp executable
 # add_executable(constrained_ik_node src/constrained_ik_node.cpp)
 

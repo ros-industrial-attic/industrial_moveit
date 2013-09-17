@@ -25,6 +25,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <kdl/tree.hpp>
 #include <kdl/chain.hpp>
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/chainjnttojacsolver.hpp>
@@ -52,6 +53,10 @@ public:
 
   bool calcFwdKin(const Eigen::VectorXd &joint_angles, Eigen::Affine3d &pose) const;
 
+  bool calcFwdKin(const Eigen::VectorXd &joint_angles, const std::string &base, const std::string &tip, KDL::Frame &pose);
+
+  bool calcAllFwdKin(const Eigen::VectorXd &joint_angles, std::vector<KDL::Frame> &poses) const;
+
   bool calcJacobian(const Eigen::VectorXd &joint_angles, Eigen::MatrixXd &jacobian) const;
 
   bool solvePInv(const Eigen::MatrixXd &A, const Eigen::VectorXd &b, Eigen::VectorXd &x) const;
@@ -62,11 +67,15 @@ public:
   unsigned int numJoints() const { return robot_chain_.getNrOfJoints(); }
   Eigen::MatrixXd getLimits() const { return joint_limits_; }
 
+  bool getJointNames(std::vector<std::string> &names) const;
+  bool getLinkNames(std::vector<std::string> &names) const;
+
 private:
   bool initialized_;
   KDL::Chain  robot_chain_;
+  KDL::Tree   kdl_tree_;
   Eigen::MatrixXd joint_limits_;
-  boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_;
+  boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_, subchain_fk_solver_;
   boost::scoped_ptr<KDL::ChainJntToJacSolver> jac_solver_;
 
   static void EigenToKDL(const Eigen::VectorXd &vec, KDL::JntArray &joints);
