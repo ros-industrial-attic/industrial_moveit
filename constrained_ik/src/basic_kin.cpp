@@ -21,7 +21,6 @@
 #include <ros/ros.h>
 #include <eigen_conversions/eigen_kdl.h>
 #include <kdl_parser/kdl_parser.hpp>
-#include <algorithm>
 
 
 namespace constrained_ik
@@ -77,10 +76,10 @@ bool BasicKin::calcFwdKin(const VectorXd &joint_angles, Eigen::Affine3d &pose) c
   return true;
 }
 
-bool BasicKin::calcFwdKin(  const VectorXd &joint_angles,
-                            const std::string &base,
-                            const std::string &tip,
-                            KDL::Frame &pose)
+bool BasicKin::calcFwdKin(const VectorXd &joint_angles,
+                          const std::string &base,
+                          const std::string &tip,
+                          KDL::Frame &pose)
 {
     KDL::Chain chain;
     if (!kdl_tree_.getChain(base, tip, chain))
@@ -123,7 +122,7 @@ bool BasicKin::calcJacobian(const VectorXd &joint_angles, MatrixXd &jacobian) co
   return true;
 }
 
-// check for consistency in # and limits of joints
+// TODO (move this to .h) check for consistency in # and limits of joints
 bool BasicKin::checkJoints(const VectorXd &vec) const
 {
   if (vec.size() != robot_chain_.getNrOfJoints())
@@ -255,7 +254,7 @@ bool BasicKin::init(const urdf::Model &robot,
     const KDL::Joint   &jnt = seg.getJoint();
     if (jnt.getType() == KDL::Joint::None) continue;
 
-    joint_list_[j] = jnt.getTypeName();
+    joint_list_[j] = jnt.getName();
     joint_limits_(j,0) = robot.getJoint(jnt.getName())->limits->lower;
     joint_limits_(j,1) = robot.getJoint(jnt.getName())->limits->upper;
     j++;
@@ -265,6 +264,12 @@ bool BasicKin::init(const urdf::Model &robot,
   jac_solver_.reset(new KDL::ChainJntToJacSolver(robot_chain_));
 
   initialized_ = true;
+
+//  for (size_t ii=0; ii<joint_list_.size(); ++ii)
+//      ROS_INFO_STREAM("Added joint " << joint_list_[ii]);
+//  for (size_t ii=0; ii<link_list_.size(); ++ii)
+//      ROS_INFO_STREAM("Added link " <<link_list_[ii]);
+
   return true;
 }
 
