@@ -39,33 +39,36 @@ public:
   Constrained_IK();
   virtual ~Constrained_IK() {};
 
-  void init(const urdf::Model &robot, const std::string &base_name, const std::string &tip_name);
-  virtual void init(const basic_kin::BasicKin &kin);
-  bool checkInitialized() const { return initialized_; }
+  bool calcAllFwdKin(const Eigen::VectorXd &joints, std::vector<KDL::Frame> &poses) const {return kin_.calcAllFwdKin(joints, poses);};
 
   virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed, Eigen::VectorXd &joint_angles);
 
-  inline void setJointUpdateGain(const double gain) {joint_update_gain_ = gain;};
-  inline void setMaxIter(const int max_iter) {max_iter_ = max_iter;};
-  inline void setJtCnvTolerance(const double jt_cnv_tol) {joint_convergence_tol_ = jt_cnv_tol;};
+  bool checkInitialized() const { return initialized_; }
 
+  inline unsigned int getMaxIter() const {return max_iter_;};
+  bool getJointNames(std::vector<std::string> &names) const {return kin_.getJointNames(names);};
   inline double getJointUpdateGain() const {return joint_update_gain_;};
-  inline int getMaxIter() const {return max_iter_;};
   inline double getJtCnvTolerance() const {return joint_convergence_tol_;};
+  bool getLinkNames(std::vector<std::string> &names) const {return kin_.getLinkNames(names);};
+
+
+  void init(const urdf::Model &robot, const std::string &base_name, const std::string &tip_name);
+  virtual void init(const basic_kin::BasicKin &kin);
+
+  unsigned int numJoints() const {return kin_.numJoints();};
 
   static double rangedAngle(double angle);
 
-  bool getJointNames(std::vector<std::string> &names) const {return kin_.getJointNames(names);};
-  bool getLinkNames(std::vector<std::string> &names) const {return kin_.getLinkNames(names);};
-  unsigned int numJoints() const {return kin_.numJoints();};
-  bool calcAllFwdKin(const Eigen::VectorXd &joints, std::vector<KDL::Frame> &poses) const {return kin_.calcAllFwdKin(joints, poses);};
+  inline void setJointUpdateGain(const double gain) {joint_update_gain_ = gain;};
+  inline void setJtCnvTolerance(const double jt_cnv_tol) {joint_convergence_tol_ = jt_cnv_tol;};
+  inline void setMaxIter(const unsigned int max_iter) {max_iter_ = max_iter;};
 
 protected:
   // gains and scaling factors
   double joint_update_gain_;
 
   // termination-criteria limits / tolerances
-  int    max_iter_;
+  unsigned int max_iter_;
   double joint_convergence_tol_;
 
   // state/counter data
@@ -81,14 +84,14 @@ protected:
   bool debug_;
   std::vector<Eigen::VectorXd> iteration_path_;
 
-  virtual Eigen::MatrixXd calcConstraintJacobian()=0;
   virtual Eigen::VectorXd calcConstraintError()=0;
-
-  virtual void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
-  virtual void update(const Eigen::VectorXd &joints);
-  virtual bool checkStatus() const;
+  virtual Eigen::MatrixXd calcConstraintJacobian()=0;
 
   void clipToJointLimits(Eigen::VectorXd &joints);
+
+  virtual bool checkStatus() const;
+  virtual void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
+  virtual void update(const Eigen::VectorXd &joints);
 
 }; // class Constrained_IK
 
