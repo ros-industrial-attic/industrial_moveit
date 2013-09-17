@@ -15,3 +15,12 @@
 # Eclipse Project Files
 *.cproject
 *.project
+
+# Cmake files
+CMakeCache.txt
+*.cmake
+catkin_generated*
+Makefile
+CMakeFiles
+*gtest*
+
