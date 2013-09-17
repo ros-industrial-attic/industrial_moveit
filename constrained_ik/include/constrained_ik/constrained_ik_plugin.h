@@ -115,11 +115,14 @@ public:
 //    int free_angle_;
 //    urdf::Model robot_model_;
 //    ros::NodeHandle node_handle_, root_handle_;
-    boost::shared_ptr<basic_ik::Basic_IK> solver_;   //TODO does this have to be shrdptr, and can it directly reference included solver?
+//    boost::shared_ptr<basic_ik::Basic_IK> solver_;   //TODO does this have to be shrdptr, and can it directly reference included solver?
+//    basic_ik::Basic_IK solver_;
+    basic_kin::BasicKin kin_;
     //ros::ServiceServer ik_service_,fk_service_,ik_solver_info_service_,fk_solver_info_service_;
     //tf::TransformListener tf_;
     std::string root_name_;
     int dimension_;
+    std::vector<std::string> link_names_, joint_names_;
 //    boost::shared_ptr<KDL::ChainFkSolverPos_recursive> jnt_to_pose_solver_;
 //    KDL::Chain kdl_chain_;
 //    moveit_msgs::KinematicSolverInfo ik_solver_info_, fk_solver_info_;
