@@ -24,5 +24,4 @@ Makefile
 CMakeFiles
 *gtest*
 test_results
-devel/
 
