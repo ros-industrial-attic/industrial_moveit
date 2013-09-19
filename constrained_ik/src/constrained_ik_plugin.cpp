@@ -51,6 +51,15 @@ bool ConstrainedIKPlugin::isActive()
 {
     if(active_)
         return true;
+    ROS_ERROR("kinematics not active");
+    return false;
+}
+
+bool ConstrainedIKPlugin::isActive() const
+{
+    if(active_)
+        return true;
+    ROS_ERROR("kinematics not active");
     return false;
 }
 
@@ -61,39 +70,28 @@ bool ConstrainedIKPlugin::initialize(const std::string& robot_description,
                                      double search_discretization)
 {
     setValues(robot_description, group_name, base_name, tip_name, search_discretization);
-    urdf::Model robot_model;
-//    std::string xml_string;
-//    ros::NodeHandle private_handle("~/"+group_name);
-//      dimension_ = 7;
-//      while(!loadRobotModel(private_handle,robot_model,xml_string) && private_handle.ok())
-//      {
-//        ROS_ERROR("Could not load robot model. Are you sure the robot model is on the parameter server?");
-//        ros::Duration(0.5).sleep();
-//      }
 
-//    ROS_DEBUG("Loading KDL Tree");
-    robot_model.initParam(robot_description);
-    kin_.init(robot_model, base_frame_, tip_frame_);
-    dimension_ = kin_.numJoints();
-//      if(!getKDLChain(xml_string,base_frame_,tip_frame_,kdl_chain_))
-//      {
-//        active_ = false;
-//        ROS_ERROR("Could not load kdl tree");
-//      }
-//      ROS_DEBUG("Advertising services");
-//      jnt_to_pose_solver_.reset(new KDL::ChainFkSolverPos_recursive(kdl_chain_));
-//      private_handle.param<int>("free_angle",free_angle_,2);
-//      pr2_arm_ik_solver_.reset(new pr2_arm_kinematics::PR2ArmIKSolver(robot_model, base_frame_,tip_frame_, search_discretization_,free_angle_));
-    if(!kin_.checkInitialized())
+    //get robot data from parameter server
+    urdf::Model robot_model;
+    if (!robot_model.initParam(robot_description))
+    {
+        ROS_ERROR_STREAM("Could not load URDF model from " << robot_description);
+        active_ = false;
+        return false;
+    }
+
+    //initialize kinematic solver with robot info
+    if (!kin_.init(robot_model, base_frame_, tip_frame_))
     {
         ROS_ERROR("Could not load ik");
         active_ = false;
     }
     else
     {
-        active_ = true;
+        dimension_ = kin_.numJoints();
         kin_.getJointNames(joint_names_);
         kin_.getLinkNames(link_names_);
+        active_ = true;
     }
     return active_;
 }
@@ -111,7 +109,6 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
         error_code.val = error_code.NO_IK_SOLUTION;
         return false;
     }
-
     if(ik_seed_state.size() != dimension_)
     {
         ROS_ERROR("ik_seed_state does not have same dimension as solver");
@@ -125,26 +122,28 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
     Eigen::Affine3d goal;
     tf::transformKDLToEigen(pose_desired, goal);
 
-    Eigen::VectorXd seed;
-    Eigen::VectorXd joint_angles(dimension_);
-    seed.resize(dimension_);
-    for(int i=0; i < dimension_; i++)
+    Eigen::VectorXd seed(dimension_), joint_angles(dimension_);
+    for(size_t ii=0; ii < dimension_; ++ii)
     {
-        seed(i) = ik_seed_state[i];
+        seed(ii) = ik_seed_state[ii];
     }
 
-    //Do the IK
-//      int ik_valid = pr2_arm_ik_solver_->CartToJnt(jnt_pos_in,
-//                                                   pose_desired,
-//                                                   jnt_pos_out);
-//      if(ik_valid == pr2_arm_kinematics::NO_IK_SOLUTION)
+    //create solver and initialize with kinematic model
     Basic_IK solver;
     solver.init(kin_);
-    solver.calcInvKin(goal, seed, joint_angles);
-    solution.resize(dimension_);
-    for(int i=0; i < dimension_; i++)
+
+    //Do IK and report results
+    try { solver.calcInvKin(goal, seed, joint_angles); }    //TODO throwing exception kills IK and moveit permanently freezes
+    catch (exception &e)
     {
-        solution[i] = joint_angles(i);
+        ROS_ERROR_STREAM("Caught exception from IK: " << e.what());
+        error_code.val = error_code.FAILURE;
+        return false;
+    }
+    solution.resize(dimension_);
+    for(size_t ii=0; ii < dimension_; ++ii)
+    {
+        solution[ii] = joint_angles(ii);
     }
     error_code.val = error_code.SUCCESS;
     return true;
@@ -207,36 +206,13 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
     Eigen::Affine3d goal;
     tf::transformKDLToEigen(pose_desired, goal);
 
-    Eigen::VectorXd seed;
-    Eigen::VectorXd joint_angles(dimension_);
-    seed.resize(dimension_);
-    for(int i=0; i < dimension_; i++)
+    Eigen::VectorXd seed(dimension_), joint_angles;
+    for(size_t ii=0; ii < dimension_; ii++)
     {
-        seed(i) = ik_seed_state[i];
+        seed(ii) = ik_seed_state[ii];
     }
 
     //Do the IK
-//    int ik_valid;
-//    if(consistency_limits.empty())
-//    {
-//        ik_valid = pr2_arm_ik_solver_->CartToJntSearch(seed,
-//                                                        pose_desired,
-//                                                        joint_angles,
-//                                                        timeout,
-//                                                        error_code,
-//                      solution_callback ? boost::bind(solution_callback, _1, _2, _3): IKCallbackFn());
-//    }
-//    else
-//    {
-//        ik_valid = pr2_arm_ik_solver_->CartToJntSearch(seed,
-//                                                        pose_desired,
-//                                                        joint_angles,
-//                                                        timeout,
-//                                                        consistency_limits[free_angle_],
-//                                                        error_code,
-//                solution_callback ? boost::bind(solution_callback, _1, _2, _3): IKCallbackFn());
-//    }
-
     Basic_IK solver;
     solver.init(kin_);
     solver.calcInvKin(goal, seed, joint_angles);
@@ -271,7 +247,6 @@ bool ConstrainedIKPlugin::getPositionFK(const std::vector<std::string> &link_nam
         return false;
     }
 
-//    KDL::Frame p_out;
     Eigen::VectorXd jnt_pos_in;
     geometry_msgs::PoseStamped pose;
     tf::Stamped<tf::Pose> tf_pose;
@@ -286,33 +261,29 @@ bool ConstrainedIKPlugin::getPositionFK(const std::vector<std::string> &link_nam
     poses.resize(link_names.size());
 
     std::vector<KDL::Frame> kdl_poses;
-    Basic_IK solver;
-    solver.init(kin_);
-    bool valid = solver.calcAllFwdKin(jnt_pos_in, kdl_poses); //TODO this is not hardened against unordered link_names
-    for(unsigned int ii=0; ii < kdl_poses.size(); ++ii)
+    bool valid = kin_.linkTransforms(jnt_pos_in, kdl_poses, link_names);
+    for(size_t ii=0; ii < kdl_poses.size(); ++ii)
     {
         tf::poseKDLToMsg(kdl_poses[ii],poses[ii]);
+    }
+    //TODO remove this printing
+    ROS_INFO_STREAM("poses: ");
+    for (size_t ii=0; ii<poses.size(); ++ii)
+    {
+        ROS_INFO_STREAM(poses[ii]);
     }
     return valid;
 }
 
 const std::vector<std::string>& ConstrainedIKPlugin::getJointNames() const
 {
-    if(!active_)
-    {
-        ROS_ERROR("kinematics not active");
-    }
-//    ROS_INFO("I'm in getJointNames()");
+    isActive();
     return joint_names_;
 }
 
 const std::vector<std::string>& ConstrainedIKPlugin::getLinkNames() const
 {
-    if(!active_)
-    {
-        ROS_ERROR("kinematics not active");
-    }
-    ROS_INFO("I'm in getLinkNames()");
+    isActive();
     return link_names_;
 }
 

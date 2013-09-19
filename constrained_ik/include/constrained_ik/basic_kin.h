@@ -48,18 +48,14 @@ public:
   ~BasicKin() {};
 
   //TODO document
-  //TODO test
-  bool calcAllFwdKin(const Eigen::VectorXd &joint_angles, std::vector<KDL::Frame> &poses) const;
-
-  //TODO document
   bool calcFwdKin(const Eigen::VectorXd &joint_angles, Eigen::Affine3d &pose) const;
 
   //TODO document
   //TODO test
-  bool calcFwdKin(  const Eigen::VectorXd &joint_angles,
-                    const std::string &base,
-                    const std::string &tip,
-                    KDL::Frame &pose);
+  bool calcFwdKin(const Eigen::VectorXd &joint_angles,
+                  const std::string &base,
+                  const std::string &tip,
+                  KDL::Frame &pose);
 
   //TODO document
   bool calcJacobian(const Eigen::VectorXd &joint_angles, Eigen::MatrixXd &jacobian) const;
@@ -96,6 +92,11 @@ public:
   //TODO document
   unsigned int numJoints() const { return robot_chain_.getNrOfJoints(); }
 
+  //TODO comment
+  bool linkTransforms(const Eigen::VectorXd &joint_angles,
+                      std::vector<KDL::Frame> &poses,
+                      const std::vector<std::string> &link_names = std::vector<std::string>()) const;
+
   //TODO document
   BasicKin& operator=(const BasicKin& rhs);
 
@@ -113,6 +114,12 @@ private:
 
   //TODO document
   static void EigenToKDL(const Eigen::VectorXd &vec, KDL::JntArray &joints);
+
+  //TODO comment
+  int getJointNum(const std::string &joint_name) const;
+
+  //TODO comment
+  int getLinkNum(const std::string &link_name) const;
 
   //TODO document
   static void KDLToEigen(const KDL::Frame &frame, Eigen::Affine3d &transform);

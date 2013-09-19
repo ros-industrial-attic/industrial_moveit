@@ -30,13 +30,10 @@
 
 #include <moveit/kinematics_base/kinematics_base.h>
 
-#include <moveit_msgs/GetPositionFK.h>
-#include <moveit_msgs/GetPositionIK.h>
-#include <moveit_msgs/GetKinematicSolverInfo.h>
+//#include <moveit_msgs/GetPositionFK.h>
+//#include <moveit_msgs/GetPositionIK.h>
+//#include <moveit_msgs/GetKinematicSolverInfo.h>
 #include <moveit_msgs/MoveItErrorCodes.h>
-
-//TODO delete these if possible
-#include <kdl/chainfksolverpos_recursive.hpp>
 
 namespace constrained_ik
 {
@@ -46,6 +43,8 @@ public:
     ConstrainedIKPlugin();
 
     bool isActive();
+
+    bool isActive() const;
 
     virtual bool getPositionIK(const geometry_msgs::Pose &ik_pose,
                                const std::vector<double> &ik_seed_state,
@@ -112,20 +111,9 @@ public:
   protected:
 
     bool active_;
-//    int free_angle_;
-//    urdf::Model robot_model_;
-//    ros::NodeHandle node_handle_, root_handle_;
-//    boost::shared_ptr<basic_ik::Basic_IK> solver_;   //TODO does this have to be shrdptr, and can it directly reference included solver?
-//    basic_ik::Basic_IK solver_;
     basic_kin::BasicKin kin_;
-    //ros::ServiceServer ik_service_,fk_service_,ik_solver_info_service_,fk_solver_info_service_;
-    //tf::TransformListener tf_;
-    std::string root_name_;
     int dimension_;
     std::vector<std::string> link_names_, joint_names_;
-//    boost::shared_ptr<KDL::ChainFkSolverPos_recursive> jnt_to_pose_solver_;
-//    KDL::Chain kdl_chain_;
-//    moveit_msgs::KinematicSolverInfo ik_solver_info_, fk_solver_info_;
 
 };
 

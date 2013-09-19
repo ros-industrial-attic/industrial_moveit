@@ -31,29 +31,6 @@ namespace basic_kin
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-bool BasicKin::calcAllFwdKin(const VectorXd &joint_angles, std::vector<KDL::Frame> &poses) const
-{
-    int n = joint_angles.size();
-    KDL::JntArray kdl_joints;
-
-    if (!checkInitialized()) return false;
-    if (!checkJoints(joint_angles)) return false;
-
-    EigenToKDL(joint_angles, kdl_joints);
-
-    // run FK solver
-    poses.resize(n);
-    for (unsigned int ii=0; ii<n; ++ii)
-    {
-        if (fk_solver_->JntToCart(kdl_joints, poses[ii], ii) < 0)
-        {
-            ROS_ERROR_STREAM("Failed to calculate FK for joint " << n);
-            return false;
-        }
-    }
-    return true;
-}
-
 bool BasicKin::calcFwdKin(const VectorXd &joint_angles, Eigen::Affine3d &pose) const
 {
 //  int n = joint_angles.size();
@@ -217,6 +194,26 @@ bool BasicKin::getLinkNames(const KDL::Chain &chain, std::vector<std::string> &n
     return true;
 }
 
+int BasicKin::getJointNum(const std::string &joint_name) const
+{
+    std::vector<std::string>::const_iterator it = find(joint_list_.begin(), joint_list_.end(), joint_name);
+    if (it != joint_list_.end())
+    {
+        return it-joint_list_.begin();
+    }
+    return it-joint_list_.begin()+1;
+}
+
+int BasicKin::getLinkNum(const std::string &link_name) const
+{
+    std::vector<std::string>::const_iterator it = find(link_list_.begin(), link_list_.end(), link_name);
+    if (it != link_list_.end())
+    {
+        return it-link_list_.begin();
+    }
+    return it-link_list_.begin()+1;
+}
+
 bool BasicKin::init(const urdf::Model &robot,
                    const std::string &base_name, const std::string &tip_name)
 {
@@ -293,6 +290,43 @@ void BasicKin::KDLToEigen(const KDL::Jacobian &jacobian, MatrixXd &matrix)
   for (size_t i=0; i<jacobian.rows(); ++i)
     for (size_t j=0; j<jacobian.columns(); ++j)
       matrix(i,j) = jacobian(i,j);
+}
+
+bool BasicKin::linkTransforms(const VectorXd &joint_angles,
+                              std::vector<KDL::Frame> &poses,
+                              const std::vector<std::string> &link_names) const
+{
+    if (!checkInitialized()) return false;
+    if (!checkJoints(joint_angles)) return false;
+
+    std::vector<std::string> links(link_names);
+    size_t n = links.size();
+    if (!n) /*if link_names is an empty vector, return transforms of all links*/
+    {
+        links = link_list_;
+        n = links.size();
+    }
+
+    KDL::JntArray kdl_joints;
+    EigenToKDL(joint_angles, kdl_joints);
+
+    // run FK solver
+    poses.resize(n);
+    int link_num;
+    for (size_t ii=0; ii<n; ++ii)
+    {
+        link_num = getLinkNum(links[ii]);
+        if (fk_solver_->JntToCart(kdl_joints, poses[ii], link_num<0? -1:link_num+1) < 0) /*root=0, link1=1, therefore add +1 to link num*/
+        {
+            ROS_ERROR_STREAM("Failed to calculate FK for joint " << n);
+            return false;
+        }
+//        ROS_INFO_STREAM("index " << ii << ", link " << link_list_[ii]);
+//        Eigen::Affine3d pose;
+//        tf::transformKDLToEigen(poses[ii], pose);
+//        ROS_INFO_STREAM("link " << ii << std::endl << pose.matrix());
+    }
+    return true;
 }
 
 BasicKin& BasicKin::operator=(const BasicKin& rhs)

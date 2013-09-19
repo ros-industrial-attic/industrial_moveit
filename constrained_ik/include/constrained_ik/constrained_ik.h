@@ -39,7 +39,9 @@ public:
   Constrained_IK();
   virtual ~Constrained_IK() {};
 
-  bool calcAllFwdKin(const Eigen::VectorXd &joints, std::vector<KDL::Frame> &poses) const {return kin_.calcAllFwdKin(joints, poses);};
+  bool calcAllFwdKin(const Eigen::VectorXd &joints,
+                     std::vector<KDL::Frame> &poses) const
+  {return kin_.linkTransforms(joints, poses);};
 
   virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed, Eigen::VectorXd &joint_angles);
 

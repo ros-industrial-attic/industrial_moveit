@@ -18,6 +18,8 @@
 
 #include <gtest/gtest.h>
 #include <constrained_ik/basic_kin.h>
+#include <boost/assign/list_of.hpp>
+#include <eigen_conversions/eigen_kdl.h>
 
 using constrained_ik::basic_kin::BasicKin;
 using Eigen::MatrixXd;
@@ -46,6 +48,20 @@ protected:
     ASSERT_TRUE(kin.init(model, "base_link", "link_6"));
   }
 
+  bool comparePoses(const std::vector<KDL::Frame> &actual, const std::vector<KDL::Frame> &expected, const double tol = 1e-6)
+  {
+      bool rtn;
+//      ASSERT_TRUE(actual.size() == expected.size());
+      if (actual.size() != expected.size())
+          return false;
+      for (size_t ii=0; ii<actual.size(); ++ii)
+      {
+          if (!KDL::Equal(actual[ii], expected[ii], tol))
+              return false;
+      }
+      return true;
+  }
+
 private:
   static const std::string urdf_file;
 };
@@ -69,6 +85,7 @@ protected:
 typedef RobotTest init;
 typedef RobotTest calcFwdKin;
 typedef RobotTest calcJacobian;
+typedef RobotTest linkTransforms;
 typedef PInvTest  solvePInv;
 /* ---------------------------------------------------------------- */
 
@@ -84,8 +101,100 @@ TEST_F(init, inputValidation)
 }
 
 
+TEST_F(linkTransforms, inputValidation)
+{
+    std::vector<std::string> link_names = boost::assign::list_of("link_1")("link_2")("link_3")("link_4")("link_5")("link_6");
+    std::vector<KDL::Frame> poses;
+
+    EXPECT_FALSE(BasicKin().linkTransforms(VectorXd(), poses));                                     // un-init BasicKin, names, & Jnts
+    EXPECT_FALSE(BasicKin().linkTransforms(VectorXd(), poses, std::vector<std::string>()));         // un-init BasicKin, names, & Jnts
+    EXPECT_FALSE(BasicKin().linkTransforms(VectorXd(), poses, link_names));                         // un-init BasicKin & Jnts
+    EXPECT_FALSE(BasicKin().linkTransforms(VectorXd::Zero(6), poses, std::vector<std::string>()));  // un-init BasicKin & names
+    EXPECT_FALSE(BasicKin().linkTransforms(VectorXd::Zero(6), poses, link_names));                  // un-init BasicKin
+
+    EXPECT_FALSE(kin.linkTransforms(VectorXd(), poses, std::vector<std::string>()));                // empty names & joints
+    EXPECT_FALSE(kin.linkTransforms(VectorXd::Zero(99), poses, link_names));                        // too many joints
+    EXPECT_FALSE(kin.linkTransforms(VectorXd::Constant(6, 1e10), poses, link_names));               // joints out-of-range
+
+    EXPECT_TRUE(kin.linkTransforms(VectorXd::Zero(6), poses, link_names));                          // valid input
+    EXPECT_TRUE(kin.linkTransforms(VectorXd::Zero(6), poses));                                      // valid input
+
+    std::vector<std::string> link_names_short = boost::assign::list_of(link_names[5]);
+    EXPECT_TRUE(kin.linkTransforms(VectorXd::Zero(6), poses, link_names_short));                    //valid short input
+
+    link_names[5] = "fail_on_this";
+    EXPECT_FALSE(kin.linkTransforms(VectorXd::Zero(6), poses, link_names));                         // invalid link list
+    link_names_short[0] = link_names[5];
+    EXPECT_FALSE(kin.linkTransforms(VectorXd::Zero(6), poses, link_names_short));                   // invalid & short link list
+}
+
+
+TEST_F(linkTransforms, knownPoses)
+{
+    using KDL::Rotation;
+    using KDL::Vector;
+    using KDL::Frame;
+
+    std::vector<std::string> link_names = boost::assign::list_of("link_1")("link_2")("link_3")("link_4")("link_5")("link_6");
+    VectorXd joint_angles(6);
+    std::vector<Frame> actual, expected(6);
+
+    joint_angles = VectorXd::Zero(6);
+    expected[0] = Frame(Vector(0,0,.674));    //rotation defaults to identity
+    expected[1] = Frame(Vector(0,0,.674));    //rotation defaults to identity
+    expected[2] = Frame(Vector(.4318,.12446,.674));     //rotation defaults to identity
+    expected[3] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
+    expected[4] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
+    expected[5] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
+    EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names));  //all link names
+    EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
+    EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
+    EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
+
+    joint_angles(0) = M_PI_2;
+    expected[0] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(0,0,.674));
+    expected[1] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(0,0,.674));
+    expected[2] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(-.12446,.4318,.674));
+    expected[3] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(-.12446,.41148,1.1058));
+    expected[4] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(-.12446,.41148,1.1058));
+    expected[5] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(-.12446,.41148,1.1058));
+    EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names));  //all link names
+    EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
+    EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
+    EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
+
+    joint_angles(0) = 0.;
+    joint_angles(1) = -M_PI_2;
+    expected[0] = Frame(Vector(0,0,.674));
+    expected[1] = Frame(Rotation(0,0,-1,0,1,0,1,0,0), Vector(0,0,.674));
+    expected[2] = Frame(Rotation(0,0,-1,0,1,0,1,0,0), Vector(0, .12446,1.1058));
+    expected[3] = Frame(Rotation(0,0,-1,0,1,0,1,0,0), Vector(-.4318,.12446,1.08548));
+    expected[4] = Frame(Rotation(0,0,-1,0,1,0,1,0,0), Vector(-.4318,.12446,1.08548));
+    expected[5] = Frame(Rotation(0,0,-1,0,1,0,1,0,0), Vector(-.4318,.12446,1.08548));
+    EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names));  //all link names
+    EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
+    EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
+    EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
+
+    joint_angles = VectorXd::Zero(6);
+    std::vector<std::string> link_names_short(link_names.begin()+1, link_names.end()-1);
+//    expected[0] = Frame(Vector(0,0,.674));    //rotation defaults to identity
+    expected[1] = Frame(Vector(0,0,.674));    //rotation defaults to identity
+    expected[2] = Frame(Vector(.4318,.12446,.674));     //rotation defaults to identity
+    expected[3] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
+    expected[4] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
+//    expected[5] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
+    std::vector<Frame> expected_short(expected.begin()+1, expected.end()-1);
+    EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names_short));    //all link names
+    EXPECT_TRUE(comparePoses(actual, expected_short, 1e-4));
+    EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));                      //no link names (defaults to all)
+    EXPECT_FALSE(comparePoses(actual, expected, 1e-4));
+}
+
+
 TEST_F(calcFwdKin, inputValidation)
 {
+    //test for calcFwdKin(joints, pose)
   Eigen::Affine3d pose;
 
   EXPECT_FALSE(BasicKin().calcFwdKin(VectorXd(), pose));            // un-init BasicKin & Jnts
