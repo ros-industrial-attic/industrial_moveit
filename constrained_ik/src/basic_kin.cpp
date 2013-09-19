@@ -99,7 +99,6 @@ bool BasicKin::calcJacobian(const VectorXd &joint_angles, MatrixXd &jacobian) co
   return true;
 }
 
-// TODO (move this to .h) check for consistency in # and limits of joints
 bool BasicKin::checkJoints(const VectorXd &vec) const
 {
   if (vec.size() != robot_chain_.getNrOfJoints())
@@ -321,10 +320,6 @@ bool BasicKin::linkTransforms(const VectorXd &joint_angles,
             ROS_ERROR_STREAM("Failed to calculate FK for joint " << n);
             return false;
         }
-//        ROS_INFO_STREAM("index " << ii << ", link " << link_list_[ii]);
-//        Eigen::Affine3d pose;
-//        tf::transformKDLToEigen(poses[ii], pose);
-//        ROS_INFO_STREAM("link " << ii << std::endl << pose.matrix());
     }
     return true;
 }
@@ -333,7 +328,10 @@ BasicKin& BasicKin::operator=(const BasicKin& rhs)
 {
   initialized_  = rhs.initialized_;
   robot_chain_  = rhs.robot_chain_;
+  kdl_tree_ = rhs.kdl_tree_;
   joint_limits_ = rhs.joint_limits_;
+  joint_list_ = rhs.joint_list_;
+  link_list_ = rhs.link_list_;
   fk_solver_.reset(new KDL::ChainFkSolverPos_recursive(robot_chain_));
   jac_solver_.reset(new KDL::ChainJntToJacSolver(robot_chain_));
 
@@ -358,20 +356,28 @@ bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) cons
     return false;
   }
 
+  //Calculate A+ (pseudoinverse of A) = V S+ U*, where U* is Hermition of U (just transpose if all values of U are real)
+  //in order to solve Ax=b -> x*=A+ b
   Eigen::JacobiSVD<MatrixXd> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
   const MatrixXd &U = svd.matrixU();
   const VectorXd &Sv = svd.singularValues();
   const MatrixXd &V = svd.matrixV();
 
   // calculate the reciprocal of Singular-Values
-  int nSv = Sv.size();
+  size_t nSv = Sv.size();
   VectorXd inv_Sv(nSv);
-  for(int i=0; i<nSv; ++i)
+  for(size_t i=0; i<nSv; ++i)
   {
-    if (fabs(Sv(i)) > eps)
-      inv_Sv(i) = 1/Sv(i);
-    else
-      inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
+//    if (fabs(Sv(i)) > eps)
+//      inv_Sv(i) = 1/Sv(i);
+//    else
+//      inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
+
+      if (fabs(Sv(i)) > eps)
+//          inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);    // TODO: Do we need lambda weighting?
+          inv_Sv(i) = 1/Sv(i);
+      else
+          inv_Sv(i) = 0;
   }
 
   x = V * inv_Sv.asDiagonal() * U.transpose() * b;

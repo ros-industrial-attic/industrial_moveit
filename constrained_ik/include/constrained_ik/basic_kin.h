@@ -47,60 +47,122 @@ public:
   BasicKin() : initialized_(false) {};
   ~BasicKin() {};
 
-  //TODO document
+  /**@brief Calculates tool pose of robot chain
+   * @param joint_angles Vector of joint angles (size must match number of joints in robot chain)
+   * @param pose Transform of end-of-tip relative to root
+   * @return True if calculation successful, False if anything is wrong (including uninitialized BasicKin)
+   */
   bool calcFwdKin(const Eigen::VectorXd &joint_angles, Eigen::Affine3d &pose) const;
 
-  //TODO document
   //TODO test
+  /**@brief Creates chain and calculates tool pose relative to root
+   * New chain is not stored permanently, but subchain_fk_solver_ is updated
+   * @param joint_angles Vector of joint angles (size must match number of joints in chain)
+   * @param base Name of base link for new chain
+   * @param tip Name of tip link for new chain
+   * @param pose Transform of end-of-tip relative to base
+   * @return True if calculation successful, False if anything is wrong (including uninitialized BasicKin)
+   */
   bool calcFwdKin(const Eigen::VectorXd &joint_angles,
                   const std::string &base,
                   const std::string &tip,
                   KDL::Frame &pose);
 
-  //TODO document
+  /**@brief Calculated jacobian of robot given joint angles
+   * @param joint_angles Input vector of joint angles
+   * @param jacobian Output jacobian
+   * @return True if calculation successful, False if anything is wrong (including uninitialized BasicKin)
+   */
   bool calcJacobian(const Eigen::VectorXd &joint_angles, Eigen::MatrixXd &jacobian) const;
 
-  //TODO document
+  /**@brief Checks if BasicKin is initialized (init() has been run: urdf model loaded, etc.)
+   * @return True if init() has completed successfully
+   */
   bool checkInitialized() const { return initialized_; }
 
-  //TODO document
   //TODO test
+  /**@brief Check for consistency in # and limits of joints
+   * @param vec Vector of joint values
+   * @return True if size of vec matches # of robot joints and all joints are within limits
+   */
   bool checkJoints(const Eigen::VectorXd &vec) const;
 
-  //TODO document
   //TODO test
+  /**@brief Get list of joint names for robot
+   * @param names Output vector of joint names, copied from joint_list_ created in init()
+   * @return True if BasicKin has been successfully initialized
+   */
   bool getJointNames(std::vector<std::string> &names) const;
 
-  //TODO document
   //TODO test
+  /**@brief Get list of joint names for specific robot chain
+   * Crawls chain to create list
+   * @param chain Input robot chain to retrieve list from
+   * @param names Output vector of joint names
+   * @return True if BasicKin has been successfully initialized
+   */
   bool getJointNames(const KDL::Chain &chain, std::vector<std::string> &names) const;
 
-  //TODO document
+  /**@brief Getter for joint_limits_
+   * @return Matrix of joint limits
+   */
   Eigen::MatrixXd getLimits() const { return joint_limits_; }
 
-  //TODO document
   //TODO test
+  /**@brief Get list of link names for robot
+   * @param names Output vector of names, copied from link_list_ created in init()
+   * @return True if BasicKin has been successfully initialized
+   */
   bool getLinkNames(std::vector<std::string> &names) const;
 
-  //TODO document
   //TODO test
+  /**@brief Get list of link names for specific robot chain
+   * Crawls chain to create list
+   * @param chain Input robot chain to retrieve list from
+   * @param names Output vector of link names
+   * @return True if BasicKin has been successfully initialized
+   */
   bool getLinkNames(const KDL::Chain &chain, std::vector<std::string> &names) const;
 
-  //TODO document
+  /**@brief Initializes BasicKin
+   * Creates KDL::Chain from urdf::Model, populates joint_list_, joint_limits_, and link_list_
+   * @param robot Input model containing robot information
+   * @param base_name Input name of base link
+   * @param tip_name Input name of tip link
+   * @return True if init() completes successfully
+   */
   bool init(const urdf::Model &robot, const std::string &base_name, const std::string &tip_name);
 
-  //TODO document
+  /**@brief Number of joints in robot
+   * @return Number of joints in robot
+   */
   unsigned int numJoints() const { return robot_chain_.getNrOfJoints(); }
 
-  //TODO comment
+  /**@brief Calculates transforms of each link relative to base (not including base)
+   * If link_names is specified, only listed links will be returned. Otherwise all links in link_list_ will be returned
+   * @param joint_angles Input vector of joint values
+   * @param poses Output poses of listed links
+   * @param link_names Optional input list of links to calculate transforms for
+   * @return True if all requested links have poses calculated
+   */
   bool linkTransforms(const Eigen::VectorXd &joint_angles,
                       std::vector<KDL::Frame> &poses,
                       const std::vector<std::string> &link_names = std::vector<std::string>()) const;
 
-  //TODO document
+  //TODO test
+  /**@brief Assigns values from another BasicKin to this
+   * @param rhs Input BasicKin object to copy from
+   * @return reference to this BasicKin object
+   */
   BasicKin& operator=(const BasicKin& rhs);
 
-  //TODO document
+  /**@brief Solve equation Ax=b for x
+   * Use this SVD to compute A+ (pseudoinverse of A). Weighting still TBD.
+   * @param A Input matrix (represents Jacobian)
+   * @param b Input vector (represents desired pose)
+   * @param x Output vector (represents joint values)
+   * @return True if solver completes properly
+   */
   bool solvePInv(const Eigen::MatrixXd &A, const Eigen::VectorXd &b, Eigen::VectorXd &x) const;
 
 private:
@@ -112,19 +174,34 @@ private:
   boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_, subchain_fk_solver_;
   boost::scoped_ptr<KDL::ChainJntToJacSolver> jac_solver_;
 
-  //TODO document
+  /**@brief Convert Eigen::Vector to KDL::JntArray
+   * @param vec Input Eigen vector
+   * @param joints Output KDL joint array
+   */
   static void EigenToKDL(const Eigen::VectorXd &vec, KDL::JntArray &joints);
 
-  //TODO comment
+  /**@brief Get joint number of given joint in initialized robot
+   * @param joint_name Input name of joint
+   * @return joint index if joint_name part of joint_list_, n+1 otherwise
+   */
   int getJointNum(const std::string &joint_name) const;
 
-  //TODO comment
+  /**@brief Get link number of given joint in initialized robot
+   * @param link_name Input name of link
+   * @return link index if link_name part of link_list_, l+1 otherwise
+   */
   int getLinkNum(const std::string &link_name) const;
 
-  //TODO document
+  /**@brief Convert KDL::Frame to Eigen::Affine3d
+   * @param frame Input KDL Frame
+   * @param transform Output Eigen transform (Affine3d)
+   */
   static void KDLToEigen(const KDL::Frame &frame, Eigen::Affine3d &transform);
 
-  //TODO document
+  /**brief Convert KDL::Jacobian to Eigen::Matrix
+   * @param jacobian Input KDL Jacobian
+   * @param matrix Output Eigen MatrixXd
+   */
   static void KDLToEigen(const KDL::Jacobian &jacobian, Eigen::MatrixXd &matrix);
 
 }; // class BasicKin
