@@ -133,7 +133,7 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
     solver.init(kin_);
 
     //Do IK and report results
-    try { solver.calcInvKin(goal, seed, joint_angles); }    //TODO throwing exception kills IK and moveit permanently freezes
+    try { solver.calcInvKin(goal, seed, joint_angles); }
     catch (exception &e)
     {
         ROS_ERROR_STREAM("Caught exception from IK: " << e.what());
@@ -215,7 +215,7 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
     //Do the IK
     Basic_IK solver;
     solver.init(kin_);
-    try { solver.calcInvKin(goal, seed, joint_angles); }    //TODO throwing exception kills IK and moveit permanently freezes
+    try { solver.calcInvKin(goal, seed, joint_angles); }
     catch (exception &e)
     {
         ROS_ERROR_STREAM("Caught exception from IK: " << e.what());
