@@ -137,7 +137,7 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
     catch (exception &e)
     {
         ROS_ERROR_STREAM("Caught exception from IK: " << e.what());
-        error_code.val = error_code.FAILURE;
+        error_code.val = error_code.NO_IK_SOLUTION;
         return false;
     }
     solution.resize(dimension_);
@@ -215,26 +215,31 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
     //Do the IK
     Basic_IK solver;
     solver.init(kin_);
-    solver.calcInvKin(goal, seed, joint_angles);
-    if (solution_callback)
+    try { solver.calcInvKin(goal, seed, joint_angles); }    //TODO throwing exception kills IK and moveit permanently freezes
+    catch (exception &e)
     {
-        solution.resize(dimension_);
-        for(size_t ii=0; ii < dimension_; ++ii)
-        {
-            solution[ii] = joint_angles(ii);
-        }
-        solution_callback(ik_pose, solution, error_code);
-        if(error_code.val == error_code.SUCCESS)
-        {
-            return true;
-        }
+        ROS_ERROR_STREAM("Caught exception from IK: " << e.what());
+        error_code.val = error_code.NO_IK_SOLUTION;
         return false;
     }
-    else
+    solution.resize(dimension_);
+    for(size_t ii=0; ii < dimension_; ++ii)
     {
-        error_code.val = error_code.SUCCESS;
-        return true;
+        solution[ii] = joint_angles(ii);
     }
+
+    // If there is a solution callback registered, check before returning
+    if (solution_callback)
+    {
+        solution_callback(ik_pose, solution, error_code);
+        if(error_code.val != error_code.SUCCESS)
+            return false;
+    }
+
+    // Default: return successfully
+    error_code.val = error_code.SUCCESS;
+    return true;
+
 }
 
 bool ConstrainedIKPlugin::getPositionFK(const std::vector<std::string> &link_names,
