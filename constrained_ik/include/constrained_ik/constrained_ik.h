@@ -39,30 +39,84 @@ public:
   Constrained_IK();
   virtual ~Constrained_IK() {};
 
-  bool calcAllFwdKin(const Eigen::VectorXd &joints,
-                     std::vector<KDL::Frame> &poses) const
-  {return kin_.linkTransforms(joints, poses);};
+  //TODO document
+  bool linkTransforms(const Eigen::VectorXd &joints,
+                      std::vector<KDL::Frame> &poses,
+                      const std::vector<std::string> link_names = std::vector<std::string>()) const
+  {return kin_.linkTransforms(joints, poses, link_names);};
 
+  //TODO document
   virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed, Eigen::VectorXd &joint_angles);
 
+  /**@brief Checks to see if object is initialized (ie: init() has been called)
+   * @return True if object is initialized
+   */
   bool checkInitialized() const { return initialized_; }
 
-  inline unsigned int getMaxIter() const {return max_iter_;};
+  /**@brief Getter for joint names
+   * @param names Output vector of strings naming all joints in robot
+   * @return True if BasicKin object is initialized
+   */
   bool getJointNames(std::vector<std::string> &names) const {return kin_.getJointNames(names);};
+
+  /**@brief Getter for joint_update_gain_ (gain used to scale joint diff in IK loop)
+   * @return Value of joint_update_gain_
+   */
   inline double getJointUpdateGain() const {return joint_update_gain_;};
+
+  /**@brief Getter for joint_convergence_tol_ (convergence criteria in IK loop)
+   * Used to check if solution is progressing or has settled
+   * @return Value of joint_convergence_tol_
+   */
   inline double getJtCnvTolerance() const {return joint_convergence_tol_;};
+
+  /**@brief Getter for link names
+   * @param names Output vector of strings naming all links in robot
+   * @return True is BasicKin object is initialized
+   */
   bool getLinkNames(std::vector<std::string> &names) const {return kin_.getLinkNames(names);};
 
+  /**@brief Getter for max_iter_ (maximum allowable iterations in IK loop)
+   * @return Value of max_iter_
+   */
+  inline unsigned int getMaxIter() const {return max_iter_;};
 
+  /**@brief Initializes object with robot info
+   * @param robot Robot urdf information
+   * @param base_name Name of base link
+   * @param tip_name Name of tip link
+   */
   void init(const urdf::Model &robot, const std::string &base_name, const std::string &tip_name);
+
+  /**@brief Initializes object with kinematic model of robot
+   * @param kin BasicKin object with robot info
+   */
   virtual void init(const basic_kin::BasicKin &kin);
 
+  /**@brief Getter for BasicKin numJoints
+   * @return Number of variable joints in robot
+   */
   unsigned int numJoints() const {return kin_.numJoints();};
 
+  /**@brief Translates an angle to lie between +/-PI
+   * @param angle Input angle, radians
+   * @return Output angle within range of +/- PI
+   */
   static double rangedAngle(double angle);
 
+  /**@brief Setter for joint_update_gain_ (gain used to scale joint diff in IK loop)
+   * @param gain New value for joint_update_gain_
+   */
   inline void setJointUpdateGain(const double gain) {joint_update_gain_ = gain;};
+
+  /**@brief Setter for joint_convergence_tol_ (convergence criteria in IK loop)
+   * @param jt_cnv_tol new value for joint_convergence_tol_
+   */
   inline void setJtCnvTolerance(const double jt_cnv_tol) {joint_convergence_tol_ = jt_cnv_tol;};
+
+  /**@brief Setter for man_iter_ (maximum allowable iterations in IK loop)
+   * @param max_iter New value for max_iter_
+   */
   inline void setMaxIter(const unsigned int max_iter) {max_iter_ = max_iter;};
 
 protected:
@@ -86,13 +140,26 @@ protected:
   bool debug_;
   std::vector<Eigen::VectorXd> iteration_path_;
 
+  /**@brief Pure definition for calculating constraint error
+   * @return Error vector (b-input in calcPInv)
+   */
   virtual Eigen::VectorXd calcConstraintError()=0;
+
+  /**@brief Pure definition for calculating Jacobian
+   * @return Jacobian matrix (A-input in calcPInv)
+   */
   virtual Eigen::MatrixXd calcConstraintJacobian()=0;
 
+  //TODO document
   void clipToJointLimits(Eigen::VectorXd &joints);
 
+  //TODO document
   virtual bool checkStatus() const;
+
+  //TODO document
   virtual void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
+
+  //TODO document
   virtual void update(const Eigen::VectorXd &joints);
 
 }; // class Constrained_IK

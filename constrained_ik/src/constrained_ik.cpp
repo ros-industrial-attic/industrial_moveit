@@ -66,9 +66,6 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
 
     // re-update internal state variables
     update(joint_angles);
-//    std::cout << "manipulability: " << J.determinant()*1000. << std::endl;
-//    std::cout << dJoint.transpose() << std::endl;
-//    std::cout << joints_.transpose() << std::endl;
   }
 
   ROS_INFO_STREAM("IK solution: " << joint_angles.transpose());
