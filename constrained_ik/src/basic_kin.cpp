@@ -368,18 +368,11 @@ bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) cons
   VectorXd inv_Sv(nSv);
   for(size_t i=0; i<nSv; ++i)
   {
-//    if (fabs(Sv(i)) > eps)
-//      inv_Sv(i) = 1/Sv(i);
-//    else
-//      inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
-
-      if (fabs(Sv(i)) > eps)
-//          inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);    // TODO: Do we need lambda weighting?
-          inv_Sv(i) = 1/Sv(i);
-      else
-          inv_Sv(i) = 0;
+    if (fabs(Sv(i)) > eps)
+      inv_Sv(i) = 1/Sv(i);
+    else
+      inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
   }
-
   x = V * inv_Sv.asDiagonal() * U.transpose() * b;
 
   return true;
