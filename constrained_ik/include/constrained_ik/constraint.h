@@ -40,7 +40,7 @@ public:
   Constraint() {};
   virtual ~Constraint() {};
 
-  void setIK(const Constrained_IK* ik) {ik_ = ik;}
+  virtual void setIK(const Constrained_IK* ik) {ik_ = ik;}
 
   virtual unsigned int size() const = 0;
   virtual Eigen::MatrixXd calcJacobian() = 0;

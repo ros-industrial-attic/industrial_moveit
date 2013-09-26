@@ -48,7 +48,7 @@ Eigen::VectorXd ConstraintGroup::calcError()
 // translate task-space errors into joint-space errors
 Eigen::MatrixXd ConstraintGroup::calcJacobian()
 {
-  VectorXd J( this->size() );
+  MatrixXd J( this->size(), 6 );
   size_t row=0;
 
   // concatenate Jacobian matrices
@@ -80,6 +80,12 @@ void ConstraintGroup::reset()
 
   for (size_t i=0; i<constraints_.size(); ++i)
     constraints_[i].reset();
+}
+
+void ConstraintGroup::setIK(const Constrained_IK* ik)
+{
+  for (size_t i=0; i<constraints_.size(); ++i)
+    constraints_[i].setIK(ik);
 }
 
 unsigned int ConstraintGroup::size() const

@@ -35,6 +35,8 @@ public:
   ConstraintGroup();
   virtual ~ConstraintGroup() {};
 
+  virtual void setIK(const Constrained_IK* ik);
+
   virtual unsigned int size() const;
   virtual Eigen::MatrixXd calcJacobian();
   virtual Eigen::VectorXd calcError();

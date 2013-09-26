@@ -78,7 +78,7 @@ void GoalPosition::update(const SolverState &state)
 {
   Constraint::update(state);
 
-  pos_err_ = calcDistance(state_.goal, state_.pose_estimate);
+  pos_err_ = calcDistance(state.goal, state.pose_estimate);
 }
 
 } // namespace constraints

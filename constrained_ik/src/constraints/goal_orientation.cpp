@@ -47,7 +47,7 @@ Eigen::Vector3d GoalOrientation::calcAngleError(const Eigen::Affine3d &p1, const
 
 Eigen::VectorXd GoalOrientation::calcError()
 {
-  Vector3d err = calcAngleError(state_.goal, state_.pose_estimate);
+  Vector3d err = calcAngleError(state_.pose_estimate, state_.goal);
 
   ROS_ASSERT (err.rows() == size());
   return err;
@@ -84,7 +84,7 @@ void GoalOrientation::update(const SolverState &state)
 {
   Constraint::update(state);
 
-  rot_err_ = calcAngle(state_.goal, state_.pose_estimate);
+  rot_err_ = calcAngle(state.goal, state.pose_estimate);
 }
 
 } // namespace constraints
