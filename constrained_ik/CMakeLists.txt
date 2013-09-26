@@ -69,7 +69,10 @@ add_library(constrained_ik_plugin
             src/basic_kin.cpp
             src/constrained_ik.cpp
             src/basic_ik.cpp
-           src/constrained_ik_plugin.cpp
+            src/mid_joint_ik.cpp
+            src/jla_ik.cpp
+            src/free_angle_ik.cpp
+            src/constrained_ik_plugin.cpp
 )
 target_link_libraries(constrained_ik_plugin ${catkin_LIBRARIES})
 

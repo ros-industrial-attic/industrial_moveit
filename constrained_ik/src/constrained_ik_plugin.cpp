@@ -23,6 +23,10 @@
  */
 
 #include <constrained_ik/constrained_ik_plugin.h>
+#include <constrained_ik/basic_ik.h>
+#include <constrained_ik/mid_joint_ik.h>
+#include <constrained_ik/jla_ik.h>
+#include <constrained_ik/free_angle_ik.h>
 #include <ros/ros.h>
 
 #include <kdl_parser/kdl_parser.hpp>
@@ -41,7 +45,11 @@ using namespace ros;
 namespace constrained_ik
 {
 
-using basic_ik::Basic_IK;
+// Unsuppress one to change solver
+//typedef basic_ik::Basic_IK Solver;
+//typedef mid_joint_ik::MidJoint_IK Solver;
+//typedef jla_ik::JLA_IK Solver;
+typedef free_angle_ik::FreeAngleIK Solver;
 
 ConstrainedIKPlugin::ConstrainedIKPlugin():active_(false), dimension_(0)
 {
@@ -129,7 +137,7 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
     }
 
     //create solver and initialize with kinematic model
-    Basic_IK solver;
+    Solver solver;
     solver.init(kin_);
 
     //Do IK and report results
@@ -213,7 +221,7 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
     }
 
     //Do the IK
-    Basic_IK solver;
+    Solver solver;
     solver.init(kin_);
     try { solver.calcInvKin(goal, seed, joint_angles); }
     catch (exception &e)
