@@ -16,35 +16,25 @@
  * limitations under the License.
  */
 
+#include "constrained_ik/solver_state.h"
+#include <limits>
+#include <ros/ros.h>
 
-#ifndef BASIC_IK_H
-#define BASIC_IK_H
-
-#include "constrained_ik.h"
-#include "constraints/goal_pose.h"
+using namespace Eigen;
 
 namespace constrained_ik
 {
-namespace basic_ik
+
+void SolverState::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed)
 {
+  this->goal = goal;
+  this->joint_seed = joint_seed;
+  this->iter = 0;
+  this->joints = VectorXd::Constant(joint_seed.size(), std::numeric_limits<double>::max());
+  this->joints_delta = VectorXd::Zero(joint_seed.size());
+  this->pose_estimate = Affine3d::Identity();
+}
 
-/**
- * \brief Basic IK Solver
- *          - solve for 6DOF cartesian goal
- */
-class Basic_IK : public Constrained_IK
-{
-public:
-  Basic_IK()  {
-    addConstraint(new constraints::GoalPose());
-  }
-  ~Basic_IK() {};
 
-}; // class Basic_IK
-
-} // namespace basic_ik
 } // namespace constrained_ik
-
-
-#endif // BASIC_IK_H
 

@@ -21,6 +21,8 @@
 #define CONSTRAINED_IK_H
 
 #include "constrained_ik/basic_kin.h"
+#include "constraint_group.h"
+#include "solver_state.h"
 #include <string>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -35,9 +37,10 @@ namespace constrained_ik
  */
 class Constrained_IK
 {
+
 public:
   Constrained_IK();
-  virtual ~Constrained_IK() {};
+  virtual ~Constrained_IK() { }
 
   //TODO document
   bool linkTransforms(const Eigen::VectorXd &joints,
@@ -45,13 +48,22 @@ public:
                       const std::vector<std::string> link_names = std::vector<std::string>()) const
   {return kin_.linkTransforms(joints, poses, link_names);};
 
+  /**@brief Add a new constraint to this IK solver
+   * @param constraint Constraint to limit IK solution
+   */
+  virtual void addConstraint(Constraint* constraint);
+
   //TODO document
   virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed, Eigen::VectorXd &joint_angles);
 
   /**@brief Checks to see if object is initialized (ie: init() has been called)
    * @return True if object is initialized
    */
-  bool checkInitialized() const { return initialized_; }
+  bool checkInitialized() const { return initialized_ && !constraints_.empty(); }
+
+  /**@brief Delete all constraints
+   */
+  void clearConstraintList();
 
   /**@brief Getter for joint names
    * @param names Output vector of strings naming all joints in robot
@@ -70,6 +82,11 @@ public:
    */
   inline double getJtCnvTolerance() const {return joint_convergence_tol_;};
 
+  /**@brief Getter for kinematics object
+   * @return Reference to active kinematics object
+   */
+  inline const basic_kin::BasicKin& getKin() const {return kin_;}
+
   /**@brief Getter for link names
    * @param names Output vector of strings naming all links in robot
    * @return True is BasicKin object is initialized
@@ -80,6 +97,11 @@ public:
    * @return Value of max_iter_
    */
   inline unsigned int getMaxIter() const {return max_iter_;};
+
+  /**@brief Getter for latest solver state
+   * @return Latest solver state
+   */
+  inline const SolverState& getState() const { return state_; }
 
   /**@brief Initializes object with robot info
    * @param robot Robot urdf information
@@ -127,15 +149,13 @@ protected:
   unsigned int max_iter_;
   double joint_convergence_tol_;
 
-  // state/counter data
-  int iter_;
-  Eigen::VectorXd joints_;
-  Eigen::VectorXd joints_delta_;
+  // constraints
+  ConstraintGroup constraints_;
 
+  // state/counter data
   bool initialized_;
+  SolverState state_;
   basic_kin::BasicKin kin_;
-  Eigen::Affine3d goal_;
-  Eigen::VectorXd joint_seed_;
 
   bool debug_;
   std::vector<Eigen::VectorXd> iteration_path_;
@@ -143,12 +163,12 @@ protected:
   /**@brief Pure definition for calculating constraint error
    * @return Error vector (b-input in calcPInv)
    */
-  virtual Eigen::VectorXd calcConstraintError()=0;
+  virtual Eigen::VectorXd calcConstraintError();
 
   /**@brief Pure definition for calculating Jacobian
    * @return Jacobian matrix (A-input in calcPInv)
    */
-  virtual Eigen::MatrixXd calcConstraintJacobian()=0;
+  virtual Eigen::MatrixXd calcConstraintJacobian();
 
   //TODO document
   void clipToJointLimits(Eigen::VectorXd &joints);

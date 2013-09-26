@@ -17,34 +17,37 @@
  */
 
 
-#ifndef BASIC_IK_H
-#define BASIC_IK_H
+#ifndef GOAL_POSE_H
+#define GOAL_POSE_H
 
-#include "constrained_ik.h"
-#include "constraints/goal_pose.h"
+#include "constrained_ik/constraint.h"
+#include "goal_position.h"
+#include "goal_orientation.h"
 
 namespace constrained_ik
 {
-namespace basic_ik
+namespace constraints
 {
 
 /**
- * \brief Basic IK Solver
- *          - solve for 6DOF cartesian goal
- */
-class Basic_IK : public Constrained_IK
+ * \brief Constraint to specify cartesian goal pose (XYZ+orientation)
+ *          - convenience class, built from goal_position and goal_orientation constraints
+  */
+class GoalPose : public ConstraintGroup
 {
 public:
-  Basic_IK()  {
-    addConstraint(new constraints::GoalPose());
+  GoalPose() : ConstraintGroup()
+  {
+    this->add(new GoalPosition());
+    this->add(new GoalOrientation());
   }
-  ~Basic_IK() {};
+  virtual ~GoalPose() {};
 
-}; // class Basic_IK
+}; // class GoalPose
 
-} // namespace basic_ik
+} // namespace constraints
 } // namespace constrained_ik
 
 
-#endif // BASIC_IK_H
+#endif // GOAL_POSE_H
 

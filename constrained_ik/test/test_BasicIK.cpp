@@ -81,6 +81,7 @@ TEST_F(calcInvKin, inputValidation)
 //      SUCCEED();
 //  }
 
+  EXPECT_TRUE(ik.checkInitialized());
   EXPECT_ANY_THROW(Basic_IK().calcInvKin(Affine3d::Identity(), seed, joints));      // un-init Basic_IK
   EXPECT_ANY_THROW(ik.calcInvKin(Affine3d(Eigen::Matrix4d::Zero()), seed, joints)); // empty Pose (zeros in matrix because unitary rotation matrix is often in memory)
   EXPECT_ANY_THROW(ik.calcInvKin(homePose, VectorXd(), joints));                    // un-init Seed

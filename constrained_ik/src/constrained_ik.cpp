@@ -17,7 +17,7 @@
  */
 
 #include "constrained_ik/constrained_ik.h"
-#include <limits>
+#include "constrained_ik/constraint_group.h"
 #include <ros/ros.h>
 
 namespace constrained_ik
@@ -31,10 +31,25 @@ Constrained_IK::Constrained_IK()
 {
   initialized_ = false;
   joint_update_gain_ = 0.09;        //default joint update gain
-  iter_ = 0;
   max_iter_ = 500;                  //default max_iter
   joint_convergence_tol_ = 0.0001;   //default convergence tolerance
   debug_ = false;
+}
+
+void Constrained_IK::addConstraint(Constraint* constraint)
+{
+  constraint->setIK(this);
+  constraints_.add(constraint);
+}
+
+Eigen::VectorXd Constrained_IK::calcConstraintError()
+{
+  return constraints_.calcError();
+}
+
+Eigen::MatrixXd Constrained_IK::calcConstraintJacobian()
+{
+  return constraints_.calcJacobian();
 }
 
 void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed, Eigen::VectorXd &joint_angles)
@@ -71,19 +86,27 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
   ROS_INFO_STREAM("IK solution: " << joint_angles.transpose());
 }
 
-// NOTE: the default status() method will never return SUCCESS (true)
 bool Constrained_IK::checkStatus() const
 {
+  // check constraints for completion
+  if (constraints_.checkStatus())
+    return true;
+
   // check maximum iterations
-  if (iter_ > max_iter_)
+  if (state_.iter > max_iter_)
     throw std::runtime_error("Maximum iterations reached.  IK solution may be invalid.");
 
   // check for joint convergence
   //   - this is an error: joints stabilize, but goal pose not reached
-  if (joints_delta_.cwiseAbs().maxCoeff() < joint_convergence_tol_)
+  if (state_.joints_delta.cwiseAbs().maxCoeff() < joint_convergence_tol_)
     throw std::runtime_error("Iteration converged before goal reached.  IK solution may be invalid");
 
   return false;
+}
+
+void Constrained_IK::clearConstraintList()
+{
+  constraints_.clear();
 }
 
 void Constrained_IK::clipToJointLimits(Eigen::VectorXd &joints)
@@ -130,29 +153,28 @@ void Constrained_IK::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &j
   if (!kin_.checkJoints(joint_seed))
     throw std::invalid_argument("Seed doesn't match kinematic model");
 
-  if (!goal.matrix().block(0,0,3,3).isUnitary(1e-6)) {
+  if (!goal.matrix().block(0,0,3,3).isUnitary(1e-6))
         throw std::invalid_argument("Goal pose not proper affine");
-    }
 
-  goal_ = goal;
-  joint_seed_ = joint_seed;
+  state_.reset(goal, joint_seed);  // reset state
+  constraints_.reset();            // reset constraints
 
-  iter_ = 0;
-  joints_ = VectorXd::Constant(joint_seed.size(), std::numeric_limits<double>::max());
-  joints_delta_ = VectorXd::Zero(joint_seed.size());
 }
 
 void Constrained_IK::update(const Eigen::VectorXd &joints)
 {
   // update maximum iterations
-  iter_++;
+  state_.iter++;
 
   // update joint convergence
-  joints_delta_ = joints - joints_;
-  joints_ = joints;
+  state_.joints_delta = joints - state_.joints;
+  state_.joints = joints;
+  kin_.calcFwdKin(joints, state_.pose_estimate);
 
   if (debug_)
       iteration_path_.push_back(joints);
+
+  constraints_.update(state_);
 }
 
 } // namespace constrained_ik

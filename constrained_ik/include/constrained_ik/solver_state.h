@@ -17,34 +17,32 @@
  */
 
 
-#ifndef BASIC_IK_H
-#define BASIC_IK_H
+#ifndef SOLVER_STATE_H
+#define SOLVER_STATE_H
 
-#include "constrained_ik.h"
-#include "constraints/goal_pose.h"
+#include <Eigen/Core>
+#include <Eigen/Geometry>
 
 namespace constrained_ik
 {
-namespace basic_ik
-{
 
 /**
- * \brief Basic IK Solver
- *          - solve for 6DOF cartesian goal
- */
-class Basic_IK : public Constrained_IK
+ * \brief Internal state of Constrained_IK solver
+  */
+struct SolverState
 {
-public:
-  Basic_IK()  {
-    addConstraint(new constraints::GoalPose());
-  }
-  ~Basic_IK() {};
+  Eigen::Affine3d goal;
+  Eigen::VectorXd joint_seed;
 
-}; // class Basic_IK
+  int iter;
+  Eigen::VectorXd joints;
+  Eigen::VectorXd joints_delta;
+  Eigen::Affine3d pose_estimate;
 
-} // namespace basic_ik
+  void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
+};
+
 } // namespace constrained_ik
 
-
-#endif // BASIC_IK_H
+#endif // SOLVER_STATE_H
 

@@ -58,20 +58,20 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS})
 
 ## Declare a cpp library
-add_library(constrained_ik_test
+add_library(constrained_ik
             src/basic_kin.cpp
             src/constrained_ik.cpp
-            src/basic_ik.cpp
+            src/constraint_group.cpp
+            src/constraints/goal_orientation.cpp
+            src/constraints/goal_position.cpp
+            src/solver_state.cpp
 )
-target_link_libraries(constrained_ik_test ${catkin_LIBRARIES})
+target_link_libraries(constrained_ik ${catkin_LIBRARIES})
 
 add_library(constrained_ik_plugin 
-            src/basic_kin.cpp
-            src/constrained_ik.cpp
-            src/basic_ik.cpp
-           src/constrained_ik_plugin.cpp
+            src/constrained_ik_plugin.cpp
 )
-target_link_libraries(constrained_ik_plugin ${catkin_LIBRARIES})
+target_link_libraries(constrained_ik_plugin constrained_ik ${catkin_LIBRARIES})
 
 ## Declare a cpp executable
 # add_executable(constrained_ik_node src/constrained_ik_node.cpp)
@@ -121,7 +121,7 @@ target_link_libraries(constrained_ik_plugin ${catkin_LIBRARIES})
 
 ## Add gtest based cpp test target and link libraries
 catkin_add_gtest(test_BasicKin test/test_BasicKin.cpp WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
-target_link_libraries(test_BasicKin constrained_ik_test)
+target_link_libraries(test_BasicKin constrained_ik)
 
 catkin_add_gtest(test_BasicIK test/test_BasicIK.cpp WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
-target_link_libraries(test_BasicIK constrained_ik_test)
+target_link_libraries(test_BasicIK constrained_ik)
