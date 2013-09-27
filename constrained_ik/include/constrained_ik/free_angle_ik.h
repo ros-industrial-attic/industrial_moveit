@@ -1,4 +1,10 @@
 /*
+ * free_angle_ik.h
+ *
+ *  Created on: Sep 22, 2013
+ *      Author: dsolomon
+ */
+/*
  * Software License Agreement (Apache License)
  *
  * Copyright (c) 2013, Southwest Research Institute
@@ -16,37 +22,34 @@
  * limitations under the License.
  */
 
+#ifndef FREE_ANGLE_IK_H_
+#define FREE_ANGLE_IK_H_
 
-#ifndef BASIC_IK_H
-#define BASIC_IK_H
-
-#include "constrained_ik.h"
-#include "constraints/avoid_joint_limits.h"
-#include "constraints/goal_pose.h"
+#include <constrained_ik/basic_ik.h>
+#include <constrained_ik/jla_ik.h>
 
 namespace constrained_ik
 {
-namespace basic_ik
+
+namespace free_angle_ik
 {
 
-/**
- * \brief Basic IK Solver
- *          - solve for 6DOF cartesian goal
- */
-class Basic_IK : public Constrained_IK
+class FreeAngleIK: public jla_ik::JLA_IK
 {
 public:
-  Basic_IK()  {
-    addConstraint(new constraints::GoalPose());
-    addConstraint(new constraints::AvoidJointLimits());
-  }
-  ~Basic_IK() {};
+    FreeAngleIK();
+    virtual ~FreeAngleIK() {};
 
-}; // class Basic_IK
+protected:
+    double weight_position_, weight_rotx_, weight_roty_, weight_rotz_;
 
-} // namespace basic_ik
-} // namespace constrained_ik
+    virtual Eigen::VectorXd calcConstraintError();
 
+    virtual Eigen::MatrixXd calcConstraintJacobian();
 
-#endif // BASIC_IK_H
+    virtual bool checkStatus() const;
+};
 
+} /* namespace free_angle_ik */
+} /* namespace constrained_ik */
+#endif /* FREE_ANGLE_IK_H_ */

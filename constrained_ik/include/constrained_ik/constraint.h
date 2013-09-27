@@ -37,25 +37,31 @@ class Constrained_IK;
 class Constraint
 {
 public:
-  Constraint() {};
+  Constraint() : initialized_(false), debug_(false) {};
   virtual ~Constraint() {};
 
-  void setIK(const Constrained_IK* ik) {ik_ = ik;}
-
-  virtual unsigned int size() const = 0;
-  virtual Eigen::MatrixXd calcJacobian() = 0;
   virtual Eigen::VectorXd calcError() = 0;
+  virtual Eigen::MatrixXd calcJacobian() = 0;
 
+  virtual bool checkStatus() const { return false; }
+  virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik; }
   virtual void reset() { };
   virtual void update(const SolverState &state) { state_ = state; }
-  virtual bool checkStatus() const { return false; }
+  virtual void updateError(Eigen::VectorXd &error);
+  virtual void updateJacobian(Eigen::MatrixXd &jacobian);
+
+  static void appendError(Eigen::VectorXd &error, const Eigen::VectorXd &addErr);
+  static void appendJacobian(Eigen::MatrixXd &jacobian, const Eigen::MatrixXd &addJacobian);
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
+  bool initialized_;
+  bool debug_;
   const Constrained_IK* ik_;
   SolverState state_;
 
+  int numJoints();
 }; // class Constraint
 
 

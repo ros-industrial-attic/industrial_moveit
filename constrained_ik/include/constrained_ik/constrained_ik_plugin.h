@@ -25,8 +25,8 @@
 #ifndef CONSTRAINED_IK_PLUGIN_H_
 #define CONSTRAINED_IK_PLUGIN_H_
 
+#include <constrained_ik/basic_kin.h>
 #include <ros/ros.h>
-#include <constrained_ik/basic_ik.h>
 
 #include <moveit/kinematics_base/kinematics_base.h>
 

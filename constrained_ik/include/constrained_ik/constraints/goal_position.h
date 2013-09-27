@@ -36,7 +36,6 @@ public:
   GoalPosition();
   virtual ~GoalPosition() {};
 
-  virtual unsigned int size() const { return 3; }
   virtual Eigen::MatrixXd calcJacobian();
   virtual Eigen::VectorXd calcError();
 

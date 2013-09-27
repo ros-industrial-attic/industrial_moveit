@@ -51,7 +51,7 @@ public:
   /**@brief Add a new constraint to this IK solver
    * @param constraint Constraint to limit IK solution
    */
-  virtual void addConstraint(Constraint* constraint);
+  virtual void addConstraint(Constraint* constraint) { constraints_.add(constraint); }
 
   //TODO document
   virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed, Eigen::VectorXd &joint_angles);

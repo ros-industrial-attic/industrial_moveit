@@ -61,7 +61,9 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Eigen
 add_library(constrained_ik
             src/basic_kin.cpp
             src/constrained_ik.cpp
+            src/constraint.cpp
             src/constraint_group.cpp
+            src/constraints/avoid_joint_limits.cpp
             src/constraints/goal_orientation.cpp
             src/constraints/goal_position.cpp
             src/solver_state.cpp

@@ -38,7 +38,7 @@ Eigen::VectorXd GoalPosition::calcError()
   Vector3d estPos  = state_.pose_estimate.translation();
   Vector3d err = goalPos - estPos;
 
-  ROS_ASSERT( err.rows() == size() );
+  ROS_ASSERT( err.rows() == 3 );
   return err;
 }
 
@@ -50,7 +50,7 @@ Eigen::MatrixXd GoalPosition::calcJacobian()
     throw std::runtime_error("Failed to calculate Jacobian");
   MatrixXd  J = tmpJ.topRows(3);
 
-  ROS_ASSERT( J.rows() == size());
+  ROS_ASSERT( J.rows() == 3);
   return J;
 }
 
@@ -78,7 +78,7 @@ void GoalPosition::update(const SolverState &state)
 {
   Constraint::update(state);
 
-  pos_err_ = calcDistance(state_.goal, state_.pose_estimate);
+  pos_err_ = calcDistance(state.goal, state.pose_estimate);
 }
 
 } // namespace constraints

@@ -36,12 +36,6 @@ Constrained_IK::Constrained_IK()
   debug_ = false;
 }
 
-void Constrained_IK::addConstraint(Constraint* constraint)
-{
-  constraint->setIK(this);
-  constraints_.add(constraint);
-}
-
 Eigen::VectorXd Constrained_IK::calcConstraintError()
 {
   return constraints_.calcError();
@@ -73,6 +67,7 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
 
     // solve for the resulting joint-space update
     VectorXd dJoint;
+
     kin_.solvePInv(J, err, dJoint);
 
     // update joint solution by the calculated update (or a partial fraction)
@@ -99,7 +94,10 @@ bool Constrained_IK::checkStatus() const
   // check for joint convergence
   //   - this is an error: joints stabilize, but goal pose not reached
   if (state_.joints_delta.cwiseAbs().maxCoeff() < joint_convergence_tol_)
-    throw std::runtime_error("Iteration converged before goal reached.  IK solution may be invalid");
+  {
+	  ROS_ERROR_STREAM("Reached " << state_.iter << " / " << max_iter_ << " iterations before convergence.");
+	  throw std::runtime_error("Iteration converged before goal reached.  IK solution may be invalid");
+  }
 
   return false;
 }
@@ -111,7 +109,8 @@ void Constrained_IK::clearConstraintList()
 
 void Constrained_IK::clipToJointLimits(Eigen::VectorXd &joints)
 {
-  MatrixXd limits = kin_.getLimits();
+  const MatrixXd limits = kin_.getLimits();
+  const VectorXd orig_joints(joints);
 
   if (joints.size() != limits.rows())
     throw std::invalid_argument("clipToJointLimits: Unexpected number of joints");
@@ -120,6 +119,8 @@ void Constrained_IK::clipToJointLimits(Eigen::VectorXd &joints)
   {
     joints[i] = std::max(limits(i,0), std::min(limits(i,1), joints[i]));
   }
+  if (debug_ && !joints.isApprox(orig_joints))
+      ROS_WARN("Joints have been clipped");
 }
 
 void Constrained_IK::init(const urdf::Model &robot, const std::string &base_name, const std::string &tip_name)
@@ -138,6 +139,7 @@ void Constrained_IK::init(const basic_kin::BasicKin &kin)
 
   kin_ = kin;
   initialized_ = true;
+  constraints_.init(this);
 }
 
 double Constrained_IK::rangedAngle(double angle)

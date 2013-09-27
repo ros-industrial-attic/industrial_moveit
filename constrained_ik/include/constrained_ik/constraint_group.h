@@ -35,15 +35,15 @@ public:
   ConstraintGroup();
   virtual ~ConstraintGroup() {};
 
-  virtual unsigned int size() const;
   virtual Eigen::MatrixXd calcJacobian();
   virtual Eigen::VectorXd calcError();
 
+  virtual void init(const Constrained_IK* ik);
   virtual void reset();
   virtual void update(const SolverState &state);
   virtual bool checkStatus() const;
 
-  virtual void add(Constraint* constraint) { constraints_.push_back(constraint); }
+  virtual void add(Constraint* constraint);
   virtual void clear() { constraints_.clear(); }
   bool empty() const { return constraints_.empty(); }
 

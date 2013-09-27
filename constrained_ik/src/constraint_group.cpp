@@ -17,6 +17,7 @@
  */
 
 #include "constrained_ik/constraint_group.h"
+#include "constrained_ik/constrained_ik.h"
 #include <ros/ros.h>
 
 namespace constrained_ik
@@ -29,37 +30,31 @@ ConstraintGroup::ConstraintGroup() : Constraint()
 {
 }
 
+void ConstraintGroup::add(Constraint* constraint)
+{
+  if (initialized_)
+    constraint->init(ik_);
+
+  constraints_.push_back(constraint);
+}
+
 Eigen::VectorXd ConstraintGroup::calcError()
 {
-  VectorXd err(this->size());
-  size_t row=0;
-
-  // concatenate error vectors
+  VectorXd error;
   for (size_t i=0; i<constraints_.size(); ++i)
-  {
-    Constraint &c = constraints_[i];
-    err.segment(row, c.size()) = c.calcError();
-    row += c.size();
-  }
+    constraints_[i].updateError(error);
 
-  return err;
+  return error;
 }
 
 // translate task-space errors into joint-space errors
 Eigen::MatrixXd ConstraintGroup::calcJacobian()
 {
-  VectorXd J( this->size() );
-  size_t row=0;
-
-  // concatenate Jacobian matrices
+  MatrixXd jacobian;
   for (size_t i=0; i<constraints_.size(); ++i)
-  {
-    Constraint &c = constraints_[i];
-    J.block(row, 0, c.size(), 6) = c.calcJacobian();
-    row += c.size();
-  }
+    constraints_[i].updateJacobian(jacobian);
 
-  return J;
+  return jacobian;
 }
 
 bool ConstraintGroup::checkStatus() const
@@ -74,6 +69,14 @@ bool ConstraintGroup::checkStatus() const
   return Constraint::checkStatus();
 }
 
+void ConstraintGroup::init(const Constrained_IK* ik)
+{
+  Constraint::init(ik);
+
+  for (size_t i=0; i<constraints_.size(); ++i)
+    constraints_[i].init(ik);
+}
+
 void ConstraintGroup::reset()
 {
   Constraint::reset();
@@ -81,16 +84,6 @@ void ConstraintGroup::reset()
   for (size_t i=0; i<constraints_.size(); ++i)
     constraints_[i].reset();
 }
-
-unsigned int ConstraintGroup::size() const
-{
-  unsigned int n=0;
-  for (size_t i=0; i<constraints_.size(); ++i)
-    n += constraints_[i].size();
-
-  return n;
-}
-
 
 void ConstraintGroup::update(const SolverState &state)
 {
