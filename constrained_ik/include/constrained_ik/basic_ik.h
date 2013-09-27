@@ -21,6 +21,7 @@
 #define BASIC_IK_H
 
 #include "constrained_ik.h"
+#include "constraints/avoid_joint_limits.h"
 #include "constraints/goal_pose.h"
 
 namespace constrained_ik
@@ -37,6 +38,7 @@ class Basic_IK : public Constrained_IK
 public:
   Basic_IK()  {
     addConstraint(new constraints::GoalPose());
+    addConstraint(new constraints::AvoidJointLimits());
   }
   ~Basic_IK() {};
 

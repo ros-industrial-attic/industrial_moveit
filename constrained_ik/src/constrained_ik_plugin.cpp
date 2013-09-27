@@ -24,9 +24,6 @@
 
 #include <constrained_ik/constrained_ik_plugin.h>
 #include <constrained_ik/basic_ik.h>
-#include <constrained_ik/mid_joint_ik.h>
-#include <constrained_ik/jla_ik.h>
-#include <constrained_ik/free_angle_ik.h>
 #include <ros/ros.h>
 
 #include <kdl_parser/kdl_parser.hpp>
@@ -45,11 +42,7 @@ using namespace ros;
 namespace constrained_ik
 {
 
-// Unsuppress one to change solver
-//typedef basic_ik::Basic_IK Solver;
-//typedef mid_joint_ik::MidJoint_IK Solver;
-//typedef jla_ik::JLA_IK Solver;
-typedef free_angle_ik::FreeAngleIK Solver;
+typedef basic_ik::Basic_IK Solver;
 
 ConstrainedIKPlugin::ConstrainedIKPlugin():active_(false), dimension_(0)
 {
