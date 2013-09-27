@@ -34,12 +34,7 @@ Constrained_IK::Constrained_IK()
   max_iter_ = 500;                  //default max_iter
   joint_convergence_tol_ = 0.0001;   //default convergence tolerance
   debug_ = false;
-}
-
-void Constrained_IK::addConstraint(Constraint* constraint)
-{
-  constraint->setIK(this);
-  constraints_.add(constraint);
+  constraints_.setIK(this);
 }
 
 Eigen::VectorXd Constrained_IK::calcConstraintError()

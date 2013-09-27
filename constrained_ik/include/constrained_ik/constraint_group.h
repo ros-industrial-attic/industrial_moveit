@@ -37,7 +37,6 @@ public:
 
   virtual void setIK(const Constrained_IK* ik);
 
-  virtual unsigned int size() const;
   virtual Eigen::MatrixXd calcJacobian();
   virtual Eigen::VectorXd calcError();
 
@@ -45,9 +44,12 @@ public:
   virtual void update(const SolverState &state);
   virtual bool checkStatus() const;
 
-  virtual void add(Constraint* constraint) { constraints_.push_back(constraint); }
+  virtual void add(Constraint* constraint) { constraint->setIK(ik_); constraints_.push_back(constraint); }
   virtual void clear() { constraints_.clear(); }
   bool empty() const { return constraints_.empty(); }
+
+  static Eigen::VectorXd concatErrors(const std::vector<Eigen::VectorXd> &errors);
+  static Eigen::MatrixXd concatJacobians(const std::vector<Eigen::MatrixXd> &jacobians);
 
 protected:
   boost::ptr_vector<Constraint> constraints_;

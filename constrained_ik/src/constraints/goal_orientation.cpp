@@ -49,7 +49,7 @@ Eigen::VectorXd GoalOrientation::calcError()
 {
   Vector3d err = calcAngleError(state_.pose_estimate, state_.goal);
 
-  ROS_ASSERT (err.rows() == size());
+  ROS_ASSERT(err.rows() == 3);
   return err;
 }
 
@@ -61,7 +61,7 @@ Eigen::MatrixXd GoalOrientation::calcJacobian()
     throw std::runtime_error("Failed to calculate Jacobian");
   MatrixXd J = tmpJ.bottomRows(3);
 
-  ROS_ASSERT(J.rows() == size());
+  ROS_ASSERT(J.rows() == 3);
   return J;
 }
 

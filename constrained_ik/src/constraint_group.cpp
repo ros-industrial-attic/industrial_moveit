@@ -17,6 +17,7 @@
  */
 
 #include "constrained_ik/constraint_group.h"
+#include "constrained_ik/constrained_ik.h"
 #include <ros/ros.h>
 
 namespace constrained_ik
@@ -31,35 +32,23 @@ ConstraintGroup::ConstraintGroup() : Constraint()
 
 Eigen::VectorXd ConstraintGroup::calcError()
 {
-  VectorXd err(this->size());
-  size_t row=0;
-
-  // concatenate error vectors
+  // calculate Error for each constraint
+  std::vector<VectorXd> errors;
   for (size_t i=0; i<constraints_.size(); ++i)
-  {
-    Constraint &c = constraints_[i];
-    err.segment(row, c.size()) = c.calcError();
-    row += c.size();
-  }
+    errors.push_back( constraints_[i].calcError() );
 
-  return err;
+  return concatErrors(errors);
 }
 
 // translate task-space errors into joint-space errors
 Eigen::MatrixXd ConstraintGroup::calcJacobian()
 {
-  MatrixXd J( this->size(), 6 );
-  size_t row=0;
-
-  // concatenate Jacobian matrices
+  // calculate Jacobians for each constraint
+  std::vector<MatrixXd> jacobians;
   for (size_t i=0; i<constraints_.size(); ++i)
-  {
-    Constraint &c = constraints_[i];
-    J.block(row, 0, c.size(), 6) = c.calcJacobian();
-    row += c.size();
-  }
+    jacobians.push_back( constraints_[i].calcJacobian() );
 
-  return J;
+  return concatJacobians(jacobians);
 }
 
 bool ConstraintGroup::checkStatus() const
@@ -74,6 +63,63 @@ bool ConstraintGroup::checkStatus() const
   return Constraint::checkStatus();
 }
 
+Eigen::VectorXd ConstraintGroup::concatErrors(const std::vector<Eigen::VectorXd> &errors)
+{
+  // count # of rows
+  size_t nRows = 0;
+  for (int i=0; i<errors.size(); ++i)
+    nRows += errors[i].rows();
+
+  if (nRows == 0) return VectorXd();
+
+  // concatenate errors into one vector
+  VectorXd combinedErr(nRows);
+  size_t row=0;
+  for (size_t i=0; i<errors.size(); ++i)
+  {
+    const VectorXd &tmpErr = errors[i];
+    if (tmpErr.rows() > 0)
+      combinedErr.segment(row, tmpErr.rows()) = tmpErr;
+    row += tmpErr.rows();
+  }
+
+  return combinedErr;
+}
+
+Eigen::MatrixXd ConstraintGroup::concatJacobians(const std::vector<Eigen::MatrixXd> &jacobians)
+{
+  // count # of rows
+  size_t nRows = 0, nCols = 0;
+  for (int i=0; i<jacobians.size(); ++i)
+  {
+    const MatrixXd &tmpJ = jacobians[i];
+
+    nRows += tmpJ.rows();
+    nCols = (nCols>0) ? nCols : tmpJ.cols();
+
+    if (tmpJ.cols() > 0 && tmpJ.cols() != nCols)
+    {
+      ROS_ERROR("Jacobian column mismatch (%d / %d)", tmpJ.cols(), nCols);
+      throw std::runtime_error("Jacobian column mismatch");
+    }
+  }
+
+  if (nRows == 0) return MatrixXd();
+
+  // concatenate jacobians into one matrix
+  MatrixXd combinedJ(nRows, jacobians[0].cols());
+  size_t row=0;
+  for (size_t i=0; i<jacobians.size(); ++i)
+  {
+    const MatrixXd &tmpJ = jacobians[i];
+    if (tmpJ.rows() > 0)
+      combinedJ.block(row, 0, tmpJ.rows(), tmpJ.cols()) = tmpJ;
+    row += tmpJ.rows();
+  }
+
+  return combinedJ;
+}
+
 void ConstraintGroup::reset()
 {
   Constraint::reset();
@@ -84,19 +130,10 @@ void ConstraintGroup::reset()
 
 void ConstraintGroup::setIK(const Constrained_IK* ik)
 {
+  ik_ = ik;
   for (size_t i=0; i<constraints_.size(); ++i)
     constraints_[i].setIK(ik);
 }
-
-unsigned int ConstraintGroup::size() const
-{
-  unsigned int n=0;
-  for (size_t i=0; i<constraints_.size(); ++i)
-    n += constraints_[i].size();
-
-  return n;
-}
-
 
 void ConstraintGroup::update(const SolverState &state)
 {

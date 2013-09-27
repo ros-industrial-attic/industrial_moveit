@@ -37,12 +37,11 @@ class Constrained_IK;
 class Constraint
 {
 public:
-  Constraint() {};
+  Constraint() : debug_(false) {};
   virtual ~Constraint() {};
 
   virtual void setIK(const Constrained_IK* ik) {ik_ = ik;}
 
-  virtual unsigned int size() const = 0;
   virtual Eigen::MatrixXd calcJacobian() = 0;
   virtual Eigen::VectorXd calcError() = 0;
 
@@ -53,9 +52,11 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
+  bool debug_;
   const Constrained_IK* ik_;
   SolverState state_;
 
+  int numJoints();
 }; // class Constraint
 
 

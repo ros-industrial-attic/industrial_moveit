@@ -16,43 +16,15 @@
  * limitations under the License.
  */
 
-
-#ifndef GOAL_POSITION_H
-#define GOAL_POSITION_H
-
 #include "constrained_ik/constraint.h"
+#include "constrained_ik/constrained_ik.h"
 
 namespace constrained_ik
 {
-namespace constraints
+
+int Constraint::numJoints()
 {
+  return ik_->getKin().numJoints();
+}
 
-/**
- * \brief Constraint to specify cartesian goal position (XYZ)
-  */
-class GoalPosition : public Constraint
-{
-public:
-  GoalPosition();
-  virtual ~GoalPosition() {};
-
-  virtual Eigen::MatrixXd calcJacobian();
-  virtual Eigen::VectorXd calcError();
-
-  virtual void reset();
-  virtual void update(const SolverState &state);
-  virtual bool checkStatus() const;
-
-  static double calcDistance(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
-
-protected:
-  double pos_err_tol_;  // termination criteria
-  double pos_err_;      // current solution error
-}; // class GoalPosition
-
-} // namespace constraints
 } // namespace constrained_ik
-
-
-#endif // GOAL_POSITION_H
-
