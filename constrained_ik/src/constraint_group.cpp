@@ -30,25 +30,31 @@ ConstraintGroup::ConstraintGroup() : Constraint()
 {
 }
 
+void ConstraintGroup::add(Constraint* constraint)
+{
+  if (initialized_)
+    constraint->init(ik_);
+
+  constraints_.push_back(constraint);
+}
+
 Eigen::VectorXd ConstraintGroup::calcError()
 {
-  // calculate Error for each constraint
-  std::vector<VectorXd> errors;
+  VectorXd error;
   for (size_t i=0; i<constraints_.size(); ++i)
-    errors.push_back( constraints_[i].calcError() );
+    constraints_[i].updateError(error);
 
-  return concatErrors(errors);
+  return error;
 }
 
 // translate task-space errors into joint-space errors
 Eigen::MatrixXd ConstraintGroup::calcJacobian()
 {
-  // calculate Jacobians for each constraint
-  std::vector<MatrixXd> jacobians;
+  MatrixXd jacobian;
   for (size_t i=0; i<constraints_.size(); ++i)
-    jacobians.push_back( constraints_[i].calcJacobian() );
+    constraints_[i].updateJacobian(jacobian);
 
-  return concatJacobians(jacobians);
+  return jacobian;
 }
 
 bool ConstraintGroup::checkStatus() const
@@ -63,61 +69,12 @@ bool ConstraintGroup::checkStatus() const
   return Constraint::checkStatus();
 }
 
-Eigen::VectorXd ConstraintGroup::concatErrors(const std::vector<Eigen::VectorXd> &errors)
+void ConstraintGroup::init(const Constrained_IK* ik)
 {
-  // count # of rows
-  size_t nRows = 0;
-  for (int i=0; i<errors.size(); ++i)
-    nRows += errors[i].rows();
+  Constraint::init(ik);
 
-  if (nRows == 0) return VectorXd();
-
-  // concatenate errors into one vector
-  VectorXd combinedErr(nRows);
-  size_t row=0;
-  for (size_t i=0; i<errors.size(); ++i)
-  {
-    const VectorXd &tmpErr = errors[i];
-    if (tmpErr.rows() > 0)
-      combinedErr.segment(row, tmpErr.rows()) = tmpErr;
-    row += tmpErr.rows();
-  }
-
-  return combinedErr;
-}
-
-Eigen::MatrixXd ConstraintGroup::concatJacobians(const std::vector<Eigen::MatrixXd> &jacobians)
-{
-  // count # of rows
-  size_t nRows = 0, nCols = 0;
-  for (int i=0; i<jacobians.size(); ++i)
-  {
-    const MatrixXd &tmpJ = jacobians[i];
-
-    nRows += tmpJ.rows();
-    nCols = (nCols>0) ? nCols : tmpJ.cols();
-
-    if (tmpJ.cols() > 0 && tmpJ.cols() != nCols)
-    {
-      ROS_ERROR("Jacobian column mismatch (%d / %d)", tmpJ.cols(), nCols);
-      throw std::runtime_error("Jacobian column mismatch");
-    }
-  }
-
-  if (nRows == 0) return MatrixXd();
-
-  // concatenate jacobians into one matrix
-  MatrixXd combinedJ(nRows, jacobians[0].cols());
-  size_t row=0;
-  for (size_t i=0; i<jacobians.size(); ++i)
-  {
-    const MatrixXd &tmpJ = jacobians[i];
-    if (tmpJ.rows() > 0)
-      combinedJ.block(row, 0, tmpJ.rows(), tmpJ.cols()) = tmpJ;
-    row += tmpJ.rows();
-  }
-
-  return combinedJ;
+  for (size_t i=0; i<constraints_.size(); ++i)
+    constraints_[i].init(ik);
 }
 
 void ConstraintGroup::reset()
@@ -126,13 +83,6 @@ void ConstraintGroup::reset()
 
   for (size_t i=0; i<constraints_.size(); ++i)
     constraints_[i].reset();
-}
-
-void ConstraintGroup::setIK(const Constrained_IK* ik)
-{
-  ik_ = ik;
-  for (size_t i=0; i<constraints_.size(); ++i)
-    constraints_[i].setIK(ik);
 }
 
 void ConstraintGroup::update(const SolverState &state)

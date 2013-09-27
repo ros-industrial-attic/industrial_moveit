@@ -18,13 +18,57 @@
 
 #include "constrained_ik/constraint.h"
 #include "constrained_ik/constrained_ik.h"
+#include <ros/ros.h>
+
+using namespace Eigen;
 
 namespace constrained_ik
 {
 
+// NOTE: This method does a resize in-place, and may be inefficient if called many times
+void Constraint::appendError(Eigen::VectorXd &error, const Eigen::VectorXd &addErr)
+{
+  if (addErr.rows() == 0) return;
+
+  if (error.rows() == 0)
+    error = addErr;
+  else
+  {
+    size_t nAddRows = addErr.rows();
+    error.conservativeResize(error.rows() + nAddRows);
+    error.tail(nAddRows) = addErr;
+  }
+}
+
+// NOTE: This method does a resize in-place, and may be inefficient if called many times
+void Constraint::appendJacobian(Eigen::MatrixXd &jacobian, const Eigen::MatrixXd &addJacobian)
+{
+  if (addJacobian.rows() == 0) return;
+
+  if (jacobian.rows() == 0)
+    jacobian = addJacobian;
+  else
+  {
+    ROS_ASSERT(addJacobian.cols() == addJacobian.cols());
+    size_t nAddRows = addJacobian.rows();
+    jacobian.conservativeResize(jacobian.rows() + nAddRows, Eigen::NoChange);
+    jacobian.bottomRows(nAddRows) = addJacobian;
+  }
+}
+
 int Constraint::numJoints()
 {
   return ik_->getKin().numJoints();
+}
+
+void Constraint::updateError(Eigen::VectorXd &error)
+{
+  appendError(error, calcError());
+}
+
+void Constraint::updateJacobian(Eigen::MatrixXd &jacobian)
+{
+  appendJacobian(jacobian, calcJacobian());
 }
 
 } // namespace constrained_ik
