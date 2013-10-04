@@ -28,7 +28,7 @@ namespace constraints
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalOrientation::GoalOrientation() : Constraint(), rot_err_tol_(0.009), rot_err_(0.0)
+GoalOrientation::GoalOrientation() : Constraint(), rot_err_tol_(0.009), rot_err_(0.0), weight_(Vector3d::Ones())
 {
 }
 
@@ -48,7 +48,7 @@ Eigen::Vector3d GoalOrientation::calcAngleError(const Eigen::Affine3d &p1, const
 Eigen::VectorXd GoalOrientation::calcError()
 {
   Vector3d err = calcAngleError(state_.pose_estimate, state_.goal);
-
+  err = err.cwiseProduct(weight_);
   ROS_ASSERT(err.rows() == 3);
   return err;
 }
@@ -60,6 +60,10 @@ Eigen::MatrixXd GoalOrientation::calcJacobian()
   if (!ik_->getKin().calcJacobian(state_.joints, tmpJ))
     throw std::runtime_error("Failed to calculate Jacobian");
   MatrixXd J = tmpJ.bottomRows(3);
+
+  // weight each row of J
+  for (size_t ii=0; ii<3; ++ii)
+      J.row(ii) *= weight_(ii);
 
   ROS_ASSERT(J.rows() == 3);
   return J;

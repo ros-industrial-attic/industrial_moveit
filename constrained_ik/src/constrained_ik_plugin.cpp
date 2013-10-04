@@ -195,6 +195,7 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
                                             moveit_msgs::MoveItErrorCodes &error_code,
                                             const kinematics::KinematicsQueryOptions &options) const
 {
+//    ros::Time start(ros::Time::now());
     if(!active_)
     {
         ROS_ERROR("kinematics not active");
@@ -239,6 +240,7 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
 
     // Default: return successfully
     error_code.val = error_code.SUCCESS;
+//    ROS_DEBUG_STREAM("Planning took " << (ros::Time::now() - start).toSec() << " seconds for " << solver.getState().iter << " iterations.");
     return true;
 
 }
