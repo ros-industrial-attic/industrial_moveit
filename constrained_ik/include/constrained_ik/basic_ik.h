@@ -21,6 +21,8 @@
 #define BASIC_IK_H
 
 #include "constrained_ik.h"
+#include "constraints/avoid_joint_limits.h"
+#include "constraints/goal_pose.h"
 
 namespace constrained_ik
 {
@@ -34,32 +36,22 @@ namespace basic_ik
 class Basic_IK : public Constrained_IK
 {
 public:
-  Basic_IK();
+  Basic_IK(): goal_pose_(new constraints::GoalPose), avoid_joint_limits_(new constraints::AvoidJointLimits)
+  {
+    addConstraint(goal_pose_);
+    addConstraint(avoid_joint_limits_);
+    Eigen::Vector3d w_ori;
+    w_ori << 1,1,1;
+    goal_pose_->setWeightOrientation(w_ori);
+  }
   ~Basic_IK() {};
 
 protected:
-  // termination-criteria limits / tolerances
-  double pos_err_tol_;
-  double rot_err_tol_;
 
-  // state/counter data
-  Eigen::Affine3d pose_;
-  double pos_err_;
-  double rot_err_;
+  constraints::GoalPose* goal_pose_;
+  constraints::AvoidJointLimits* avoid_joint_limits_;
 
-  virtual Eigen::MatrixXd calcConstraintJacobian();
-  virtual Eigen::VectorXd calcConstraintError();
-
-  virtual void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
-  virtual void update(const Eigen::VectorXd &joints);
-  virtual bool checkStatus() const;
-
-  static double calcDistance(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
-  static double calcAngle(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
-  static Eigen::Vector3d calcAngleError(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
-  static Eigen::Vector3d calcAngleError2(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
 }; // class Basic_IK
-
 
 } // namespace basic_ik
 } // namespace constrained_ik
