@@ -36,7 +36,7 @@ using namespace std;
 
 // TODO: constraint-weights, calcJacobianRow/2  ??
 
-AvoidJointLimits::AvoidJointLimits(): Constraint(), weight_(5), threshold_(0.05)
+AvoidJointLimits::AvoidJointLimits(): Constraint(), weight_(1.0), threshold_(0.05)
 {
   debug_ = true;
 }
@@ -52,7 +52,13 @@ Eigen::VectorXd AvoidJointLimits::calcError()
     int velSign = nearLowerLimit(jntIdx) ? 1 : -1;  // lower limit: positive velocity, upper limit: negative velocity
 
     const LimitsT &lim = limits_[jntIdx];
-    error(ii) = velSign * weight_ * cubicVelRamp(state_.joints(jntIdx), lim.min_pos, lim.max_vel, lim.mid_pos, 0.0);
+    error(ii) = velSign * weight_ * cubicVelRamp(state_.joints(jntIdx), lim.max_pos, lim.max_vel, lim.mid_pos, 0.0);
+  }
+
+  if (debug_ && nRows)
+  {
+      ROS_ERROR_STREAM("Joint position: " << state_.joints(limited_joints_[0]) << " / " << limits_[limited_joints_[0]].min_pos);
+      ROS_ERROR_STREAM("velocity error: " << error(0) << " / " << limits_[limited_joints_[0]].max_vel);
   }
 
   return error;
@@ -68,9 +74,9 @@ Eigen::MatrixXd AvoidJointLimits::calcJacobian()
     size_t jntIdx = limited_joints_[ii];
 
     VectorXd tmpRow = VectorXd::Zero(numJoints());
-    tmpRow(jntIdx) = 1;
+    tmpRow(jntIdx) = 1.0 * weight_;
 
-    jacobian.row(ii) = tmpRow;
+    jacobian.row(ii) = tmpRow * weight_;
   }
 
   return jacobian;
@@ -78,7 +84,11 @@ Eigen::MatrixXd AvoidJointLimits::calcJacobian()
 
 double AvoidJointLimits::cubicVelRamp(double angle, double max_angle, double max_vel, double min_angle, double min_vel)
 {
-    // (y-y0) = k(x-x0)^3
+    // fit a cubic function to (y-y0) = k(x-x0)^3
+    // where y is desired speed, y0 is minimum vel, x is current angle, x0 is angle at which min vel is introduced
+    // x1,y1 used to establish k, where x1 is max allowable angle, y1 is max allowable velocity
+    // Requirements on inputs: max_vel > 0, min_vel >= 0, max_angle > min_angle, |angle| > min_angle
+    // Note: Speed is always positive, velocity (vel) may be +/-, return should always be positive
     double k = (max_vel - min_vel) / std::pow(max_angle-min_angle, 3);  // k=(y1-y0)/(x1-x0)^3
     angle = std::abs(angle - min_angle);
     return min_vel + k*std::pow(angle-min_angle, 3);                    // y = y0 + k(x-x0)^3
@@ -109,7 +119,6 @@ bool AvoidJointLimits::nearUpperLimit(size_t idx)
   return state_.joints(idx) > limits_[idx].upper_thresh;
 }
 
-
 void AvoidJointLimits::reset()
 {
   limited_joints_.clear();
@@ -130,6 +139,8 @@ std::ostream& operator<< (std::ostream& os, const std::vector<T>& v)
 void AvoidJointLimits::update(const SolverState &state)
 {
   if (!initialized_) return;
+  Constraint::update(state);
+  limited_joints_.clear();
 
   // check for limited joints
   for (size_t ii=0; ii<numJoints(); ++ii)

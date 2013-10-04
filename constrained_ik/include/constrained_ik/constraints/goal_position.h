@@ -40,14 +40,20 @@ public:
   virtual Eigen::VectorXd calcError();
 
   virtual void reset();
+
   virtual void update(const SolverState &state);
-  virtual bool checkStatus() const;
 
   static double calcDistance(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
+
+  virtual bool checkStatus() const;
+
+  Eigen::Vector3d getWeight() {return weight_;}
+  void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;};
 
 protected:
   double pos_err_tol_;  // termination criteria
   double pos_err_;      // current solution error
+  Eigen::Vector3d weight_;
 }; // class GoalPosition
 
 } // namespace constraints

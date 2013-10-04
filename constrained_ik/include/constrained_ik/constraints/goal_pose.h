@@ -36,12 +36,17 @@ namespace constraints
 class GoalPose : public ConstraintGroup
 {
 public:
-  GoalPose() : ConstraintGroup()
+  GoalPose() : ConstraintGroup(), position_(new GoalPosition()), orientation_(new GoalOrientation())
   {
-    this->add(new GoalPosition());
-    this->add(new GoalOrientation());
+    this->add(position_);
+    this->add(orientation_);
   }
   virtual ~GoalPose() {};
+  void setWeightOrientation(const Eigen::Vector3d &weight_orientation) {orientation_->setWeight(weight_orientation);};
+  void setWeightPosition(const Eigen::Vector3d &weight_position) {position_->setWeight(weight_position);};
+protected:
+  GoalPosition* position_;
+  GoalOrientation* orientation_;
 
 }; // class GoalPose
 

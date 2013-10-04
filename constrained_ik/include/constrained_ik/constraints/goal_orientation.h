@@ -39,16 +39,24 @@ public:
   virtual Eigen::MatrixXd calcJacobian();
   virtual Eigen::VectorXd calcError();
 
-  virtual void reset();
-  virtual void update(const SolverState &state);
-  virtual bool checkStatus() const;
-
   static double calcAngle(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
   static Eigen::Vector3d calcAngleError(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
+
+  virtual bool checkStatus() const;
+
+  Eigen::Vector3d getWeight() {return weight_;};
+
+  virtual void reset();
+
+  void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;};
+
+  virtual void update(const SolverState &state);
 
 protected:
   double rot_err_tol_;  // termination criteria
   double rot_err_;      // current solution error
+  Eigen::Vector3d weight_;    // weight for each direction
+
 }; // class GoalOrientation
 
 } // namespace constraints

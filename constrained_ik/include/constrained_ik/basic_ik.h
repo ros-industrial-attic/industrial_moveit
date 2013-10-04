@@ -36,11 +36,20 @@ namespace basic_ik
 class Basic_IK : public Constrained_IK
 {
 public:
-  Basic_IK()  {
-    addConstraint(new constraints::GoalPose());
-    addConstraint(new constraints::AvoidJointLimits());
+  Basic_IK(): goal_pose_(new constraints::GoalPose), avoid_joint_limits_(new constraints::AvoidJointLimits)
+  {
+    addConstraint(goal_pose_);
+    addConstraint(avoid_joint_limits_);
+    Eigen::Vector3d w_ori;
+    w_ori << 1,1,1;
+    goal_pose_->setWeightOrientation(w_ori);
   }
   ~Basic_IK() {};
+
+protected:
+
+  constraints::GoalPose* goal_pose_;
+  constraints::AvoidJointLimits* avoid_joint_limits_;
 
 }; // class Basic_IK
 
