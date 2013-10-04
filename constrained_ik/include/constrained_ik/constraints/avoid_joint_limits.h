@@ -47,6 +47,9 @@ public:
     virtual void reset();
     virtual void update(const SolverState &state);
 
+    double getWeight() {return weight_;};
+    void setWeight(const double &weight) {weight_ = weight;};
+
     static double cubicVelRamp(double angle, double max_angle, double max_vel, double min_angle, double min_vel);
 
 protected:

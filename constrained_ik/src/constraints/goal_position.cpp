@@ -28,7 +28,7 @@ namespace constraints
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalPosition::GoalPosition() : Constraint(), pos_err_tol_(0.001), pos_err_(0.0)
+GoalPosition::GoalPosition() : Constraint(), pos_err_tol_(0.001), pos_err_(0.0), weight_(Vector3d::Ones())
 {
 }
 
