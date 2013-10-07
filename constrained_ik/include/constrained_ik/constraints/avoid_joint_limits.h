@@ -58,12 +58,16 @@ protected:
     {
       double min_pos;       // minimum joint position
       double max_pos;       // maximum joint position
+      double range;
       double mid_pos;       // joint position at middle-of-range
       double lower_thresh;  // lower threshold at which limiting begins
       double upper_thresh;  // upper threshold at which limiting begins
-      double max_vel;       // maximum allowable velocity (??)
+//      double max_vel;       // maximum velocity for joint limit update step
+//      double min_vel;       // value used for cubic velocity ramp
+      double k3;            // factor used in cubic velocity ramp
 
       LimitsT(double minPos, double maxPos, double threshold);
+      double cubicVelRamp(double angle) const;
     };
 
     std::vector<LimitsT> limits_;

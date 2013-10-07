@@ -52,13 +52,14 @@ Eigen::VectorXd AvoidJointLimits::calcError()
     int velSign = nearLowerLimit(jntIdx) ? 1 : -1;  // lower limit: positive velocity, upper limit: negative velocity
 
     const LimitsT &lim = limits_[jntIdx];
-    error(ii) = velSign * weight_ * cubicVelRamp(state_.joints(jntIdx), lim.max_pos, lim.max_vel, lim.mid_pos, 0.0);
+    error(ii) = velSign * weight_ * lim.cubicVelRamp(state_.joints[jntIdx]);
   }
 
   if (debug_ && nRows)
   {
+      ROS_ERROR_STREAM("iteration " << state_.iter);
       ROS_ERROR_STREAM("Joint position: " << state_.joints(limited_joints_[0]) << " / " << limits_[limited_joints_[0]].min_pos);
-      ROS_ERROR_STREAM("velocity error: " << error(0) << " / " << limits_[limited_joints_[0]].max_vel);
+      ROS_ERROR_STREAM("velocity error: " << error(0) << " / " << 2.0*threshold_ * limits_[limited_joints_[0]].range);
   }
 
   return error;
@@ -84,6 +85,7 @@ Eigen::MatrixXd AvoidJointLimits::calcJacobian()
 
 double AvoidJointLimits::cubicVelRamp(double angle, double max_angle, double max_vel, double min_angle, double min_vel)
 {
+    // WARNING: DEPRECATED
     // fit a cubic function to (y-y0) = k(x-x0)^3
     // where y is desired speed, y0 is minimum vel, x is current angle, x0 is angle at which min vel is introduced
     // x1,y1 used to establish k, where x1 is max allowable angle, y1 is max allowable velocity
@@ -157,12 +159,20 @@ AvoidJointLimits::LimitsT::LimitsT(double minPos, double maxPos, double threshol
   min_pos = minPos;
   max_pos = maxPos;
 
-  double range = maxPos - minPos;
+  range = maxPos - minPos;
   mid_pos = (minPos + maxPos) / 2.0;
 
-  lower_thresh = minPos + threshold;
-  upper_thresh = maxPos - threshold;
-  max_vel = 2.0 * threshold * range;  // max velocity is 2*(threshold % of range)
+  lower_thresh = minPos + threshold * range;
+  upper_thresh = maxPos - threshold * range;
+  double max_vel = 2.0 * threshold * range;  // max velocity is 2*(threshold % of range) - hopefully enough to push joint past threshold
+  double min_vel = 0.0;
+  k3 = (max_vel - min_vel)/std::pow(0.5*range, 3);
+}
+
+double AvoidJointLimits::LimitsT::cubicVelRamp(double angle) const
+{
+    double x = std::abs(angle - mid_pos);
+    return k3 * std::pow(x,3);
 }
 
 } /* namespace jla_ik */
