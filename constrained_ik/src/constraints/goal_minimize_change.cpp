@@ -1,10 +1,4 @@
 /*
- * free_angle_ik.h
- *
- *  Created on: Sep 22, 2013
- *      Author: dsolomon
- */
-/*
  * Software License Agreement (Apache License)
  *
  * Copyright (c) 2013, Southwest Research Institute
@@ -22,34 +16,35 @@
  * limitations under the License.
  */
 
-#ifndef FREE_ANGLE_IK_H_
-#define FREE_ANGLE_IK_H_
-
-#include <constrained_ik/basic_ik.h>
-#include <constrained_ik/jla_ik.h>
+#include "constrained_ik/constrained_ik.h"
+#include "constrained_ik/constraints/goal_minimize_change.h"
 
 namespace constrained_ik
 {
-
-namespace free_angle_ik
+namespace constraints
 {
 
-class FreeAngleIK: public jla_ik::JLA_IK
+using namespace Eigen;
+
+// initialize limits/tolerances to default values
+GoalMinimizeChange::GoalMinimizeChange() : Constraint(), weight_(1.0)
 {
-public:
-    FreeAngleIK();
-    virtual ~FreeAngleIK() {};
+}
 
-protected:
-    double weight_position_, weight_rotx_, weight_roty_, weight_rotz_;
+Eigen::VectorXd GoalMinimizeChange::calcError()
+{
+    VectorXd err = state_.joint_seed - state_.joints;
+    err *= weight_;
+    return err;
+}
 
-    virtual Eigen::VectorXd calcConstraintError();
+Eigen::MatrixXd GoalMinimizeChange::calcJacobian()
+{
+    size_t n = numJoints();    // number of joints
+    MatrixXd  J = MatrixXd::Identity(n,n) * weight_;
+    return J;
+}
 
-    virtual Eigen::MatrixXd calcConstraintJacobian();
+} // namespace constraints
+} // namespace constrained_ik
 
-    virtual bool checkStatus() const;
-};
-
-} /* namespace free_angle_ik */
-} /* namespace constrained_ik */
-#endif /* FREE_ANGLE_IK_H_ */

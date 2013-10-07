@@ -24,6 +24,7 @@
 
 #include <constrained_ik/constrained_ik_plugin.h>
 #include <constrained_ik/basic_ik.h>
+#include <constrained_ik/test_ik.h>
 #include <ros/ros.h>
 
 #include <kdl_parser/kdl_parser.hpp>
@@ -42,7 +43,8 @@ using namespace ros;
 namespace constrained_ik
 {
 
-typedef basic_ik::Basic_IK Solver;
+//typedef basic_ik::Basic_IK Solver;
+typedef test_ik::Test_IK Solver;
 
 ConstrainedIKPlugin::ConstrainedIKPlugin():active_(false), dimension_(0)
 {

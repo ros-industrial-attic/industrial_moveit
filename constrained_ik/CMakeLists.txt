@@ -66,6 +66,10 @@ add_library(constrained_ik
             src/constraints/avoid_joint_limits.cpp
             src/constraints/goal_orientation.cpp
             src/constraints/goal_position.cpp
+            src/constraints/goal_tool_orientation.cpp
+            src/constraints/goal_minimize_change.cpp
+            src/constraints/goal_mid_joint.cpp
+            src/constraints/goal_zero_jvel.cpp
             src/solver_state.cpp
 )
 target_link_libraries(constrained_ik ${catkin_LIBRARIES})
