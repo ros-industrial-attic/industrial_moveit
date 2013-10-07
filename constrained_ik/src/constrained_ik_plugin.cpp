@@ -23,8 +23,8 @@
  */
 
 #include <constrained_ik/constrained_ik_plugin.h>
-#include <constrained_ik/basic_ik.h>
-#include <constrained_ik/test_ik.h>
+#include <constrained_ik/ik/basic_ik.h>
+#include <constrained_ik/ik/test_ik.h>
 #include <ros/ros.h>
 
 #include <kdl_parser/kdl_parser.hpp>
@@ -216,15 +216,18 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
         seed(ii) = ik_seed_state[ii];
     }
 
+    bool success(true);
+
     //Do the IK
     Solver solver;
     solver.init(kin_);
     try { solver.calcInvKin(goal, seed, joint_angles); }
     catch (exception &e)
     {
-        ROS_ERROR_STREAM("Caught exception from IK: " << e.what());
+        ROS_ERROR_STREAM("Caught exception in plugin from IK: " << e.what());
         error_code.val = error_code.NO_IK_SOLUTION;
-        return false;
+//        return false;
+        success &= false;
     }
     solution.resize(dimension_);
     for(size_t ii=0; ii < dimension_; ++ii)
@@ -237,13 +240,14 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
     {
         solution_callback(ik_pose, solution, error_code);
         if(error_code.val != error_code.SUCCESS)
-            return false;
+            success &= false;
     }
 
     // Default: return successfully
-    error_code.val = error_code.SUCCESS;
+    if (success)
+        error_code.val = error_code.SUCCESS;
 //    ROS_DEBUG_STREAM("Planning took " << (ros::Time::now() - start).toSec() << " seconds for " << solver.getState().iter << " iterations.");
-    return true;
+    return success;
 
 }
 
