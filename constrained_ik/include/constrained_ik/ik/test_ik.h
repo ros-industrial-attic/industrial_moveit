@@ -27,6 +27,7 @@
 #include "constrained_ik/constraints/goal_tool_orientation.h"
 #include "constrained_ik/constraints/goal_minimize_change.h"
 #include "constrained_ik/constraints/goal_zero_jvel.h"
+#include "constrained_ik/constraints/avoid_singularities.h"
 
 namespace constrained_ik
 {
@@ -41,14 +42,17 @@ public:
               tool_orientation_(new constraints::GoalToolOrientation),
               avoid_joint_limits_(new constraints::AvoidJointLimits),
               min_change_(new constraints::GoalMinimizeChange),
-              zero_vel_(new constraints::GoalZeroJVel)
+              zero_vel_(new constraints::GoalZeroJVel),
+              avoid_singularities_(new constraints::AvoidSingularities)
   {
     addConstraint(position_);
     addConstraint(orientation_);
 //    addConstraint(tool_orientation_);
-    addConstraint(avoid_joint_limits_);
-    addConstraint(min_change_);
+//    addConstraint(avoid_joint_limits_);
+//    addConstraint(min_change_);
 //    addConstraint(zero_vel_);
+    addConstraint(avoid_singularities_);
+    avoid_singularities_->setWeight(0.5);
 
     Eigen::Vector3d w_ori;
     w_ori << 1,0.1,1;
@@ -69,7 +73,7 @@ protected:
   constraints::AvoidJointLimits* avoid_joint_limits_;
   constraints::GoalMinimizeChange* min_change_;
   constraints::GoalZeroJVel* zero_vel_;
-
+  constraints::AvoidSingularities* avoid_singularities_;
 }; // class Test_IK
 
 } // namespace test_ik
