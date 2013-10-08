@@ -17,8 +17,8 @@
  */
 
 
-#ifndef GOAL_ORIENTATION_H
-#define GOAL_ORIENTATION_H
+#ifndef GOAL_AVOID_SINGULARITIES_H
+#define GOAL_AVOID_SINGULARITIES_H
 
 #include "constrained_ik/constraint.h"
 
@@ -27,42 +27,37 @@ namespace constrained_ik
 namespace constraints
 {
 
-/**
- * \brief Constraint to specify cartesian goal orientation (XYZ rotation)
-  */
-class GoalOrientation : public Constraint
+class AvoidSingularities: public Constraint
 {
 public:
-  GoalOrientation();
-  virtual ~GoalOrientation() {};
+    AvoidSingularities();
+  virtual ~AvoidSingularities() {};
 
   virtual Eigen::MatrixXd calcJacobian();
   virtual Eigen::VectorXd calcError();
+  virtual bool checkStatus() const { return true;}; //always return true
 
-  static double calcAngle(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
-  static Eigen::Vector3d calcAngleError(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
+  double getWeight() {return weight_;}
 
-  virtual bool checkStatus() const;
-
-  Eigen::Vector3d getWeight() {return weight_;};
-
-  virtual void reset();
-
-  void setTolerance(double tol) {rot_err_tol_ = tol;};  //TODO turn tolerance into Vector3d
-  void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;};
+  void setWeight(double weight) {weight_ = weight;};
 
   virtual void update(const SolverState &state);
 
 protected:
-  double rot_err_tol_;  // termination criteria
-  double rot_err_;      // current solution error
-  Eigen::Vector3d weight_;    // weight for each direction
+  double weight_;
+  double enable_threshold_, ignore_threshold_; // how small singular value must be to trigger avoidance, how small is too small
+  bool avoidance_enabled_;
+  double smallest_sv_;
+  Eigen::VectorXd Ui_, Vi_;
+  Eigen::MatrixXd jacobian_orig_;   // current jacobian
 
-}; // class GoalOrientation
+  Eigen::MatrixXd jacobianPartialDerivative(size_t jntIdx, double eps=1e-6);
+
+}; // class AvoidSingularities
 
 } // namespace constraints
 } // namespace constrained_ik
 
 
-#endif // GOAL_ORIENTATION_H
+#endif // GOAL_AVOID_SINGULARITIES_H
 

@@ -75,7 +75,7 @@ Eigen::MatrixXd AvoidJointLimits::calcJacobian()
     size_t jntIdx = limited_joints_[ii];
 
     VectorXd tmpRow = VectorXd::Zero(numJoints());
-    tmpRow(jntIdx) = 1.0 * weight_;
+    tmpRow(jntIdx) = 1.0;
 
     jacobian.row(ii) = tmpRow * weight_;
   }
@@ -166,7 +166,7 @@ AvoidJointLimits::LimitsT::LimitsT(double minPos, double maxPos, double threshol
   upper_thresh = maxPos - threshold * range;
   double max_vel = 2.0 * threshold * range;  // max velocity is 2*(threshold % of range) - hopefully enough to push joint past threshold
   double min_vel = 0.0;
-  k3 = (max_vel - min_vel)/std::pow(0.5*range, 3);
+  k3 = (max_vel - min_vel)/std::pow(0.5*range, 3);  // (vel = minVel*k(pos-minPos)^3 where k=(maxVel-minVel)/(maxPos-midPos)^3 : 1/2 range used for cubic function
 }
 
 double AvoidJointLimits::LimitsT::cubicVelRamp(double angle) const
