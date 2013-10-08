@@ -32,13 +32,13 @@ AvoidSingularities::AvoidSingularities() : Constraint(),
                                             weight_(1.0),
                                             enable_threshold_(.01),
                                             ignore_threshold_(1e-5),
+                                            smallest_sv_(0.0),
                                             avoidance_enabled_(false)
 {
 }
 
 Eigen::VectorXd AvoidSingularities::calcError()
 {
-//    ROS_INFO_STREAM("Starting calcError"); //TODO delete
     size_t n(avoidance_enabled_? numJoints():0);    // number of columns = joints
     VectorXd err(n);
     if (avoidance_enabled_)
@@ -46,38 +46,34 @@ Eigen::VectorXd AvoidSingularities::calcError()
         for (size_t jntIdx=0; jntIdx<n; ++jntIdx)
         {
             err(jntIdx) = (Ui_.transpose() * jacobianPartialDerivative(jntIdx) * Vi_)(0);
-         }
-        err *= weight_;
+        }
+        err *= (weight_*smallest_sv_);
+        err = err.cwiseMax(VectorXd::Constant(n,.25));
     }
-//    ROS_INFO_STREAM("Finished calcError"); //TODO delete
     return err;
 }
 
 Eigen::MatrixXd AvoidSingularities::calcJacobian()
 {
-//    ROS_INFO_STREAM("Starting calcJacobian"); //TODO delete
     size_t n(avoidance_enabled_? numJoints():0);    // number of columns = joints
     MatrixXd  J = MatrixXd::Identity(n,n);
-    J *= weight_;
-//    ROS_INFO_STREAM("Finished calcJacobian"); //TODO delete
+    J *= (weight_*smallest_sv_);
     return J;
 }
 
 Eigen::MatrixXd AvoidSingularities::jacobianPartialDerivative(size_t jntIdx, double eps)
 {
-//    ROS_INFO_STREAM("Starting jpd"); //TODO delete
     MatrixXd jacobian_increment;
     Eigen::VectorXd joints = state_.joints;
     joints(jntIdx) += eps;
 
-    //TODO fix this by overriding calcJacobian error?
-    if (!ik_->getKin().calcJacobian(joints, jacobian_increment))
+    if (!ik_->getKin().checkJoints(joints))
     {
         eps = -eps;
         joints(jntIdx) += 2*eps;
-        ik_->getKin().calcJacobian(joints, jacobian_increment);
     }
-//    ROS_INFO_STREAM("Finished jpd"); //TODO delete
+    if (!ik_->getKin().calcJacobian(joints, jacobian_increment))
+        ROS_WARN("Could not calculate jacobian in AvoidSingularities");
     return (jacobian_increment-jacobian_orig_)/eps;
 }
 
@@ -90,14 +86,13 @@ void AvoidSingularities::update(const SolverState &state)
     Eigen::JacobiSVD<MatrixXd> svd(jacobian_orig_, Eigen::ComputeThinU | Eigen::ComputeThinV);
     Ui_ = svd.matrixU().col(n-1);
     Vi_ = svd.matrixV().col(n-1);
-    double smallest_sv = svd.singularValues().tail(1)(0);
-    avoidance_enabled_ =  smallest_sv < enable_threshold_ && smallest_sv > ignore_threshold_;
+    smallest_sv_ = svd.singularValues().tail(1)(0);
+    avoidance_enabled_ =  smallest_sv_ < enable_threshold_ && smallest_sv_ > ignore_threshold_;
     if (avoidance_enabled_)
     {
         ROS_INFO_STREAM("Sing. avoidance with s=" << svd.singularValues().tail(1));
     }
-    ROS_INFO_STREAM(smallest_sv);
-//    ROS_INFO_STREAM("Finished update"); //TODO delete
+    ROS_INFO_STREAM(smallest_sv_);
 }
 
 } // namespace constraints
