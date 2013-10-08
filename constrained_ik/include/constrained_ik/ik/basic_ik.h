@@ -17,44 +17,45 @@
  */
 
 
-#ifndef TEST_IK_H
-#define TEST_IK_H
+#ifndef BASIC_IK_H
+#define BASIC_IK_H
 
-#include "constrained_ik.h"
-#include "constraints/avoid_joint_limits.h"
-#include "constraints/goal_position.h"
-#include "constraints/goal_tool_orientation.h"
+#include "constrained_ik/constrained_ik.h"
+#include "constrained_ik/constraints/avoid_joint_limits.h"
+#include "constrained_ik/constraints/goal_pose.h"
 
 namespace constrained_ik
 {
-namespace test_ik
+namespace basic_ik
 {
 
-class Test_IK : public Constrained_IK
+/**
+ * \brief Basic IK Solver
+ *          - solve for 6DOF cartesian goal
+ */
+class Basic_IK : public Constrained_IK
 {
 public:
-  Test_IK(): position_(new constraints::GoalPosition), tool_orientation_(new constraints::GoalToolOrientation), avoid_joint_limits_(new constraints::AvoidJointLimits)
+  Basic_IK(): goal_pose_(new constraints::GoalPose), avoid_joint_limits_(new constraints::AvoidJointLimits)
   {
-    addConstraint(position_);
-    addConstraint(tool_orientation_);
+    addConstraint(goal_pose_);
     addConstraint(avoid_joint_limits_);
     Eigen::Vector3d w_ori;
-    w_ori << 0,1,1;
-    tool_orientation_->setWeight(w_ori);
+    w_ori << 1,1,1;
+    goal_pose_->setWeightOrientation(w_ori);
   }
-  ~Test_IK() {};
+  ~Basic_IK() {};
 
 protected:
 
-  constraints::GoalPosition* position_;
-  constraints::GoalToolOrientation* tool_orientation_;
+  constraints::GoalPose* goal_pose_;
   constraints::AvoidJointLimits* avoid_joint_limits_;
 
-}; // class Test_IK
+}; // class Basic_IK
 
-} // namespace test_ik
+} // namespace basic_ik
 } // namespace constrained_ik
 
 
-#endif // TEST_IK_H
+#endif // BASIC_IK_H
 
