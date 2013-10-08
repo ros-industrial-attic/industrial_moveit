@@ -35,6 +35,7 @@ public:
 
   virtual Eigen::MatrixXd calcJacobian();
   virtual Eigen::VectorXd calcError();
+  virtual bool checkStatus() const { return true;}; //always return true
 
   double getWeight() {return weight_;}
 
@@ -46,6 +47,7 @@ protected:
   double weight_;
   double enable_threshold_, ignore_threshold_; // how small singular value must be to trigger avoidance, how small is too small
   bool avoidance_enabled_;
+  double smallest_sv_;
   Eigen::VectorXd Ui_, Vi_;
   Eigen::MatrixXd jacobian_orig_;   // current jacobian
 

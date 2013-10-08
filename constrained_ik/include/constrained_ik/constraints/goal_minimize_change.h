@@ -35,6 +35,7 @@ public:
 
   virtual Eigen::MatrixXd calcJacobian();
   virtual Eigen::VectorXd calcError();
+  virtual bool checkStatus() const { return true;}; // always return true
 
   double getWeight() {return weight_;}
   void setWeight(double weight) {weight_ = weight;};

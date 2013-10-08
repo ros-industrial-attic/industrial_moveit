@@ -48,6 +48,7 @@ public:
 
   virtual void reset();
 
+  void setTolerance(double tol) {rot_err_tol_ = tol;};  //TODO turn tolerance into Vector3d
   void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;};
 
   virtual void update(const SolverState &state);
