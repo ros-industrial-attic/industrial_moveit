@@ -71,6 +71,7 @@ add_library(constrained_ik
             src/constraints/goal_mid_joint.cpp
             src/constraints/goal_zero_jvel.cpp
             src/constraints/avoid_singularities.cpp
+            src/constraints/joint_vel_limits.cpp
             src/solver_state.cpp
 )
 target_link_libraries(constrained_ik ${catkin_LIBRARIES})

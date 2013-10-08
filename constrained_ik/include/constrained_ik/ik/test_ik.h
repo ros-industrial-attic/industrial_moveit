@@ -28,6 +28,7 @@
 #include "constrained_ik/constraints/goal_minimize_change.h"
 #include "constrained_ik/constraints/goal_zero_jvel.h"
 #include "constrained_ik/constraints/avoid_singularities.h"
+#include "constrained_ik/constraints/joint_vel_limits.h"
 
 namespace constrained_ik
 {
@@ -43,25 +44,32 @@ public:
               avoid_joint_limits_(new constraints::AvoidJointLimits),
               min_change_(new constraints::GoalMinimizeChange),
               zero_vel_(new constraints::GoalZeroJVel),
-              avoid_singularities_(new constraints::AvoidSingularities)
+              avoid_singularities_(new constraints::AvoidSingularities),
+              vel_limits_(new constraints::JointVelLimits)
   {
     addConstraint(position_);
     addConstraint(orientation_);
 //    addConstraint(tool_orientation_);
-//    addConstraint(avoid_joint_limits_);
-//    addConstraint(min_change_);
-//    addConstraint(zero_vel_);
-    addConstraint(avoid_singularities_);
-    avoid_singularities_->setWeight(0.5);
-
     Eigen::Vector3d w_ori;
     w_ori << 1,0.1,1;
-//    tool_orientation_->setWeight(w_ori);
     orientation_->setWeight(w_ori);
+    orientation_->setTolerance(.25);
+//    tool_orientation_->setWeight(w_ori);
 
+//    addConstraint(avoid_joint_limits_);
 //    avoid_joint_limits_->setWeight(.25);
+
+    addConstraint(min_change_);
     min_change_->setWeight(.3);
+
+    //    addConstraint(zero_vel_);
 //    zero_vel_->setWeight(.7);
+
+//    addConstraint(avoid_singularities_);
+//    avoid_singularities_->setWeight(0.25);
+
+    addConstraint(vel_limits_);
+    vel_limits_->setWeight(.75);
   }
   ~Test_IK() {};
 
@@ -74,6 +82,7 @@ protected:
   constraints::GoalMinimizeChange* min_change_;
   constraints::GoalZeroJVel* zero_vel_;
   constraints::AvoidSingularities* avoid_singularities_;
+  constraints::JointVelLimits* vel_limits_;
 }; // class Test_IK
 
 } // namespace test_ik
