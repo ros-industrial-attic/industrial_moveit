@@ -2,9 +2,9 @@
   <name>industrial_moveit</name>
   <version>0.0.0</version>
   <description>ROS Industrial MoveIt packages.</description>
-  <author email="jzoss@swri.org">Jeremy Zoss</author>
-  <author email="dsolomon@swri.org">Dan Solomon</author>
-  <maintainer email="dsolomon@swri.org">Dan Solomon</maintainer>
+  <author email="jz__s@swri.org">Jeremy Zoss</author>
+  <author email="ds____on@swri.org">Dan Solomon</author>
+  <maintainer email="ds____on@swri.org">Dan Solomon</maintainer>
   <license>Apache 2.0</license>
 
   <url type="website">http://ros.org/wiki/industrial_moveit</url>
