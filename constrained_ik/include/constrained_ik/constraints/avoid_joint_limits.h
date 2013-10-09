@@ -33,24 +33,61 @@ namespace constrained_ik
 namespace constraints
 {
 
+/**@brief Constraint class to avoid joint position limits
+ * Using cubic velocity ramp, it pushes each joint away from its limits,
+ * with a maximimum velocity of 2*threshold.
+ * Only affects joints that are within theshold of joint limit.
+ */
 class AvoidJointLimits: public Constraint
 {
 public:
     AvoidJointLimits();
     virtual ~AvoidJointLimits() {};
 
+    /**@brief Creates jacobian rows corresponding to joint limit avoidance
+     * @return Identity(n) scaled by weight_
+     */
     virtual Eigen::MatrixXd calcJacobian();
+
+    /**@brief Creates vector representing velocity error term
+     * corresponding to calcJacobian()
+     * @return VectorXd of joint velocities for joint limit avoidance
+     */
     virtual Eigen::VectorXd calcError();
 
+    /**@brief Checks termination criteria
+     * There are no termination criteria for this constraint
+     * @return True
+     */
     virtual bool checkStatus() const { return true; }  // always satisfied, even if "close to limits"
+
+    /**@brief Initialize constraint (overrides Constraint::init)
+     * Initializes internal limit variables
+     * Should be called before using class.
+     * @param ik Pointer to Constrained_IK used for base-class init
+     */
     virtual void init(const Constrained_IK* ik);
+
+    /**@brief Resets constraint before new use.
+     * Call this method before beginning a new IK calculation
+     */
     virtual void reset();
+
+    /**@brief Update internal state of constraint (overrides constraint::update)
+     * Sets which joints are near limits
+     * @param state SolverState holding current state of IK solver
+     */
     virtual void update(const SolverState &state);
 
+    /**@brief getter for weight_
+     * @return weight_
+     */
     double getWeight() {return weight_;};
-    void setWeight(const double &weight) {weight_ = weight;};
 
-    static double cubicVelRamp(double angle, double max_angle, double max_vel, double min_angle, double min_vel);
+    /**@brief setter for weight_
+     * @param weight Value to set weight_ to
+     */
+    void setWeight(const double &weight) {weight_ = weight;};
 
 protected:
 
@@ -67,6 +104,12 @@ protected:
       double k3;            // factor used in cubic velocity ramp
 
       LimitsT(double minPos, double maxPos, double threshold);
+
+      /**@brief Calculates velocity for joint position avoidance
+       * Uses cubic function y-y0 = k(x-x0)^3 where k=max_vel/(joint_range/2)^3
+       * @param angle Angle to calculate velocity for
+       * @return joint velocity to avoid joint limits
+       */
       double cubicVelRamp(double angle) const;
     };
 
@@ -75,8 +118,16 @@ protected:
     double weight_;
     double threshold_;   // threshold (% of range) at which to engage limit avoidance
 
-    //TODO document
+    /**@brief Check if a given joint is near its lower limit
+     * @param idx Index of joint
+     * @return True if joint position is within threshold of lower limit
+     */
     bool nearLowerLimit(size_t idx);
+
+    /**@brief Check if a given joint is near its upper limit
+     * @param idx Index of joint
+     * @return True if joint position is within threshold of upper limit
+     */
     bool nearUpperLimit(size_t idx);
 
 };

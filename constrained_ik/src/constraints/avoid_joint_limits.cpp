@@ -83,19 +83,6 @@ Eigen::MatrixXd AvoidJointLimits::calcJacobian()
   return jacobian;
 }
 
-double AvoidJointLimits::cubicVelRamp(double angle, double max_angle, double max_vel, double min_angle, double min_vel)
-{
-    // WARNING: DEPRECATED
-    // fit a cubic function to (y-y0) = k(x-x0)^3
-    // where y is desired speed, y0 is minimum vel, x is current angle, x0 is angle at which min vel is introduced
-    // x1,y1 used to establish k, where x1 is max allowable angle, y1 is max allowable velocity
-    // Requirements on inputs: max_vel > 0, min_vel >= 0, max_angle > min_angle, |angle| > min_angle
-    // Note: Speed is always positive, velocity (vel) may be +/-, return should always be positive
-    double k = (max_vel - min_vel) / std::pow(max_angle-min_angle, 3);  // k=(y1-y0)/(x1-x0)^3
-    angle = std::abs(angle - min_angle);
-    return min_vel + k*std::pow(angle-min_angle, 3);                    // y = y0 + k(x-x0)^3
-}
-
 void AvoidJointLimits::init(const Constrained_IK *ik)
 {
   Constraint::init(ik);
