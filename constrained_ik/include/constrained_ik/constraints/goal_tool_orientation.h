@@ -21,6 +21,7 @@
 #define GOAL_TOOL_ORIENTATION_H
 
 #include "constrained_ik/constraint.h"
+#include "constrained_ik/constraints/goal_orientation.h"
 
 namespace constrained_ik
 {
@@ -30,34 +31,27 @@ namespace constraints
 /**
  * \brief Constraint to specify cartesian goal orientation (XYZ rotation)
   */
-class GoalToolOrientation : public Constraint
+class GoalToolOrientation : public GoalOrientation
 {
 public:
   GoalToolOrientation();
   virtual ~GoalToolOrientation() {};
 
+  /**@brief Jacobian is the last three rows of standard jacobian
+   * (in tool frame). Equivalent to each axis of rotation expressed in tool frame coordinates.
+   * Each row is scaled by the corresponding element of weight_
+   * @return Last 3 rows of standard jacobian expressed in tool frame, scaled by weight_
+   */
   virtual Eigen::MatrixXd calcJacobian();
+
+  /**@brief Rotation to get from current orientation to goal orientation
+   * Resolve into primary vectors (x,y,z) of tool coordinate system
+   * Each element is multiplied by corresponding element in weight_
+   * @return Rotation from current to goal expressed in tool frame, scaled by weight_
+   */
   virtual Eigen::VectorXd calcError();
 
-  static double calcAngle(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
-  static Eigen::Vector3d calcAngleError(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
-
-  virtual bool checkStatus() const;
-
-  Eigen::Vector3d getWeight() {return weight_;};
-
-  virtual void reset();
-
-  void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;};
-
-  virtual void update(const SolverState &state);
-
-protected:
-  double rot_err_tol_;  // termination criteria
-  double rot_err_;      // current solution error
-  Eigen::Vector3d weight_;    // weight for each direction
-
-}; // class GoalOrientation
+}; // class GoalToolOrientation
 
 } // namespace constraints
 } // namespace constrained_ik
