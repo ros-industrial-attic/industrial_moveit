@@ -35,7 +35,7 @@ namespace constraints
 
 /**@brief Constraint class to avoid joint position limits
  * Using cubic velocity ramp, it pushes each joint away from its limits,
- * with a maximimum velocity of 2*threshold.
+ * with a maximimum velocity of 2*threshold*(joint range).
  * Only affects joints that are within theshold of joint limit.
  */
 class AvoidJointLimits: public Constraint
@@ -44,8 +44,9 @@ public:
     AvoidJointLimits();
     virtual ~AvoidJointLimits() {};
 
-    /**@brief Creates jacobian rows corresponding to joint limit avoidance
-     * @return Identity(n) scaled by weight_
+    /**@brief Creates jacobian rows corresponding to joint velocity limit avoidance
+     * Each limited joint gets a 0 row with a 1 in that joint's column
+     * @return Pseudo-Identity scaled by weight_
      */
     virtual Eigen::MatrixXd calcJacobian();
 

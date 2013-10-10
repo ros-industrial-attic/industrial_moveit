@@ -27,18 +27,37 @@ namespace constrained_ik
 namespace constraints
 {
 
+/**@brief Constraint to dampen movement by driving joint velocity to zero in each iteration
+ */
 class GoalZeroJVel: public Constraint
 {
 public:
   GoalZeroJVel();
   virtual ~GoalZeroJVel() {};
 
+  /**@brief Jacobian is identity because all joints are affected
+   * @return Identity scaled by weight_
+   */
   virtual Eigen::MatrixXd calcJacobian();
+
+  /**@brief Error for this constraint is 0
+   * @return nx1 vector of zeros
+   */
   virtual Eigen::VectorXd calcError();
+
+  /**@brief Termination criteria for mid-joint constraint
+   * @return True always (no termination criteria)
+   */
   virtual bool checkStatus() const {return true;};  //always return true
 
+  /**@brief Getter for weight_
+   * @return weight_
+   */
   double getWeight() {return weight_;}
 
+  /**@brief setter for weight_
+   * @param weight Value to set weight_ to
+   */
   void setWeight(double weight) {weight_ = weight;};
 
 protected:

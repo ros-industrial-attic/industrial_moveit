@@ -92,7 +92,7 @@ void AvoidSingularities::update(const SolverState &state)
     {
         ROS_INFO_STREAM("Sing. avoidance with s=" << svd.singularValues().tail(1));
     }
-    ROS_INFO_STREAM(smallest_sv_);
+//    ROS_INFO_STREAM(smallest_sv_);
 }
 
 } // namespace constraints

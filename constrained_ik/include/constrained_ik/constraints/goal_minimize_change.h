@@ -27,17 +27,37 @@ namespace constrained_ik
 namespace constraints
 {
 
+/**@brief Constraint that pushes joints back towards their starting position
+ */
 class GoalMinimizeChange : public Constraint
 {
 public:
   GoalMinimizeChange();
   virtual ~GoalMinimizeChange() {};
 
+  /**@brief Jacobian is identity becasue all joints are affected
+   * @return Identity scaled by weight_
+   */
   virtual Eigen::MatrixXd calcJacobian();
+
+  /**@brief Joint velocity is difference between starting position and current position
+   * @return Joint difference scaled by weight_
+   */
   virtual Eigen::VectorXd calcError();
+
+  /**@brief Termination criteria for singularity constraint
+   * @return True always (no termination criteria)
+   */
   virtual bool checkStatus() const { return true;}; // always return true
 
+  /**@breif Getter for weight_
+   * @return weight_
+   */
   double getWeight() {return weight_;}
+
+  /**@brief setter for weight_
+   * @param weight Value to set weight_ to
+   */
   void setWeight(double weight) {weight_ = weight;};
 
 protected:

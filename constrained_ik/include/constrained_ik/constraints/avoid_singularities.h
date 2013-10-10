@@ -27,20 +27,46 @@ namespace constrained_ik
 namespace constraints
 {
 
+/**@brief Constraint that increases dexterity when manipulator is close to singularity
+ * Joint velocity is determined by gradient of smallest singular value
+ * Constraint is only active when smallest SV is below theshold
+ */
 class AvoidSingularities: public Constraint
 {
 public:
     AvoidSingularities();
   virtual ~AvoidSingularities() {};
 
+  /**@brief Jacobian for this constraint is identity (all joints may contribute)
+   * @return Identity jacobian scaled by weight
+   */
   virtual Eigen::MatrixXd calcJacobian();
+
+  /**@brief Velocity is gradient of smallest singular value
+   * del(sv) = uT * del(J) * v
+   * @return Joint velocity error scaled by weight
+   */
   virtual Eigen::VectorXd calcError();
+
+  /**@brief Termination criteria for singularity constraint
+   * @return True always (no termination criteria)
+   */
   virtual bool checkStatus() const { return true;}; //always return true
 
+  /**@breif Getter for weight_
+   * @return weight_
+   */
   double getWeight() {return weight_;}
 
+  /**@brief Setter for weight_
+   * @param weight Value to assign to weight_
+   */
   void setWeight(double weight) {weight_ = weight;};
 
+  /**@brief Updates internal state of constraint (overrides constraint::update)
+   * Sets jacobian and performs SVD decomposition
+   * @param state SolverState holding current state of IK solver
+   */
   virtual void update(const SolverState &state);
 
 protected:
