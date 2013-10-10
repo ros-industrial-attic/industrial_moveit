@@ -33,21 +33,59 @@ namespace constrained_ik
 namespace constraints
 {
 
+/**@brief Constraint to avoid joint velocity limits
+ */
 class JointVelLimits: public Constraint
 {
 public:
     JointVelLimits();
     virtual ~JointVelLimits() {};
 
+    /**@brief Creates jacobian rows corresponding to joint velocity limit avoidance
+     * Each limited joint gets a 0 row with a 1 in that joint's column
+     * @return Pseudo-Identity scaled by weight_
+     */
     virtual Eigen::MatrixXd calcJacobian();
+
+    /**@brief Creates vector representing velocity error term corresponding to calcJacobian()
+     * Velocity error is difference between current velocity and velocity limit
+     * (only applicable for joints outside velocity limits)
+     * @return VectorXd of joint velocities for joint velocity limit avoidance
+     */
     virtual Eigen::VectorXd calcError();
 
+    /**@brief Checks termination criteria
+     * This constraint is satisfied if no joints are beyond velocity limits
+     * @return True if no joints violating veloity limit
+     */
     virtual bool checkStatus() const { return limited_joints_.size() == 0; }
+
+    /**@brief Initialize constraint (overrides Constraint::init)
+     * Initializes internal velocity limit variable
+     * Should be called before using class.
+     * @param ik Pointer to Constrained_IK used for base-class init
+     */
     virtual void init(const Constrained_IK* ik);
+
+    /**@brief Resets constraint before new use.
+     * Call this method before beginning a new IK calculation
+     */
     virtual void reset();
+
+    /**@brief Update internal state of constraint (overrides constraint::update)
+     * Sets which joints are near velocity limits
+     * @param state SolverState holding current state of IK solver
+     */
     virtual void update(const SolverState &state);
 
+    /**@brief getter for weight_
+     * @return weight_
+     */
     double getWeight() {return weight_;};
+
+    /**@brief setter for weight_
+     * @param weight Value to set weight_ to
+     */
     void setWeight(const double &weight) {weight_ = weight;};
 
 protected:

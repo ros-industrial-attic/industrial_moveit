@@ -28,21 +28,8 @@ namespace constraints
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalToolOrientation::GoalToolOrientation() : Constraint(), rot_err_tol_(0.009), rot_err_(0.0), weight_(Vector3d::Ones())
+GoalToolOrientation::GoalToolOrientation() : GoalOrientation()
 {
-}
-
-double GoalToolOrientation::calcAngle(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2)
-{
-  Quaterniond q1(p1.rotation()), q2(p2.rotation());
-  return q1.angularDistance(q2);
-}
-
-Eigen::Vector3d GoalToolOrientation::calcAngleError(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2)
-{
-  Eigen::AngleAxisd r12(p1.rotation().transpose()*p2.rotation());   // rotation from p1 -> p2
-  double theta = Constrained_IK::rangedAngle(r12.angle());          // TODO: move rangedAngle to utils class
-  return p1.rotation() * r12.axis() * theta;                        // axis k * theta expressed in frame0
 }
 
 Eigen::VectorXd GoalToolOrientation::calcError()
@@ -71,28 +58,6 @@ Eigen::MatrixXd GoalToolOrientation::calcJacobian()
 
   ROS_ASSERT(J.rows() == 3);
   return J;
-}
-
-bool GoalToolOrientation::checkStatus() const
-{
-  // check to see if we've reached the goal orientation
-  if (rot_err_ < rot_err_tol_)
-    return true;
-
-  return Constraint::checkStatus();
-}
-
-void GoalToolOrientation::reset()
-{
-  Constraint::reset();
-  rot_err_ = 0;
-}
-
-void GoalToolOrientation::update(const SolverState &state)
-{
-  Constraint::update(state);
-
-  rot_err_ = calcAngle(state.goal, state.pose_estimate);
 }
 
 } // namespace constraints
