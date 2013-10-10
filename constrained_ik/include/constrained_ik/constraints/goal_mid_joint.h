@@ -27,20 +27,44 @@ namespace constrained_ik
 namespace constraints
 {
 
+/**@brief Constraint to push joint to center of its range
+ */
 class GoalMidJoint : public Constraint
 {
 public:
   GoalMidJoint();
   virtual ~GoalMidJoint() {};
 
+  /**@brief Jacobian is identity because all joints are affected
+   * @return Identity scaled by weight_
+   */
   virtual Eigen::MatrixXd calcJacobian();
+
+  /**@brief Desired joint velocity is difference between min-range and current position
+   * @return difference in joint position scaled by weight
+   */
   virtual Eigen::VectorXd calcError();
+
+  /**@brief Termination criteria for mid-joint constraint
+   * @return True always (no termination criteria)
+   */
   virtual bool checkStatus() const { return true;}; //always return true
 
+  /**@brief Getter for weight_
+   * @return weight_
+   */
   double getWeight() {return weight_;}
 
+  /**@brief Initialize constraint (overrides Constraint::init)
+   * Initializes internal variable representing mid-range of each joint
+   * Should be called before using class.
+   * @param ik Pointer to Constrained_IK used for base-class init
+   */
   void init(const Constrained_IK *ik);
 
+  /**@brief setter for weight_
+   * @param weight Value to set weight_ to
+   */
   void setWeight(double weight) {weight_ = weight;};
 
 protected:

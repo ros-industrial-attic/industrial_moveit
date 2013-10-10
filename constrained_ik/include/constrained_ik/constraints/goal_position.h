@@ -36,18 +36,51 @@ public:
   GoalPosition();
   virtual ~GoalPosition() {};
 
-  virtual Eigen::MatrixXd calcJacobian();
-  virtual Eigen::VectorXd calcError();
-
-  virtual void reset();
-
-  virtual void update(const SolverState &state);
-
+  /**@brief Calculates distance between two frames
+   * @param p1 Current frame
+   * @param p2 Goal frame
+   * @return Cartesian distance between p1 and p2
+   */
   static double calcDistance(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
 
+  /**@brief Jacobian is first three rows of standard jacobian
+   * (expressed in base frame). Equivalent to each axis of rotation crossed with vector from joint to chain tip.
+   * Each row is scaled by the corresponding element of weight_
+   * @return First 3 rows of standard jacobian scaled by weight_
+   */
+  virtual Eigen::MatrixXd calcJacobian();
+
+  /**@brief Direction vector from current position to goal position
+   * Expressed in base coordinate system
+   * Each element is multiplied by corresponding element in weight_
+   * @return Translation from current to goal scaled by weight_
+   */
+  virtual Eigen::VectorXd calcError();
+
+  /**@brief Checks termination criteria
+   * Termination criteria for this constraint is that positional error is below threshold
+   * @return True if positional error is below threshold
+   */
   virtual bool checkStatus() const;
 
+  /**@brief Getter for weight_
+   * @return weight_
+   */
   Eigen::Vector3d getWeight() {return weight_;}
+
+  /**@brief Resets constraint. Use this before performing new IK request.
+   */
+  virtual void reset();
+
+  /**@brief Update internal state of constraint (overrides constraint::update)
+   * Sets current positional error
+   * @param state SolverState holding current state of IK solver
+   */
+  virtual void update(const SolverState &state);
+
+  /**@brief Setter for weight_
+   * @param weight Value to assign to weight_
+   */
   void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;};
 
 protected:
