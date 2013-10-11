@@ -17,7 +17,7 @@
  */
 
 #include <gtest/gtest.h>
-#include <constrained_ik/basic_ik.h>
+#include <constrained_ik/ik/basic_ik.h>
 
 using constrained_ik::basic_ik::Basic_IK;
 using constrained_ik::basic_kin::BasicKin;
