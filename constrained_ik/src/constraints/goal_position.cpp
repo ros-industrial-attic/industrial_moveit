@@ -36,7 +36,7 @@ Eigen::VectorXd GoalPosition::calcError()
 {
   Vector3d goalPos = state_.goal.translation();
   Vector3d estPos  = state_.pose_estimate.translation();
-  Vector3d err = goalPos - estPos;
+  Vector3d err = (goalPos - estPos).cwiseProduct(weight_);
 
   ROS_ASSERT( err.rows() == 3 );
   return err;
@@ -49,6 +49,10 @@ Eigen::MatrixXd GoalPosition::calcJacobian()
   if (!ik_->getKin().calcJacobian(state_.joints, tmpJ))
     throw std::runtime_error("Failed to calculate Jacobian");
   MatrixXd  J = tmpJ.topRows(3);
+
+  // weight each row of J
+  for (size_t ii=0; ii<3; ++ii)
+      J.row(ii) *= weight_(ii);
 
   ROS_ASSERT( J.rows() == 3);
   return J;
