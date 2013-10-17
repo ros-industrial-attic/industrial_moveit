@@ -101,7 +101,7 @@ public:
    * @param names Output vector of joint names
    * @return True if BasicKin has been successfully initialized
    */
-  bool getJointNames(const KDL::Chain &chain, std::vector<std::string> &names) const;
+//  bool getJointNames(const KDL::Chain &chain, std::vector<std::string> &names) const;
 
   /**@brief Getter for joint_limits_
    * @return Matrix of joint limits
@@ -122,7 +122,7 @@ public:
    * @param names Output vector of link names
    * @return True if BasicKin has been successfully initialized
    */
-  bool getLinkNames(const KDL::Chain &chain, std::vector<std::string> &names) const;
+//  bool getLinkNames(const KDL::Chain &chain, std::vector<std::string> &names) const;
 
   /**@brief Initializes BasicKin
    * Creates KDL::Chain from urdf::Model, populates joint_list_, joint_limits_, and link_list_
@@ -178,7 +178,7 @@ private:
    * @param vec Input Eigen vector
    * @param joints Output KDL joint array
    */
-  static void EigenToKDL(const Eigen::VectorXd &vec, KDL::JntArray &joints);
+  static void EigenToKDL(const Eigen::VectorXd &vec, KDL::JntArray &joints) {joints.data = vec;};
 
   /**@brief Get joint number of given joint in initialized robot
    * @param joint_name Input name of joint
