@@ -121,15 +121,6 @@ bool BasicKin::checkJoints(const VectorXd &vec) const
   return true;
 }
 
-void BasicKin::EigenToKDL(const VectorXd &vec, KDL::JntArray &joints)
-{
-  joints.data = vec;
-//  joints.resize(vec.size());
-//
-//  for (int i=0; i<vec.size(); ++i)
-//    joints(i) = vec[i];
-}
-
 bool BasicKin::getJointNames(std::vector<std::string> &names) const
 {
     if (!initialized_)
@@ -141,28 +132,26 @@ bool BasicKin::getJointNames(std::vector<std::string> &names) const
     return true;
 }
 
-bool BasicKin::getJointNames(const KDL::Chain &chain, std::vector<std::string> &names) const
-{
-    if (!initialized_)
-    {
-        ROS_ERROR("Kinematics must be initialized before retrieving joint names");
-        return false;
-    }
-
-    unsigned int n = chain.getNrOfJoints();
-    names.resize(n);
-
-    KDL::Joint joint;
-    for (unsigned int ii=0; ii<n; ++ii)
-    {
-        joint = chain.getSegment(ii).getJoint();
-        if (joint.getType() != joint.None)
-            names[ii] = joint.getName();
-//        if (joint.getTypeName()[0] != 'R')
-//            ROS_ERROR_STREAM("Joint should be of type 'rotary', found type " << joint.getTypeName() << " at position " << ii);
-    }
-    return true;
-}
+//bool BasicKin::getJointNames(const KDL::Chain &chain, std::vector<std::string> &names) const
+//{
+//    if (!initialized_)
+//    {
+//        ROS_ERROR("Kinematics must be initialized before retrieving joint names");
+//        return false;
+//    }
+//
+//    unsigned int n = chain.getNrOfJoints();
+//    names.resize(n);
+//
+//    KDL::Joint joint;
+//    for (unsigned int ii=0; ii<n; ++ii)
+//    {
+//        joint = chain.getSegment(ii).getJoint();
+//        if (joint.getType() != joint.None)
+//            names[ii] = joint.getName();
+//    }
+//    return true;
+//}
 
 bool BasicKin::getLinkNames(std::vector<std::string> &names) const
 {
@@ -175,23 +164,23 @@ bool BasicKin::getLinkNames(std::vector<std::string> &names) const
     return true;
 }
 
-bool BasicKin::getLinkNames(const KDL::Chain &chain, std::vector<std::string> &names) const
-{
-    if (!initialized_)
-    {
-        ROS_ERROR("Kinematics must be initialized before retrieving link names");
-        return false;
-    }
-
-    unsigned int n = chain.getNrOfSegments();
-    names.resize(n);
-
-    for (unsigned int ii=0; ii<n; ++ii)
-    {
-        names[ii] = robot_chain_.getSegment(ii).getName();
-    }
-    return true;
-}
+//bool BasicKin::getLinkNames(const KDL::Chain &chain, std::vector<std::string> &names) const
+//{
+//    if (!initialized_)
+//    {
+//        ROS_ERROR("Kinematics must be initialized before retrieving link names");
+//        return false;
+//    }
+//
+//    unsigned int n = chain.getNrOfSegments();
+//    names.resize(n);
+//
+//    for (unsigned int ii=0; ii<n; ++ii)
+//    {
+//        names[ii] = robot_chain_.getSegment(ii).getName();
+//    }
+//    return true;
+//}
 
 int BasicKin::getJointNum(const std::string &joint_name) const
 {
