@@ -7,8 +7,8 @@
   <author email="cl__is@swri.org">Chris Lewis</author>
   <author email="jz__s@swri.org">Jeremy Zoss</author>
   <author email="dps____on@gmail.com">Dan Solomon</author>
+  <maintainer email="jzoss@swri.org">Jeremy Zoss, SwRI</maintainer>
   <maintainer email="dpsolomon@gmail.com">Dan Solomon, SwRI</maintainer>
-  <maintainer email="jz__s@swri.org">Jeremy Zoss, SwRI</maintainer>
   <license>Apache 2.0</license>
   <url type="website">http://ros.org/wiki/constrained_ik</url>
 
