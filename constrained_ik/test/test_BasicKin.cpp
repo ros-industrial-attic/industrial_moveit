@@ -139,9 +139,10 @@ TEST_F(linkTransforms, knownPoses)
     VectorXd joint_angles(6);
     std::vector<Frame> actual, expected(6);
 
+    //0,0,0,0,0,0
     joint_angles = VectorXd::Zero(6);
-    expected[0] = Frame(Vector(0,0,.674));    //rotation defaults to identity
-    expected[1] = Frame(Vector(0,0,.674));    //rotation defaults to identity
+    expected[0] = Frame(Vector(0,0,.674));              //rotation defaults to identity
+    expected[1] = Frame(Vector(0,0,.674));              //rotation defaults to identity
     expected[2] = Frame(Vector(.4318,.12446,.674));     //rotation defaults to identity
     expected[3] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
     expected[4] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
@@ -151,6 +152,7 @@ TEST_F(linkTransforms, knownPoses)
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
 
+    //90,0,0,0,0,0
     joint_angles(0) = M_PI_2;
     expected[0] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(0,0,.674));
     expected[1] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(0,0,.674));
@@ -163,6 +165,7 @@ TEST_F(linkTransforms, knownPoses)
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
 
+    //0,-90,0,0,0,0
     joint_angles(0) = 0.;
     joint_angles(1) = -M_PI_2;
     expected[0] = Frame(Vector(0,0,.674));
@@ -176,6 +179,7 @@ TEST_F(linkTransforms, knownPoses)
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
 
+    //joints 2-5
     joint_angles = VectorXd::Zero(6);
     std::vector<std::string> link_names_short(link_names.begin()+1, link_names.end()-1);
 //    expected[0] = Frame(Vector(0,0,.674));    //rotation defaults to identity

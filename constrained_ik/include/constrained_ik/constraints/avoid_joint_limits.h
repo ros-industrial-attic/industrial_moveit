@@ -41,7 +41,7 @@ namespace constraints
 class AvoidJointLimits: public Constraint
 {
 public:
-    AvoidJointLimits();
+    AvoidJointLimits(): Constraint(), weight_(1.0), threshold_(0.05) {};
     virtual ~AvoidJointLimits() {};
 
     /**@brief Creates jacobian rows corresponding to joint velocity limit avoidance
@@ -60,7 +60,7 @@ public:
      * There are no termination criteria for this constraint
      * @return True
      */
-    virtual bool checkStatus() const { return true; }  // always satisfied, even if "close to limits"
+    virtual bool checkStatus() const;// { return limited_joints_.size() < 1;/*true;*/ }  // always satisfied, even if "close to limits"
 
     /**@brief Initialize constraint (overrides Constraint::init)
      * Initializes internal limit variables
@@ -96,22 +96,25 @@ protected:
     {
       double min_pos;       // minimum joint position
       double max_pos;       // maximum joint position
-      double range;
-      double mid_pos;       // joint position at middle-of-range
+//      double range;
       double lower_thresh;  // lower threshold at which limiting begins
       double upper_thresh;  // upper threshold at which limiting begins
-//      double max_vel;       // maximum velocity for joint limit update step
-//      double min_vel;       // value used for cubic velocity ramp
+      double e;             // threshold as a distance from limit
       double k3;            // factor used in cubic velocity ramp
 
+      /**@brief Constructor for LimitsT
+       * @param minPos Minimum allowed joint position
+       * @param maxPos Maximum allowed joint position
+       * @param threshold Limiting threshold given as a percentage of joint range
+       */
       LimitsT(double minPos, double maxPos, double threshold);
 
       /**@brief Calculates velocity for joint position avoidance
-       * Uses cubic function y-y0 = k(x-x0)^3 where k=max_vel/(joint_range/2)^3
+       * Uses cubic function v = y-y0 = k(x-x0)^3 where k=max_vel/(joint_range/2)^3
        * @param angle Angle to calculate velocity for
        * @return joint velocity to avoid joint limits
        */
-      double cubicVelRamp(double angle) const;
+      double cubicVelRamp(double angle, double limit) const;
     };
 
     std::vector<LimitsT> limits_;
