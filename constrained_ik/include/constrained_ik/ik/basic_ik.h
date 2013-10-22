@@ -40,6 +40,7 @@ public:
   {
     addConstraint(goal_pose_);
     addConstraint(avoid_joint_limits_);
+    avoid_joint_limits_->setDebug(false);
     Eigen::Vector3d w_ori;
     w_ori << 1,1,1;
     goal_pose_->setWeightOrientation(w_ori);

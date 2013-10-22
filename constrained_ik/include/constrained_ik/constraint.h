@@ -40,18 +40,30 @@ public:
   Constraint() : initialized_(false), debug_(false) {};
   virtual ~Constraint() {};
 
+  static void appendError(Eigen::VectorXd &error, const Eigen::VectorXd &addErr);
+
+  static void appendJacobian(Eigen::MatrixXd &jacobian, const Eigen::MatrixXd &addJacobian);
+
   virtual Eigen::VectorXd calcError() = 0;
+
   virtual Eigen::MatrixXd calcJacobian() = 0;
 
   virtual bool checkStatus() const { return false; }
-  virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik; }
-  virtual void reset() { };
-  virtual void update(const SolverState &state) { state_ = state; }
-  virtual void updateError(Eigen::VectorXd &error);
-  virtual void updateJacobian(Eigen::MatrixXd &jacobian);
 
-  static void appendError(Eigen::VectorXd &error, const Eigen::VectorXd &addErr);
-  static void appendJacobian(Eigen::MatrixXd &jacobian, const Eigen::MatrixXd &addJacobian);
+  virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik; }
+
+  virtual void reset() { };
+
+  /**@brief set debug mode
+   * @param debug Value to set debug_ to (defaults to true)
+   */
+  void setDebug(bool debug = true) {debug_= debug;};
+
+  virtual void update(const SolverState &state) { state_ = state; }
+
+  virtual void updateError(Eigen::VectorXd &error);
+
+  virtual void updateJacobian(Eigen::MatrixXd &jacobian);
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 

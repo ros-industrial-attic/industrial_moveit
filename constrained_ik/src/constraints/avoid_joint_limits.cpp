@@ -34,13 +34,6 @@ namespace constraints
 using namespace Eigen;
 using namespace std;
 
-// TODO: constraint-weights, calcJacobianRow/2  ??
-
-AvoidJointLimits::AvoidJointLimits(): Constraint(), weight_(1.0), threshold_(0.05)
-{
-  debug_ = true;
-}
-
 Eigen::VectorXd AvoidJointLimits::calcError()
 {
   size_t nRows = limited_joints_.size();
@@ -49,19 +42,29 @@ Eigen::VectorXd AvoidJointLimits::calcError()
   for (int ii=0; ii<nRows; ++ii)
   {
     size_t jntIdx = limited_joints_[ii];
-    int velSign = nearLowerLimit(jntIdx) ? 1 : -1;  // lower limit: positive velocity, upper limit: negative velocity
-
+    int velSign;
     const LimitsT &lim = limits_[jntIdx];
-    error(ii) = velSign * weight_ * lim.cubicVelRamp(state_.joints[jntIdx]);
-  }
+    double limit;
+    if (nearLowerLimit(jntIdx))
+    {
+        velSign = 1; // lower limit: positive velocity
+        limit = lim.min_pos;
+    }
+    else
+    {
+        velSign = -1;   //upper limit, negative velocity
+        limit = lim.max_pos;
+    }
 
-  if (debug_ && nRows)
-  {
-      ROS_ERROR_STREAM("iteration " << state_.iter);
-      ROS_ERROR_STREAM("Joint position: " << state_.joints(limited_joints_[0]) << " / " << limits_[limited_joints_[0]].min_pos);
-      ROS_ERROR_STREAM("velocity error: " << error(0) << " / " << 2.0*threshold_ * limits_[limited_joints_[0]].range);
-  }
+    error(ii) = velSign * weight_ * lim.cubicVelRamp(state_.joints[jntIdx], limit);
 
+    if (debug_)
+    {
+        ROS_WARN_STREAM("iteration " << state_.iter << std::endl <<
+                         "Joint position: " << state_.joints(jntIdx) << " / " << limit << std::endl <<
+                         "velocity error: " << error(ii) << " / " << lim.e/2.0);
+    }
+  }
   return error;
 }
 
@@ -81,6 +84,15 @@ Eigen::MatrixXd AvoidJointLimits::calcJacobian()
   }
 
   return jacobian;
+}
+
+bool AvoidJointLimits::checkStatus() const
+{
+    size_t n = state_.joints.size();
+    for (size_t ii = 0; ii<n; ++ii)
+        if (state_.joints[ii] > limits_[ii].max_pos || state_.joints[ii] < limits_[ii].min_pos)
+            return false;
+    return true;
 }
 
 void AvoidJointLimits::init(const Constrained_IK *ik)
@@ -138,7 +150,7 @@ void AvoidJointLimits::update(const SolverState &state)
 
   // print debug message, if enabled
   if (debug_ && !limited_joints_.empty())
-    ROS_ERROR_STREAM(limited_joints_.size() << " joint limits active: " << limited_joints_);
+    ROS_WARN_STREAM(limited_joints_.size() << " joint limits active: " << limited_joints_);
 }
 
 AvoidJointLimits::LimitsT::LimitsT(double minPos, double maxPos, double threshold)
@@ -146,20 +158,23 @@ AvoidJointLimits::LimitsT::LimitsT(double minPos, double maxPos, double threshol
   min_pos = minPos;
   max_pos = maxPos;
 
-  range = maxPos - minPos;
-  mid_pos = (minPos + maxPos) / 2.0;
+//  range = maxPos - minPos;
 
-  lower_thresh = minPos + threshold * range;
-  upper_thresh = maxPos - threshold * range;
-  double max_vel = 2.0 * threshold * range;  // max velocity is 2*(threshold % of range) - hopefully enough to push joint past threshold
-  double min_vel = 0.0;
-  k3 = (max_vel - min_vel)/std::pow(0.5*range, 3);  // (vel = minVel*k(pos-minPos)^3 where k=(maxVel-minVel)/(maxPos-midPos)^3 : 1/2 range used for cubic function
+  //threshold given as a percentage of range. Translate to actual joint distance
+  e = threshold * (maxPos - minPos); //range;
+  lower_thresh = minPos + e;
+  upper_thresh = maxPos - e;
+
+  /* For d = distance from limit: velocity v = k(d-e)^3, where e is distance from threshold to limit.
+   * k is chosen such that v_max = v[d=0] = e/2 --> k = 1/(2e^2)
+   */
+  k3 = 1.0/(2 * e * e);
 }
 
-double AvoidJointLimits::LimitsT::cubicVelRamp(double angle) const
+double AvoidJointLimits::LimitsT::cubicVelRamp(double angle, double limit) const
 {
-    double x = std::abs(angle - mid_pos);
-    return k3 * std::pow(x,3);
+    double d = std::abs(angle - limit); // distance from limit
+    return k3 * std::pow(e-d,3);
 }
 
 } /* namespace jla_ik */
