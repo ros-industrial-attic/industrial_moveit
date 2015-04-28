@@ -45,10 +45,10 @@ find_package(Eigen REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES constrained_ik
-#  CATKIN_DEPENDS other_catkin_pkg
-#  DEPENDS system_lib
+ INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
+ LIBRARIES constrained_ik
+ CATKIN_DEPENDS roscpp urdf eigen_conversions
+ DEPENDS boost eigen orocos_kdl
 )
 
 ###########
@@ -57,7 +57,7 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIRS})
 
 ## Declare a cpp library
 add_library(constrained_ik
@@ -113,11 +113,11 @@ target_link_libraries(constrained_ik_plugin constrained_ik ${catkin_LIBRARIES})
 # )
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN ".svn" EXCLUDE
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
