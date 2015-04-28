@@ -4,9 +4,11 @@ project(constrained_ik)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS kdl_parser orocos_kdl roscpp urdf eigen_conversions)
+find_package(catkin REQUIRED COMPONENTS kdl_parser roscpp urdf eigen_conversions)
 
 ## System dependencies are found with CMake's conventions
+find_package(orocos_kdl REQUIRED)
+find_package(cmake_modules REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Eigen REQUIRED)
 
