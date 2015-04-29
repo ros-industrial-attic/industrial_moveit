@@ -27,6 +27,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <urdf/model.h>
+#include <constrained_ik/enum_types.h>
 
 namespace constrained_ik
 {
@@ -51,7 +52,18 @@ public:
   /**@brief Add a new constraint to this IK solver
    * @param constraint Constraint to limit IK solution
    */
-  virtual void addConstraint(Constraint* constraint) { constraints_.add(constraint); }
+  virtual void addConstraint(Constraint* constraint, constraint_types::ConstraintType constraint_type)
+  {
+    switch(constraint_type)
+    {
+      case constraint_types::primary:
+        primary_constraints_.add(constraint);
+        break;
+      case constraint_types::auxiliary:
+        auxiliary_constraints_.add(constraint);
+        break;
+    }
+  }
 
   //TODO document
   virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed, Eigen::VectorXd &joint_angles);
@@ -59,7 +71,16 @@ public:
   /**@brief Checks to see if object is initialized (ie: init() has been called)
    * @return True if object is initialized
    */
-  bool checkInitialized() const { return initialized_ && !constraints_.empty(); }
+  bool checkInitialized(constraint_types::ConstraintType constraint_type) const
+  {
+    switch(constraint_type)
+    {
+      case constraint_types::primary:
+        return initialized_ && !primary_constraints_.empty();
+      case constraint_types::auxiliary:
+        return initialized_ && !auxiliary_constraints_.empty();
+    }
+  }
 
   /**@brief Delete all constraints
    */
@@ -150,7 +171,8 @@ protected:
   double joint_convergence_tol_;
 
   // constraints
-  ConstraintGroup constraints_;
+  ConstraintGroup primary_constraints_;
+  ConstraintGroup auxiliary_constraints_;
 
   // state/counter data
   bool initialized_;
@@ -163,12 +185,18 @@ protected:
   /**@brief Pure definition for calculating constraint error
    * @return Error vector (b-input in calcPInv)
    */
-  virtual Eigen::VectorXd calcConstraintError();
+  virtual Eigen::VectorXd calcConstraintError(constraint_types::ConstraintType constraint_type);
 
   /**@brief Pure definition for calculating Jacobian
    * @return Jacobian matrix (A-input in calcPInv)
    */
-  virtual Eigen::MatrixXd calcConstraintJacobian();
+  virtual Eigen::MatrixXd calcConstraintJacobian(constraint_types::ConstraintType constraint_type);
+
+  //TODO document
+  virtual Eigen::MatrixXd calcNullspaceProjection(const Eigen::MatrixXd &J);
+
+  //TODO document
+  virtual Eigen::MatrixXd calcDampedPseudoinverse(const Eigen::MatrixXd &J);
 
   //TODO document
   void clipToJointLimits(Eigen::VectorXd &joints);

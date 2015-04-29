@@ -29,6 +29,7 @@
 #include "constrained_ik/constraints/goal_zero_jvel.h"
 #include "constrained_ik/constraints/avoid_singularities.h"
 #include "constrained_ik/constraints/joint_vel_limits.h"
+#include "constrained_ik/enum_types.h"
 
 namespace constrained_ik
 {
@@ -47,8 +48,8 @@ public:
               avoid_singularities_(new constraints::AvoidSingularities),
               vel_limits_(new constraints::JointVelLimits)
   {
-    addConstraint(position_);
-    addConstraint(orientation_);
+    addConstraint(position_, constraint_types::primary);
+    addConstraint(orientation_, constraint_types::primary);
 //    addConstraint(tool_orientation_);
     Eigen::Vector3d w_ori;
     w_ori << 1,0.1,1;
@@ -59,7 +60,7 @@ public:
 //    addConstraint(avoid_joint_limits_);
 //    avoid_joint_limits_->setWeight(.25);
 
-    addConstraint(min_change_);
+    addConstraint(min_change_, constraint_types::primary);
     min_change_->setWeight(.3);
 
     //    addConstraint(zero_vel_);
@@ -68,7 +69,7 @@ public:
 //    addConstraint(avoid_singularities_);
 //    avoid_singularities_->setWeight(0.25);
 
-    addConstraint(vel_limits_);
+    addConstraint(vel_limits_, constraint_types::primary);
     vel_limits_->setWeight(.75);
   }
   ~Test_IK() {};

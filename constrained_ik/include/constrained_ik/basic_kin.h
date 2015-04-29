@@ -44,8 +44,8 @@ namespace basic_kin
 class BasicKin
 {
 public:
-  BasicKin() : initialized_(false) {};
-  ~BasicKin() {};
+  BasicKin() : initialized_(false) {}
+  ~BasicKin() {}
 
   /**@brief Calculates tool pose of robot chain
    * @param joint_angles Vector of joint angles (size must match number of joints in robot chain)
@@ -165,6 +165,12 @@ public:
    */
   bool solvePInv(const Eigen::MatrixXd &A, const Eigen::VectorXd &b, Eigen::VectorXd &x) const;
 
+  //TODO Document
+  bool dampedPInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P) const;
+
+  //TODO Document
+  bool PInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P) const;
+
 private:
   bool initialized_;
   KDL::Chain  robot_chain_;
@@ -178,7 +184,7 @@ private:
    * @param vec Input Eigen vector
    * @param joints Output KDL joint array
    */
-  static void EigenToKDL(const Eigen::VectorXd &vec, KDL::JntArray &joints) {joints.data = vec;};
+  static void EigenToKDL(const Eigen::VectorXd &vec, KDL::JntArray &joints) {joints.data = vec;}
 
   /**@brief Get joint number of given joint in initialized robot
    * @param joint_name Input name of joint
