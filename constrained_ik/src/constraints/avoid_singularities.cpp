@@ -84,8 +84,8 @@ void AvoidSingularities::update(const SolverState &state)
 
     ik_->getKin().calcJacobian(state_.joints, jacobian_orig_);
     Eigen::JacobiSVD<MatrixXd> svd(jacobian_orig_, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    Ui_ = svd.matrixU().col(n-1);
-    Vi_ = svd.matrixV().col(n-1);
+    Ui_ = svd.matrixU().rightCols(1);
+    Vi_ = svd.matrixV().rightCols(1);
     smallest_sv_ = svd.singularValues().tail(1)(0);
     avoidance_enabled_ =  smallest_sv_ < enable_threshold_ && smallest_sv_ > ignore_threshold_;
     if (avoidance_enabled_)

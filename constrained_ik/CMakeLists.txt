@@ -4,7 +4,7 @@ project(constrained_ik)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS kdl_parser roscpp urdf eigen_conversions)
+find_package(catkin REQUIRED COMPONENTS kdl_parser roscpp urdf eigen_conversions moveit_ros_planning moveit_core)
 
 ## System dependencies are found with CMake's conventions
 find_package(orocos_kdl REQUIRED)
@@ -83,6 +83,13 @@ add_library(constrained_ik_plugin
             src/constrained_ik_plugin.cpp
 )
 target_link_libraries(constrained_ik_plugin constrained_ik ${catkin_LIBRARIES})
+
+add_library(moveit_clik_planner_plugin
+            src/constrained_ik_planner_plugin.cpp
+            src/joint_interpolation_planner.cpp
+            src/cartesian_planner.cpp)
+
+target_link_libraries(moveit_clik_planner_plugin constrained_ik ${catkin_LIBRARIES})
 
 ## Declare a cpp executable
 # add_executable(constrained_ik_node src/constrained_ik_node.cpp)
