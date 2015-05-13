@@ -149,7 +149,6 @@ public:
                       std::vector<KDL::Frame> &poses,
                       const std::vector<std::string> &link_names = std::vector<std::string>()) const;
 
-  //TODO test
   /**@brief Assigns values from another BasicKin to this
    * @param rhs Input BasicKin object to copy from
    * @return reference to this BasicKin object
@@ -165,11 +164,13 @@ public:
    */
   bool solvePInv(const Eigen::MatrixXd &A, const Eigen::VectorXd &b, Eigen::VectorXd &x) const;
 
-  //TODO Document
+  /**@brief Calculate Damped Pseudoinverse
+   * Use this SVD to compute A+ (pseudoinverse of A). Weighting still TBD.
+   * @param A Input matrix (represents Jacobian)
+   * @param P Output matrix (represents pseudoinverse of A)
+   * @return True if Pseudoinverse completes properly
+   */
   bool dampedPInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P) const;
-
-  //TODO Document
-  bool PInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P) const;
 
 private:
   bool initialized_;

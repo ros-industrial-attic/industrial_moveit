@@ -92,11 +92,6 @@ public:
    */
   bool getJointNames(std::vector<std::string> &names) const {return kin_.getJointNames(names);};
 
-  /**@brief Getter for joint_update_gain_ (gain used to scale joint diff in IK loop)
-   * @return Value of joint_update_gain_
-   */
-  inline double getJointUpdateGain() const {return joint_update_gain_;};
-
   /**@brief Getter for joint_convergence_tol_ (convergence criteria in IK loop)
    * Used to check if solution is progressing or has settled
    * @return Value of joint_convergence_tol_
@@ -147,11 +142,6 @@ public:
    */
   static double rangedAngle(double angle);
 
-  /**@brief Setter for joint_update_gain_ (gain used to scale joint diff in IK loop)
-   * @param gain New value for joint_update_gain_
-   */
-  inline void setJointUpdateGain(const double gain) {joint_update_gain_ = gain;};
-
   /**@brief Setter for joint_convergence_tol_ (convergence criteria in IK loop)
    * @param jt_cnv_tol new value for joint_convergence_tol_
    */
@@ -163,9 +153,6 @@ public:
   inline void setMaxIter(const unsigned int max_iter) {max_iter_ = max_iter;};
 
 protected:
-  // gains and scaling factors
-  double joint_update_gain_;
-
   // termination-criteria limits / tolerances
   unsigned int max_iter_;
   double joint_convergence_tol_;
@@ -193,10 +180,10 @@ protected:
   virtual Eigen::MatrixXd calcConstraintJacobian(constraint_types::ConstraintType constraint_type);
 
   //TODO document
-  virtual Eigen::MatrixXd calcNullspaceProjection(const Eigen::MatrixXd &J);
+  virtual Eigen::MatrixXd calcNullspaceProjection(const Eigen::MatrixXd &J) const;
 
   //TODO document
-  virtual Eigen::MatrixXd calcDampedPseudoinverse(const Eigen::MatrixXd &J);
+  virtual Eigen::MatrixXd calcDampedPseudoinverse(const Eigen::MatrixXd &J) const;
 
   //TODO document
   void clipToJointLimits(Eigen::VectorXd &joints);

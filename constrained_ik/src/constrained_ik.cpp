@@ -30,7 +30,6 @@ using Eigen::Affine3d;
 Constrained_IK::Constrained_IK()
 {
   initialized_ = false;
-  joint_update_gain_ = 0.09;        //default joint update gain
   max_iter_ = 500;                  //default max_iter
   joint_convergence_tol_ = 0.0001;   //default convergence tolerance
   debug_ = false;
@@ -58,7 +57,7 @@ Eigen::MatrixXd Constrained_IK::calcConstraintJacobian(constraint_types::Constra
   }
 }
 
-Eigen::MatrixXd Constrained_IK::calcNullspaceProjection(const Eigen::MatrixXd &J)
+Eigen::MatrixXd Constrained_IK::calcNullspaceProjection(const Eigen::MatrixXd &J) const
 {
   MatrixXd J_pinv = calcDampedPseudoinverse(J);
   int mn = std::max(J.rows(),J.cols());
@@ -66,7 +65,7 @@ Eigen::MatrixXd Constrained_IK::calcNullspaceProjection(const Eigen::MatrixXd &J
   return (MatrixXd::Identity(mn,mn)-J_pinv*J);
 }
 
-Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J)
+Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J) const
 {
   MatrixXd J_pinv;
 
