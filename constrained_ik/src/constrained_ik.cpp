@@ -30,25 +30,58 @@ using Eigen::Affine3d;
 Constrained_IK::Constrained_IK()
 {
   initialized_ = false;
-  joint_update_gain_ = 0.09;        //default joint update gain
   max_iter_ = 500;                  //default max_iter
   joint_convergence_tol_ = 0.0001;   //default convergence tolerance
   debug_ = false;
 }
 
-Eigen::VectorXd Constrained_IK::calcConstraintError()
+Eigen::VectorXd Constrained_IK::calcConstraintError(constraint_types::ConstraintType constraint_type)
 {
-  return constraints_.calcError();
+  switch(constraint_type)
+  {
+    case constraint_types::primary:
+      return primary_constraints_.calcError();
+    case constraint_types::auxiliary:
+      return auxiliary_constraints_.calcError();
+  }
 }
 
-Eigen::MatrixXd Constrained_IK::calcConstraintJacobian()
+Eigen::MatrixXd Constrained_IK::calcConstraintJacobian(constraint_types::ConstraintType constraint_type)
 {
-  return constraints_.calcJacobian();
+  switch(constraint_type)
+  {
+    case constraint_types::primary:
+      return primary_constraints_.calcJacobian();
+    case constraint_types::auxiliary:
+      return auxiliary_constraints_.calcJacobian();
+  }
+}
+
+Eigen::MatrixXd Constrained_IK::calcNullspaceProjection(const Eigen::MatrixXd &J) const
+{
+  MatrixXd J_pinv = calcDampedPseudoinverse(J);
+  int mn = std::max(J.rows(),J.cols());
+
+  return (MatrixXd::Identity(mn,mn)-J_pinv*J);
+}
+
+Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J) const
+{
+  MatrixXd J_pinv;
+
+  if (kin_.dampedPInv(J,J_pinv)){
+    return J_pinv;
+  }
+  else
+  {
+    ROS_ERROR_STREAM("Not able to calculate damped pseudoinverse!");
+    throw std::runtime_error("Not able to calculate damped pseudoinverse!  IK solution may be invalid.");
+  }
 }
 
 void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed, Eigen::VectorXd &joint_angles)
 {
-  if (!checkInitialized())
+  if (!checkInitialized(constraint_types::primary))
     throw std::runtime_error("Must call init() before using Constrained_IK");
   //TODO should goal be checked here instead of in reset()?
 
@@ -62,16 +95,29 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
   {
     // calculate a Jacobian (relating joint-space updates/deltas to cartesian-space errors/deltas)
     // and the associated cartesian-space error/delta vector
-    MatrixXd J  = calcConstraintJacobian();
-    VectorXd err = calcConstraintError();
+    // Primary Constraints
+    MatrixXd J_p  = calcConstraintJacobian(constraint_types::primary);
+    MatrixXd Ji_p = calcDampedPseudoinverse(J_p);
+    MatrixXd N_p = calcNullspaceProjection(J_p);
+    VectorXd err_p = calcConstraintError(constraint_types::primary);
 
     // solve for the resulting joint-space update
-    VectorXd dJoint;
+    VectorXd dJoint_p;
+    VectorXd dJoint_a;
 
-    kin_.solvePInv(J, err, dJoint);
+    dJoint_p = (Ji_p*err_p);
+
+    // Auxiliary Constraints
+    dJoint_a.setZero(dJoint_p.size());
+    if (checkInitialized(constraint_types::auxiliary)) {
+      MatrixXd J_a  = calcConstraintJacobian(constraint_types::auxiliary);
+      VectorXd err_a = calcConstraintError(constraint_types::auxiliary);
+      MatrixXd Jnull_a = calcDampedPseudoinverse(J_a*N_p);
+      dJoint_a = Jnull_a*(err_a-J_a*Ji_p*err_p);
+    }
 
     // update joint solution by the calculated update (or a partial fraction)
-    joint_angles += dJoint * joint_update_gain_;
+    joint_angles += (dJoint_p + 0.5*dJoint_a);
     clipToJointLimits(joint_angles);
 
     // re-update internal state variables
@@ -84,7 +130,7 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
 bool Constrained_IK::checkStatus() const
 {
   // check constraints for completion
-  if (constraints_.checkStatus())
+  if (primary_constraints_.checkStatus() && auxiliary_constraints_.checkStatus())
     return true;
 
   // check maximum iterations
@@ -107,7 +153,8 @@ bool Constrained_IK::checkStatus() const
 
 void Constrained_IK::clearConstraintList()
 {
-  constraints_.clear();
+  primary_constraints_.clear();
+  auxiliary_constraints_.clear();
 }
 
 void Constrained_IK::clipToJointLimits(Eigen::VectorXd &joints)
@@ -142,7 +189,8 @@ void Constrained_IK::init(const basic_kin::BasicKin &kin)
 
   kin_ = kin;
   initialized_ = true;
-  constraints_.init(this);
+  primary_constraints_.init(this);
+  auxiliary_constraints_.init(this);
 }
 
 double Constrained_IK::rangedAngle(double angle)
@@ -162,8 +210,8 @@ void Constrained_IK::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &j
         throw std::invalid_argument("Goal pose not proper affine");
 
   state_.reset(goal, joint_seed);  // reset state
-  constraints_.reset();            // reset constraints
-
+  primary_constraints_.reset();            // reset primary constraints
+  auxiliary_constraints_.reset();            // reset auxiliary constraints
 }
 
 void Constrained_IK::update(const Eigen::VectorXd &joints)
@@ -179,7 +227,8 @@ void Constrained_IK::update(const Eigen::VectorXd &joints)
   if (debug_)
       iteration_path_.push_back(joints);
 
-  constraints_.update(state_);
+  primary_constraints_.update(state_);
+  auxiliary_constraints_.update(state_);
 }
 
 } // namespace constrained_ik

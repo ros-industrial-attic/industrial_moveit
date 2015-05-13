@@ -50,7 +50,7 @@ public:
 
   virtual bool checkStatus() const { return false; }
 
-  virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik; }
+  virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik;}
 
   virtual void reset() { };
 

@@ -370,6 +370,39 @@ bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) cons
   return true;
 }
 
+bool BasicKin::dampedPInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P) const
+{
+  const double eps = 0.00001;  // Singular value threshold, TODO: Turn into class member var
+  const double lambda = 0.01;  // Damping factor, TODO: Turn into class member var
+
+  if ( (A.rows() == 0) || (A.cols() == 0) )
+  {
+    ROS_ERROR("Empty matrices not supported");
+    return false;
+  }
+
+  //Calculate A+ (pseudoinverse of A) = V S+ U*, where U* is Hermition of U (just transpose if all values of U are real)
+  //in order to solve Ax=b -> x*=A+ b
+  Eigen::JacobiSVD<MatrixXd> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
+  const MatrixXd &U = svd.matrixU();
+  const VectorXd &Sv = svd.singularValues();
+  const MatrixXd &V = svd.matrixV();
+
+  // calculate the reciprocal of Singular-Values
+  // damp inverse with lambda so that inverse doesn't oscillate near solution
+  size_t nSv = Sv.size();
+  VectorXd inv_Sv(nSv);
+  for(size_t i=0; i<nSv; ++i)
+  {
+    if (fabs(Sv(i)) > eps)
+      inv_Sv(i) = 1/Sv(i);
+    else
+      inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
+  }
+  P = V * inv_Sv.asDiagonal() * U.transpose();
+  return true;
+}
+
 } // namespace basic_kin
 } // namespace constrained_ik
 
