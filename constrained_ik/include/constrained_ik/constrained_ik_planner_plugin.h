@@ -72,9 +72,7 @@ namespace constrained_ik
   protected:
     ros::NodeHandle nh_;
 
-    /**
-     * @brief Containes all the availble CLIK planners
-     */
+    /** Containes all the availble CLIK planners */
     std::map< std::string, constrained_ik::CLIKPlanningContextPtr> planners_;
   };
 } //namespace constrained_ik

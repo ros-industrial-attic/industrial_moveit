@@ -59,6 +59,7 @@ namespace constrained_ik
     void setParameters(const CLIKParameters &params) { params_ = params; }
 
   protected:
+    /** Store the parameters for the CLIK planners. */
     CLIKParameters params_;
 
   };

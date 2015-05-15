@@ -30,7 +30,7 @@
 
 namespace constrained_ik
 {
-/**
+  /**
    * @brief The JointInterpolationPlanner class
    *
    * This class is used to represent a joint interpolated path planner for

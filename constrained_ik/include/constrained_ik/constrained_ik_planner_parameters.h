@@ -97,14 +97,12 @@ namespace constrained_ik
     }
 
   protected:
-    /**
-     * @brief This represents the maximum discretization step allowed in joint
+    /** This represents the maximum discretization step allowed in joint
      * space during the joint interpolated path planning.
      */
     double joint_discretization_step_;
 
-    /**
-     * @brief This represents the maximum discretization step allowed in cartesian
+    /** This represents the maximum discretization step allowed in cartesian
      * space during the cartesian path planning
      */
     double cartesian_discretization_step_;
