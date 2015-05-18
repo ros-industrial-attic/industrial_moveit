@@ -1,21 +1,30 @@
-/*
- * Software License Agreement (Apache License)
- *
- * Copyright (c) 2013, Southwest Research Institute
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
+/**
+* @file test_BasicIK.cpp
+* @brief Test Fixtures
+*
+* Consolidate variable-definitions and init functions for use by multiple tests.
+*
+* @author dsolomon
+* @date Sep 23, 2013
+* @version TODO
+* @bug No known bugs
+*
+* @copyright Copyright (c) 2013, Southwest Research Institute
+*
+* @license Software License Agreement (Apache License)\n
+* \n
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at\n
+* \n
+* http://www.apache.org/licenses/LICENSE-2.0\n
+* \n
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 #include <gtest/gtest.h>
 #include <constrained_ik/ik/basic_ik.h>
 
@@ -24,13 +33,10 @@ using constrained_ik::basic_kin::BasicKin;
 using Eigen::Affine3d;
 using Eigen::VectorXd;
 
-/* ----------------------------------------------------------------
- * Test Fixtures
- *   consolidate variable-definitions and init functions
- *   for use by multiple tests.
- * ----------------------------------------------------------------
+/**
+ * @brief Test Fixtures
+ * Consolidate variable-definitions and init functions for use by multiple tests.
  */
-
 class BasicIKTest : public ::testing::Test
 {
 protected:
@@ -73,14 +79,6 @@ TEST_F(calcInvKin, inputValidation)
   VectorXd seed = VectorXd::Zero(6);
   VectorXd joints;
 
-//  try {
-//      Affine3d btest0, btest2(Eigen::Matrix4d::Zero());
-//      ik.calcInvKin(btest2, seed, joints);
-//      ADD_FAILURE();
-//  } catch (const std::exception &ex) {
-//      SUCCEED();
-//  }
-
   EXPECT_TRUE(ik.checkInitialized());
   EXPECT_ANY_THROW(Basic_IK().calcInvKin(Affine3d::Identity(), seed, joints));      // un-init Basic_IK
   EXPECT_ANY_THROW(ik.calcInvKin(Affine3d(Eigen::Matrix4d::Zero()), seed, joints)); // empty Pose (zeros in matrix because unitary rotation matrix is often in memory)
@@ -119,9 +117,7 @@ TEST_F(calcInvKin, knownPoses)
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*near* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, seed, joints);
-//  EXPECT_TRUE(joints.isApprox(expected, 0.01));
   kin.calcFwdKin(joints, rslt_pose);
-//  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // *near* #2
@@ -130,7 +126,6 @@ TEST_F(calcInvKin, knownPoses)
                "*near* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, seed, joints);
   kin.calcFwdKin(joints, rslt_pose);
-  //  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // seed position *near* expected solution
@@ -139,7 +134,6 @@ TEST_F(calcInvKin, knownPoses)
                "*near* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, seed, joints);
   kin.calcFwdKin(joints, rslt_pose);
-  //  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // test with seed far from expected position
@@ -152,7 +146,6 @@ TEST_F(calcInvKin, knownPoses)
                "*far* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-//  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // *far* #2
@@ -165,7 +158,6 @@ TEST_F(calcInvKin, knownPoses)
                "*far* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-//  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // *farther*
@@ -178,7 +170,6 @@ TEST_F(calcInvKin, knownPoses)
                "*farther* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-//  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_FALSE(rslt_pose.isApprox(pose, 0.005));
 
   // *very far*
@@ -191,7 +182,6 @@ TEST_F(calcInvKin, knownPoses)
                "*very far* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-//  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_FALSE(rslt_pose.isApprox(pose, 0.005));
 }
 
@@ -225,7 +215,6 @@ TEST_F(axisAngleCheck, consistancy)
 
         //rslt may be reverse vector & angle, which is still a valid representation
         EXPECT_TRUE(rslt.isApprox(expected, 1e-5) or rslt.isApprox(-expected, 1e-5));
-//        std::cout << rslt.transpose() << std::endl;
     }
 }
 

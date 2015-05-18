@@ -1,27 +1,27 @@
-/*
- * constrained_ik_plugin.cpp
+/**
+ * @file constrained_ik_plugin.cpp
+ * @brief Constrained inverse kinematic plugin for moveit.
+ * @author dsolomon
+ * @date Sep 15, 2013
+ * @version TODO
+ * @bug No known bugs
  *
- *  Created on: Sep 15, 2013
- *      Author: dsolomon
- */
-/*
- * Software License Agreement (Apache License)
+ * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * Copyright (c) 2013, Southwest Research Institute
- *
+ * @license Software License Agreement (Apache License)\n
+ * \n
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * You may obtain a copy of the License at\n
+ * \n
+ * http://www.apache.org/licenses/LICENSE-2.0\n
+ * \n
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <constrained_ik/constrained_ik_plugin.h>
 #include <constrained_ik/ik/basic_ik.h>
 #include <constrained_ik/ik/test_ik.h>
@@ -197,7 +197,6 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
                                             moveit_msgs::MoveItErrorCodes &error_code,
                                             const kinematics::KinematicsQueryOptions &options) const
 {
-//    ros::Time start(ros::Time::now());
     if(!active_)
     {
         ROS_ERROR("kinematics not active");
@@ -226,7 +225,6 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
     {
         ROS_ERROR_STREAM("Caught exception in plugin from IK: " << e.what());
         error_code.val = error_code.NO_IK_SOLUTION;
-//        return false;
         success &= false;
     }
     solution.resize(dimension_);
@@ -246,7 +244,7 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
     // Default: return successfully
     if (success)
         error_code.val = error_code.SUCCESS;
-//    ROS_DEBUG_STREAM("Planning took " << (ros::Time::now() - start).toSec() << " seconds for " << solver.getState().iter << " iterations.");
+
     return success;
 
 }
@@ -269,7 +267,6 @@ bool ConstrainedIKPlugin::getPositionFK(const std::vector<std::string> &link_nam
     for(int i=0; i < dimension_; i++)
     {
         jnt_pos_in(i) = joint_angles[i];
-        // ROS_DEBUG("Joint angle: %d %f",i,joint_angles[i]);
     }
 
     poses.resize(link_names.size());

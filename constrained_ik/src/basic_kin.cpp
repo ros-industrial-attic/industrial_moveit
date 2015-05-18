@@ -1,22 +1,30 @@
-/*
- * Software License Agreement (Apache License)
+/**
+ * @file basic_kin.cpp
+ * @brief Basic low-level kinematics functions.
  *
- * Copyright (c) 2013, Southwest Research Institute
+ * Typically, just wrappers around the equivalent KDL calls.
  *
+ * @author dsolomon
+ * @date Sep 15, 2013
+ * @version TODO
+ * @bug No known bugs
+ *
+ * @copyright Copyright (c) 2013, Southwest Research Institute
+ *
+ * @license Software License Agreement (Apache License)\n
+ * \n
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * You may obtain a copy of the License at\n
+ * \n
+ * http://www.apache.org/licenses/LICENSE-2.0\n
+ * \n
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-
 #include "constrained_ik/basic_kin.h"
 #include <ros/ros.h>
 #include <eigen_conversions/eigen_kdl.h>
@@ -364,13 +372,10 @@ bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) cons
       inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
   }
   x = V * inv_Sv.asDiagonal() * U.transpose() * b;
-//  ROS_INFO_STREAM("Singular values:\n" << Sv.transpose());
-//  ROS_INFO_STREAM("U,V:\n" << U << std::endl << std::endl << V);
-
   return true;
 }
 
-bool BasicKin::dampedPInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P) const
+bool BasicKin::dampedPInv(const MatrixXd &A, MatrixXd &P) const
 {
   const double eps = 0.00001;  // Singular value threshold, TODO: Turn into class member var
   const double lambda = 0.01;  // Damping factor, TODO: Turn into class member var

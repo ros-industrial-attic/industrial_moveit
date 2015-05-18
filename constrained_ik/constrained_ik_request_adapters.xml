@@ -1,0 +1,7 @@
+<library path="lib/libconstrained_ik_request_adapters">
+  <class name="constrained_ik/ConstrainedIKRequestAdapters" type="constrained_ik::ConstrainedIKRequestAdapters" base_class_type="planning_request_adapter::PlanningRequestAdapter">
+    <description>
+      This is a joint interpolated planner to be used with constrained ik solver.
+    </description>
+  </class>
+</library>
