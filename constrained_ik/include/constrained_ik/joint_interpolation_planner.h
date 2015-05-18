@@ -1,20 +1,28 @@
-/*
- * joint_interpolation_planner.h
+/**
+ * @file joint_interpolation_planner.h
+ * @brief Joint interpolation planner for moveit.
  *
- *  Created on: May 4, 2015
- *      Author: Levi Armstrong
- */
-/*
- * Software License Agreement (Apache License)
+ * This class is used to represent a joint interpolated path planner for
+ * moveit.  This planner does not have the inherent ability to avoid
+ * collision. It does check if the path created is collision free before it
+ * returns a trajectory.  If a collision is found it returns an empty
+ * trajectory and moveit error.
  *
- * Copyright (c) 2013, Southwest Research Institute
+ * @author Levi Armstrong
+ * @date May 4, 2015
+ * @version TODO
+ * @bug No known bugs
  *
+ * @copyright Copyright (c) 2015, Southwest Research Institute
+ *
+ * @license Software License Agreement (Apache License)\n
+ * \n
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * You may obtain a copy of the License at\n
+ * \n
+ * http://www.apache.org/licenses/LICENSE-2.0\n
+ * \n
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,7 +39,7 @@
 namespace constrained_ik
 {
   /**
-   * @brief The JointInterpolationPlanner class
+   * @brief Joint interpolation planner for moveit.
    *
    * This class is used to represent a joint interpolated path planner for
    * moveit.  This planner does not have the inherent ability to avoid
