@@ -163,8 +163,6 @@ AvoidJointLimits::LimitsT::LimitsT(double minPos, double maxPos, double threshol
   min_pos = minPos;
   max_pos = maxPos;
 
-//  range = maxPos - minPos;
-
   //threshold given as a percentage of range. Translate to actual joint distance
   e = threshold * (maxPos - minPos); //range;
   lower_thresh = minPos + e;

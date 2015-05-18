@@ -79,14 +79,6 @@ TEST_F(calcInvKin, inputValidation)
   VectorXd seed = VectorXd::Zero(6);
   VectorXd joints;
 
-//  try {
-//      Affine3d btest0, btest2(Eigen::Matrix4d::Zero());
-//      ik.calcInvKin(btest2, seed, joints);
-//      ADD_FAILURE();
-//  } catch (const std::exception &ex) {
-//      SUCCEED();
-//  }
-
   EXPECT_TRUE(ik.checkInitialized());
   EXPECT_ANY_THROW(Basic_IK().calcInvKin(Affine3d::Identity(), seed, joints));      // un-init Basic_IK
   EXPECT_ANY_THROW(ik.calcInvKin(Affine3d(Eigen::Matrix4d::Zero()), seed, joints)); // empty Pose (zeros in matrix because unitary rotation matrix is often in memory)
@@ -125,9 +117,7 @@ TEST_F(calcInvKin, knownPoses)
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*near* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, seed, joints);
-//  EXPECT_TRUE(joints.isApprox(expected, 0.01));
   kin.calcFwdKin(joints, rslt_pose);
-//  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // *near* #2
@@ -136,7 +126,6 @@ TEST_F(calcInvKin, knownPoses)
                "*near* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, seed, joints);
   kin.calcFwdKin(joints, rslt_pose);
-  //  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // seed position *near* expected solution
@@ -145,7 +134,6 @@ TEST_F(calcInvKin, knownPoses)
                "*near* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, seed, joints);
   kin.calcFwdKin(joints, rslt_pose);
-  //  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // test with seed far from expected position
@@ -158,7 +146,6 @@ TEST_F(calcInvKin, knownPoses)
                "*far* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-//  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // *far* #2
@@ -171,7 +158,6 @@ TEST_F(calcInvKin, knownPoses)
                "*far* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-//  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // *farther*
@@ -184,7 +170,6 @@ TEST_F(calcInvKin, knownPoses)
                "*farther* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-//  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_FALSE(rslt_pose.isApprox(pose, 0.005));
 
   // *very far*
@@ -197,7 +182,6 @@ TEST_F(calcInvKin, knownPoses)
                "*very far* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-//  std::cout << rslt_pose.matrix() << std::endl << pose.matrix() << std::endl;
   EXPECT_FALSE(rslt_pose.isApprox(pose, 0.005));
 }
 
@@ -231,7 +215,6 @@ TEST_F(axisAngleCheck, consistancy)
 
         //rslt may be reverse vector & angle, which is still a valid representation
         EXPECT_TRUE(rslt.isApprox(expected, 1e-5) or rslt.isApprox(-expected, 1e-5));
-//        std::cout << rslt.transpose() << std::endl;
     }
 }
 

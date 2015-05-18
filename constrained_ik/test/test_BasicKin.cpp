@@ -58,7 +58,7 @@ protected:
   bool comparePoses(const std::vector<KDL::Frame> &actual, const std::vector<KDL::Frame> &expected, const double tol = 1e-6)
   {
       bool rtn;
-//      ASSERT_TRUE(actual.size() == expected.size());
+
       if (actual.size() != expected.size())
           return false;
       for (size_t ii=0; ii<actual.size(); ++ii)
@@ -189,12 +189,10 @@ TEST_F(linkTransforms, knownPoses)
     //joints 2-5
     joint_angles = VectorXd::Zero(6);
     std::vector<std::string> link_names_short(link_names.begin()+1, link_names.end()-1);
-//    expected[0] = Frame(Vector(0,0,.674));    //rotation defaults to identity
     expected[1] = Frame(Vector(0,0,.674));    //rotation defaults to identity
     expected[2] = Frame(Vector(.4318,.12446,.674));     //rotation defaults to identity
     expected[3] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
     expected[4] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
-//    expected[5] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
     std::vector<Frame> expected_short(expected.begin()+1, expected.end()-1);
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names_short));    //all link names
     EXPECT_TRUE(comparePoses(actual, expected_short, 1e-4));
@@ -205,7 +203,7 @@ TEST_F(linkTransforms, knownPoses)
 
 TEST_F(calcFwdKin, inputValidation)
 {
-    //test for calcFwdKin(joints, pose)
+  //test for calcFwdKin(joints, pose)
   Eigen::Affine3d pose;
 
   EXPECT_FALSE(BasicKin().calcFwdKin(VectorXd(), pose));            // un-init BasicKin & Jnts
@@ -303,9 +301,6 @@ TEST_F(calcJacobian, knownPoses)
                   0,       0,        0,       0,  0,  0,
                   1,       0,        0,      -1,  0, -1;
     EXPECT_TRUE(result.isApprox(expected, 1e-3));
-//        std::cout << joints << std::endl;
-//        std::cout << "result: " <<std::endl << result << std::endl;
-//        std::cout << "expected: " <<std::endl << expected << std::endl;
 
     joints(3) = M_PI_2;
     EXPECT_TRUE(kin.calcJacobian(joints, result));

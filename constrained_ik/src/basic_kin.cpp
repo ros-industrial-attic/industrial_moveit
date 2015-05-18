@@ -372,9 +372,6 @@ bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) cons
       inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
   }
   x = V * inv_Sv.asDiagonal() * U.transpose() * b;
-//  ROS_INFO_STREAM("Singular values:\n" << Sv.transpose());
-//  ROS_INFO_STREAM("U,V:\n" << U << std::endl << std::endl << V);
-
   return true;
 }
 
