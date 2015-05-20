@@ -77,10 +77,7 @@ namespace constrained_ik
       if (j!=0)
         mid_state->setFromIK(group_model, poses[j], link_names.back());
 
-      mid_state->update();
-      traj->addSuffixWayPoint(mid_state, 0.0);
-
-      mid_state = robot_model::RobotStatePtr(new robot_model::RobotState(*mid_state));
+      traj->addSuffixWayPoint(*mid_state, 0.0);
     }
 
     res.planning_time_ = (ros::WallTime::now() - start_time).toSec();
