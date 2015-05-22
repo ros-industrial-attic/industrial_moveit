@@ -38,7 +38,7 @@ class GoalToolOrientation : public GoalOrientation
 {
 public:
   GoalToolOrientation();
-  virtual ~GoalToolOrientation() {};
+  virtual ~GoalToolOrientation() {}
 
   /**
    * @brief Jacobian is the last three rows of standard jacobian

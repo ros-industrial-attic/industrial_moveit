@@ -38,7 +38,7 @@ class JointVelLimits: public Constraint
 {
 public:
     JointVelLimits();
-    virtual ~JointVelLimits() {};
+    virtual ~JointVelLimits() {}
 
     /**
      * @brief Creates jacobian rows corresponding to joint velocity limit avoidance
@@ -87,13 +87,13 @@ public:
      * @brief getter for weight_
      * @return weight_
      */
-    double getWeight() {return weight_;};
+    double getWeight() {return weight_;}
 
     /**
      * @brief setter for weight_
      * @param weight Value to set weight_ to
      */
-    void setWeight(const double &weight) {weight_ = weight;};
+    void setWeight(const double &weight) {weight_ = weight;}
 
 protected:
     std::vector<int> limited_joints_;  /**< @brief list of joints that will be constrained */

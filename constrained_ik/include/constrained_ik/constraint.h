@@ -43,8 +43,8 @@ class Constrained_IK;
 class Constraint
 {
 public:
-  Constraint() : initialized_(false), debug_(false) {};
-  virtual ~Constraint() {};
+  Constraint() : initialized_(false), debug_(false) {}
+  virtual ~Constraint() {}
 
   static void appendError(Eigen::VectorXd &error, const Eigen::VectorXd &addErr);
 
@@ -58,12 +58,12 @@ public:
 
   virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik;}
 
-  virtual void reset() { };
+  virtual void reset() { }
 
   /**@brief set debug mode
    * @param debug Value to set debug_ to (defaults to true)
    */
-  void setDebug(bool debug = true) {debug_= debug;};
+  void setDebug(bool debug = true) {debug_= debug;}
 
   virtual void update(const SolverState &state) { state_ = state; }
 
