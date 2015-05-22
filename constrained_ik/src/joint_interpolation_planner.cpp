@@ -78,15 +78,12 @@ namespace constrained_ik
 
     for (int j=0; j<=steps; j++)
     {
-      mid_state = robot_model::RobotStatePtr(new robot_model::RobotState(start_state));
-
       if (j!=steps)
         start_state.interpolate(goal_state, j*dt, *mid_state);
       else
         start_state.interpolate(goal_state, 1, *mid_state);
 
-      mid_state->update();
-      traj->addSuffixWayPoint(mid_state, 0.0);
+      traj->addSuffixWayPoint(*mid_state, 0.0);
     }
     res.planning_time_ = (ros::WallTime::now() - start_time).toSec();
 
