@@ -48,8 +48,8 @@ namespace constraints
 class AvoidJointLimits: public Constraint
 {
 public:
-    AvoidJointLimits(): Constraint(), weight_(1.0), threshold_(0.05) {};
-    virtual ~AvoidJointLimits() {};
+    AvoidJointLimits(): Constraint(), weight_(1.0), threshold_(0.05) {}
+    virtual ~AvoidJointLimits() {}
 
     /**
      * @brief Creates jacobian rows corresponding to joint velocity limit avoidance
@@ -97,13 +97,13 @@ public:
      * @brief getter for weight_
      * @return weight_
      */
-    double getWeight() {return weight_;};
+    double getWeight() {return weight_;}
 
     /**
      * @brief setter for weight_
      * @param weight Value to set weight_ to
      */
-    void setWeight(const double &weight) {weight_ = weight;};
+    void setWeight(const double &weight) {weight_ = weight;}
 
 protected:
     /**

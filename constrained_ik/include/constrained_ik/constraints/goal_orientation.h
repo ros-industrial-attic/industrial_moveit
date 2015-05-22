@@ -37,7 +37,7 @@ class GoalOrientation : public Constraint
 {
 public:
   GoalOrientation();
-  virtual ~GoalOrientation() {};
+  virtual ~GoalOrientation() {}
 
   /**
    * @brief Jacobian is the last three rows of standard jacobian(in base frame).
@@ -82,7 +82,7 @@ public:
    * @brief Getter for weight_
    * @return weight_
    */
-  Eigen::Vector3d getWeight() {return weight_;};
+  Eigen::Vector3d getWeight() {return weight_;}
 
   /** @brief Resets constraint. Use this before performing new IK request. */
   virtual void reset();
@@ -91,13 +91,13 @@ public:
    * @brief Setter for tolerance (termination criteria)
    * @param tol Value to assign to tol_
    */
-  void setTolerance(double tol) {rot_err_tol_ = tol;};  //TODO turn tolerance into Vector3d
+  void setTolerance(double tol) {rot_err_tol_ = tol;}  //TODO turn tolerance into Vector3d
 
   /**
    * @brief Setter for weight_
    * @param weight Value to assign to weight_
    */
-  void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;};
+  void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;}
 
   /**
    * @brief Update internal state of constraint (overrides constraint::update)

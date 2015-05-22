@@ -38,7 +38,7 @@ class ToolPosition : public GoalPosition
 {
 public:
   ToolPosition();
-  virtual ~ToolPosition() {};
+  virtual ~ToolPosition() {}
 
   /**
    * @brief Jacobian is the first three rows of standard jacobian

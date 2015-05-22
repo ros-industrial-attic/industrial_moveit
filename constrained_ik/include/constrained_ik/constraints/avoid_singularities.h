@@ -45,7 +45,7 @@ class AvoidSingularities: public Constraint
 {
 public:
     AvoidSingularities();
-  virtual ~AvoidSingularities() {};
+  virtual ~AvoidSingularities() {}
 
   /**
    * @brief Jacobian for this constraint is identity (all joints may contribute)
@@ -64,7 +64,7 @@ public:
    * @brief Termination criteria for singularity constraint
    * @return True always (no termination criteria)
    */
-  virtual bool checkStatus() const { return true;}; //always return true
+  virtual bool checkStatus() const { return true;} //always return true
 
   /**
    * @brief Getter for weight_
@@ -76,7 +76,7 @@ public:
    * @brief Setter for weight_
    * @param weight Value to assign to weight_
    */
-  void setWeight(double weight) {weight_ = weight;};
+  void setWeight(double weight) {weight_ = weight;}
 
   /**
    * @brief Updates internal state of constraint (overrides constraint::update)

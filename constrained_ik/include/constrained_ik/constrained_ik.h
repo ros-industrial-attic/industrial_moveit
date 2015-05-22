@@ -61,7 +61,7 @@ public:
   bool linkTransforms(const Eigen::VectorXd &joints,
                       std::vector<KDL::Frame> &poses,
                       const std::vector<std::string> link_names = std::vector<std::string>()) const
-  {return kin_.linkTransforms(joints, poses, link_names);};
+  {return kin_.linkTransforms(joints, poses, link_names);}
 
   /**
    * @brief Add a new constraint to this IK solver
@@ -108,14 +108,14 @@ public:
    * @param names Output vector of strings naming all joints in robot
    * @return True if BasicKin object is initialized
    */
-  bool getJointNames(std::vector<std::string> &names) const {return kin_.getJointNames(names);};
+  bool getJointNames(std::vector<std::string> &names) const {return kin_.getJointNames(names);}
 
   /**
    * @brief Getter for joint_convergence_tol_ (convergence criteria in IK loop)
    * Used to check if solution is progressing or has settled
    * @return Value of joint_convergence_tol_
    */
-  inline double getJtCnvTolerance() const {return joint_convergence_tol_;};
+  inline double getJtCnvTolerance() const {return joint_convergence_tol_;}
 
   /**
    * @brief Getter for kinematics object
@@ -128,13 +128,13 @@ public:
    * @param names Output vector of strings naming all links in robot
    * @return True is BasicKin object is initialized
    */
-  bool getLinkNames(std::vector<std::string> &names) const {return kin_.getLinkNames(names);};
+  bool getLinkNames(std::vector<std::string> &names) const {return kin_.getLinkNames(names);}
 
   /**
    * @brief Getter for max_iter_ (maximum allowable iterations in IK loop)
    * @return Value of max_iter_
    */
-  inline unsigned int getMaxIter() const {return max_iter_;};
+  inline unsigned int getMaxIter() const {return max_iter_;}
 
   /**
    * @brief Getter for latest solver state
@@ -160,7 +160,7 @@ public:
    * @brief Getter for BasicKin numJoints
    * @return Number of variable joints in robot
    */
-  unsigned int numJoints() const {return kin_.numJoints();};
+  unsigned int numJoints() const {return kin_.numJoints();}
 
   /**
    * @brief Translates an angle to lie between +/-PI
@@ -173,13 +173,13 @@ public:
    * @brief Setter for joint_convergence_tol_ (convergence criteria in IK loop)
    * @param jt_cnv_tol new value for joint_convergence_tol_
    */
-  inline void setJtCnvTolerance(const double jt_cnv_tol) {joint_convergence_tol_ = jt_cnv_tol;};
+  inline void setJtCnvTolerance(const double jt_cnv_tol) {joint_convergence_tol_ = jt_cnv_tol;}
 
   /**
    * @brief Setter for man_iter_ (maximum allowable iterations in IK loop)
    * @param max_iter New value for max_iter_
    */
-  inline void setMaxIter(const unsigned int max_iter) {max_iter_ = max_iter;};
+  inline void setMaxIter(const unsigned int max_iter) {max_iter_ = max_iter;}
 
   /**
    * @brief Setter for primary proportional gain

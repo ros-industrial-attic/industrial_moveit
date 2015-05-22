@@ -39,7 +39,7 @@ class ConstraintGroup : public Constraint
 {
 public:
   ConstraintGroup();
-  virtual ~ConstraintGroup() {};
+  virtual ~ConstraintGroup() {}
 
   virtual Eigen::MatrixXd calcJacobian();
   virtual Eigen::VectorXd calcError();
