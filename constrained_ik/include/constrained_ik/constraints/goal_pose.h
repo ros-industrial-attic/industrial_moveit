@@ -46,9 +46,9 @@ public:
     this->add(position_);
     this->add(orientation_);
   }
-  virtual ~GoalPose() {};
-  void setWeightOrientation(const Eigen::Vector3d &weight_orientation) {orientation_->setWeight(weight_orientation);};
-  void setWeightPosition(const Eigen::Vector3d &weight_position) {position_->setWeight(weight_position);};
+  virtual ~GoalPose() {}
+  void setWeightOrientation(const Eigen::Vector3d &weight_orientation) {orientation_->setWeight(weight_orientation);}
+  void setWeightPosition(const Eigen::Vector3d &weight_position) {position_->setWeight(weight_position);}
 protected:
   GoalPosition* position_;
   GoalOrientation* orientation_;

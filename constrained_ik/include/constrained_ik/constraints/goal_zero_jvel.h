@@ -37,7 +37,7 @@ class GoalZeroJVel: public Constraint
 {
 public:
   GoalZeroJVel();
-  virtual ~GoalZeroJVel() {};
+  virtual ~GoalZeroJVel() {}
 
   /**
    * @brief Jacobian is identity because all joints are affected
@@ -55,7 +55,7 @@ public:
    * @brief Termination criteria for mid-joint constraint
    * @return True always (no termination criteria)
    */
-  virtual bool checkStatus() const {return true;};  //always return true
+  virtual bool checkStatus() const {return true;}  //always return true
 
   /**
    * @brief Getter for weight_
@@ -67,7 +67,7 @@ public:
    * @brief setter for weight_
    * @param weight Value to set weight_ to
    */
-  void setWeight(double weight) {weight_ = weight;};
+  void setWeight(double weight) {weight_ = weight;}
 
 protected:
   double weight_;

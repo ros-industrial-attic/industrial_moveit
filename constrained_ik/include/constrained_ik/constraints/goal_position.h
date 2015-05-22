@@ -37,7 +37,7 @@ class GoalPosition : public Constraint
 {
 public:
   GoalPosition();
-  virtual ~GoalPosition() {};
+  virtual ~GoalPosition() {}
 
   /**
    * @brief Calculates distance between two frames
@@ -90,7 +90,7 @@ public:
    * @brief Setter for weight_
    * @param weight Value to assign to weight_
    */
-  void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;};
+  void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;}
 
 protected:
   double pos_err_tol_;  /**< @brief termination criteria */
