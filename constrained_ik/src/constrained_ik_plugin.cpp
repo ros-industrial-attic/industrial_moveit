@@ -131,12 +131,12 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
         seed(ii) = ik_seed_state[ii];
     }
 
-    //create solver and initialize with kinematic model
-    Solver solver;
-    solver.init(kin_);
-
     //Do IK and report results
-    try { solver.calcInvKin(goal, seed, joint_angles); }
+    Solver solver;
+    try { 
+      solver.init(kin_); // inside try because it has the potential to throw and error
+      solver.calcInvKin(goal, seed, joint_angles); 
+    }
     catch (exception &e)
     {
         ROS_ERROR_STREAM("Caught exception from IK: " << e.what());
@@ -209,41 +209,44 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
     Eigen::Affine3d goal;
     tf::transformKDLToEigen(pose_desired, goal);
 
+    if(dimension_ != ik_seed_state.size()){
+      ROS_ERROR("dimension_ and ik_seed_state are of different sizes");
+      return(false);
+    }
     Eigen::VectorXd seed(dimension_), joint_angles;
     for(size_t ii=0; ii < dimension_; ii++)
-    {
-        seed(ii) = ik_seed_state[ii];
-    }
-
-    bool success(true);
+      {
+	seed(ii) = ik_seed_state[ii];
+      }
 
     //Do the IK
     Solver solver;
-    solver.init(kin_);
-    try { solver.calcInvKin(goal, seed, joint_angles); }
-    catch (exception &e)
-    {
-        ROS_ERROR_STREAM("Caught exception in plugin from IK: " << e.what());
-        error_code.val = error_code.NO_IK_SOLUTION;
-        success &= false;
+    bool success(true);
+    try {
+      solver.init(kin_);
+      solver.calcInvKin(goal, seed, joint_angles); 
     }
+    catch (exception &e)
+      {
+	ROS_ERROR_STREAM("Caught exception in plugin from IK: " << e.what());
+	error_code.val = error_code.NO_IK_SOLUTION;
+	success &= false;
+      }
     solution.resize(dimension_);
     for(size_t ii=0; ii < dimension_; ++ii)
-    {
-        solution[ii] = joint_angles(ii);
-    }
-
+      {
+	solution[ii] = joint_angles(ii);
+      }
+    
     // If there is a solution callback registered, check before returning
     if (solution_callback)
-    {
-        solution_callback(ik_pose, solution, error_code);
-        if(error_code.val != error_code.SUCCESS)
-            success &= false;
-    }
-
+      {
+	solution_callback(ik_pose, solution, error_code);
+	if(error_code.val != error_code.SUCCESS)  success &= false;
+      }
     // Default: return successfully
     if (success)
-        error_code.val = error_code.SUCCESS;
+      error_code.val = error_code.SUCCESS;
 
     return success;
 
