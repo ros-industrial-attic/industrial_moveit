@@ -41,8 +41,6 @@ class Basic_IK : public Constrained_IK
 public:
   Basic_IK(): goal_pose_(new constraints::GoalPose), avoid_joint_limits_(new constraints::AvoidJointLimits)
   {
-    goal_pose_ = new constraints::GoalPose();
-    avoid_joint_limits_= new constraints::AvoidJointLimits();
     addConstraint(goal_pose_, constraint_types::primary);
     addConstraint(avoid_joint_limits_, constraint_types::primary);
     avoid_joint_limits_->setDebug(false);
