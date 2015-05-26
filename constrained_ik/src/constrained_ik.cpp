@@ -71,8 +71,9 @@ Eigen::MatrixXd Constrained_IK::calcConstraintJacobian(constraint_types::Constra
 Eigen::MatrixXd Constrained_IK::calcNullspaceProjection(const Eigen::MatrixXd &J) const
 {
   MatrixXd J_pinv = calcDampedPseudoinverse(J);
-  int mn = std::max(J.rows(),J.cols());
-  MatrixXd P = MatrixXd::Identity(mn,mn)-J_pinv*J;
+  MatrixXd JplusJ = J_pinv * J;
+  int mn = JplusJ.rows();
+  MatrixXd P = MatrixXd::Identity(mn,mn)-JplusJ;
   return (P);
 }
 
@@ -119,14 +120,16 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
   // iterate until solution converges (or aborted)
   while (!checkStatus())
   {
+
     // calculate a Jacobian (relating joint-space updates/deltas to cartesian-space errors/deltas)
     // and the associated cartesian-space error/delta vector
     // Primary Constraints
     MatrixXd J_p  = calcConstraintJacobian(constraint_types::primary);
     MatrixXd Ji_p = calcDampedPseudoinverse(J_p);
-    MatrixXd N_p = calcNullspaceProjection(J_p);
+    int rows = J_p.rows();
+    int cols = J_p.cols();
+    MatrixXd N_p = calcNullspaceProjectionTheRightWay(J_p);
     VectorXd err_p = calcConstraintError(constraint_types::primary);
-
     // solve for the resulting joint-space update
     VectorXd dJoint_p;
     VectorXd dJoint_a;
@@ -140,6 +143,7 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
       MatrixXd J_a  = calcConstraintJacobian(constraint_types::auxiliary);
       VectorXd err_a = calcConstraintError(constraint_types::auxiliary);
       MatrixXd Jnull_a = calcDampedPseudoinverse(J_a*N_p);
+      ROS_ERROR("here2");
       dJoint_a = kpa_*Jnull_a*(err_a-J_a*dJoint_p);
     }
 

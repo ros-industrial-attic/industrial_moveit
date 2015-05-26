@@ -25,14 +25,58 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-#include <ros/ros.h>
 #include <gtest/gtest.h>
-#include <constrained_ik/ik/basic_ik.h>
+#include <constrained_ik/constrained_ik.h>
+#include <ros/ros.h>
+#include "constrained_ik/constraints/goal_pose.h"
+#include "constrained_ik/constraints/goal_position.h"
 
-using constrained_ik::basic_ik::Basic_IK;
+using constrained_ik::Constrained_IK;
 using constrained_ik::basic_kin::BasicKin;
 using Eigen::Affine3d;
 using Eigen::VectorXd;
+using Eigen::MatrixXd;
+using Eigen::JacobiSVD;
+
+TEST(constrained_ik, nullspaceprojection)
+{
+  int rows = 6;
+  int cols = 8;
+  MatrixXd A = MatrixXd::Random(rows, cols);
+  
+  JacobiSVD<MatrixXd> svd(A,Eigen::ComputeFullV | Eigen::ComputeFullU);
+  MatrixXd V(svd.matrixV());
+  MatrixXd U(svd.matrixU());
+  Eigen::MatrixXd S(rows,cols);
+  // TODO learn how to initialize eigen matrices with zero()
+  for(int i=0; i<rows; i++){
+    for(int j=0; j<cols; j++) S(i,j) = 0.0;
+  }
+  VectorXd s = svd.singularValues();
+  for(int i=0; i<rows-3; i++){
+    S(i,i) = s(i);
+  }
+
+  MatrixXd A2 = U * S * V.transpose();
+
+  Constrained_IK CIK;
+   
+  MatrixXd P1 = CIK.calcNullspaceProjectionTheRightWay(A2);
+  EXPECT_EQ(P1.rows(), cols);
+  EXPECT_EQ(P1.cols(), cols);
+  MatrixXd P2 = CIK.calcNullspaceProjection(A2);
+  EXPECT_EQ(P2.rows(), cols);
+  EXPECT_EQ(P2.cols(), cols);
+  VectorXd testv1 = VectorXd::Random(cols);
+  VectorXd P1v = P1*testv1;
+  VectorXd P2v = P2*testv1;
+  VectorXd AP1v = A2*P1v;
+  VectorXd AP2v = A2*P2v;
+  double norm1 = AP1v.norm();
+  double norm2 = AP2v.norm();
+  EXPECT_LT(norm1, .00000001);
+  EXPECT_LT(norm2, .00000001);
+}
 
 /**
  * @brief Test Fixtures
@@ -43,7 +87,7 @@ class BasicIKTest : public ::testing::Test
 protected:
   urdf::Model model;
   BasicKin kin;
-  Basic_IK ik;
+  Constrained_IK ik;
   Affine3d homePose;
 
   virtual void SetUp()
@@ -66,12 +110,14 @@ typedef BasicIKTest axisAngleCheck;
 
 TEST_F(init, inputValidation)
 {
-  EXPECT_ANY_THROW(Basic_IK().init(urdf::Model(), "", ""));
-  EXPECT_NO_THROW(Basic_IK().init(model, "base_link", "link_6"));
-  EXPECT_ANY_THROW(Basic_IK().init(BasicKin()));
-  EXPECT_NO_THROW(Basic_IK().init(kin));
+  EXPECT_ANY_THROW(Constrained_IK().init(urdf::Model(), "", ""));
+  EXPECT_NO_THROW(Constrained_IK().init(model, "base_link", "link_6"));
+  EXPECT_ANY_THROW(Constrained_IK().init(BasicKin()));
+  EXPECT_NO_THROW(Constrained_IK().init(kin));
 
-  EXPECT_FALSE(Basic_IK().checkInitialized(constrained_ik::constraint_types::primary));
+  EXPECT_FALSE(Constrained_IK().checkInitialized(constrained_ik::constraint_types::primary));
+  constrained_ik::Constraint *goal_ptr = new  constrained_ik::constraints::GoalPosition();
+  ik.addConstraint(goal_ptr, constrained_ik::constraint_types::primary);
   EXPECT_TRUE(ik.checkInitialized(constrained_ik::constraint_types::primary));
 }
 
@@ -80,8 +126,10 @@ TEST_F(calcInvKin, inputValidation)
   VectorXd seed = VectorXd::Zero(6);
   VectorXd joints;
 
+  constrained_ik::Constraint *goal_ptr = new  constrained_ik::constraints::GoalPosition();
+  ik.addConstraint(goal_ptr, constrained_ik::constraint_types::primary);
   EXPECT_TRUE(ik.checkInitialized(constrained_ik::constraint_types::primary));
-  EXPECT_ANY_THROW(Basic_IK().calcInvKin(Affine3d::Identity(), seed, joints));      // un-init Basic_IK
+  EXPECT_ANY_THROW(Constrained_IK().calcInvKin(Affine3d::Identity(), seed, joints));      // un-init Constrained_IK
   EXPECT_ANY_THROW(ik.calcInvKin(Affine3d(Eigen::Matrix4d::Zero()), seed, joints)); // empty Pose (zeros in matrix because unitary rotation matrix is often in memory)
   EXPECT_ANY_THROW(ik.calcInvKin(homePose, VectorXd(), joints));                    // un-init Seed
   EXPECT_ANY_THROW(ik.calcInvKin(homePose, VectorXd::Zero(99), joints));            // wrong-sized Seed
@@ -110,6 +158,12 @@ TEST_F(calcInvKin, knownPoses)
   seed = expected;
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*at* from expected: " << expected.transpose() << std::endl;
+
+  // adding primary constraints to move to a pose
+  ik.clearConstraintList();
+  constrained_ik::Constraint *goal_pose_ptr = new  constrained_ik::constraints::GoalPose();
+  ik.addConstraint(goal_pose_ptr, constrained_ik::constraint_types::primary);
+
   ik.calcInvKin(pose, seed, joints);
   EXPECT_TRUE(joints.isApprox(expected, 1e-10));
 
@@ -144,8 +198,8 @@ TEST_F(calcInvKin, knownPoses)
                                       1, 0, 0,
                                       0, 0, 1;
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
-               "*far* from expected: " << expected.transpose() << std::endl;
-  ik.setPrimaryKp(.4);
+               "*far1* from expected: " << expected.transpose() << std::endl;
+  ik.setPrimaryKp(.1);
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
@@ -157,8 +211,8 @@ TEST_F(calcInvKin, knownPoses)
                                       0, 1, 0,
                                       1, 0, 0;
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
-               "*far* from expected: " << expected.transpose() << std::endl;
-  
+               "*far2* from expected: " << expected.transpose() << std::endl;
+  ik.setPrimaryKp(.1);
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
@@ -171,6 +225,7 @@ TEST_F(calcInvKin, knownPoses)
                                       0.707107, 0,    0.707107;
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*farther* from expected: " << expected.transpose() << std::endl;
+  ik.setPrimaryKp(.15);
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
@@ -183,10 +238,10 @@ TEST_F(calcInvKin, knownPoses)
                                       1,  0, 0;
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*very far* from expected: " << expected.transpose() << std::endl;
-  ik.setPrimaryKp(.1);
+  ik.setPrimaryKp(.05);
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_FALSE(rslt_pose.isApprox(pose, 0.005));
+  EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 }
 
 /*This test checks the consistancy of the axisAngle calculations from a quaternion value,
