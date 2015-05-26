@@ -143,8 +143,8 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
       MatrixXd J_a  = calcConstraintJacobian(constraint_types::auxiliary);
       VectorXd err_a = calcConstraintError(constraint_types::auxiliary);
       MatrixXd Jnull_a = calcDampedPseudoinverse(J_a*N_p);
-      ROS_ERROR("here2");
       dJoint_a = kpa_*Jnull_a*(err_a-J_a*dJoint_p);
+      ROS_ERROR("theta_p = %f ep = %f ea = %f",dJoint_p.norm(), err_p.norm(), err_a.norm());
     }
 
 

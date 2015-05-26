@@ -201,7 +201,7 @@ public:
    * @param kp
    * @returns true if new value is within [0 1.0]
    */
-  inline bool setAuxillaryKp(const double kp) {
+  inline bool setAuxiliaryKp(const double kp) {
     bool rtn = true;
     if(kp<= 1.0 && kp>= 0.0){
       kpa_ = kp;
