@@ -81,9 +81,21 @@ Eigen::MatrixXd Constrained_IK::calcNullspaceProjectionTheRightWay(const Eigen::
 {
   Eigen::JacobiSVD<MatrixXd> svd(A, Eigen::ComputeFullV);
   MatrixXd V(svd.matrixV());
-  int rnk = svd.rank();
 
-// zero singular vectors in the range of A
+  // determine rank using same algorithym as latest Eigen 
+  // TODO replace next 10 lines of code with rnk = svd.rank(); once eigen3 is updated
+  int rnk = 0;
+  if(svd.singularValues().size()==0) {
+    rnk = 0;
+  }
+  else{
+    double premultiplied_threshold = svd.singularValues().coeff(0) * svd.threshold();
+    rnk = svd.nonzeroSingularValues()-1;
+    while(rnk>=0 && svd.singularValues().coeff(rnk) < premultiplied_threshold) --rnk;
+    rnk++;
+  }
+
+  // zero singular vectors in the range of A
   for(int i=0; i<rnk; ++i)
   {
     for(int j=0; j<A.cols(); j++) V(j,i) = 0; 
@@ -144,7 +156,7 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
       VectorXd err_a = calcConstraintError(constraint_types::auxiliary);
       MatrixXd Jnull_a = calcDampedPseudoinverse(J_a*N_p);
       dJoint_a = kpa_*Jnull_a*(err_a-J_a*dJoint_p);
-      ROS_ERROR("theta_p = %f ep = %f ea = %f",dJoint_p.norm(), err_p.norm(), err_a.norm());
+      ROS_DEBUG("theta_p = %f ep = %f ea = %f",dJoint_p.norm(), err_p.norm(), err_a.norm());
     }
 
 
