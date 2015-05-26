@@ -375,7 +375,7 @@ bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) cons
   return true;
 }
 
-bool BasicKin::dampedPInv(const MatrixXd &A, MatrixXd &P) const
+bool BasicKin::dampedPInv(const MatrixXd &A, MatrixXd &P)
 {
   const double eps = 0.00001;  // Singular value threshold, TODO: Turn into class member var
   const double lambda = 0.01;  // Damping factor, TODO: Turn into class member var

@@ -42,6 +42,8 @@ Constrained_IK::Constrained_IK()
   max_iter_ = 500;                  //default max_iter
   joint_convergence_tol_ = 0.0001;   //default convergence tolerance
   debug_ = false;
+  kpp_ = 0.9;// default primary proportional gain
+  kpa_ = 0.5;// default auxillary proportional gain
 }
 
 Eigen::VectorXd Constrained_IK::calcConstraintError(constraint_types::ConstraintType constraint_type)
@@ -69,16 +71,32 @@ Eigen::MatrixXd Constrained_IK::calcConstraintJacobian(constraint_types::Constra
 Eigen::MatrixXd Constrained_IK::calcNullspaceProjection(const Eigen::MatrixXd &J) const
 {
   MatrixXd J_pinv = calcDampedPseudoinverse(J);
-  int mn = std::max(J.rows(),J.cols());
+  MatrixXd JplusJ = J_pinv * J;
+  int mn = JplusJ.rows();
+  MatrixXd P = MatrixXd::Identity(mn,mn)-JplusJ;
+  return (P);
+}
 
-  return (MatrixXd::Identity(mn,mn)-J_pinv*J);
+Eigen::MatrixXd Constrained_IK::calcNullspaceProjectionTheRightWay(const Eigen::MatrixXd &A) const
+{
+  Eigen::JacobiSVD<MatrixXd> svd(A, Eigen::ComputeFullV);
+  MatrixXd V(svd.matrixV());
+  int rnk = svd.rank();
+
+// zero singular vectors in the range of A
+  for(int i=0; i<rnk; ++i)
+  {
+    for(int j=0; j<A.cols(); j++) V(j,i) = 0; 
+  }
+  MatrixXd P = V *  V.transpose();
+  return(P);
 }
 
 Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J) const
 {
   MatrixXd J_pinv;
 
-  if (kin_.dampedPInv(J,J_pinv)){
+  if (basic_kin::BasicKin::dampedPInv(J,J_pinv)){
     return J_pinv;
   }
   else
@@ -102,19 +120,22 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
   // iterate until solution converges (or aborted)
   while (!checkStatus())
   {
+
     // calculate a Jacobian (relating joint-space updates/deltas to cartesian-space errors/deltas)
     // and the associated cartesian-space error/delta vector
     // Primary Constraints
     MatrixXd J_p  = calcConstraintJacobian(constraint_types::primary);
     MatrixXd Ji_p = calcDampedPseudoinverse(J_p);
-    MatrixXd N_p = calcNullspaceProjection(J_p);
+    int rows = J_p.rows();
+    int cols = J_p.cols();
+    MatrixXd N_p = calcNullspaceProjectionTheRightWay(J_p);
     VectorXd err_p = calcConstraintError(constraint_types::primary);
-
     // solve for the resulting joint-space update
     VectorXd dJoint_p;
     VectorXd dJoint_a;
 
-    dJoint_p = (Ji_p*err_p);
+    dJoint_p = kpp_*(Ji_p*err_p);
+    ROS_DEBUG("theta_p = %f ep = %f",dJoint_p.norm(), err_p.norm());
 
     // Auxiliary Constraints
     dJoint_a.setZero(dJoint_p.size());
@@ -122,11 +143,13 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
       MatrixXd J_a  = calcConstraintJacobian(constraint_types::auxiliary);
       VectorXd err_a = calcConstraintError(constraint_types::auxiliary);
       MatrixXd Jnull_a = calcDampedPseudoinverse(J_a*N_p);
-      dJoint_a = Jnull_a*(err_a-J_a*Ji_p*err_p);
+      dJoint_a = kpa_*Jnull_a*(err_a-J_a*dJoint_p);
+      ROS_ERROR("theta_p = %f ep = %f ea = %f",dJoint_p.norm(), err_p.norm(), err_a.norm());
     }
 
+
     // update joint solution by the calculated update (or a partial fraction)
-    joint_angles += (dJoint_p + 0.5*dJoint_a);
+    joint_angles += (dJoint_p + dJoint_a);
     clipToJointLimits(joint_angles);
 
     // re-update internal state variables

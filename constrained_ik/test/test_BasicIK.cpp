@@ -25,6 +25,7 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
+#include <ros/ros.h>
 #include <gtest/gtest.h>
 #include <constrained_ik/ik/basic_ik.h>
 
@@ -70,8 +71,8 @@ TEST_F(init, inputValidation)
   EXPECT_ANY_THROW(Basic_IK().init(BasicKin()));
   EXPECT_NO_THROW(Basic_IK().init(kin));
 
-  EXPECT_FALSE(Basic_IK().checkInitialized());
-  EXPECT_TRUE(ik.checkInitialized());
+  EXPECT_FALSE(Basic_IK().checkInitialized(constrained_ik::constraint_types::primary));
+  EXPECT_TRUE(ik.checkInitialized(constrained_ik::constraint_types::primary));
 }
 
 TEST_F(calcInvKin, inputValidation)
@@ -79,7 +80,7 @@ TEST_F(calcInvKin, inputValidation)
   VectorXd seed = VectorXd::Zero(6);
   VectorXd joints;
 
-  EXPECT_TRUE(ik.checkInitialized());
+  EXPECT_TRUE(ik.checkInitialized(constrained_ik::constraint_types::primary));
   EXPECT_ANY_THROW(Basic_IK().calcInvKin(Affine3d::Identity(), seed, joints));      // un-init Basic_IK
   EXPECT_ANY_THROW(ik.calcInvKin(Affine3d(Eigen::Matrix4d::Zero()), seed, joints)); // empty Pose (zeros in matrix because unitary rotation matrix is often in memory)
   EXPECT_ANY_THROW(ik.calcInvKin(homePose, VectorXd(), joints));                    // un-init Seed
@@ -144,6 +145,7 @@ TEST_F(calcInvKin, knownPoses)
                                       0, 0, 1;
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*far* from expected: " << expected.transpose() << std::endl;
+  ik.setPrimaryKp(.4);
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
@@ -156,6 +158,7 @@ TEST_F(calcInvKin, knownPoses)
                                       1, 0, 0;
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*far* from expected: " << expected.transpose() << std::endl;
+  
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
   EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
@@ -170,7 +173,7 @@ TEST_F(calcInvKin, knownPoses)
                "*farther* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_FALSE(rslt_pose.isApprox(pose, 0.005));
+  EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // *very far*
   expected << M_PI_2, -M_PI_2, 0, 0, 0, 0;
@@ -180,6 +183,7 @@ TEST_F(calcInvKin, knownPoses)
                                       1,  0, 0;
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*very far* from expected: " << expected.transpose() << std::endl;
+  ik.setPrimaryKp(.1);
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
   EXPECT_FALSE(rslt_pose.isApprox(pose, 0.005));

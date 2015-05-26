@@ -191,7 +191,7 @@ public:
    * @param P Output matrix (represents pseudoinverse of A)
    * @return True if Pseudoinverse completes properly
    */
-  bool dampedPInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P) const;
+static  bool dampedPInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P);
 
 private:
   bool initialized_;

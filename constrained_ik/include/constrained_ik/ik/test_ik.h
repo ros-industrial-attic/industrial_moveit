@@ -44,7 +44,7 @@ namespace test_ik
 class Test_IK : public Constrained_IK
 {
 public:
-  Test_IK():  position_(new constraints::GoalPosition),
+  Test_IK(): Constrained_IK(), position_(new constraints::GoalPosition),
               orientation_(new constraints::GoalOrientation),
               tool_orientation_(new constraints::GoalToolOrientation),
               avoid_joint_limits_(new constraints::AvoidJointLimits),

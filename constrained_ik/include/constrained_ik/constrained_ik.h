@@ -51,7 +51,13 @@ public:
   Constrained_IK();
   virtual ~Constrained_IK() { }
 
-  //TODO document
+  /**
+   * @brief computes and returns the link transfoms of the named joints
+   * @param joints a vector of joints
+   * @param poses the desired pose transforms
+   * @param link_names the names of the links
+   * @return true on success
+   */  
   bool linkTransforms(const Eigen::VectorXd &joints,
                       std::vector<KDL::Frame> &poses,
                       const std::vector<std::string> link_names = std::vector<std::string>()) const
@@ -175,10 +181,63 @@ public:
    */
   inline void setMaxIter(const unsigned int max_iter) {max_iter_ = max_iter;}
 
-protected:
+  /**
+   * @brief Setter for primary proportional gain
+   * @param kp
+   * @returns true if new value is within [0 1.0]
+   */
+  inline bool setPrimaryKp(const double kp) {
+    bool rtn = true;
+    if(kp<= 1.0 && kp>= 0.0){
+      kpp_ = kp;
+    }
+    else{
+      rtn = false;
+    }
+    return(rtn);
+  }
+  /**
+   * @brief Setter for auxillary proportional gain
+   * @param kp
+   * @returns true if new value is within [0 1.0]
+   */
+  inline bool setAuxiliaryKp(const double kp) {
+    bool rtn = true;
+    if(kp<= 1.0 && kp>= 0.0){
+      kpa_ = kp;
+    }
+    else{
+      rtn = false;
+    }
+    return(rtn);
+  }
+    /**
+   * @brief Getter for primary proportional gain
+   */
+ double getPrimaryKp() const {return kpp_;}
+    /**
+   * @brief Getter for auxillary proportional gain
+   */
+ double getAuxillaryKp() const {return kpa_;}
+
+  
+ public:
+
+  //TODO document
+  virtual Eigen::MatrixXd calcNullspaceProjection(const Eigen::MatrixXd &J) const;
+
+  //TODO document
+  virtual Eigen::MatrixXd calcNullspaceProjectionTheRightWay(const Eigen::MatrixXd &A) const;
+
+  //TODO document
+  virtual Eigen::MatrixXd calcDampedPseudoinverse(const Eigen::MatrixXd &J) const;
+
+ protected:
   // termination-criteria limits / tolerances
   unsigned int max_iter_;
   double joint_convergence_tol_;
+  double kpp_;  /**< primary proportional gain */
+  double kpa_; /**< auxillary proportional gain */
 
   // constraints
   ConstraintGroup primary_constraints_;
@@ -206,11 +265,6 @@ protected:
    */
   virtual Eigen::MatrixXd calcConstraintJacobian(constraint_types::ConstraintType constraint_type);
 
-  //TODO document
-  virtual Eigen::MatrixXd calcNullspaceProjection(const Eigen::MatrixXd &J) const;
-
-  //TODO document
-  virtual Eigen::MatrixXd calcDampedPseudoinverse(const Eigen::MatrixXd &J) const;
 
   //TODO document
   void clipToJointLimits(Eigen::VectorXd &joints);
