@@ -74,17 +74,25 @@ bool ConstrainedIKPlugin::initialize(const std::string& robot_description,
 {
     setValues(robot_description, group_name, base_name, tip_name, search_discretization);
 
+    // init robot model
+    robot_model_loader_.reset(new robot_model_loader::RobotModelLoader(robot_description));
+    robot_model_ptr_ = robot_model_loader_->getModel();
+    robot_state_.reset(new moveit::core::RobotState(robot_model_ptr_));
+
     //get robot data from parameter server
-    urdf::Model robot_model;
-    if (!robot_model.initParam(robot_description))
+    if(!robot_model_ptr_)
     {
-        ROS_ERROR_STREAM("Could not load URDF model from " << robot_description);
-        active_ = false;
-        return false;
+      ROS_ERROR_STREAM("Could not load URDF model from " << robot_description);
+      active_ = false;
+      return false;
     }
 
+    // initializing planning scene
+    planning_scene_.reset(new planning_scene::PlanningScene(robot_model_ptr_));
+
     //initialize kinematic solver with robot info
-    if (!kin_.init(robot_model, base_frame_, tip_frame_))
+    urdf::Model *urdf_model = static_cast< urdf::Model* >(robot_model_loader_->getURDF().get());
+    if (!kin_.init(*urdf_model, base_frame_, tip_frame_))
     {
         ROS_ERROR("Could not load ik");
         active_ = false;
@@ -96,6 +104,9 @@ bool ConstrainedIKPlugin::initialize(const std::string& robot_description,
         kin_.getLinkNames(link_names_);
         active_ = true;
     }
+
+
+
     return active_;
 }
 
@@ -135,7 +146,8 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
     Solver solver;
     try { 
       solver.init(kin_); // inside try because it has the potential to throw and error
-      solver.calcInvKin(goal, seed, joint_angles); 
+      solver.calcInvKin(goal, seed, joint_angles);
+
     }
     catch (exception &e)
     {
@@ -148,7 +160,24 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
     {
         solution[ii] = joint_angles(ii);
     }
-    error_code.val = error_code.SUCCESS;
+
+    // printing planning scene info
+    std::stringstream ss;
+    planning_scene_->printKnownObjects(ss);
+    ROS_INFO_STREAM(ss.str());
+
+    // checking for collision
+    robot_state_->setJointGroupPositions(group_name_,solution);
+    if(planning_scene_->isStateColliding(*robot_state_,group_name_))
+    {
+      error_code.val = error_code.GOAL_IN_COLLISION;
+      return false;
+    }
+    else
+    {
+      error_code.val = error_code.SUCCESS;
+    }
+
     return true;
 }
 
