@@ -91,10 +91,9 @@ bool ConstrainedIKPlugin::initialize(const std::string& robot_description,
     planning_scene_.reset(new planning_scene::PlanningScene(robot_model_ptr_));
 
     //initialize kinematic solver with robot info
-    urdf::Model *urdf_model = static_cast< urdf::Model* >(robot_model_loader_->getURDF().get());
-    if (!kin_.init(*urdf_model, base_frame_, tip_frame_))
+    if (!kin_.init(robot_state_->getJointModelGroup(group_name)))
     {
-        ROS_ERROR("Could not load ik");
+        ROS_ERROR("Could not initialize BasicIK");
         active_ = false;
     }
     else
@@ -146,7 +145,7 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
     Solver solver;
     try { 
       solver.init(kin_); // inside try because it has the potential to throw and error
-      solver.calcInvKin(goal, seed, joint_angles);
+      solver.calcInvKin(goal, seed, planning_scene_, joint_angles);
 
     }
     catch (exception &e)
@@ -159,23 +158,6 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
     for(size_t ii=0; ii < dimension_; ++ii)
     {
         solution[ii] = joint_angles(ii);
-    }
-
-    // printing planning scene info
-    std::stringstream ss;
-    planning_scene_->printKnownObjects(ss);
-    ROS_INFO_STREAM(ss.str());
-
-    // checking for collision
-    robot_state_->setJointGroupPositions(group_name_,solution);
-    if(planning_scene_->isStateColliding(*robot_state_,group_name_))
-    {
-      error_code.val = error_code.GOAL_IN_COLLISION;
-      return false;
-    }
-    else
-    {
-      error_code.val = error_code.SUCCESS;
     }
 
     return true;
@@ -251,28 +233,29 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
     //Do the IK
     Solver solver;
     bool success(true);
-    try {
+    try
+    {
       solver.init(kin_);
-      solver.calcInvKin(goal, seed, joint_angles); 
+      solver.calcInvKin(goal, seed, planning_scene_,joint_angles);
     }
     catch (exception &e)
-      {
-	ROS_ERROR_STREAM("Caught exception in plugin from IK: " << e.what());
-	error_code.val = error_code.NO_IK_SOLUTION;
-	success &= false;
-      }
+    {
+      ROS_ERROR_STREAM("Caught exception in plugin from IK: " << e.what());
+      error_code.val = error_code.NO_IK_SOLUTION;
+      success &= false;
+    }
     solution.resize(dimension_);
     for(size_t ii=0; ii < dimension_; ++ii)
-      {
-	solution[ii] = joint_angles(ii);
-      }
+    {
+      solution[ii] = joint_angles(ii);
+    }
     
     // If there is a solution callback registered, check before returning
     if (solution_callback)
-      {
-	solution_callback(ik_pose, solution, error_code);
-	if(error_code.val != error_code.SUCCESS)  success &= false;
-      }
+    {
+      solution_callback(ik_pose, solution, error_code);
+      if(error_code.val != error_code.SUCCESS)  success &= false;
+    }
     // Default: return successfully
     if (success)
       error_code.val = error_code.SUCCESS;

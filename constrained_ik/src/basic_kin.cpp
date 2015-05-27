@@ -29,6 +29,8 @@
 #include <ros/ros.h>
 #include <eigen_conversions/eigen_kdl.h>
 #include <kdl_parser/kdl_parser.hpp>
+#include <moveit/robot_model/robot_model.h>
+#include <urdf/model.h>
 
 
 namespace constrained_ik
@@ -210,19 +212,22 @@ int BasicKin::getLinkNum(const std::string &link_name) const
     return it-link_list_.begin()+1;
 }
 
-bool BasicKin::init(const urdf::Model &robot,
-                   const std::string &base_name, const std::string &tip_name)
+bool BasicKin::init(const moveit::core::JointModelGroup* group)
 {
   initialized_ = false;
+  const robot_model::RobotModel& r  = group->getParentModel();
+  const boost::shared_ptr<const urdf::ModelInterface> urdf = group->getParentModel().getURDF();
+  std::string base_name = group->getLinkModelNames().front();
+  std::string tip_name = group->getLinkModelNames().back();
 
-  if (!robot.getRoot())
+  if (!urdf->getRoot())
   {
     ROS_ERROR("Invalid URDF in BasicKin::init call");
     return false;
   }
 
 //  KDL::Tree tree;
-  if (!kdl_parser::treeFromUrdfModel(robot, kdl_tree_))
+  if (!kdl_parser::treeFromUrdfModel(*urdf, kdl_tree_))
   {
     ROS_ERROR("Failed to initialize KDL from URDF model");
     return false;
@@ -248,8 +253,8 @@ bool BasicKin::init(const urdf::Model &robot,
     if (jnt.getType() == KDL::Joint::None) continue;
 
     joint_list_[j] = jnt.getName();
-    joint_limits_(j,0) = robot.getJoint(jnt.getName())->limits->lower;
-    joint_limits_(j,1) = robot.getJoint(jnt.getName())->limits->upper;
+    joint_limits_(j,0) = urdf->getJoint(jnt.getName())->limits->lower;
+    joint_limits_(j,1) = urdf->getJoint(jnt.getName())->limits->upper;
     j++;
   }
 
@@ -257,6 +262,7 @@ bool BasicKin::init(const urdf::Model &robot,
   jac_solver_.reset(new KDL::ChainJntToJacSolver(robot_chain_));
 
   initialized_ = true;
+  group_ = group;
 
 //  for (size_t ii=0; ii<joint_list_.size(); ++ii)
 //      ROS_INFO_STREAM("Added joint " << joint_list_[ii]);

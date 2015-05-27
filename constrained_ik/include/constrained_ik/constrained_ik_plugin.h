@@ -31,10 +31,6 @@
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/kinematics_base/kinematics_base.h>
 #include <moveit/planning_scene/planning_scene.h>
-
-//#include <moveit_msgs/GetPositionFK.h>
-//#include <moveit_msgs/GetPositionIK.h>
-//#include <moveit_msgs/GetKinematicSolverInfo.h>
 #include <moveit_msgs/MoveItErrorCodes.h>
 
 namespace constrained_ik
