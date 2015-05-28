@@ -91,7 +91,8 @@ Eigen::MatrixXd Constrained_IK::calcNullspaceProjectionTheRightWay(const Eigen::
     }
   else
     {
-      double premultiplied_threshold = svd.singularValues().coeff(0) * svd.threshold();
+      double threshold = std::min(A.rows(),A.cols())*Eigen::NumTraits<double>::epsilon();
+      double premultiplied_threshold = svd.singularValues().coeff(0) * threshold;
       rnk = svd.nonzeroSingularValues()-1;
       while(rnk>=0 && svd.singularValues().coeff(rnk) < premultiplied_threshold) --rnk;
       rnk++;
