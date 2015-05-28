@@ -26,13 +26,19 @@
 * limitations under the License.
 */
 #include <gtest/gtest.h>
+#include <ros/ros.h>
 #include <constrained_ik/basic_kin.h>
 #include <boost/assign/list_of.hpp>
 #include <eigen_conversions/eigen_kdl.h>
+#include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit/robot_model/joint_model_group.h>
 
 using constrained_ik::basic_kin::BasicKin;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+
+const std::string GROUP_NAME = "manipulator";
+const std::string ROBOT_DESCRIPTION_PARAM = "robot_description";
 
 /**
  * @brief Test Fixtures
@@ -47,12 +53,18 @@ protected:
 class RobotTest : public BaseTest
 {
 protected:
-  urdf::Model model;
+
+  robot_model_loader::RobotModelLoaderPtr loader_;
+  moveit::core::RobotModelPtr robot_model_;
 
   virtual void SetUp()
   {
-    ASSERT_TRUE(model.initFile(urdf_file));
-    ASSERT_TRUE(kin.init(model, "base_link", "link_6"));
+
+    loader_.reset(new robot_model_loader::RobotModelLoader(ROBOT_DESCRIPTION_PARAM));
+    robot_model_ = loader_->getModel();
+
+    ASSERT_TRUE(robot_model_);
+    ASSERT_TRUE(kin.init(robot_model_->getJointModelGroup(GROUP_NAME)));
   }
 
   bool comparePoses(const std::vector<KDL::Frame> &actual, const std::vector<KDL::Frame> &expected, const double tol = 1e-6)
@@ -98,13 +110,8 @@ typedef PInvTest  solvePInv;
 
 TEST_F(init, inputValidation)
 {
-  EXPECT_FALSE(kin.init(urdf::Model(), "base_link", "tip_link"));
-  EXPECT_FALSE(kin.init(model, "", ""));
-  EXPECT_FALSE(kin.init(model, "base_link", ""));
-  EXPECT_FALSE(kin.init(model, "", "link_6"));
-  EXPECT_FALSE(kin.init(model, "INVALID", "link_6"));
-  EXPECT_FALSE(kin.init(model, "base_link", "INVALID"));
-  EXPECT_TRUE(kin.init(model, "base_link", "link_6"));
+  EXPECT_FALSE(kin.init(NULL));
+  EXPECT_TRUE(kin.init(robot_model_->getJointModelGroup(GROUP_NAME)));
 }
 
 
@@ -363,6 +370,7 @@ TEST_F(solvePInv, randomInputs)
 int main(int argc, char **argv)
 {
   testing::InitGoogleTest(&argc, argv);
+  ros::init(argc,argv,"test_BasicKin");
   return RUN_ALL_TESTS();
 }
 

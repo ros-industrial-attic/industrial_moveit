@@ -215,6 +215,13 @@ int BasicKin::getLinkNum(const std::string &link_name) const
 bool BasicKin::init(const moveit::core::JointModelGroup* group)
 {
   initialized_ = false;
+
+  if(group == NULL)
+  {
+    ROS_ERROR_STREAM("Null pointer to JointModelGroup");
+    return false;
+  }
+
   const robot_model::RobotModel& r  = group->getParentModel();
   const boost::shared_ptr<const urdf::ModelInterface> urdf = group->getParentModel().getURDF();
   std::string base_name = group->getLinkModelNames().front();

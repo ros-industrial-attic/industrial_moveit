@@ -28,11 +28,16 @@
 #include <ros/ros.h>
 #include <gtest/gtest.h>
 #include <constrained_ik/ik/basic_ik.h>
+#include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit/robot_model/joint_model_group.h>
 
 using constrained_ik::basic_ik::Basic_IK;
 using constrained_ik::basic_kin::BasicKin;
 using Eigen::Affine3d;
 using Eigen::VectorXd;
+
+const std::string GROUP_NAME = "manipulator";
+const std::string ROBOT_DESCRIPTION_PARAM = "robot_description";
 
 /**
  * @brief Test Fixtures
@@ -41,15 +46,20 @@ using Eigen::VectorXd;
 class BasicIKTest : public ::testing::Test
 {
 protected:
-  urdf::Model model;
+
+  robot_model_loader::RobotModelLoaderPtr loader_;
+  moveit::core::RobotModelPtr robot_model_;
   BasicKin kin;
   Basic_IK ik;
   Affine3d homePose;
 
   virtual void SetUp()
   {
-    ASSERT_TRUE(model.initFile(urdf_file));
-    ASSERT_TRUE(kin.init(model, "base_link", "link_6"));
+    loader_.reset(new robot_model_loader::RobotModelLoader(ROBOT_DESCRIPTION_PARAM));
+    robot_model_ = loader_->getModel();
+
+    ASSERT_TRUE(robot_model_);
+    ASSERT_TRUE(kin.init(robot_model_->getJointModelGroup(GROUP_NAME)));
     ASSERT_TRUE(kin.calcFwdKin(VectorXd::Zero(6), homePose));
     ASSERT_NO_THROW(ik.init(kin));
   }
@@ -66,8 +76,6 @@ typedef BasicIKTest axisAngleCheck;
 
 TEST_F(init, inputValidation)
 {
-  EXPECT_ANY_THROW(Basic_IK().init(urdf::Model(), "", ""));
-  EXPECT_NO_THROW(Basic_IK().init(model, "base_link", "link_6"));
   EXPECT_ANY_THROW(Basic_IK().init(BasicKin()));
   EXPECT_NO_THROW(Basic_IK().init(kin));
 
@@ -225,6 +233,7 @@ TEST_F(axisAngleCheck, consistancy)
 int main(int argc, char **argv)
 {
   testing::InitGoogleTest(&argc, argv);
+  ros::init(argc,argv,"test_BasicIK");
   return RUN_ALL_TESTS();
 }
 
