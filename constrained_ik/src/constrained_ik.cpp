@@ -126,6 +126,13 @@ Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J
 
 void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 const Eigen::VectorXd &joint_seed,
+                                Eigen::VectorXd &joint_angles)
+{
+  calcInvKin(goal,joint_seed,planning_scene::PlanningSceneConstPtr(),joint_angles);
+}
+
+void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
+                                const Eigen::VectorXd &joint_seed,
                                 planning_scene::PlanningSceneConstPtr planning_scene,
                                 Eigen::VectorXd &joint_angles)
 {

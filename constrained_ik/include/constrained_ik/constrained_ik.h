@@ -95,6 +95,15 @@ public:
                           Eigen::VectorXd &joint_angles);
 
   /**
+   * @brief computes the inverse kinematics for the given pose of the tip link
+   * @param pose  The pose of the tip link
+   * @param joint_seed joint values that is used as the initial guess
+   * @param joint_angles The joint pose that places the tip link to the desired pose.
+   */
+  virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed,
+                          Eigen::VectorXd &joint_angles);
+
+  /**
    * @brief Checks to see if object is initialized (ie: init() has been called)
    * @param constraint_type Contraint type (primary or auxiliary)
    * @return True if object is initialized
