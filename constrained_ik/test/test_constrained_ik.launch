@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+
+  <include file="$(find constrained_ik)/test/resources/load_puma_560.launch" />
+  <test test-name="constrained_ik" pkg="constrained_ik" type="test_constrained_ik" />
+</launch>
