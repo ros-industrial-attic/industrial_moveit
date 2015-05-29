@@ -53,7 +53,12 @@ namespace basic_kin
 class BasicKin
 {
 public:
-  BasicKin() : initialized_(false) {}
+  BasicKin() :
+    initialized_(false),
+    group_(NULL)
+  {
+
+  }
   ~BasicKin() {}
 
   /**

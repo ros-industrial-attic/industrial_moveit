@@ -112,7 +112,6 @@ protected:
 private:
   static const std::string urdf_file;
 };
-const std::string BasicIKTest::urdf_file = "puma_560.urdf";
 
 
 typedef BasicIKTest init;
@@ -499,6 +498,7 @@ int main(int argc, char **argv)
 {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc,argv,"test_constrained_ik");
+  ros::NodeHandle nh;
   return RUN_ALL_TESTS();
 }
 

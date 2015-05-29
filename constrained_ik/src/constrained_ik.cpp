@@ -184,8 +184,9 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     // checking for collision on a valid planning scene
     if(planning_scene)
     {
-      robot_state_->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
-      if(planning_scene->isStateColliding(*robot_state_,kin_.getJointModelGroup()->getName()))
+      moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
+      robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
+      if(planning_scene->isStateColliding(*robot_state,kin_.getJointModelGroup()->getName()))
       {
         ROS_ERROR("Robot is in collision at this pose");
         break;
@@ -254,12 +255,6 @@ void Constrained_IK::init(const basic_kin::BasicKin &kin)
   initialized_ = true;
   primary_constraints_.init(this);
   auxiliary_constraints_.init(this);
-
-  int v = 4;
-  boost::shared_ptr<int> vp = boost::make_shared<int>(v);
-  robot_model::RobotModelConstPtr robot_model = boost::make_shared<const robot_model::RobotModel>(
-      kin_.getJointModelGroup()->getParentModel());
-  robot_state_.reset(new moveit::core::RobotState(robot_model));
 
 }
 

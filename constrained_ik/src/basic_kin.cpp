@@ -224,8 +224,9 @@ bool BasicKin::init(const moveit::core::JointModelGroup* group)
 
   const robot_model::RobotModel& r  = group->getParentModel();
   const boost::shared_ptr<const urdf::ModelInterface> urdf = group->getParentModel().getURDF();
-  std::string base_name = group->getLinkModelNames().front();
-  std::string tip_name = group->getLinkModelNames().back();
+  std::string base_name = group->getActiveJointModels().front()->getParentLinkModel()->getName();
+  std::string tip_name = group->getActiveJointModels().back()->getChildLinkModel()->getName();
+
 
   if (!urdf->getRoot())
   {
@@ -344,6 +345,7 @@ BasicKin& BasicKin::operator=(const BasicKin& rhs)
   link_list_ = rhs.link_list_;
   fk_solver_.reset(new KDL::ChainFkSolverPos_recursive(robot_chain_));
   jac_solver_.reset(new KDL::ChainJntToJacSolver(robot_chain_));
+  group_ = rhs.group_;
 
   return *this;
 }

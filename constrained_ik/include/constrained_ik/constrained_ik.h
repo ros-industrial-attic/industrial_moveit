@@ -262,8 +262,6 @@ public:
   bool debug_;
   std::vector<Eigen::VectorXd> iteration_path_;
 
-  moveit::core::RobotStatePtr robot_state_;
-
   /**
    * @brief Pure definition for calculating constraint error
    * @param constraint_type Contraint type (primary or auxiliary)

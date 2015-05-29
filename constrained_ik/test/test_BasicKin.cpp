@@ -84,7 +84,6 @@ protected:
 private:
   static const std::string urdf_file;
 };
-const std::string RobotTest::urdf_file = "puma_560.urdf";
 
 class PInvTest : public BaseTest
 {
@@ -371,6 +370,7 @@ int main(int argc, char **argv)
 {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc,argv,"test_BasicKin");
+  ros::NodeHandle nh;
   return RUN_ALL_TESTS();
 }
 
