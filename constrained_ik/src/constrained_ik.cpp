@@ -156,7 +156,7 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     MatrixXd Ji_p = calcDampedPseudoinverse(J_p);
     int rows = J_p.rows();
     int cols = J_p.cols();
-    MatrixXd N_p = calcNullspaceProjection(J_p);
+    MatrixXd N_p = calcNullspaceProjectionTheRightWay(J_p);
     VectorXd err_p = calcConstraintError(constraint_types::primary);
     // solve for the resulting joint-space update
     VectorXd dJoint_p;
