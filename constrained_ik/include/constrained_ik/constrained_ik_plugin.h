@@ -28,11 +28,9 @@
 #include <constrained_ik/basic_kin.h>
 #include <ros/ros.h>
 
+#include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/kinematics_base/kinematics_base.h>
-
-//#include <moveit_msgs/GetPositionFK.h>
-//#include <moveit_msgs/GetPositionIK.h>
-//#include <moveit_msgs/GetKinematicSolverInfo.h>
+#include <moveit/planning_scene/planning_scene.h>
 #include <moveit_msgs/MoveItErrorCodes.h>
 
 namespace constrained_ik
@@ -114,6 +112,10 @@ namespace constrained_ik
     basic_kin::BasicKin kin_;
     int dimension_;
     std::vector<std::string> link_names_, joint_names_;
+    planning_scene::PlanningScenePtr planning_scene_; // Used for collision queries
+    moveit::core::RobotStatePtr robot_state_;
+    robot_model::RobotModelConstPtr robot_model_ptr_;
+    robot_model_loader::RobotModelLoaderPtr  robot_model_loader_;// Loads urdf and srdf data from the "robot_description" ros parameter
   };
 
 }   //namespace constrained_ik

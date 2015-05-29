@@ -37,7 +37,7 @@
 #include <kdl/chain.hpp>
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/chainjnttojacsolver.hpp>
-#include <urdf/model.h>
+#include <moveit/robot_model/joint_model_group.h>
 
 namespace constrained_ik
 {
@@ -53,7 +53,12 @@ namespace basic_kin
 class BasicKin
 {
 public:
-  BasicKin() : initialized_(false) {}
+  BasicKin() :
+    initialized_(false),
+    group_(NULL)
+  {
+
+  }
   ~BasicKin() {}
 
   /**
@@ -109,7 +114,7 @@ public:
    */
   bool getJointNames(std::vector<std::string> &names) const;
 
-  //TODO test
+
 //   * @brief Get list of joint names for specific robot chain
 //   * Crawls chain to create list
 //   * @param chain Input robot chain to retrieve list from
@@ -145,9 +150,16 @@ public:
    * @param robot Input model containing robot information
    * @param base_name Input name of base link
    * @param tip_name Input name of tip link
+   * @param group_name Input name of the kinematic group
    * @return True if init() completes successfully
    */
-  bool init(const urdf::Model &robot, const std::string &base_name, const std::string &tip_name);
+  bool init(const moveit::core::JointModelGroup* group);
+
+  /**
+   * @brief Get the name of the kinematic group
+   * @return string with the group name
+   */
+  const moveit::core::JointModelGroup* getJointModelGroup() const {return group_;}
 
   /**
    * @brief Number of joints in robot
@@ -195,6 +207,7 @@ static  bool dampedPInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P);
 
 private:
   bool initialized_;
+  const moveit::core::JointModelGroup* group_;
   KDL::Chain  robot_chain_;
   KDL::Tree   kdl_tree_;
   std::vector<std::string> joint_list_, link_list_;

@@ -138,11 +138,18 @@ install(DIRECTORY include/${PROJECT_NAME}/
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(test_BasicKin test/test_BasicKin.cpp WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
-target_link_libraries(test_BasicKin constrained_ik)
+if(CATKIN_ENABLE_TESTING)
+  find_package(rostest REQUIRED)
 
-catkin_add_gtest(test_BasicIK test/test_BasicIK.cpp WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
-target_link_libraries(test_BasicIK constrained_ik)
+  add_rostest_gtest(test_basic_kin test/test_basic_kin.launch test/test_BasicKin.cpp )
+  target_link_libraries(test_basic_kin constrained_ik)
 
-catkin_add_gtest(test_constrained_ik test/test_constrained_ik.cpp WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
-target_link_libraries(test_constrained_ik constrained_ik)
+  add_rostest_gtest(test_basic_ik test/test_basic_ik.launch test/test_BasicIK.cpp )
+  target_link_libraries(test_basic_ik constrained_ik)
+
+  add_rostest_gtest(test_constrained_ik     
+    test/test_constrained_ik.launch 
+    test/test_constrained_ik.cpp )
+  target_link_libraries(test_constrained_ik constrained_ik)
+endif()
+

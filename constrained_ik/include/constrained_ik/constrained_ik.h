@@ -36,6 +36,7 @@
 #include <Eigen/Geometry>
 #include <urdf/model.h>
 #include <constrained_ik/enum_types.h>
+#include <moveit/planning_scene/planning_scene.h>
 
 namespace constrained_ik
 {
@@ -81,8 +82,26 @@ public:
     }
   }
 
-  //TODO document
-  virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed, Eigen::VectorXd &joint_angles);
+  /**
+   * @brief computes the inverse kinematics for the given pose of the tip link
+   * @param pose  The pose of the tip link
+   * @param joint_seed joint values that is used as the initial guess
+   * @param planning_scene pointer to a planning scene that holds all the object in the environment.  Use by the solver to check for collision; if
+   *            a null pointer is passed then collisions are ignored.
+   * @param joint_angles The joint pose that places the tip link to the desired pose.
+   */
+  virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed,
+                          planning_scene::PlanningSceneConstPtr planning_scene,
+                          Eigen::VectorXd &joint_angles);
+
+  /**
+   * @brief computes the inverse kinematics for the given pose of the tip link
+   * @param pose  The pose of the tip link
+   * @param joint_seed joint values that is used as the initial guess
+   * @param joint_angles The joint pose that places the tip link to the desired pose.
+   */
+  virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed,
+                          Eigen::VectorXd &joint_angles);
 
   /**
    * @brief Checks to see if object is initialized (ie: init() has been called)
@@ -141,14 +160,6 @@ public:
    * @return Latest solver state
    */
   inline const SolverState& getState() const { return state_; }
-
-  /**
-   * @brief Initializes object with robot info
-   * @param robot Robot urdf information
-   * @param base_name Name of base link
-   * @param tip_name Name of tip link
-   */
-  void init(const urdf::Model &robot, const std::string &base_name, const std::string &tip_name);
 
   /**
    * @brief Initializes object with kinematic model of robot

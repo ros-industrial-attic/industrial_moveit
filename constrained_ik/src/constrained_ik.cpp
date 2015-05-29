@@ -27,6 +27,7 @@
  */
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraint_group.h"
+#include <boost/make_shared.hpp>
 #include <ros/ros.h>
 
 namespace constrained_ik
@@ -103,6 +104,7 @@ Eigen::MatrixXd Constrained_IK::calcNullspaceProjectionTheRightWay(const Eigen::
   {
     for(int j=0; j<A.cols(); j++) V(j,i) = 0; 
   }
+
   MatrixXd P = V *  V.transpose();
   return(P);
 }
@@ -122,7 +124,17 @@ Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J
     }
 }
 
-void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed, Eigen::VectorXd &joint_angles)
+void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
+                                const Eigen::VectorXd &joint_seed,
+                                Eigen::VectorXd &joint_angles)
+{
+  calcInvKin(goal,joint_seed,planning_scene::PlanningSceneConstPtr(),joint_angles);
+}
+
+void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
+                                const Eigen::VectorXd &joint_seed,
+                                planning_scene::PlanningSceneConstPtr planning_scene,
+                                Eigen::VectorXd &joint_angles)
 {
   if (!checkInitialized(constraint_types::primary))
     throw std::runtime_error("Must call init() before using Constrained_IK");
@@ -168,6 +180,18 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal, const Eigen::Vector
     // update joint solution by the calculated update (or a partial fraction)
     joint_angles += (dJoint_p + dJoint_a);
     clipToJointLimits(joint_angles);
+
+    // checking for collision on a valid planning scene
+    if(planning_scene)
+    {
+      moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
+      robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
+      if(planning_scene->isStateColliding(*robot_state,kin_.getJointModelGroup()->getName()))
+      {
+        ROS_ERROR("Robot is in collision at this pose");
+        break;
+      }
+    }
 
     // re-update internal state variables
     update(joint_angles);
@@ -222,15 +246,6 @@ void Constrained_IK::clipToJointLimits(Eigen::VectorXd &joints)
       ROS_WARN("Joints have been clipped");
 }
 
-void Constrained_IK::init(const urdf::Model &robot, const std::string &base_name, const std::string &tip_name)
-{
-  basic_kin::BasicKin kin;
-  if (! kin.init(robot, base_name, tip_name))
-    throw std::runtime_error("Failed to initialize BasicKin");
-
-  init(kin);
-}
-
 void Constrained_IK::init(const basic_kin::BasicKin &kin)
 {
   if (!kin.checkInitialized())
@@ -240,6 +255,7 @@ void Constrained_IK::init(const basic_kin::BasicKin &kin)
   initialized_ = true;
   primary_constraints_.init(this);
   auxiliary_constraints_.init(this);
+
 }
 
 double Constrained_IK::rangedAngle(double angle)
