@@ -75,17 +75,26 @@ bool ConstrainedIKPlugin::initialize(const std::string& robot_description,
     setValues(robot_description, group_name, base_name, tip_name, search_discretization);
 
     // init robot model
-    robot_model_loader_.reset(new robot_model_loader::RobotModelLoader(robot_description));
-    robot_model_ptr_ = robot_model_loader_->getModel();
-    robot_state_.reset(new moveit::core::RobotState(robot_model_ptr_));
+    rdf_loader::RDFLoader rdf_loader(robot_description_);
+    const boost::shared_ptr<srdf::Model> &srdf = rdf_loader.getSRDF();
+    const boost::shared_ptr<urdf::ModelInterface>& urdf_model = rdf_loader.getURDF();
 
-    //get robot data from parameter server
+    if (!urdf_model || !srdf)
+    {
+      ROS_ERROR_STREAM("URDF and SRDF must be loaded for Constrained Ik solver to work.");
+      return false;
+    }
+
+    // instatiating a robot model
+    robot_model_ptr_.reset(new robot_model::RobotModel(urdf_model,srdf));
     if(!robot_model_ptr_)
     {
       ROS_ERROR_STREAM("Could not load URDF model from " << robot_description);
       active_ = false;
       return false;
     }
+
+    robot_state_.reset(new moveit::core::RobotState(robot_model_ptr_));
 
     // initializing planning scene
     planning_scene_.reset(new planning_scene::PlanningScene(robot_model_ptr_));
