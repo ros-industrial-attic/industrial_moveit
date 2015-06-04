@@ -81,7 +81,7 @@ bool ConstrainedIKPlugin::initialize(const std::string& robot_description,
 
     if (!urdf_model || !srdf)
     {
-      ROS_ERROR_NAMED("kdl","URDF and SRDF must be loaded for KDL kinematics solver to work.");
+      ROS_ERROR_STREAM("URDF and SRDF must be loaded for Constrained Ik solver to work.");
       return false;
     }
 
