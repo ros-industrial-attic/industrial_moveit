@@ -114,8 +114,7 @@ namespace constrained_ik
     std::vector<std::string> link_names_, joint_names_;
     planning_scene::PlanningScenePtr planning_scene_; // Used for collision queries
     moveit::core::RobotStatePtr robot_state_;
-    robot_model::RobotModelConstPtr robot_model_ptr_;
-    robot_model_loader::RobotModelLoaderPtr  robot_model_loader_;// Loads urdf and srdf data from the "robot_description" ros parameter
+    robot_model::RobotModelPtr robot_model_ptr_;
   };
 
 }   //namespace constrained_ik
