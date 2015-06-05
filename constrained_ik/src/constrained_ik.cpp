@@ -28,6 +28,7 @@
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraint_group.h"
 #include <boost/make_shared.hpp>
+#include <moveit/collision_detection_fcl/collision_common.h>
 #include <ros/ros.h>
 
 namespace constrained_ik
@@ -124,6 +125,48 @@ Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J
     }
 }
 
+
+bool Constrained_IK::getDistanceInfo(const std::string link_name, Constrained_IK::DistanceInfo dist_info) const
+{
+  std::map<std::string, fcl::DistanceResult>::const_iterator it;
+  it = distance_detailed_.find(link_name);
+
+  if (it != distance_detailed_.end())
+  {
+    fcl::DistanceResult dist = static_cast<const fcl::DistanceResult>(it->second);
+    const collision_detection::CollisionGeometryData* cd1 = static_cast<const collision_detection::CollisionGeometryData*>(dist.o1->getUserData());
+    const collision_detection::CollisionGeometryData* cd2 = static_cast<const collision_detection::CollisionGeometryData*>(dist.o2->getUserData());
+    if (cd1->ptr.link->getName() == link_name)
+    {
+      dist_info.nearest_obsticle = cd2->ptr.link->getName();
+      dist_info.link_point = Eigen::Vector3d(dist.nearest_points[0].data.vs);
+      dist_info.obsticle_point = Eigen::Vector3d(dist.nearest_points[1].data.vs);
+      dist_info.avoidance_vector = Eigen::Vector3d((dist.nearest_points[1]-dist.nearest_points[0]).data.vs);
+      dist_info.avoidance_vector.norm();
+      dist_info.distance = dist.min_distance;
+    }
+    else if (cd2->ptr.link->getName() == link_name)
+    {
+      dist_info.nearest_obsticle = cd1->ptr.link->getName();
+      dist_info.link_point = Eigen::Vector3d(dist.nearest_points[1].data.vs);
+      dist_info.obsticle_point = Eigen::Vector3d(dist.nearest_points[0].data.vs);
+      dist_info.avoidance_vector = Eigen::Vector3d((dist.nearest_points[0]-dist.nearest_points[1]).data.vs);
+      dist_info.avoidance_vector.norm();
+      dist_info.distance = dist.min_distance;
+    }
+    else
+    {
+      ROS_ERROR("getDistanceInfo was unable to find link after match!");
+      return false;
+    }
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
 void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 const Eigen::VectorXd &joint_seed,
                                 Eigen::VectorXd &joint_angles)
@@ -148,6 +191,15 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   // iterate until solution converges (or aborted)
   while (!checkStatus())
   {
+    // If planning_scene is not null we calculate distance data for collision
+    // avoidance.
+    if(planning_scene)
+    {
+      moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
+      robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
+      robot_state->update();
+      distance_detailed_ = planning_scene->getCollisionRobot()->distanceSelfDetailed(*robot_state, planning_scene->getAllowedCollisionMatrix());
+    }
 
     // calculate a Jacobian (relating joint-space updates/deltas to cartesian-space errors/deltas)
     // and the associated cartesian-space error/delta vector
@@ -168,33 +220,32 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     // Auxiliary Constraints
     dJoint_a.setZero(dJoint_p.size());
     if (checkInitialized(constraint_types::auxiliary)) 
-      {
-	MatrixXd J_a  = calcConstraintJacobian(constraint_types::auxiliary);
-	VectorXd err_a = calcConstraintError(constraint_types::auxiliary);
-	MatrixXd Jnull_a = calcDampedPseudoinverse(J_a*N_p);
-	dJoint_a = kpa_*Jnull_a*(err_a-J_a*dJoint_p);
-	ROS_DEBUG("theta_p = %f ep = %f ea = %f",dJoint_p.norm(), err_p.norm(), err_a.norm());
-      }
-
+    {
+      MatrixXd J_a  = calcConstraintJacobian(constraint_types::auxiliary);
+      VectorXd err_a = calcConstraintError(constraint_types::auxiliary);
+      MatrixXd Jnull_a = calcDampedPseudoinverse(J_a*N_p);
+      dJoint_a = kpa_*Jnull_a*(err_a-J_a*dJoint_p);
+      ROS_DEBUG("theta_p = %f ep = %f ea = %f",dJoint_p.norm(), err_p.norm(), err_a.norm());
+    }
 
     // update joint solution by the calculated update (or a partial fraction)
     joint_angles += (dJoint_p + dJoint_a);
     clipToJointLimits(joint_angles);
 
-    // checking for collision on a valid planning scene
-    if(planning_scene)
-    {
-      moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
-      robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
-      if(planning_scene->isStateColliding(*robot_state,kin_.getJointModelGroup()->getName()))
-      {
-        ROS_ERROR("Robot is in collision at this pose");
-        break;
-      }
-    }
-
     // re-update internal state variables
     update(joint_angles);
+  }
+
+  // checking for collision on a valid planning scene
+  if(planning_scene)
+  {
+    moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
+    robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
+    robot_state->update();
+    if(planning_scene->isStateColliding(*robot_state,kin_.getJointModelGroup()->getName()))
+    {
+      ROS_ERROR("Robot is in collision at this pose");
+    }
   }
 
   ROS_INFO_STREAM("IK solution: " << joint_angles.transpose());

@@ -199,10 +199,12 @@ public:
    */
   inline bool setPrimaryKp(const double kp) {
     bool rtn = true;
-    if(kp<= 1.0 && kp>= 0.0){
+    if(kp<= 1.0 && kp>= 0.0)
+    {
       kpp_ = kp;
     }
-    else{
+    else
+    {
       rtn = false;
     }
     return(rtn);
@@ -214,25 +216,24 @@ public:
    */
   inline bool setAuxiliaryKp(const double kp) {
     bool rtn = true;
-    if(kp<= 1.0 && kp>= 0.0){
+    if(kp<= 1.0 && kp>= 0.0)
+    {
       kpa_ = kp;
     }
-    else{
+    else
+    {
       rtn = false;
     }
     return(rtn);
   }
-    /**
+  /**
    * @brief Getter for primary proportional gain
    */
- double getPrimaryKp() const {return kpp_;}
-    /**
+  double getPrimaryKp() const {return kpp_;}
+  /**
    * @brief Getter for auxillary proportional gain
    */
- double getAuxillaryKp() const {return kpa_;}
-
-  
- public:
+  double getAuxillaryKp() const {return kpa_;}
 
   //TODO document
   virtual Eigen::MatrixXd calcNullspaceProjection(const Eigen::MatrixXd &J) const;
@@ -242,6 +243,25 @@ public:
 
   //TODO document
   virtual Eigen::MatrixXd calcDampedPseudoinverse(const Eigen::MatrixXd &J) const;
+
+  /** @brief Containst distance information in the planning frame queried from getDistanceInfo() */
+  struct DistanceInfo
+  {
+    std::string nearest_obsticle; /**< The link name for nearest obsticle/link to request link. */
+    Eigen::Vector3d link_point; /**< Point on request link */
+    Eigen::Vector3d obsticle_point; /**< Point on nearest link to requested link */
+    Eigen::Vector3d avoidance_vector; /**< Normilized Vector created by nearest points */
+    double distance; /**< Distance between nearest points */
+  };
+
+  /**
+   * @brief getDistanceInfo
+   * @param link_name Requested link name for distance information
+   * @param dist_info Stores the distance information for requested link
+   * @return bool, true if distance information exists.
+   */
+  bool getDistanceInfo(const std::string link_name, DistanceInfo dist_info) const;
+
 
  protected:
   // termination-criteria limits / tolerances
@@ -258,6 +278,8 @@ public:
   bool initialized_;
   SolverState state_;
   basic_kin::BasicKin kin_;
+
+  std::map<std::string, fcl::DistanceResult> distance_detailed_; /**< Closest distance for each object in model */
 
   bool debug_;
   std::vector<Eigen::VectorXd> iteration_path_;
