@@ -43,7 +43,7 @@ class Constrained_IK;
 class Constraint
 {
 public:
-  Constraint() : initialized_(false), debug_(false) {}
+  Constraint() : initialized_(false), debug_(false), requires_collision_checks_(false) {}
   virtual ~Constraint() {}
 
   static void appendError(Eigen::VectorXd &error, const Eigen::VectorXd &addErr);
@@ -73,12 +73,19 @@ public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+  bool requires_collision_checks()
+  { 
+    return requires_collision_checks_; 
+  };
+
 protected:
   bool initialized_;
   bool debug_;
+  bool requires_collision_checks_;
+
   const Constrained_IK* ik_;
   SolverState state_;
-
+  
   int numJoints();
 }; // class Constraint
 

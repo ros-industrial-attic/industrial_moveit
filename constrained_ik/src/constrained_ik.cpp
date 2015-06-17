@@ -44,7 +44,7 @@ Constrained_IK::Constrained_IK()
   max_iter_ = 500;                  //default max_iter
   joint_convergence_tol_ = 0.0001;   //default convergence tolerance
   debug_ = false;
-  kpp_ = 0.9;// default primary proportional gain
+  kpp_ = 0.1;// default primary proportional gain
   kpa_ = 0.5;// default auxillary proportional gain
 }
 
@@ -126,7 +126,7 @@ Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J
 }
 
 
-bool Constrained_IK::getDistanceInfo(const std::string link_name, Constrained_IK::DistanceInfo dist_info) const
+bool Constrained_IK::getDistanceInfo(const std::string link_name, Constrained_IK::DistanceInfo &dist_info) const
 {
   std::map<std::string, fcl::DistanceResult>::const_iterator it;
   it = distance_detailed_.find(link_name);
@@ -163,21 +163,27 @@ bool Constrained_IK::getDistanceInfo(const std::string link_name, Constrained_IK
   }
   else
   {
+    ROS_ERROR("couldn't find link with that name %s", link_name.c_str());
+    for( it=distance_detailed_.begin(); it != distance_detailed_.end(); it++){
+      ROS_ERROR("name: %s", it->first.c_str());
+    }
     return false;
   }
 }
 
 void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 const Eigen::VectorXd &joint_seed,
-                                Eigen::VectorXd &joint_angles)
+                                Eigen::VectorXd &joint_angles,
+                                int min_updates) 
 {
-  calcInvKin(goal,joint_seed,planning_scene::PlanningSceneConstPtr(),joint_angles);
+  calcInvKin(goal,joint_seed, planning_scene::PlanningSceneConstPtr(), joint_angles, min_updates);
 }
 
 void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 const Eigen::VectorXd &joint_seed,
-                                planning_scene::PlanningSceneConstPtr planning_scene,
-                                Eigen::VectorXd &joint_angles)
+                                const planning_scene::PlanningSceneConstPtr planning_scene,
+                                Eigen::VectorXd &joint_angles,
+                                int min_updates) 
 {
   if (!checkInitialized(constraint_types::primary))
     throw std::runtime_error("Must call init() before using Constrained_IK");
@@ -188,33 +194,45 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   reset(goal, joint_seed);    // reset state vars for this IK solve
   update(joint_angles);       // update current state
 
+  if(collision_checks_required())// initialize detailed distance_ prior to checking statusn
+  {
+    moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
+    robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
+    robot_state->update();
+    distance_detailed_ = planning_scene->getCollisionRobot()->distanceSelfDetailed(*robot_state, planning_scene->getAllowedCollisionMatrix());
+  }
+
   // iterate until solution converges (or aborted)
-  while (!checkStatus())
+  while (!checkStatus() || min_updates>0)
   {
     // If planning_scene is not null we calculate distance data for collision
     // avoidance.
-    if(planning_scene)
+    if(collision_checks_required())
     {
       moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
       robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
       robot_state->update();
       distance_detailed_ = planning_scene->getCollisionRobot()->distanceSelfDetailed(*robot_state, planning_scene->getAllowedCollisionMatrix());
     }
-
     // calculate a Jacobian (relating joint-space updates/deltas to cartesian-space errors/deltas)
     // and the associated cartesian-space error/delta vector
     // Primary Constraints
+
     MatrixXd J_p  = calcConstraintJacobian(constraint_types::primary);
+    // TODO since we already have J_p = USV, use that to get null-projection too.
+    // otherwise, we are repeating the expensive calculation of the SVD
     MatrixXd Ji_p = calcDampedPseudoinverse(J_p);
     int rows = J_p.rows();
     int cols = J_p.cols();
-    MatrixXd N_p = calcNullspaceProjectionTheRightWay(J_p);
     VectorXd err_p = calcConstraintError(constraint_types::primary);
     // solve for the resulting joint-space update
     VectorXd dJoint_p;
     VectorXd dJoint_a;
 
     dJoint_p = kpp_*(Ji_p*err_p);
+    if(dJoint_p.norm() > 1.0){// limit maximum update to unit size 1 radian /meter
+      dJoint_p = dJoint_p/dJoint_p.norm();
+    }
     ROS_DEBUG("theta_p = %f ep = %f",dJoint_p.norm(), err_p.norm());
 
     // Auxiliary Constraints
@@ -223,9 +241,17 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     {
       MatrixXd J_a  = calcConstraintJacobian(constraint_types::auxiliary);
       VectorXd err_a = calcConstraintError(constraint_types::auxiliary);
+      MatrixXd N_p = calcNullspaceProjectionTheRightWay(J_p);
       MatrixXd Jnull_a = calcDampedPseudoinverse(J_a*N_p);
       dJoint_a = kpa_*Jnull_a*(err_a-J_a*dJoint_p);
-      ROS_DEBUG("theta_p = %f ep = %f ea = %f",dJoint_p.norm(), err_p.norm(), err_a.norm());
+      if(state_.iter > max_iter_*.9){ // print debugging info if not converging 
+        ROS_ERROR("theta_p = %f theta_a = %f ep = %f ea = %f", dJoint_p.norm(), dJoint_a.norm(), err_p.norm(), err_a.norm());
+      }
+    }
+
+    if(state_.iter > max_iter_*.9){ // print debugging info if not converging 
+      if(!checkInitialized(constraint_types::auxiliary))
+        ROS_ERROR("theta_p = %f ep = %f ", dJoint_p.norm(),  err_p.norm());
     }
 
     // update joint solution by the calculated update (or a partial fraction)
@@ -234,11 +260,11 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
 
     // re-update internal state variables
     update(joint_angles);
+    min_updates--;
   }
 
   // checking for collision on a valid planning scene
-  if(planning_scene)
-  {
+  if(collision_checks_required()){
     moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
     robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
     robot_state->update();
@@ -254,7 +280,10 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
 bool Constrained_IK::checkStatus() const
 {
   // check constraints for completion
-  if (primary_constraints_.checkStatus() && auxiliary_constraints_.checkStatus())
+  bool primary_status = primary_constraints_.checkStatus();
+  bool auxiliary_status = auxiliary_constraints_.checkStatus();
+
+  if (primary_status && auxiliary_status)
     return true;
 
   // check maximum iterations
@@ -302,6 +331,10 @@ void Constrained_IK::init(const basic_kin::BasicKin &kin)
   if (!kin.checkInitialized())
     throw std::invalid_argument("Input argument 'BasicKin' must be initialized");
 
+  ros::NodeHandle pnh("~");
+  pnh.getParam("primary_kp", kpp_);
+  pnh.getParam("auxiliary_kp", kpa_);
+  ROS_INFO("using primary kp=%f and auxiliary kp=%f", kpp_, kpa_);
   kin_ = kin;
   initialized_ = true;
   primary_constraints_.init(this);
@@ -346,6 +379,12 @@ void Constrained_IK::update(const Eigen::VectorXd &joints)
   primary_constraints_.update(state_);
   auxiliary_constraints_.update(state_);
 }
+
+bool Constrained_IK::collision_checks_required()
+{
+  return( primary_constraints_.collision_checks_required() | auxiliary_constraints_.collision_checks_required());
+}
+
 
 } // namespace constrained_ik
 

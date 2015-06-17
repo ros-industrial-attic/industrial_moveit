@@ -38,6 +38,7 @@
 #include <constrained_ik/enum_types.h>
 #include <moveit/planning_scene/planning_scene.h>
 
+
 namespace constrained_ik
 {
 
@@ -91,8 +92,9 @@ public:
    * @param joint_angles The joint pose that places the tip link to the desired pose.
    */
   virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed,
-                          planning_scene::PlanningSceneConstPtr planning_scene,
-                          Eigen::VectorXd &joint_angles);
+                          const planning_scene::PlanningSceneConstPtr planning_scene,
+                          Eigen::VectorXd &joint_angles,
+                          int min_updates = 0) ;
 
   /**
    * @brief computes the inverse kinematics for the given pose of the tip link
@@ -100,8 +102,10 @@ public:
    * @param joint_seed joint values that is used as the initial guess
    * @param joint_angles The joint pose that places the tip link to the desired pose.
    */
-  virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed,
-                          Eigen::VectorXd &joint_angles);
+  virtual void calcInvKin(const Eigen::Affine3d &pose,
+                          const Eigen::VectorXd &joint_seed,
+                          Eigen::VectorXd &joint_angles,
+                          int min_updates=0);
 
   /**
    * @brief Checks to see if object is initialized (ie: init() has been called)
@@ -260,7 +264,7 @@ public:
    * @param dist_info Stores the distance information for requested link
    * @return bool, true if distance information exists.
    */
-  bool getDistanceInfo(const std::string link_name, DistanceInfo dist_info) const;
+  bool getDistanceInfo(const std::string link_name, DistanceInfo & dist_info) const;
 
 
  protected:
@@ -311,6 +315,8 @@ public:
   //TODO document
   virtual void update(const Eigen::VectorXd &joints);
 
+private:
+  bool collision_checks_required();
 }; // class Constrained_IK
 
 } // namespace constrained_ik

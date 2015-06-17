@@ -306,8 +306,14 @@ bool BasicKin::linkTransforms(const VectorXd &joint_angles,
                               std::vector<KDL::Frame> &poses,
                               const std::vector<std::string> &link_names) const
 {
-    if (!checkInitialized()) return false;
-    if (!checkJoints(joint_angles)) return false;
+  if (!checkInitialized()){
+    ROS_ERROR("BasicKin not initialized in linkTransforms()");
+    return false;
+  }
+  if (!checkJoints(joint_angles)) {
+    ROS_ERROR("BasicKin checkJoints failed in linkTransforms()");
+    return false;
+  }
 
     std::vector<std::string> links(link_names);
     size_t n = links.size();
@@ -357,7 +363,7 @@ bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) cons
 
   if ( (A.rows() == 0) || (A.cols() == 0) )
   {
-    ROS_ERROR("Empty matrices not supported");
+    ROS_ERROR("Empty matrices not supported in solvePinv()");
     return false;
   }
 
@@ -397,7 +403,7 @@ bool BasicKin::dampedPInv(const MatrixXd &A, MatrixXd &P)
 
   if ( (A.rows() == 0) || (A.cols() == 0) )
   {
-    ROS_ERROR("Empty matrices not supported");
+    ROS_ERROR("Empty matrices not supported in dampedPInv()");
     return false;
   }
 
@@ -417,7 +423,9 @@ bool BasicKin::dampedPInv(const MatrixXd &A, MatrixXd &P)
     if (fabs(Sv(i)) > eps)
       inv_Sv(i) = 1/Sv(i);
     else
+    {
       inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
+    }
   }
   P = V * inv_Sv.asDiagonal() * U.transpose();
   return true;

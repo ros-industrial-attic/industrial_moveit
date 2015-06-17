@@ -23,8 +23,6 @@
  * limitations under the License.
  */
 #include <constrained_ik/constrained_ik_plugin.h>
-#include <constrained_ik/ik/basic_ik.h>
-#include <constrained_ik/ik/test_ik.h>
 #include <ros/ros.h>
 
 #include <kdl_parser/kdl_parser.hpp>
@@ -42,9 +40,6 @@ using namespace ros;
 
 namespace constrained_ik
 {
-
-//typedef basic_ik::Basic_IK Solver;
-typedef test_ik::Test_IK Solver;
 
 ConstrainedIKPlugin::ConstrainedIKPlugin():active_(false), dimension_(0)
 {
@@ -113,7 +108,14 @@ bool ConstrainedIKPlugin::initialize(const std::string& robot_description,
         active_ = true;
     }
 
-
+    try { 
+      solver_.init(kin_); // inside try because it has the potential to throw and error
+    }
+    catch (exception &e)
+    {
+        ROS_ERROR_STREAM("Caught exception from solver_: " << e.what());
+        return false;
+    }
 
     return active_;
 }
@@ -151,11 +153,8 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
     }
 
     //Do IK and report results
-    Solver solver;
     try { 
-      solver.init(kin_); // inside try because it has the potential to throw and error
-      solver.calcInvKin(goal, seed, planning_scene_, joint_angles);
-
+      solver_.calcInvKin(goal, seed, planning_scene_, joint_angles);
     }
     catch (exception &e)
     {
@@ -240,12 +239,10 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
       }
 
     //Do the IK
-    Solver solver;
     bool success(true);
     try
     {
-      solver.init(kin_);
-      solver.calcInvKin(goal, seed, planning_scene_,joint_angles);
+      solver_.calcInvKin(goal, seed, planning_scene_,joint_angles);
     }
     catch (exception &e)
     {

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
 
-  <include file="$(find constrained_ik)/test/resources/load_puma_560.launch" />
+  <include file="$(find constrained_ik)/test/resources/load_ur10.launch" />
   <test test-name="basic_kin" pkg="constrained_ik" type="test_basic_kin" />
 </launch>

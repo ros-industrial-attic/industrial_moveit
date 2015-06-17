@@ -168,6 +168,18 @@ public:
   unsigned int numJoints() const { return robot_chain_.getNrOfJoints(); }
 
   /**
+   * @brief get a subchain of the kinematic group
+   * @return subchain 
+   */
+  KDL::Chain getSubChain(std::string link_name) const 
+  { 
+    std::string base_name = robot_chain_.getSegment(0).getName();
+    KDL::Chain subchain;
+    kdl_tree_.getChain(base_name, link_name, subchain);
+    return subchain;
+  }
+
+  /**
    * @brief Calculates transforms of each link relative to base (not including base)
    * If link_names is specified, only listed links will be returned. Otherwise all links in link_list_ will be returned
    * @param joint_angles Input vector of joint values
