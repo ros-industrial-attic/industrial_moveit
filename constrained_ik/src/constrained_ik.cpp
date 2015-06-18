@@ -299,11 +299,8 @@ bool Constrained_IK::checkStatus() const
   //   - this is an error: joints stabilize, but goal pose not reached
   if (state_.joints_delta.cwiseAbs().maxCoeff() < joint_convergence_tol_)
   {
-//	  ROS_ERROR_STREAM("Reached " << state_.iter << " / " << max_iter_ << " iterations before convergence.");
-//	  throw std::runtime_error("Iteration converged before goal reached.  IK solution may be invalid");
-
-	  ROS_WARN_STREAM("Reached " << state_.iter << " / " << max_iter_ << " iterations before convergence.");
-      return true;
+    ROS_WARN_STREAM("Reached " << state_.iter << " / " << max_iter_ << " iterations before convergence.");
+    return true;
   }
 
   return false;
