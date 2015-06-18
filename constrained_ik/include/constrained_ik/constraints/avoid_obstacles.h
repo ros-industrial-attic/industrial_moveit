@@ -45,79 +45,79 @@ namespace constraints
 class AvoidObstacles: public Constraint
 {
 public:
-    /**
-     * @brief constructor
-     * @param link_name name of link which should avoid obstacles
-     */
-
+  /**
+   * @brief constructor
+   * @param link_name name of link which should avoid obstacles
+   */
+  
   AvoidObstacles(std::string link_name): Constraint(), weight_(1.0), min_distance_(0.006), link_name_(link_name)
   {
     requires_collision_checks_ = true;
   };
+  /**
+   * @brief Destructor
+   */
   virtual ~AvoidObstacles() 
   {
     delete jac_solver_;
   }
-    /**
-     * @brief Creates Jacobian for avoiding a collision with link closest to a collision
-     * @return Jacobian scaled by weight
-     */
+  /**
+   * @brief Creates Jacobian for avoiding a collision with link closest to a collision
+   * @return Jacobian scaled by weight
+   */
   virtual Eigen::MatrixXd calcJacobian();
-    /**
-     * @brief Creates Jacobian for avoiding a collision with link closest to a collision
-     * @return Jacobian scaled by weight
-     */
-    virtual Eigen::MatrixXd calcJacobian(Eigen::VectorXd &joint_angles);
-
-    /**
-     * @brief Creates vector representing velocity error term
-     * corresponding to calcJacobian()
-     * @return VectorXd of joint velocities for obstacle avoidance
-     */
-    virtual Eigen::VectorXd calcError();
-
-    /**
-     * @brief Checks termination criteria
-     * There are no termination criteria for this constraint
-     * @return True
-     */
-    virtual bool checkStatus() const;// { 
-
-    /**
-     * @brief Initialize constraint (overrides Constraint::init)
-     * Should be called before using class.
-     * @param ik Pointer to Constrained_IK used for base-class init
-     */
+  /**
+   * @brief Creates Jacobian for avoiding a collision with link closest to a collision
+   * @return Jacobian scaled by weight
+   */
+  virtual Eigen::MatrixXd calcJacobian(Eigen::VectorXd &joint_angles);
+  
+  /**
+   * @brief Creates vector representing velocity error term
+   * corresponding to calcJacobian()
+   * @return VectorXd of joint velocities for obstacle avoidance
+   */
+  virtual Eigen::VectorXd calcError();
+  
+  /**
+   * @brief Checks termination criteria
+   * There are no termination criteria for this constraint
+   * @return True
+   */
+  virtual bool checkStatus() const;
+  
+  /**
+   * @brief Initialize constraint (overrides Constraint::init)
+   * Should be called before using class.
+   * @param ik Pointer to Constrained_IK used for base-class init
+   */
   virtual void init(const Constrained_IK * ik);
 
+  /**
+   * @brief Resets constraint before new use.
+   * Call this method before beginning a new IK calculation
+   */
+  virtual void reset();
 
-    /**
-     * @brief Resets constraint before new use.
-     * Call this method before beginning a new IK calculation
-     */
-    virtual void reset();
+  /**
+   * @brief Update internal state of constraint (overrides constraint::update)
+   * @param state SolverState holding current state of IK solver
+   */
+  virtual void update(const SolverState &state);
 
-    /**
-     * @brief Update internal state of constraint (overrides constraint::update)
-     * @param state SolverState holding current state of IK solver
-     */
-    virtual void update(const SolverState &state);
+  /**
+   * @brief getter for weight_
+   * @return weight_
+   */
+  double getWeight() {return weight_;}
 
-    /**
-     * @brief getter for weight_
-     * @return weight_
-     */
-    double getWeight() {return weight_;}
-
-    /**
-     * @brief setter for weight_
-     * @param weight Value to set weight_ to
-     */
-    void setWeight(const double &weight) {weight_ = weight;}
-
+  /**
+   * @brief setter for weight_
+   * @param weight Value to set weight_ to
+   */
+  void setWeight(const double &weight) {weight_ = weight;}
 
 protected:
-
   double weight_;/**< importance weight applied to this avoidance constraint */
   double min_distance_;         /**< minimum obstacle distance allowed */
   int num_robot_joints_; /**< number of joints in the whole robot*/

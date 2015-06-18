@@ -60,11 +60,13 @@ TEST(constrained_ik, nullspaceprojection)
   MatrixXd U(svd.matrixU());
   Eigen::MatrixXd S(rows,cols);
   // TODO learn how to initialize eigen matrices with zero()
-  for(int i=0; i<rows; i++){
+  for(int i=0; i<rows; i++)
+  {
     for(int j=0; j<cols; j++) S(i,j) = 0.0;
   }
   VectorXd s = svd.singularValues();
-  for(int i=0; i<rows-3; i++){
+  for(int i=0; i<rows-3; i++)
+  {
     S(i,i) = s(i);
   }
 
@@ -153,10 +155,12 @@ TEST_F(calcInvKin, inputValidation)
 
   // valid input
   //   - GTest doesn't print exception info.  This method allows us to print that info, for easier troubleshooting
-  try {
+  try 
+  {
     ik.calcInvKin(homePose, seed, joints);
     SUCCEED();
-  } catch (const std::exception &ex) {
+  } catch (const std::exception &ex) 
+  {
     ADD_FAILURE() << ex.what();
   }
 }
@@ -290,8 +294,10 @@ TEST_F(calcInvKin, NullMotion)
   EXPECT_TRUE(rslt_pose.isApprox(pose, 01e-3));
 
   // *near* #2
-  for(int j=0; j<3; j++){ // do 3 random examples of near starts
-    for(int i=0; i<6; i++) { // find a random pose
+  for(int j=0; j<3; j++) // do 3 random examples of near starts
+  {
+    for(int i=0; i<6; i++)  // find a random pose
+    {
       boost::random::uniform_int_distribution<int> angle_degrees(-177, 177) ;
       boost::random::uniform_int_distribution<int> small_angle_degrees(-3, 3) ;
       expected[i] = angle_degrees(rng)* 3.14/180.0;
@@ -307,8 +313,10 @@ TEST_F(calcInvKin, NullMotion)
 
   // *far*
   int num_success=0;
-  for(int j=0; j<20; j++){ // do 3 random examples of far starts
-    for(int i=0; i<6; i++) { // find a random pose
+  for(int j=0; j<20; j++) // do 3 random examples of far starts
+  {
+    for(int i=0; i<6; i++)  // find a random pose
+    {
       boost::random::uniform_int_distribution<int> angle_degrees(-180+50, 180-50) ;
       boost::random::uniform_int_distribution<int> small_angle_degrees(-50, 50) ;
       expected[i] = angle_degrees(rng)* 3.14/180.0;
@@ -322,11 +330,13 @@ TEST_F(calcInvKin, NullMotion)
     if(rslt_pose.isApprox(pose, 1e-3)) num_success++;
   }
   EXPECT_GE(num_success, 15);
-
+  
   // *farther*
   num_success=0;
-  for(int j=0; j<20; j++){ // do 20 random examples of farther starts
-    for(int i=0; i<6; i++) { // find a random pose
+  for(int j=0; j<20; j++) // do 20 random examples of farther starts
+  {
+    for(int i=0; i<6; i++)  // find a random pose
+    {
       boost::random::uniform_int_distribution<int> angle_degrees(-180+90, 180-90) ;
       boost::random::uniform_int_distribution<int> small_angle_degrees(-90, 90) ;
       expected[i] = angle_degrees(rng)* 3.14/180.0;
@@ -360,23 +370,23 @@ TEST_F(calcInvKin, NullMotionPose)
   seed = expected;
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*at* from expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints);
+  ik.calcInvKin(pose, seed, joints, 2);
   kin.calcFwdKin(joints, rslt_pose);
   EXPECT_TRUE(pose.isApprox(rslt_pose, 1e-3));
 
   // seed position *near* expected solution
   seed = expected + 0.01 * VectorXd::Random(expected.size());
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
-               "*near* from expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints);
+               "*near* expected: " << expected.transpose() << std::endl;
+  ik.calcInvKin(pose, seed, joints, 2);
   kin.calcFwdKin(joints, rslt_pose);
   EXPECT_TRUE(rslt_pose.isApprox(pose, 1e-3));
 
   // *near* #2
   seed = expected + 0.05 * VectorXd::Random(expected.size());
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
-               "*near* from expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints);
+               "*near* expected: " << expected.transpose() << std::endl;
+  ik.calcInvKin(pose, seed, joints, 2);
   kin.calcFwdKin(joints, rslt_pose);
   EXPECT_TRUE(rslt_pose.isApprox(pose, 1e-3));
 
@@ -384,7 +394,7 @@ TEST_F(calcInvKin, NullMotionPose)
   seed = expected + 0.1 * VectorXd::Random(expected.size());
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*near* from expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints);
+  ik.calcInvKin(pose, seed, joints, 2);
   kin.calcFwdKin(joints, rslt_pose);
   EXPECT_TRUE(rslt_pose.isApprox(pose, 1e-3));
 

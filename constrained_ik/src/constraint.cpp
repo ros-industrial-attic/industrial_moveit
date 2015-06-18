@@ -50,10 +50,12 @@ void Constraint::appendError(Eigen::VectorXd &error, const Eigen::VectorXd &addE
 // NOTE: This method does a resize in-place, and may be inefficient if called many times
 void Constraint::appendJacobian(Eigen::MatrixXd &jacobian, const Eigen::MatrixXd &addJacobian)
 {
-  if(addJacobian.rows() == 0 || addJacobian.cols() == 0){
+  if(addJacobian.rows() == 0 || addJacobian.cols() == 0)
+  {
     ROS_ERROR("trying to add a Jacobian with no data");
   }
-  if (jacobian.rows() == 0){ // first call gets to set size
+  if (jacobian.rows() == 0) // first call gets to set size
+  {
     size_t nAddRows = addJacobian.rows();
     jacobian.conservativeResize(jacobian.rows() + nAddRows, addJacobian.cols());
     jacobian.bottomRows(nAddRows) = addJacobian;

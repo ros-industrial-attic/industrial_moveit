@@ -108,7 +108,8 @@ bool ConstrainedIKPlugin::initialize(const std::string& robot_description,
         active_ = true;
     }
 
-    try { 
+    try 
+    { 
       solver_.init(kin_); // inside try because it has the potential to throw and error
     }
     catch (exception &e)
@@ -153,7 +154,8 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
     }
 
     //Do IK and report results
-    try { 
+    try 
+    { 
       solver_.calcInvKin(goal, seed, planning_scene_, joint_angles);
     }
     catch (exception &e)
@@ -228,15 +230,16 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
     Eigen::Affine3d goal;
     tf::transformKDLToEigen(pose_desired, goal);
 
-    if(dimension_ != ik_seed_state.size()){
+    if(dimension_ != ik_seed_state.size())
+    {
       ROS_ERROR("dimension_ and ik_seed_state are of different sizes");
       return(false);
     }
     Eigen::VectorXd seed(dimension_), joint_angles;
     for(size_t ii=0; ii < dimension_; ii++)
-      {
-	seed(ii) = ik_seed_state[ii];
-      }
+    {
+      seed(ii) = ik_seed_state[ii];
+    }
 
     //Do the IK
     bool success(true);

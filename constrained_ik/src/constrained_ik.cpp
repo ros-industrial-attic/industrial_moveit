@@ -88,17 +88,17 @@ Eigen::MatrixXd Constrained_IK::calcNullspaceProjectionTheRightWay(const Eigen::
   // TODO replace next 10 lines of code with rnk = svd.rank(); once eigen3 is updated
   int rnk = 0;
   if(svd.singularValues().size()==0) 
-    {
-      rnk = 0;
-    }
+  {
+    rnk = 0;
+  }
   else
-    {
-      double threshold = std::min(A.rows(),A.cols())*Eigen::NumTraits<double>::epsilon();
-      double premultiplied_threshold = svd.singularValues().coeff(0) * threshold;
-      rnk = svd.nonzeroSingularValues()-1;
-      while(rnk>=0 && svd.singularValues().coeff(rnk) < premultiplied_threshold) --rnk;
-      rnk++;
-    }
+  {
+    double threshold = std::min(A.rows(),A.cols())*Eigen::NumTraits<double>::epsilon();
+    double premultiplied_threshold = svd.singularValues().coeff(0) * threshold;
+    rnk = svd.nonzeroSingularValues()-1;
+    while(rnk>=0 && svd.singularValues().coeff(rnk) < premultiplied_threshold) --rnk;
+    rnk++;
+  }
 
   // zero singular vectors in the range of A
   for(int i=0; i<rnk; ++i)
@@ -115,14 +115,14 @@ Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J
   MatrixXd J_pinv;
 
   if (basic_kin::BasicKin::dampedPInv(J,J_pinv))
-    {
-      return J_pinv;
-    }
+  {
+    return J_pinv;
+  }
   else
-    {
-      ROS_ERROR_STREAM("Not able to calculate damped pseudoinverse!");
-      throw std::runtime_error("Not able to calculate damped pseudoinverse!  IK solution may be invalid.");
-    }
+  {
+    ROS_ERROR_STREAM("Not able to calculate damped pseudoinverse!");
+    throw std::runtime_error("Not able to calculate damped pseudoinverse!  IK solution may be invalid.");
+  }
 }
 
 
@@ -164,7 +164,8 @@ bool Constrained_IK::getDistanceInfo(const std::string link_name, Constrained_IK
   else
   {
     ROS_ERROR("couldn't find link with that name %s", link_name.c_str());
-    for( it=distance_detailed_.begin(); it != distance_detailed_.end(); it++){
+    for( it=distance_detailed_.begin(); it != distance_detailed_.end(); it++)
+    {
       ROS_ERROR("name: %s", it->first.c_str());
     }
     return false;
@@ -194,7 +195,7 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   reset(goal, joint_seed);    // reset state vars for this IK solve
   update(joint_angles);       // update current state
 
-  if(collision_checks_required())// initialize detailed distance_ prior to checking statusn
+  if(planning_scene && collision_checks_required())// initialize detailed distance_ prior to checking statusn
   {
     moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
     robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
@@ -207,7 +208,7 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   {
     // If planning_scene is not null we calculate distance data for collision
     // avoidance.
-    if(collision_checks_required())
+    if(planning_scene && collision_checks_required())
     {
       moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
       robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
@@ -230,7 +231,8 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     VectorXd dJoint_a;
 
     dJoint_p = kpp_*(Ji_p*err_p);
-    if(dJoint_p.norm() > 1.0){// limit maximum update to unit size 1 radian /meter
+    if(dJoint_p.norm() > 1.0)// limit maximum update to unit size 1 radian /meter
+    {
       dJoint_p = dJoint_p/dJoint_p.norm();
     }
     ROS_DEBUG("theta_p = %f ep = %f",dJoint_p.norm(), err_p.norm());
@@ -244,12 +246,14 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
       MatrixXd N_p = calcNullspaceProjectionTheRightWay(J_p);
       MatrixXd Jnull_a = calcDampedPseudoinverse(J_a*N_p);
       dJoint_a = kpa_*Jnull_a*(err_a-J_a*dJoint_p);
-      if(state_.iter > max_iter_*.9){ // print debugging info if not converging 
+      if(state_.iter > max_iter_*.9) // print debugging info if not converging 
+      {
         ROS_ERROR("theta_p = %f theta_a = %f ep = %f ea = %f", dJoint_p.norm(), dJoint_a.norm(), err_p.norm(), err_a.norm());
       }
     }
 
-    if(state_.iter > max_iter_*.9){ // print debugging info if not converging 
+    if(state_.iter > max_iter_*.9) // print debugging info if not converging 
+    {
       if(!checkInitialized(constraint_types::auxiliary))
         ROS_ERROR("theta_p = %f ep = %f ", dJoint_p.norm(),  err_p.norm());
     }
@@ -264,7 +268,8 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   }
 
   // checking for collision on a valid planning scene
-  if(collision_checks_required()){
+  if(planning_scene && collision_checks_required())
+  {
     moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
     robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
     robot_state->update();

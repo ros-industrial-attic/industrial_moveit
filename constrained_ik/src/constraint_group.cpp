@@ -58,7 +58,8 @@ Eigen::VectorXd ConstraintGroup::calcError()
 Eigen::MatrixXd ConstraintGroup::calcJacobian()
 {
   MatrixXd jacobian;
-  for (size_t i=0; i<constraints_.size(); ++i){
+  for (size_t i=0; i<constraints_.size(); ++i)
+  {
     constraints_[i].updateJacobian(jacobian);
   }
   return jacobian;

@@ -55,13 +55,16 @@ VectorXd AvoidObstacles::calcError()
 {
   Eigen::Vector3d error_vector(0,0,0);
   Constrained_IK::DistanceInfo dist_info;
-  if(ik_->getDistanceInfo(link_name_, dist_info)){
+  if(ik_->getDistanceInfo(link_name_, dist_info))
+  {
     double dist = dist_info.distance;
     double scale;
-    if(dist > min_distance_) {
+    if(dist > min_distance_) 
+    {
       scale = 1.0/(dist * dist);  // inverse square law
     } 
-    else{
+    else
+    {
       scale = 1/(min_distance_ * min_distance_ );
     }
     error_vector = scale*dist_info.avoidance_vector;
@@ -90,19 +93,23 @@ MatrixXd AvoidObstacles::calcJacobian(VectorXd &joint_states)
   // use distance info to find reference point on link which is closest to a collision,
   // change the reference point of the link jacobian to that point
   Constrained_IK::DistanceInfo dist_info;
-  if(ik_->getDistanceInfo(link_name_, dist_info)){
+  if(ik_->getDistanceInfo(link_name_, dist_info))
+  {
     // change the referece point to the point on the link closest to a collision
     KDL::Vector link_point(dist_info.link_point.x(), dist_info.link_point.y(), dist_info.link_point.z());
     link_jacobian.changeRefPoint(link_point);
 
     // copy the upper 3xn portion of full sized link jacobian into positional jacobain (3xm)
-    for(int i=0; i<3; i++){
-      for(int j=0; j<(int) link_jacobian.columns(); j++){
+    for(int i=0; i<3; i++)
+    {
+      for(int j=0; j<(int) link_jacobian.columns(); j++)
+      {
         jacobian(i,j) = link_jacobian(i,j);
       }
     }
   }
-  else{
+  else
+  {
     ROS_ERROR("couldn't get distance info");
   }
   ROS_ASSERT(jacobian.rows()==3);

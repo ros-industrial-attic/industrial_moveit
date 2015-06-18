@@ -72,13 +72,15 @@ protected:
   {
       bool rtn;
 
-      if (actual.size() != expected.size()){
+      if (actual.size() != expected.size())
+      {
         ROS_ERROR("comparePoses, number of poses different");
         return false;
       }
       for (size_t ii=0; ii<actual.size(); ++ii)
       {
-        if (!KDL::Equal(actual[ii], expected[ii], tol)){
+        if (!KDL::Equal(actual[ii], expected[ii], tol))
+        {
           ROS_ERROR("failure at pose %d",(int) ii);
           return false;
         }
@@ -295,14 +297,17 @@ TEST_F(calcJacobian, knownPoses)
   
   // use random joint states, compute the numerical Jacobian and compare to that computed
   // all joints at a random pose
-  for(int j=0; j<10; j++){// try 10 different poses
-    for(int i=0; i<(int)joints.size(); i++) { // find a random pose
+  for(int j=0; j<10; j++)// try 10 different poses
+  {
+    for(int i=0; i<(int)joints.size(); i++)  // find a random pose
+    {
       boost::random::uniform_int_distribution<int> angle_degrees(-180, 180) ;
       joints[i] = angle_degrees(rng)* 3.14/180.0;
     }
     kin.calcFwdKin(joints,pose);
     EXPECT_TRUE(kin.calcJacobian(joints, jacobian));
-    for(int i=0; i<(int) joints.size(); i++){
+    for(int i=0; i<(int) joints.size(); i++)
+    {
       updated_joints = joints;
       updated_joints[i] += delta;
       Eigen::Affine3d updated_pose;

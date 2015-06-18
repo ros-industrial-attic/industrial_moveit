@@ -153,7 +153,7 @@ TEST_F(calcInvKin, knownPoses)
   ik.setPrimaryKp(.4);
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_FALSE(rslt_pose.isApprox(pose, 0.005));
+  EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // *far* #2
   expected << 0, -M_PI_2, 0, 0, 0, 0;
@@ -166,7 +166,7 @@ TEST_F(calcInvKin, knownPoses)
   
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_FALSE(rslt_pose.isApprox(pose, 0.005));
+  EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 
   // *farther*
   expected << M_PI_4, -M_PI_4, 0, 0, 0, 0;
