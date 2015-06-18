@@ -82,7 +82,7 @@ public:
   bool calcFwdKin(const Eigen::VectorXd &joint_angles,
                   const std::string &base,
                   const std::string &tip,
-                  KDL::Frame &pose);
+                  KDL::Frame &pose) const;
 
   /**
    * @brief Calculated jacobian of robot given joint angles
@@ -224,7 +224,7 @@ private:
   KDL::Tree   kdl_tree_;
   std::vector<std::string> joint_list_, link_list_;
   Eigen::Matrix<double, Eigen::Dynamic, 2> joint_limits_;
-  boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_, subchain_fk_solver_;
+  boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_;
   boost::scoped_ptr<KDL::ChainJntToJacSolver> jac_solver_;
 
   /**
