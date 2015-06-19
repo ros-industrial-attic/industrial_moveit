@@ -224,9 +224,8 @@ bool BasicKin::init(const moveit::core::JointModelGroup* group)
 
   const robot_model::RobotModel& r  = group->getParentModel();
   const boost::shared_ptr<const urdf::ModelInterface> urdf = group->getParentModel().getURDF();
-  std::string base_name = group->getActiveJointModels().front()->getParentLinkModel()->getName();
-  std::string tip_name = group->getActiveJointModels().back()->getChildLinkModel()->getName();
-
+  std::string base_name = group->getLinkModels().front()->getParentLinkModel()->getName();
+  std::string tip_name = group->getLinkModels().back()->getName();
 
   if (!urdf->getRoot())
   {
@@ -249,14 +248,14 @@ bool BasicKin::init(const moveit::core::JointModelGroup* group)
   }
 
   joint_list_.resize(robot_chain_.getNrOfJoints());
-  link_list_.resize(robot_chain_.getNrOfSegments());
   joint_limits_.resize(robot_chain_.getNrOfJoints(), 2);
+
+  link_list_ = group->getLinkModelNames();
+  link_list_.insert(link_list_.begin(), base_name);
 
   for (int i=0, j=0; i<robot_chain_.getNrOfSegments(); ++i)
   {
     const KDL::Segment &seg = robot_chain_.getSegment(i);
-    link_list_[i] = seg.getName();
-
     const KDL::Joint   &jnt = seg.getJoint();
     if (jnt.getType() == KDL::Joint::None) continue;
 

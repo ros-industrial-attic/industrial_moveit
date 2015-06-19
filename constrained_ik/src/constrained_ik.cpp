@@ -44,7 +44,7 @@ Constrained_IK::Constrained_IK()
   max_iter_ = 500;                  //default max_iter
   joint_convergence_tol_ = 0.0001;   //default convergence tolerance
   debug_ = false;
-  kpp_ = 0.9;// default primary proportional gain
+  kpp_ = 1.0;// default primary proportional gain
   kpa_ = 0.5;// default auxillary proportional gain
 }
 
@@ -183,6 +183,9 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     throw std::runtime_error("Must call init() before using Constrained_IK");
   //TODO should goal be checked here instead of in reset()?
 
+  //Cache the joint angles to return if max iteration is reached.
+  Eigen::VectorXd cached_joint_angles = joint_seed;
+
   // initialize state
   joint_angles = joint_seed;  // initialize result to seed value
   reset(goal, joint_seed);    // reset state vars for this IK solve
@@ -234,6 +237,11 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
 
     // re-update internal state variables
     update(joint_angles);
+  }
+
+  if (state_.iter == max_iter_)
+  {
+    joint_angles = cached_joint_angles;
   }
 
   // checking for collision on a valid planning scene
