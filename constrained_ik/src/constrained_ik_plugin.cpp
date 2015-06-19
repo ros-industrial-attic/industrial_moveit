@@ -274,7 +274,6 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
   {
     solution_callback(ik_pose, solution, error_code);
     if(error_code.val != error_code.SUCCESS)
->>>>>>> badda43a7c722ca479786c8ef8bae6d03c20d679
       success &= false;
   }
   // Default: return successfully
