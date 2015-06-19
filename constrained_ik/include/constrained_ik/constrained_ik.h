@@ -256,6 +256,9 @@ public:
     Eigen::Vector3d obsticle_point; /**< Point on nearest link to requested link */
     Eigen::Vector3d avoidance_vector; /**< Normilized Vector created by nearest points */
     double distance; /**< Distance between nearest points */
+    public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   };
 
   /**

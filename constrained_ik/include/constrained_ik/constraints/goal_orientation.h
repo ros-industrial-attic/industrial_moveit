@@ -110,6 +110,9 @@ protected:
   double rot_err_tol_;  /**< @brief termination criteria */
   double rot_err_;      /**< @brief current solution error */
   Eigen::Vector3d weight_;    /**< @brief weight for each direction */
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
 
 }; // class GoalOrientation
 

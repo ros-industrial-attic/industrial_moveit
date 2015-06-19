@@ -327,7 +327,7 @@ bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) cons
 
   if ( A.rows() != b.size() )
   {
-    ROS_ERROR("Matrix size mismatch: A(%ld,%ld), b(%ld)",
+    ROS_ERROR("Matrix size mismatch: A(%d,%d), b(%d)",
               A.rows(), A.cols(), b.size());
     return false;
   }
