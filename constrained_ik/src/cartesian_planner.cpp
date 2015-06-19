@@ -67,7 +67,7 @@ namespace constrained_ik
     ROS_INFO("Setting Position roll  from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(2),goal_pose.rotation().eulerAngles(3,2,1)(2));
 
     // Generate Interpolated Cartesian Poses
-    std::vector<Eigen::Affine3d> poses = interpolateCartesian(start_pose, goal_pose, params_.getCartesianDiscretizationStep());
+    std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > poses = interpolateCartesian(start_pose, goal_pose, params_.getCartesianDiscretizationStep());
 
     // Generate Cartesian Trajectory
     int steps = poses.size();
@@ -98,7 +98,7 @@ namespace constrained_ik
     }
   }
 
-  std::vector<Eigen::Affine3d>
+  std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> >
   CartesianPlanner::interpolateCartesian(const Eigen::Affine3d& start,
                                             const Eigen::Affine3d& stop,
                                             double ds) const
@@ -118,8 +118,8 @@ namespace constrained_ik
     Eigen::Quaterniond stop_q (stop.rotation());
     double slerp_ratio = 1.0 / steps;
 
-    std::vector<Eigen::Affine3d> result;
-    result.reserve(steps);
+    std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > result;
+    result.reserve(steps+1);
     for (unsigned i = 0; i <= steps; ++i)
     {
       Eigen::Vector3d trans = start_pos + step * i;

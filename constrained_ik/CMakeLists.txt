@@ -65,6 +65,7 @@ add_library(constrained_ik
             src/constrained_ik.cpp
             src/constraint.cpp
             src/constraint_group.cpp
+            src/constraints/avoid_obstacles.cpp
             src/constraints/avoid_joint_limits.cpp
             src/constraints/goal_orientation.cpp
             src/constraints/goal_position.cpp

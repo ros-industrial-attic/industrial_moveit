@@ -43,6 +43,10 @@ struct SolverState
   Eigen::Affine3d pose_estimate;
 
   void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
+
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
 };
 
 } // namespace constrained_ik

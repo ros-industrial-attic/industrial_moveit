@@ -52,6 +52,7 @@ public:
   virtual void add(Constraint* constraint);
   virtual void clear() { constraints_.clear(); }
   bool empty() const { return constraints_.empty(); }
+  bool collision_checks_required();
 
 protected:
   boost::ptr_vector<Constraint> constraints_;

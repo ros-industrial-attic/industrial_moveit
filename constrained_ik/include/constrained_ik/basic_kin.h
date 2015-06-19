@@ -82,7 +82,7 @@ public:
   bool calcFwdKin(const Eigen::VectorXd &joint_angles,
                   const std::string &base,
                   const std::string &tip,
-                  KDL::Frame &pose);
+                  KDL::Frame &pose) const;
 
   /**
    * @brief Calculated jacobian of robot given joint angles
@@ -168,6 +168,18 @@ public:
   unsigned int numJoints() const { return robot_chain_.getNrOfJoints(); }
 
   /**
+   * @brief get a subchain of the kinematic group
+   * @return subchain 
+   */
+  KDL::Chain getSubChain(std::string link_name) const 
+  { 
+    std::string base_name = robot_chain_.getSegment(0).getName();
+    KDL::Chain subchain;
+    kdl_tree_.getChain(base_name, link_name, subchain);
+    return subchain;
+  }
+
+  /**
    * @brief Calculates transforms of each link relative to base (not including base)
    * If link_names is specified, only listed links will be returned. Otherwise all links in link_list_ will be returned
    * @param joint_angles Input vector of joint values
@@ -212,7 +224,7 @@ private:
   KDL::Tree   kdl_tree_;
   std::vector<std::string> joint_list_, link_list_;
   Eigen::Matrix<double, Eigen::Dynamic, 2> joint_limits_;
-  boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_, subchain_fk_solver_;
+  boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_;
   boost::scoped_ptr<KDL::ChainJntToJacSolver> jac_solver_;
 
   /**
@@ -250,6 +262,8 @@ private:
    */
   static void KDLToEigen(const KDL::Jacobian &jacobian, Eigen::MatrixXd &matrix);
 
+ public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 }; // class BasicKin
 
 } // namespace basic_kin

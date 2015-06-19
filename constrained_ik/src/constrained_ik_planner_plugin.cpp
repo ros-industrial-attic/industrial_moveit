@@ -46,7 +46,10 @@ namespace constrained_ik
 
     for(std::map<std::string, constrained_ik::CLIKPlanningContextPtr>::const_iterator iter = planners_.begin(); iter != planners_.end(); ++iter)
     {
-      if (iter->first != "Default"){ algs.push_back(iter->first); }
+      if (iter->first != "Default")
+      {
+        algs.push_back(iter->first); 
+      }
     }
 
   }
@@ -80,8 +83,14 @@ namespace constrained_ik
 
     // Get planner
     std::map<std::string, constrained_ik::CLIKPlanningContextPtr>::const_iterator it = planners_.find(req.planner_id);
-    if (it != planners_.end()) { planner = it->second; }
-    else { planner = planners_.find("Default")->second; }
+    if (it != planners_.end()) 
+    {
+      planner = it->second;
+    }
+    else 
+    {
+      planner = planners_.find("Default")->second; 
+    }
 
     // Setup Planner
     planner->clear();

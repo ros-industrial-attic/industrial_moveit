@@ -23,8 +23,6 @@
  * limitations under the License.
  */
 #include <constrained_ik/constrained_ik_plugin.h>
-#include <constrained_ik/ik/basic_ik.h>
-#include <constrained_ik/ik/test_ik.h>
 #include <ros/ros.h>
 
 #include <kdl_parser/kdl_parser.hpp>
@@ -181,6 +179,7 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
   }
 
   return true;
+
 }
 
 bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
@@ -228,6 +227,7 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
                                             moveit_msgs::MoveItErrorCodes &error_code,
                                             const kinematics::KinematicsQueryOptions &options) const
 {
+
   if(!active_)
   {
     ROS_ERROR("kinematics not active");
@@ -274,6 +274,7 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
   {
     solution_callback(ik_pose, solution, error_code);
     if(error_code.val != error_code.SUCCESS)
+>>>>>>> badda43a7c722ca479786c8ef8bae6d03c20d679
       success &= false;
   }
   // Default: return successfully

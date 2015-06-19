@@ -32,6 +32,7 @@
 #include <eigen_conversions/eigen_kdl.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/robot_model/joint_model_group.h>
+#include <boost/random/uniform_int_distribution.hpp>
 
 using constrained_ik::basic_kin::BasicKin;
 using Eigen::MatrixXd;
@@ -72,11 +73,17 @@ protected:
       bool rtn;
 
       if (actual.size() != expected.size())
-          return false;
+      {
+        ROS_ERROR("comparePoses, number of poses different");
+        return false;
+      }
       for (size_t ii=0; ii<actual.size(); ++ii)
       {
-          if (!KDL::Equal(actual[ii], expected[ii], tol))
-              return false;
+        if (!KDL::Equal(actual[ii], expected[ii], tol))
+        {
+          ROS_ERROR("failure at pose %d",(int) ii);
+          return false;
+        }
       }
       return true;
   }
@@ -116,8 +123,10 @@ TEST_F(init, inputValidation)
 
 TEST_F(linkTransforms, inputValidation)
 {
-    std::vector<std::string> link_names = boost::assign::list_of("link_1")("link_2")("link_3")("link_4")("link_5")("link_6");
+  //    std::vector<std::string> link_names = boost::assign::list_of("link_1")("link_2")("link_3")("link_4")("link_5")("link_6");
+  std::vector<std::string> link_names = boost::assign::list_of("shoulder_link")("upper_arm_link")("forearm_link")("wrist_1_link")("wrist_2_link")("wrist_3_link");
     std::vector<KDL::Frame> poses;
+    int n_links = link_names.size();
 
     EXPECT_FALSE(BasicKin().linkTransforms(VectorXd(), poses));                                     // un-init BasicKin, names, & Jnts
     EXPECT_FALSE(BasicKin().linkTransforms(VectorXd(), poses, std::vector<std::string>()));         // un-init BasicKin, names, & Jnts
@@ -148,18 +157,20 @@ TEST_F(linkTransforms, knownPoses)
     using KDL::Vector;
     using KDL::Frame;
 
-    std::vector<std::string> link_names = boost::assign::list_of("link_1")("link_2")("link_3")("link_4")("link_5")("link_6");
+    std::vector<std::string> link_names = boost::assign::list_of("shoulder_link")("upper_arm_link")("forearm_link")("wrist_1_link")("wrist_2_link")("wrist_3_link");
     VectorXd joint_angles(6);
     std::vector<Frame> actual, expected(6);
 
     //0,0,0,0,0,0
     joint_angles = VectorXd::Zero(6);
-    expected[0] = Frame(Vector(0,0,.674));              //rotation defaults to identity
-    expected[1] = Frame(Vector(0,0,.674));              //rotation defaults to identity
-    expected[2] = Frame(Vector(.4318,.12446,.674));     //rotation defaults to identity
-    expected[3] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
-    expected[4] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
-    expected[5] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
+    expected[0] = Frame(KDL::Rotation::Quaternion(0.0, 0.0 , 0.0 , 1.0), Vector(0.000000, 0.000000, 0.127300));              
+    expected[1] = Frame(KDL::Rotation::Quaternion(0.0, 0.707107, 0.0, 0.707107), Vector(0.000000, 0.220941, 0.127300));
+    expected[2] = Frame(KDL::Rotation::Quaternion(0.0, 0.707107, 0.0, 0.707107), Vector(0.612000, 0.049041, 0.127300));
+    expected[3] = Frame(KDL::Rotation::Quaternion(0.0, 1.0, 0.0, 0.0), Vector(1.184300, 0.049041, 0.127300));
+    expected[4] = Frame(KDL::Rotation::Quaternion(0.0, 1.0, 0.0, 0.0), Vector(1.184300, 0.163941, 0.127300));
+    expected[5] = Frame(KDL::Rotation::Quaternion(0.0, 1.0, 0.0, 0.0), Vector(1.184300, 0.163941, 0.011600));
+    kin.linkTransforms(joint_angles, actual, link_names);
+    
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names));  //all link names
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
@@ -167,12 +178,14 @@ TEST_F(linkTransforms, knownPoses)
 
     //90,0,0,0,0,0
     joint_angles(0) = M_PI_2;
-    expected[0] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(0,0,.674));
-    expected[1] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(0,0,.674));
-    expected[2] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(-.12446,.4318,.674));
-    expected[3] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(-.12446,.41148,1.1058));
-    expected[4] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(-.12446,.41148,1.1058));
-    expected[5] = Frame(Rotation(0,-1,0,1,0,0,0,0,1), Vector(-.12446,.41148,1.1058));
+    expected[0] = Frame(KDL::Rotation::Quaternion(0.0, 0.0 , 0.707107, 0.707107), Vector(0.000000, 0.000000, 0.127300));              
+    expected[1] = Frame(KDL::Rotation::Quaternion(-0.5, 0.5, 0.5, 0.5), Vector(-0.220941, 0.000000, 0.127300));
+    expected[2] = Frame(KDL::Rotation::Quaternion(-0.5, 0.5, 0.5, 0.5), Vector(-0.049041, 0.612000, 0.127300));
+    expected[3] = Frame(KDL::Rotation::Quaternion(-0.707107, 0.707107, 0.0, 0.0), Vector(-0.049041, 1.184300, 0.127300));
+    expected[4] = Frame(KDL::Rotation::Quaternion(-0.707107, 0.707107, 0.0, 0.0), Vector(-0.163941, 1.184300, 0.127300));
+    expected[5] = Frame(KDL::Rotation::Quaternion(-0.707107, 0.707107, 0.0, 0.0), Vector(-0.163941, 1.184300, 0.011600));
+    kin.linkTransforms(joint_angles, actual, link_names);
+
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names));  //all link names
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
@@ -181,12 +194,13 @@ TEST_F(linkTransforms, knownPoses)
     //0,-90,0,0,0,0
     joint_angles(0) = 0.;
     joint_angles(1) = -M_PI_2;
-    expected[0] = Frame(Vector(0,0,.674));
-    expected[1] = Frame(Rotation(0,0,-1,0,1,0,1,0,0), Vector(0,0,.674));
-    expected[2] = Frame(Rotation(0,0,-1,0,1,0,1,0,0), Vector(0, .12446,1.1058));
-    expected[3] = Frame(Rotation(0,0,-1,0,1,0,1,0,0), Vector(-.4318,.12446,1.08548));
-    expected[4] = Frame(Rotation(0,0,-1,0,1,0,1,0,0), Vector(-.4318,.12446,1.08548));
-    expected[5] = Frame(Rotation(0,0,-1,0,1,0,1,0,0), Vector(-.4318,.12446,1.08548));
+    expected[0] = Frame(KDL::Rotation::Quaternion(0.000000, 0.000000, 0.000000, 1.000000), Vector(0.000000, 0.000000, 0.127300));              
+    expected[1] = Frame(KDL::Rotation::Quaternion(0.000000, -0.000000, 0.000000, 1.000000), Vector(0.000000, 0.220941, 0.127300));              
+    expected[2] = Frame(KDL::Rotation::Quaternion(0.000000, -0.000000, 0.000000, 1.000000), Vector(-0.000000, 0.049041, 0.739300));              
+    expected[3] = Frame(KDL::Rotation::Quaternion(0.000000, 0.707107, 0.000000, 0.707107), Vector(-0.000000, 0.049041, 1.311600));              
+    expected[4] = Frame(KDL::Rotation::Quaternion(0.000000, 0.707107, 0.000000, 0.707107), Vector(-0.000000, 0.163941, 1.311600));              
+    expected[5] = Frame(KDL::Rotation::Quaternion(0.000000, 0.707107, 0.000000, 0.707107), Vector(0.115700, 0.163941, 1.311600));              
+    kin.linkTransforms(joint_angles, actual, link_names);
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names));  //all link names
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
@@ -195,11 +209,13 @@ TEST_F(linkTransforms, knownPoses)
     //joints 2-5
     joint_angles = VectorXd::Zero(6);
     std::vector<std::string> link_names_short(link_names.begin()+1, link_names.end()-1);
-    expected[1] = Frame(Vector(0,0,.674));    //rotation defaults to identity
-    expected[2] = Frame(Vector(.4318,.12446,.674));     //rotation defaults to identity
-    expected[3] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
-    expected[4] = Frame(Vector(.41148,.12446,1.1058));  //rotation defaults to identity
+    expected[1] = Frame(KDL::Rotation::Quaternion(0.000000, 0.707107, 0.000000, 0.707107), Vector(0.000000, 0.220941, 0.127300));
+    expected[2] = Frame(KDL::Rotation::Quaternion(0.000000, 0.707107, 0.000000, 0.707107), Vector(0.612000, 0.049041, 0.127300));
+    expected[3] = Frame(KDL::Rotation::Quaternion(0.000000, 1.000000, 0.000000, 0.000000), Vector(1.184300, 0.049041, 0.127300));
+    expected[4] = Frame(KDL::Rotation::Quaternion(0.000000, 1.000000, 0.000000, 0.000000), Vector(1.184300, 0.163941, 0.127300));
     std::vector<Frame> expected_short(expected.begin()+1, expected.end()-1);
+    kin.linkTransforms(joint_angles, actual, link_names);
+
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names_short));    //all link names
     EXPECT_TRUE(comparePoses(actual, expected_short, 1e-4));
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));                      //no link names (defaults to all)
@@ -226,26 +242,34 @@ TEST_F(calcFwdKin, knownPoses)
 {
   VectorXd joints = VectorXd::Zero(6);
   Eigen::Affine3d expected, result;
-
+  double base_to_tip;
+  double base_to_tip_expected;
   // all joints 0
   EXPECT_TRUE(kin.calcFwdKin(joints, result));
-  expected = Eigen::Translation3d(0.41148, 0.12446, 1.1058);
-  EXPECT_TRUE(result.isApprox(expected, 1e-3));
+  double x = result.translation().x();
+  double y = result.translation().y();
+  double z = result.translation().z();
+  base_to_tip_expected  = x*x + y*y + z*z;
 
   // 1st joint 90 deg,all others 0
   joints(0) = M_PI_2;
   EXPECT_TRUE(kin.calcFwdKin(joints, result));
-  expected = Eigen::Translation3d(-0.12446, 0.41148, 1.1058);
-  expected.rotate(Eigen::AngleAxis<double> (M_PI_2, Eigen::Vector3d(0,0,1)));
-  EXPECT_TRUE(result.isApprox(expected, 1e-3));
+  x = result.translation().x();
+  y = result.translation().y();
+  z = result.translation().z();
+  base_to_tip = x*x + y*y + z*z;
+  EXPECT_NEAR(base_to_tip, base_to_tip_expected, 1e-3);
 
-  // 2nd joint -90, all others 0
+  // last joint -90, all others 0
   joints(0) = 0.0;
-  joints(1) = -M_PI_2;
+  joints(5) = -M_PI_2;
   EXPECT_TRUE(kin.calcFwdKin(joints, result));
-  expected = Eigen::Translation3d(-0.4318, 0.12446, 1.08548);
-  expected.rotate(Eigen::AngleAxis<double> (-M_PI_2, Eigen::Vector3d(0,1,0)));
-  EXPECT_TRUE(result.isApprox(expected, 1e-3));
+  x = result.translation().x();
+  y = result.translation().y();
+  z = result.translation().z();
+  base_to_tip = x*x + y*y + z*z;
+  EXPECT_NEAR(base_to_tip, base_to_tip_expected, 1e-3);
+
 }
 
 
@@ -264,79 +288,47 @@ TEST_F(calcJacobian, inputValidation)
 
 TEST_F(calcJacobian, knownPoses)
 {
-    VectorXd joints = VectorXd::Zero(6);
-    MatrixXd expected, result;
-
-    // all joints 0
-    EXPECT_TRUE(kin.calcJacobian(joints, result));
-    expected.resize(6,6);
-    expected << -0.12446, 0.4318,  0.4318, 0, 0, 0,
-                 0.41148, 0,       0,      0, 0, 0,
-                 0,      -0.41148, 0.0203, 0, 0, 0,
-                 0,       0,       0,      0, 0, 0,
-                 0,       1,       1,      0, 1, 0,
-                 1,       0,       0,      1, 0, 1;
-    EXPECT_TRUE(result.isApprox(expected, 1e-3));
-
-    joints(0) = M_PI_2;
-    EXPECT_TRUE(kin.calcJacobian(joints, result));
-    expected << -0.41148, 0,       0,       0,  0, 0,
-                -0.12446, 0.4318,  0.4318,  0,  0, 0,
-                 0,      -0.41148, 0.02032, 0,  0, 0,
-                 0,      -1,      -1,       0, -1, 0,
-                 0,       0,       0,       0,  0, 0,
-                 1,       0,       0,       1,  0, 1;
-    EXPECT_TRUE(result.isApprox(expected, 1e-3));
-
-    joints(1) = -M_PI_2;
-    EXPECT_TRUE(kin.calcJacobian(joints, result));
-    expected <<  0.4318,  0,        0,       0,  0, 0,
-                -0.12446, 0.41148, -0.02032, 0,  0, 0,
-                 0,       0.4318,   0.4318,  0,  0, 0,
-                 0,      -1,       -1,       0, -1, 0,
-                 0,       0,        0,      -1,  0, -1,
-                 1,       0,        0,       0,  0, 0;
-    EXPECT_TRUE(result.isApprox(expected, 1e-3));
-
-    joints(2) = -M_PI_2;
-    EXPECT_TRUE(kin.calcJacobian(joints, result));
-    expected <<  -0.02032, 0,        0,       0,  0,  0,
-                 -0.12446, 0,       -0.4318,  0,  0,  0,
-                  0,      -0.02032, -0.02032, 0,  0,  0,
-                  0,      -1,       -1,       0, -1,  0,
-                  0,       0,        0,       0,  0,  0,
-                  1,       0,        0,      -1,  0, -1;
-    EXPECT_TRUE(result.isApprox(expected, 1e-3));
-
-    joints(3) = M_PI_2;
-    EXPECT_TRUE(kin.calcJacobian(joints, result));
-    expected << -0.02032, 0,        0,       0, 0,  0,
-                -0.12446, 0,       -0.4318,  0, 0,  0,
-                 0,      -0.02032, -0.02032, 0, 0,  0,
-                 0,      -1,       -1,       0, 0,  0,
-                 0,       0,        0,       0, 1,  0,
-                 1,       0,        0,      -1, 0, -1;
-    EXPECT_TRUE(result.isApprox(expected, 1e-3));
-
-    joints(4) = M_PI_2;
-    EXPECT_TRUE(kin.calcJacobian(joints, result));
-    expected << -0.02032, 0,        0,       0, 0,  0,
-                -0.12446, 0,       -0.4318,  0, 0,  0,
-                 0,      -0.02032, -0.02032, 0, 0,  0,
-                 0,      -1,       -1,       0, 0, -1,
-                 0,       0,        0,       0, 1,  0,
-                 1,       0,        0,      -1, 0,  0;
-    EXPECT_TRUE(result.isApprox(expected, 1e-3));
-
-    joints(5) = M_PI_2;
-    EXPECT_TRUE(kin.calcJacobian(joints, result));
-    expected << -0.02032, 0,        0,       0, 0,  0,
-                -0.12446, 0,       -0.4318,  0, 0,  0,
-                 0,      -0.02032, -0.02032, 0, 0,  0,
-                 0,      -1,       -1,       0, 0, -1,
-                 0,       0,        0,       0, 1,  0,
-                 1,       0,        0,      -1, 0,  0;
-    EXPECT_TRUE(result.isApprox(expected, 1e-3));
+  VectorXd joints = VectorXd(6);
+  VectorXd updated_joints = VectorXd(6);
+  MatrixXd jacobian;
+  Eigen::Affine3d pose;
+  boost::random::mt19937 rng;  
+  double delta = 1e-3;
+  
+  // use random joint states, compute the numerical Jacobian and compare to that computed
+  // all joints at a random pose
+  for(int j=0; j<10; j++)// try 10 different poses
+  {
+    for(int i=0; i<(int)joints.size(); i++)  // find a random pose
+    {
+      boost::random::uniform_int_distribution<int> angle_degrees(-180, 180) ;
+      joints[i] = angle_degrees(rng)* 3.14/180.0;
+    }
+    kin.calcFwdKin(joints,pose);
+    EXPECT_TRUE(kin.calcJacobian(joints, jacobian));
+    for(int i=0; i<(int) joints.size(); i++)
+    {
+      updated_joints = joints;
+      updated_joints[i] += delta;
+      Eigen::Affine3d updated_pose;
+      kin.calcFwdKin(updated_joints, updated_pose);
+      double delta_x = (updated_pose.translation().x() - pose.translation().x())/delta;
+      double delta_y = (updated_pose.translation().y() - pose.translation().y())/delta;
+      double delta_z = (updated_pose.translation().z() - pose.translation().z())/delta;
+      EXPECT_NEAR(delta_x, jacobian(0,i), 1e-3);
+      EXPECT_NEAR(delta_y, jacobian(1,i), 1e-3);
+      EXPECT_NEAR(delta_z, jacobian(2,i), 1e-3);
+      Eigen::AngleAxisd r12(pose.rotation().transpose()*updated_pose.rotation());   // rotation from p1 -> p2
+      double theta = r12.angle();          // TODO: move rangedAngle to utils class
+      theta = copysign(fmod(fabs(theta),2.0*M_PI), theta);
+      if (theta < -M_PI) theta = theta+2.*M_PI;
+      if (theta > M_PI)  theta = theta-2.*M_PI;
+      Eigen::VectorXd omega = (pose.rotation() * r12.axis() * theta)/delta;                        // axis k * theta expressed in frame0
+      EXPECT_NEAR(omega(0), jacobian(3,i), 1e-3);
+      EXPECT_NEAR(omega(1), jacobian(4,i), 1e-3);
+      EXPECT_NEAR(omega(2), jacobian(5,i), 1e-3);
+    }
+  }
 }
 
 
@@ -344,8 +336,8 @@ TEST_F(solvePInv, inputValidation)
 {
   VectorXd vResult;
 
-  EXPECT_FALSE(kin.solvePInv(MatrixXd(), VectorXd(), vResult));
-  EXPECT_FALSE(kin.solvePInv(MatrixXd(6,3), VectorXd(1), vResult));
+  EXPECT_FALSE(kin.solvePInv(MatrixXd(), VectorXd(), vResult)); // will generate ROS_ERROR("Empty matrices not supported in solvePinv()");
+  EXPECT_FALSE(kin.solvePInv(MatrixXd(6,3), VectorXd(1), vResult)); // will generate ROS_ERROR("Matrix size mismatch:...");
   EXPECT_TRUE(kin.solvePInv(MatrixXd::Zero(6,3), VectorXd::Zero(6), vResult));
   EXPECT_TRUE(kin.solvePInv(MatrixXd::Zero(3,6), VectorXd::Zero(3), vResult));
   EXPECT_TRUE(kin.solvePInv(MatrixXd::Zero(6,6), VectorXd::Zero(6), vResult));

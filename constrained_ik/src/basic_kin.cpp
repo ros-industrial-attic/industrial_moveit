@@ -66,8 +66,9 @@ bool BasicKin::calcFwdKin(const VectorXd &joint_angles, Eigen::Affine3d &pose) c
 bool BasicKin::calcFwdKin(const VectorXd &joint_angles,
                           const std::string &base,
                           const std::string &tip,
-                          KDL::Frame &pose)
+                          KDL::Frame &pose) const
 {
+  // note, because the base and tip are different, fk_solver gets updated
     KDL::Chain chain;
     if (!kdl_tree_.getChain(base, tip, chain))
     {
@@ -83,11 +84,11 @@ bool BasicKin::calcFwdKin(const VectorXd &joint_angles,
         return false;
     }
 
-    subchain_fk_solver_.reset(new KDL::ChainFkSolverPos_recursive(chain));
+    KDL::ChainFkSolverPos_recursive subchain_fk_solver(chain);
 
     KDL::JntArray joints;
     joints.data = joint_angles;
-    if (subchain_fk_solver_->JntToCart(joints, pose) < 0)
+    if (subchain_fk_solver.JntToCart(joints, pose) < 0)
         return false;
     return true;
 }
@@ -142,27 +143,6 @@ bool BasicKin::getJointNames(std::vector<std::string> &names) const
     return true;
 }
 
-//bool BasicKin::getJointNames(const KDL::Chain &chain, std::vector<std::string> &names) const
-//{
-//    if (!initialized_)
-//    {
-//        ROS_ERROR("Kinematics must be initialized before retrieving joint names");
-//        return false;
-//    }
-//
-//    unsigned int n = chain.getNrOfJoints();
-//    names.resize(n);
-//
-//    KDL::Joint joint;
-//    for (unsigned int ii=0; ii<n; ++ii)
-//    {
-//        joint = chain.getSegment(ii).getJoint();
-//        if (joint.getType() != joint.None)
-//            names[ii] = joint.getName();
-//    }
-//    return true;
-//}
-
 bool BasicKin::getLinkNames(std::vector<std::string> &names) const
 {
     if (!initialized_)
@@ -173,24 +153,6 @@ bool BasicKin::getLinkNames(std::vector<std::string> &names) const
     names = link_list_;
     return true;
 }
-
-//bool BasicKin::getLinkNames(const KDL::Chain &chain, std::vector<std::string> &names) const
-//{
-//    if (!initialized_)
-//    {
-//        ROS_ERROR("Kinematics must be initialized before retrieving link names");
-//        return false;
-//    }
-//
-//    unsigned int n = chain.getNrOfSegments();
-//    names.resize(n);
-//
-//    for (unsigned int ii=0; ii<n; ++ii)
-//    {
-//        names[ii] = robot_chain_.getSegment(ii).getName();
-//    }
-//    return true;
-//}
 
 int BasicKin::getJointNum(const std::string &joint_name) const
 {
@@ -233,7 +195,6 @@ bool BasicKin::init(const moveit::core::JointModelGroup* group)
     return false;
   }
 
-//  KDL::Tree tree;
   if (!kdl_parser::treeFromUrdfModel(*urdf, kdl_tree_))
   {
     ROS_ERROR("Failed to initialize KDL from URDF model");
@@ -271,15 +232,10 @@ bool BasicKin::init(const moveit::core::JointModelGroup* group)
   initialized_ = true;
   group_ = group;
 
-//  for (size_t ii=0; ii<joint_list_.size(); ++ii)
-//      ROS_INFO_STREAM("Added joint " << joint_list_[ii]);
-//  for (size_t ii=0; ii<link_list_.size(); ++ii)
-//      ROS_INFO_STREAM("Added link " <<link_list_[ii]);
-
   return true;
 }
 
-void BasicKin::KDLToEigen(const KDL::Frame &frame, Eigen::Affine3d &transform)
+void BasicKin::KDLToEigen(const KDL::Frame &frame, Eigen::Affine3d &transform) 
 {
   transform.setIdentity();
 
@@ -305,8 +261,16 @@ bool BasicKin::linkTransforms(const VectorXd &joint_angles,
                               std::vector<KDL::Frame> &poses,
                               const std::vector<std::string> &link_names) const
 {
-    if (!checkInitialized()) return false;
-    if (!checkJoints(joint_angles)) return false;
+  if (!checkInitialized())
+  {
+    ROS_ERROR("BasicKin not initialized in linkTransforms()");
+    return false;
+  }
+  if (!checkJoints(joint_angles)) 
+  {
+    ROS_ERROR("BasicKin checkJoints failed in linkTransforms()");
+    return false;
+  }
 
     std::vector<std::string> links(link_names);
     size_t n = links.size();
@@ -356,13 +320,13 @@ bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) cons
 
   if ( (A.rows() == 0) || (A.cols() == 0) )
   {
-    ROS_ERROR("Empty matrices not supported");
+    ROS_ERROR("Empty matrices not supported in solvePinv()");
     return false;
   }
 
   if ( A.rows() != b.size() )
   {
-    ROS_ERROR("Matrix size mismatch: A(%ld,%ld), b(%ld)",
+    ROS_ERROR("Matrix size mismatch: A(%d,%d), b(%d)",
               A.rows(), A.cols(), b.size());
     return false;
   }
@@ -396,7 +360,7 @@ bool BasicKin::dampedPInv(const MatrixXd &A, MatrixXd &P)
 
   if ( (A.rows() == 0) || (A.cols() == 0) )
   {
-    ROS_ERROR("Empty matrices not supported");
+    ROS_ERROR("Empty matrices not supported in dampedPInv()");
     return false;
   }
 
@@ -416,7 +380,9 @@ bool BasicKin::dampedPInv(const MatrixXd &A, MatrixXd &P)
     if (fabs(Sv(i)) > eps)
       inv_Sv(i) = 1/Sv(i);
     else
+    {
       inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
+    }
   }
   P = V * inv_Sv.asDiagonal() * U.transpose();
   return true;

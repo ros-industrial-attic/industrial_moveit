@@ -66,7 +66,7 @@ protected:
 private:
   static const std::string urdf_file;
 };
-const std::string BasicIKTest::urdf_file = "puma_560.urdf";
+const std::string BasicIKTest::urdf_file = "ur10.urdf";
 
 
 typedef BasicIKTest init;
@@ -111,11 +111,8 @@ TEST_F(calcInvKin, knownPoses)
 
   // seed position *at* expected solution
   expected << M_PI_2, -M_PI_2, -M_PI_2, -M_PI_2, M_PI_2, -M_PI_2;
-  pose.translation().matrix() << -0.1245, 0.0203, 0.6740;
-  pose.matrix().topLeftCorner(3,3) << 0,0,1,
-                                      1,0,0,
-                                      0,1,0;
   seed = expected;
+  kin.calcFwdKin(expected,pose);
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*at* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, seed, joints);
@@ -181,7 +178,7 @@ TEST_F(calcInvKin, knownPoses)
                "*farther* from expected: " << expected.transpose() << std::endl;
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
+  EXPECT_FALSE(rslt_pose.isApprox(pose, 0.005));
 
   // *very far*
   expected << M_PI_2, -M_PI_2, 0, 0, 0, 0;
@@ -194,7 +191,7 @@ TEST_F(calcInvKin, knownPoses)
   ik.setPrimaryKp(.1);
   ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
   kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_FALSE(rslt_pose.isApprox(pose, 0.005));
+  EXPECT_TRUE(rslt_pose.isApprox(pose, 0.005));
 }
 
 /*This test checks the consistancy of the axisAngle calculations from a quaternion value,

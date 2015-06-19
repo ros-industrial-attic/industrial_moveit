@@ -59,8 +59,9 @@ Eigen::MatrixXd ConstraintGroup::calcJacobian()
 {
   MatrixXd jacobian;
   for (size_t i=0; i<constraints_.size(); ++i)
+  {
     constraints_[i].updateJacobian(jacobian);
-
+  }
   return jacobian;
 }
 
@@ -99,6 +100,14 @@ void ConstraintGroup::update(const SolverState &state)
   for (size_t i=0; i<constraints_.size(); ++i)
     constraints_[i].update(state);
 }
-
+bool ConstraintGroup::collision_checks_required()
+{
+  bool rtn= false;
+  for (size_t i=0; i<constraints_.size(); ++i)
+  {
+    rtn |= constraints_[i].requires_collision_checks();
+  }
+  return rtn;
+}
 } // namespace constrained_ik
 
