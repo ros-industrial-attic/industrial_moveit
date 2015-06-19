@@ -67,7 +67,8 @@ namespace constrained_ik
      * @param ds max catesian interpolation step
      * @return std::vector<Eigen::Affine3d>
      */
-    std::vector<Eigen::Affine3d> interpolateCartesian(const Eigen::Affine3d& start, const Eigen::Affine3d& stop, double ds) const;
+    std::vector<Eigen::Affine3d,Eigen::aligned_allocator<Eigen::Affine3d> >
+    interpolateCartesian(const Eigen::Affine3d& start, const Eigen::Affine3d& stop, double ds) const;
 
   };
 } //namespace constrained_ik
