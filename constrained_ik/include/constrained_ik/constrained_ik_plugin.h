@@ -32,6 +32,7 @@
 #include <moveit/kinematics_base/kinematics_base.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include <moveit_msgs/MoveItErrorCodes.h>
+#include <constrained_ik/ik/test_ik.h>
 
 namespace constrained_ik
 {
@@ -115,6 +116,7 @@ namespace constrained_ik
     planning_scene::PlanningScenePtr planning_scene_; // Used for collision queries
     moveit::core::RobotStatePtr robot_state_;
     robot_model::RobotModelPtr robot_model_ptr_;
+    mutable test_ik::Test_IK solver_; //This is a hack until industrial_moveit can modified to be called from a const
   };
 
 }   //namespace constrained_ik
