@@ -29,6 +29,7 @@
 #include "solver_state.h"
 #include <boost/scoped_ptr.hpp>
 #include <Eigen/Core>
+#include <constrained_ik/constraint_results.h>
 
 namespace constrained_ik
 {
@@ -46,37 +47,18 @@ public:
   Constraint() : initialized_(false), debug_(false), requires_collision_checks_(false) {}
   virtual ~Constraint() {}
 
-  static void appendError(Eigen::VectorXd &error, const Eigen::VectorXd &addErr);
-
-  static void appendJacobian(Eigen::MatrixXd &jacobian, const Eigen::MatrixXd &addJacobian);
-
-  virtual Eigen::VectorXd calcError() = 0;
-
-  virtual Eigen::MatrixXd calcJacobian() = 0;
-
-  virtual bool checkStatus() const { return false; }
+  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const = 0;
 
   virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik;}
-
-  virtual void reset() { }
 
   /**@brief set debug mode
    * @param debug Value to set debug_ to (defaults to true)
    */
   void setDebug(bool debug = true) {debug_= debug;}
 
-  virtual void update(const SolverState &state) { state_ = state; }
-
-  virtual void updateError(Eigen::VectorXd &error);
-
-  virtual void updateJacobian(Eigen::MatrixXd &jacobian);
-
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  bool requires_collision_checks()
-  { 
-    return requires_collision_checks_; 
-  };
+  bool requires_collision_checks() const { return requires_collision_checks_; }
 
 protected:
   bool initialized_;
@@ -84,9 +66,8 @@ protected:
   bool requires_collision_checks_;
 
   const Constrained_IK* ik_;
-  SolverState state_;
-  
-  int numJoints();
+
+  int numJoints() const;
 }; // class Constraint
 
 

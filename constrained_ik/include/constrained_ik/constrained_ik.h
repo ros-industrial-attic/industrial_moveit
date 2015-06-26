@@ -37,6 +37,7 @@
 #include <urdf/model.h>
 #include <constrained_ik/enum_types.h>
 #include <moveit/planning_scene/planning_scene.h>
+#include <constrained_ik/constraint_results.h>
 
 
 namespace constrained_ik
@@ -59,7 +60,7 @@ public:
    * @param poses the desired pose transforms
    * @param link_names the names of the links
    * @return true on success
-   */  
+   */
   bool linkTransforms(const Eigen::VectorXd &joints,
                       std::vector<KDL::Frame> &poses,
                       const std::vector<std::string> link_names = std::vector<std::string>()) const
@@ -74,10 +75,10 @@ public:
   {
     switch(constraint_type)
     {
-      case constraint_types::primary:
+      case constraint_types::Primary:
         primary_constraints_.add(constraint);
         break;
-      case constraint_types::auxiliary:
+      case constraint_types::Auxiliary:
         auxiliary_constraints_.add(constraint);
         break;
     }
@@ -94,7 +95,7 @@ public:
   virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed,
                           const planning_scene::PlanningSceneConstPtr planning_scene,
                           Eigen::VectorXd &joint_angles,
-                          int min_updates = 0) ;
+                          int min_updates = 0) const ;
 
   /**
    * @brief computes the inverse kinematics for the given pose of the tip link
@@ -105,21 +106,30 @@ public:
   virtual void calcInvKin(const Eigen::Affine3d &pose,
                           const Eigen::VectorXd &joint_seed,
                           Eigen::VectorXd &joint_angles,
-                          int min_updates=0);
+                          int min_updates=0) const ;
 
-  /**
+  /**, const constrained_ik::SolverState &state
    * @brief Checks to see if object is initialized (ie: init() has been called)
    * @param constraint_type Contraint type (primary or auxiliary)
    * @return True if object is initialized
    */
-  bool checkInitialized(constraint_types::ConstraintType constraint_type) const
+  initialization_state::InitializationState checkInitialized() const
   {
-    switch(constraint_type)
+    if (initialized_ && !primary_constraints_.empty() && !auxiliary_constraints_.empty())
     {
-      case constraint_types::primary:
-        return initialized_ && !primary_constraints_.empty();
-      case constraint_types::auxiliary:
-        return initialized_ && !auxiliary_constraints_.empty();
+      return initialization_state::PrimaryAndAuxiliary;
+    }
+    else if (initialized_ && !primary_constraints_.empty() && auxiliary_constraints_.empty())
+    {
+      return initialization_state::PrimaryOnly;
+    }
+    else if (initialized_ && primary_constraints_.empty() && !auxiliary_constraints_.empty())
+    {
+      return initialization_state::AuxiliaryOnly;
+    }
+    else
+    {
+      return initialization_state::NothingInitialized;
     }
   }
 
@@ -159,11 +169,11 @@ public:
    */
   inline unsigned int getMaxIter() const {return max_iter_;}
 
-  /**
-   * @brief Getter for latest solver state
-   * @return Latest solver state
-   */
-  inline const SolverState& getState() const { return state_; }
+//  /**
+//   * @brief Getter for latest solver state
+//   * @return Latest solver state
+//   */
+//  inline const SolverState& getState() const { return state_; }
 
   /**
    * @brief Initializes object with kinematic model of robot
@@ -283,43 +293,47 @@ public:
 
   // state/counter data
   bool initialized_;
-  SolverState state_;
+  //SolverState state_;
   basic_kin::BasicKin kin_;
 
   std::map<std::string, fcl::DistanceResult> distance_detailed_; /**< Closest distance for each object in model */
 
   bool debug_;
-  std::vector<Eigen::VectorXd> iteration_path_;
 
-  /**
-   * @brief Pure definition for calculating constraint error
-   * @param constraint_type Contraint type (primary or auxiliary)
-   * @return Error vector (b-input in calcPInv)
-   */
-  virtual Eigen::VectorXd calcConstraintError(constraint_types::ConstraintType constraint_type);
+  constrained_ik::ConstraintResults evalConstraint(constraint_types::ConstraintType constraint_type, const constrained_ik::SolverState &state) const;
 
-  /**
-   * @brief Pure definition for calculating Jacobian
-   * @param constraint_type Contraint type (primary or auxiliary)
-   * @return Jacobian matrix (A-input in calcPInv)
-   */
-  virtual Eigen::MatrixXd calcConstraintJacobian(constraint_types::ConstraintType constraint_type);
+//  /**
+//   * @brief Pure definition for calculating constraint error
+//   * @param constraint_type Contraint type (primary or auxiliary)
+//   * @return Error vector (b-input in calcPInv)
+//   */
+//  virtual Eigen::VectorXd calcConstraintError(constraint_types::ConstraintType constraint_type);
 
+//  /**
+//   * @brief Pure definition for calculating Jacobian
+//   * @param constraint_type Contraint type (primary or auxiliary)
+//   * @return Jacobian matrix (A-input in calcPInv)
+//   */
+//  virtual Eigen::MatrixXd calcConstraintJacobian(constraint_types::ConstraintType constraint_type);
 
-  //TODO document
-  void clipToJointLimits(Eigen::VectorXd &joints);
 
   //TODO document
-  virtual bool checkStatus() const;
+  void clipToJointLimits(Eigen::VectorXd &joints) const;
 
   //TODO document
-  virtual void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
+  virtual bool checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const;
 
   //TODO document
-  virtual void update(const Eigen::VectorXd &joints);
+  virtual bool checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary) const;
+
+  //TODO document
+  virtual constrained_ik::SolverState getState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed) const;
+
+  //TODO document
+  virtual void updateState(constrained_ik::SolverState &state, const Eigen::VectorXd &joints) const;
 
 private:
-  bool collision_checks_required();
+  bool collision_checks_required() const;
 }; // class Constrained_IK
 
 } // namespace constrained_ik

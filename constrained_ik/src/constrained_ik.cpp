@@ -29,6 +29,7 @@
 #include "constrained_ik/constraint_group.h"
 #include <boost/make_shared.hpp>
 #include <moveit/collision_detection_fcl/collision_common.h>
+#include <constrained_ik/constraint_results.h>
 #include <ros/ros.h>
 
 namespace constrained_ik
@@ -48,25 +49,14 @@ Constrained_IK::Constrained_IK()
   kpa_ = 0.5;// default auxillary proportional gain
 }
 
-Eigen::VectorXd Constrained_IK::calcConstraintError(constraint_types::ConstraintType constraint_type)
+constrained_ik::ConstraintResults Constrained_IK::evalConstraint(constraint_types::ConstraintType constraint_type, const constrained_ik::SolverState &state) const
 {
   switch(constraint_type)
   {
-    case constraint_types::primary:
-      return primary_constraints_.calcError();
-    case constraint_types::auxiliary:
-      return auxiliary_constraints_.calcError();
-  }
-}
-
-Eigen::MatrixXd Constrained_IK::calcConstraintJacobian(constraint_types::ConstraintType constraint_type)
-{
-  switch(constraint_type)
-  {
-    case constraint_types::primary:
-      return primary_constraints_.calcJacobian();
-    case constraint_types::auxiliary:
-      return auxiliary_constraints_.calcJacobian();
+    case constraint_types::Primary:
+      return primary_constraints_.evalConstraint(state);
+    case constraint_types::Auxiliary:
+      return auxiliary_constraints_.evalConstraint(state);
   }
 }
 
@@ -84,10 +74,10 @@ Eigen::MatrixXd Constrained_IK::calcNullspaceProjectionTheRightWay(const Eigen::
   Eigen::JacobiSVD<MatrixXd> svd(A, Eigen::ComputeFullV);
   MatrixXd V(svd.matrixV());
 
-  // determine rank using same algorithym as latest Eigen 
+  // determine rank using same algorithym as latest Eigen
   // TODO replace next 10 lines of code with rnk = svd.rank(); once eigen3 is updated
   int rnk = 0;
-  if(svd.singularValues().size()==0) 
+  if(svd.singularValues().size()==0)
   {
     rnk = 0;
   }
@@ -103,7 +93,7 @@ Eigen::MatrixXd Constrained_IK::calcNullspaceProjectionTheRightWay(const Eigen::
   // zero singular vectors in the range of A
   for(int i=0; i<rnk; ++i)
   {
-    for(int j=0; j<A.cols(); j++) V(j,i) = 0; 
+    for(int j=0; j<A.cols(); j++) V(j,i) = 0;
   }
 
   MatrixXd P = V *  V.transpose();
@@ -175,7 +165,7 @@ bool Constrained_IK::getDistanceInfo(const std::string link_name, Constrained_IK
 void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 const Eigen::VectorXd &joint_seed,
                                 Eigen::VectorXd &joint_angles,
-                                int min_updates) 
+                                int min_updates) const
 {
   calcInvKin(goal,joint_seed, planning_scene::PlanningSceneConstPtr(), joint_angles, min_updates);
 }
@@ -184,30 +174,33 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 const Eigen::VectorXd &joint_seed,
                                 const planning_scene::PlanningSceneConstPtr planning_scene,
                                 Eigen::VectorXd &joint_angles,
-                                int min_updates) 
+                                int min_updates) const
 {
-  if (!checkInitialized(constraint_types::primary))
-    throw std::runtime_error("Must call init() before using Constrained_IK");
-  //TODO should goal be checked here instead of in reset()?
+  // initialize state
+  joint_angles = joint_seed;  // initialize result to seed value
+  constrained_ik::SolverState state = getState(goal, joint_seed); // create state vars for this IK solve
+  state.condition = checkInitialized();
+  updateState(state, joint_angles);       // update current state
+
+  if (state.condition == initialization_state::NothingInitialized || state.condition == initialization_state::AuxiliaryOnly)
+    throw std::runtime_error("Must call init() before using Constrained_IK and have a primary constraint.");
 
   //Cache the joint angles to return if max iteration is reached.
   Eigen::VectorXd cached_joint_angles = joint_seed;
 
-  // initialize state
-  joint_angles = joint_seed;  // initialize result to seed value
-  reset(goal, joint_seed);    // reset state vars for this IK solve
-  update(joint_angles);       // update current state
+
 
   if(planning_scene && collision_checks_required())// initialize detailed distance_ prior to checking statusn
   {
     moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
     robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
     robot_state->update();
-    distance_detailed_ = planning_scene->getCollisionRobot()->distanceSelfDetailed(*robot_state, planning_scene->getAllowedCollisionMatrix());
+    //distance_detailed_ = planning_scene->getCollisionRobot()->distanceSelfDetailed(*robot_state, planning_scene->getAllowedCollisionMatrix());
   }
 
   // iterate until solution converges (or aborted)
-  while (!checkStatus() || min_updates>0)
+  bool status = false;
+  while (true)
   {
     // If planning_scene is not null we calculate distance data for collision
     // avoidance.
@@ -216,64 +209,69 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
       moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
       robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
       robot_state->update();
-      distance_detailed_ = planning_scene->getCollisionRobot()->distanceSelfDetailed(*robot_state, planning_scene->getAllowedCollisionMatrix());
+      //distance_detailed_ = planning_scene->getCollisionRobot()->distanceSelfDetailed(*robot_state, planning_scene->getAllowedCollisionMatrix());
     }
     // calculate a Jacobian (relating joint-space updates/deltas to cartesian-space errors/deltas)
     // and the associated cartesian-space error/delta vector
     // Primary Constraints
-
-    MatrixXd J_p  = calcConstraintJacobian(constraint_types::primary);
+    constrained_ik::ConstraintResults primary = evalConstraint(constraint_types::Primary, state);
     // TODO since we already have J_p = USV, use that to get null-projection too.
     // otherwise, we are repeating the expensive calculation of the SVD
-    MatrixXd Ji_p = calcDampedPseudoinverse(J_p);
-    int rows = J_p.rows();
-    int cols = J_p.cols();
-    VectorXd err_p = calcConstraintError(constraint_types::primary);
-    // solve for the resulting joint-space update
-    VectorXd dJoint_p;
-    VectorXd dJoint_a;
-
-    dJoint_p = kpp_*(Ji_p*err_p);
+    MatrixXd Ji_p = calcDampedPseudoinverse(primary.jacobian);
+    VectorXd dJoint_p = kpp_*(Ji_p*primary.error);
     if(dJoint_p.norm() > 1.0)// limit maximum update to unit size 1 radian /meter
     {
       dJoint_p = dJoint_p/dJoint_p.norm();
     }
-    ROS_DEBUG("theta_p = %f ep = %f",dJoint_p.norm(), err_p.norm());
+    ROS_DEBUG("theta_p = %f ep = %f",dJoint_p.norm(), primary.error.norm());
+
 
     // Auxiliary Constraints
+    VectorXd dJoint_a;
+    constrained_ik::ConstraintResults auxiliary;
     dJoint_a.setZero(dJoint_p.size());
-    if (checkInitialized(constraint_types::auxiliary)) 
+    if (state.condition == initialization_state::PrimaryAndAuxiliary)
     {
-      MatrixXd J_a  = calcConstraintJacobian(constraint_types::auxiliary);
-      VectorXd err_a = calcConstraintError(constraint_types::auxiliary);
-      MatrixXd N_p = calcNullspaceProjectionTheRightWay(J_p);
-      MatrixXd Jnull_a = calcDampedPseudoinverse(J_a*N_p);
-      dJoint_a = kpa_*Jnull_a*(err_a-J_a*dJoint_p);
-      if(state_.iter > max_iter_*.9) // print debugging info if not converging 
-      {
-        ROS_ERROR("theta_p = %f theta_a = %f ep = %f ea = %f", dJoint_p.norm(), dJoint_a.norm(), err_p.norm(), err_a.norm());
-      }
+      auxiliary = evalConstraint(constraint_types::Auxiliary, state);
+      MatrixXd N_p = calcNullspaceProjectionTheRightWay(auxiliary.jacobian);
+      MatrixXd Jnull_a = calcDampedPseudoinverse(auxiliary.jacobian*N_p);
+      dJoint_a = kpa_*Jnull_a*(auxiliary.error-auxiliary.jacobian*dJoint_p);
     }
 
-    if(state_.iter > max_iter_*.9) // print debugging info if not converging 
+    // Check the status of convergence
+    if(state.condition = initialization_state::PrimaryAndAuxiliary)
     {
-      if(!checkInitialized(constraint_types::auxiliary))
-        ROS_ERROR("theta_p = %f ep = %f ", dJoint_p.norm(),  err_p.norm());
+      status = checkStatus(state, primary, auxiliary);
+
+      if(state.iter > max_iter_*.9)
+        ROS_ERROR("theta_p = %f theta_a = %f ep = %f ea = %f", dJoint_p.norm(), dJoint_a.norm(), primary.error.norm(), auxiliary.error.norm());
+    }
+    else if(state.condition = initialization_state::PrimaryOnly)
+    {
+      status = checkStatus(state, primary);
+
+      if(state.iter > max_iter_*.9)
+        ROS_ERROR("theta_p = %f ep = %f ", dJoint_p.norm(),  primary.error.norm());
     }
 
-    // update joint solution by the calculated update (or a partial fraction)
-    joint_angles += (dJoint_p + dJoint_a);
-    clipToJointLimits(joint_angles);
+    if(status && min_updates<=0)
+    {
+      break;
+    }
+    else
+    {
+      // update joint solution by the calculated update (or a partial fraction)
+      joint_angles += (dJoint_p + dJoint_a);
+      clipToJointLimits(joint_angles);
 
-    // re-update internal state variables
-    update(joint_angles);
-    min_updates--;
+      // re-update internal state variables
+      updateState(state, joint_angles);
+      min_updates--;
+    }
   }
 
-  if (state_.iter == max_iter_)
-  {
+  if (state.iter == max_iter_)
     joint_angles = cached_joint_angles;
-  }
 
   // checking for collision on a valid planning scene
   if(planning_scene && collision_checks_required())
@@ -290,24 +288,40 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   ROS_INFO_STREAM("IK solution: " << joint_angles.transpose());
 }
 
-bool Constrained_IK::checkStatus() const
+bool Constrained_IK::checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary) const
 {
-  // check constraints for completion
-  bool primary_status = primary_constraints_.checkStatus();
-  bool auxiliary_status = auxiliary_constraints_.checkStatus();
-
-  if (primary_status && auxiliary_status)
+  if (primary.status)
     return true;
 
   // check maximum iterations
-  if (state_.iter > max_iter_)
+  if (state.iter > max_iter_)
     throw std::runtime_error("Maximum iterations reached.  IK solution may be invalid.");
 
   // check for joint convergence
   //   - this is an error: joints stabilize, but goal pose not reached
-  if (state_.joints_delta.cwiseAbs().maxCoeff() < joint_convergence_tol_)
+  if (state.joints_delta.cwiseAbs().maxCoeff() < joint_convergence_tol_)
   {
-    ROS_WARN_STREAM("Reached " << state_.iter << " / " << max_iter_ << " iterations before convergence.");
+    ROS_WARN_STREAM("Reached " << state.iter << " / " << max_iter_ << " iterations before convergence.");
+    return true;
+  }
+
+  return false;
+}
+
+bool Constrained_IK::checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const
+{
+  if (primary.status && auxiliary.status)
+    return true;
+
+  // check maximum iterations
+  if (state.iter > max_iter_)
+    throw std::runtime_error("Maximum iterations reached.  IK solution may be invalid.");
+
+  // check for joint convergence
+  //   - this is an error: joints stabilize, but goal pose not reached
+  if (state.joints_delta.cwiseAbs().maxCoeff() < joint_convergence_tol_)
+  {
+    ROS_WARN_STREAM("Reached " << state.iter << " / " << max_iter_ << " iterations before convergence.");
     return true;
   }
 
@@ -320,7 +334,7 @@ void Constrained_IK::clearConstraintList()
   auxiliary_constraints_.clear();
 }
 
-void Constrained_IK::clipToJointLimits(Eigen::VectorXd &joints)
+void Constrained_IK::clipToJointLimits(Eigen::VectorXd &joints) const
 {
   const MatrixXd limits = kin_.getLimits();
   const VectorXd orig_joints(joints);
@@ -360,7 +374,7 @@ double Constrained_IK::rangedAngle(double angle)
     return angle;
 }
 
-void Constrained_IK::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed)
+constrained_ik::SolverState Constrained_IK::getState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed) const
 {
   if (!kin_.checkJoints(joint_seed))
     throw std::invalid_argument("Seed doesn't match kinematic model");
@@ -368,29 +382,38 @@ void Constrained_IK::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &j
   if (!goal.matrix().block(0,0,3,3).isUnitary(1e-6))
         throw std::invalid_argument("Goal pose not proper affine");
 
-  state_.reset(goal, joint_seed);  // reset state
-  primary_constraints_.reset();            // reset primary constraints
-  auxiliary_constraints_.reset();            // reset auxiliary constraints
+  return constrained_ik::SolverState(goal, joint_seed);
 }
 
-void Constrained_IK::update(const Eigen::VectorXd &joints)
+//void Constrained_IK::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed)
+//{
+//  if (!kin_.checkJoints(joint_seed))
+//    throw std::invalid_argument("Seed doesn't match kinematic model");
+
+//  if (!goal.matrix().block(0,0,3,3).isUnitary(1e-6))
+//        throw std::invalid_argument("Goal pose not proper affine");
+
+//  state_.reset(goal, joint_seed);  // reset state
+////  primary_constraints_.reset();            // reset primary constraints
+////  auxiliary_constraints_.reset();            // reset auxiliary constraints
+//}
+
+void Constrained_IK::updateState(constrained_ik::SolverState &state, const Eigen::VectorXd &joints) const
 {
   // update maximum iterations
-  state_.iter++;
+  state.iter++;
 
   // update joint convergence
-  state_.joints_delta = joints - state_.joints;
-  state_.joints = joints;
-  kin_.calcFwdKin(joints, state_.pose_estimate);
+  state.joints_delta = joints - state.joints;
+  state.joints = joints;
+  kin_.calcFwdKin(joints, state.pose_estimate);
 
   if (debug_)
-      iteration_path_.push_back(joints);
+      state.iteration_path.push_back(joints);
 
-  primary_constraints_.update(state_);
-  auxiliary_constraints_.update(state_);
 }
 
-bool Constrained_IK::collision_checks_required()
+bool Constrained_IK::collision_checks_required() const
 {
   return( primary_constraints_.collision_checks_required() | auxiliary_constraints_.collision_checks_required());
 }

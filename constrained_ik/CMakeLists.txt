@@ -64,23 +64,24 @@ add_library(constrained_ik
             src/basic_kin.cpp
             src/constrained_ik.cpp
             src/constraint.cpp
-            src/constraint_group.cpp
-            src/constraints/avoid_obstacles.cpp
-            src/constraints/avoid_joint_limits.cpp
-            src/constraints/goal_orientation.cpp
-            src/constraints/goal_position.cpp
-            src/constraints/tool_position.cpp
-            src/constraints/goal_tool_orientation.cpp
-            src/constraints/goal_minimize_change.cpp
-            src/constraints/goal_mid_joint.cpp
-            src/constraints/goal_zero_jvel.cpp
-            src/constraints/avoid_singularities.cpp
-            src/constraints/joint_vel_limits.cpp
             src/solver_state.cpp
+            src/constraints/avoid_joint_limits.cpp
+            src/constraint_group.cpp
+            #src/constraints/avoid_obstacles.cpp
+            #src/constraints/goal_orientation.cpp
+            #src/constraints/goal_position.cpp
+            #src/constraints/tool_position.cpp
+            #src/constraints/goal_tool_orientation.cpp
+            #src/constraints/goal_minimize_change.cpp
+            #src/constraints/goal_mid_joint.cpp
+            #src/constraints/goal_zero_jvel.cpp
+            #src/constraints/avoid_singularities.cpp
+            #src/constraints/joint_vel_limits.cpp
+
 )
 target_link_libraries(constrained_ik ${catkin_LIBRARIES})
 
-add_library(constrained_ik_plugin 
+add_library(constrained_ik_plugin
             src/constrained_ik_plugin.cpp
 )
 target_link_libraries(constrained_ik_plugin constrained_ik ${catkin_LIBRARIES})
@@ -148,8 +149,8 @@ if(CATKIN_ENABLE_TESTING)
   add_rostest_gtest(test_basic_ik test/test_basic_ik.launch test/test_BasicIK.cpp )
   target_link_libraries(test_basic_ik constrained_ik)
 
-  add_rostest_gtest(test_constrained_ik     
-    test/test_constrained_ik.launch 
+  add_rostest_gtest(test_constrained_ik
+    test/test_constrained_ik.launch
     test/test_constrained_ik.cpp )
   target_link_libraries(test_constrained_ik constrained_ik)
 endif()

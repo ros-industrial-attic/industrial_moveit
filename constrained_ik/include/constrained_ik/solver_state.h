@@ -25,8 +25,10 @@
 #ifndef SOLVER_STATE_H
 #define SOLVER_STATE_H
 
+#include <vector>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <constrained_ik/enum_types.h>
 
 namespace constrained_ik
 {
@@ -41,6 +43,11 @@ struct SolverState
   Eigen::VectorXd joints;
   Eigen::VectorXd joints_delta;
   Eigen::Affine3d pose_estimate;
+  std::vector<Eigen::VectorXd> iteration_path;
+  initialization_state::InitializationState condition;
+
+  SolverState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
+  SolverState(){}
 
   void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
 

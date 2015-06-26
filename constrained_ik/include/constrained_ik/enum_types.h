@@ -32,15 +32,21 @@
 
 namespace constrained_ik
 {
-namespace constraint_types
-{
-  /**
-   * @brief Enum that identifies a constraint type.
-   * Primary - These constraints must be satisfied
-   * Auxiliary - These constraints try to manipulate the null space to be
-   *             satisfied.
-   */
-  enum ConstraintType {primary,auxiliary};
-}// namespace constraint_types
+  namespace constraint_types
+  {
+    /**
+     * @brief Enum that identifies a constraint type.
+     * Primary - These constraints must be satisfied
+     * Auxiliary - These constraints try to manipulate the null space to be
+     *             satisfied.
+     */
+    enum ConstraintType {Primary,Auxiliary};
+
+  }// namespace constraint_types
+
+  namespace initialization_state
+  {
+    enum InitializationState {PrimaryOnly, AuxiliaryOnly, PrimaryAndAuxiliary, NothingInitialized};
+  }// namespace initialization_state
 }// namespace constrained_ik
 #endif // ENUM_TYPES_H
