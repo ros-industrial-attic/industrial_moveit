@@ -37,12 +37,24 @@ GoalZeroJVel::GoalZeroJVel() : Constraint(), weight_(1.0)
 {
 }
 
-Eigen::VectorXd GoalZeroJVel::calcError()
+constrained_ik::ConstraintResults GoalZeroJVel::evalConstraint(const SolverState &state) const
+{
+  constrained_ik::ConstraintResults output;
+  GoalZeroJVel::ConstraintData cdata(state);
+
+  output.error = calcError(cdata);
+  output.jacobian = calcJacobian(cdata);
+  output.status = checkStatus(cdata);
+
+  return output;
+}
+
+Eigen::VectorXd GoalZeroJVel::calcError(const GoalZeroJVel::ConstraintData &cdata) const
 {
     return VectorXd::Zero(numJoints());
 }
 
-Eigen::MatrixXd GoalZeroJVel::calcJacobian()
+Eigen::MatrixXd GoalZeroJVel::calcJacobian(const GoalZeroJVel::ConstraintData &cdata) const
 {
     size_t n = numJoints();    // number of joints
     MatrixXd  J = MatrixXd::Identity(n,n) * weight_;

@@ -83,13 +83,12 @@ protected:
   double threshold_;   /**< @brief threshold (% of range) at which to engage limit avoidance */
 
 public:
-  struct ConstraintData
+  struct AvoidJointLimitsData: public ConstraintData
   {
-    SolverState state_;
     std::vector<int> limited_joints_;  /**< @brief list of joints that will be constrained */
-    const constraints::AvoidJointLimits* ajl_;
-
-    ConstraintData(const constrained_ik::SolverState &state, const constraints::AvoidJointLimits* ajl);
+    const constraints::AvoidJointLimits* parent_;
+    AvoidJointLimitsData(const constrained_ik::SolverState &state, const constraints::AvoidJointLimits* parent);
+    virtual ~AvoidJointLimitsData() { delete parent_; }
 
     /**
      * @brief Check if a given joint is near its lower limit
@@ -104,8 +103,6 @@ public:
      * @return True if joint position is within threshold of upper limit
      */
     bool nearUpperLimit(size_t idx);
-
-
   };
 
   AvoidJointLimits(): Constraint(), weight_(1.0), threshold_(0.05) {}
@@ -118,21 +115,21 @@ public:
    * Each limited joint gets a 0 row with a 1 in that joint's column
    * @return Pseudo-Identity scaled by weight_
    */
-  Eigen::MatrixXd calcJacobian(const ConstraintData &cdata) const;
+  Eigen::MatrixXd calcJacobian(const AvoidJointLimitsData &cdata) const;
 
   /**
    * @brief Creates vector representing velocity error term
    * corresponding to calcJacobian()
    * @return VectorXd of joint velocities for joint limit avoidance
    */
-  Eigen::VectorXd calcError(const ConstraintData &cdata) const;
+  Eigen::VectorXd calcError(const AvoidJointLimitsData &cdata) const;
 
   /**
    * @brief Checks termination criteria
    * There are no termination criteria for this constraint
    * @return True
    */
-  bool checkStatus(const ConstraintData &cdata) const;// { return limited_joints_.size() < 1;/*true;*/ }  // always satisfied, even if "close to limits"
+  bool checkStatus(const AvoidJointLimitsData &cdata) const;
 
   /**
    * @brief Initialize constraint (overrides Constraint::init)

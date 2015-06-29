@@ -40,13 +40,15 @@ public:
   ToolPosition();
   virtual ~ToolPosition() {}
 
+  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
+
   /**
    * @brief Jacobian is the first three rows of standard jacobian
    * expressed in tool frame coordinates.
    * Each row is scaled by the corresponding element of weight_
    * @return First 3 rows of standard jacobian expressed in tool frame, scaled by weight_
    */
-  virtual Eigen::MatrixXd calcJacobian();
+  virtual Eigen::MatrixXd calcJacobian(const GoalPositionData &cdata) const;
 
   /**
    * @brief Vector to get from current position to goal position
@@ -54,7 +56,7 @@ public:
    * Each element is multiplied by corresponding element in weight_
    * @return Vector from current to goal expressed in tool frame, scaled by weight_
    */
-  virtual Eigen::VectorXd calcError();
+  virtual Eigen::VectorXd calcError(const GoalPositionData &cdata) const;
 
 }; // class ToolPosition
 

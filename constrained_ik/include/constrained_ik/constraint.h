@@ -44,6 +44,13 @@ class Constrained_IK;
 class Constraint
 {
 public:
+  struct ConstraintData
+  {
+    SolverState state_;
+
+    ConstraintData(const constrained_ik::SolverState &state) { state_ = state; }
+  };
+
   Constraint() : initialized_(false), debug_(false), requires_collision_checks_(false) {}
   virtual ~Constraint() {}
 
@@ -51,7 +58,8 @@ public:
 
   virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik;}
 
-  /**@brief set debug mode
+  /**
+   * @brief set debug mode
    * @param debug Value to set debug_ to (defaults to true)
    */
   void setDebug(bool debug = true) {debug_= debug;}

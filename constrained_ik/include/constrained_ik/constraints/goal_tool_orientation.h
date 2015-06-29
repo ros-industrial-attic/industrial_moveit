@@ -40,13 +40,15 @@ public:
   GoalToolOrientation();
   virtual ~GoalToolOrientation() {}
 
+  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
+
   /**
    * @brief Jacobian is the last three rows of standard jacobian
    * (in tool frame). Equivalent to each axis of rotation expressed in tool frame coordinates.
    * Each row is scaled by the corresponding element of weight_
    * @return Last 3 rows of standard jacobian expressed in tool frame, scaled by weight_
    */
-  virtual Eigen::MatrixXd calcJacobian();
+  virtual Eigen::MatrixXd calcJacobian(const GoalOrientationData &cdata) const;
 
   /**
    * @brief Rotation to get from current orientation to goal orientation
@@ -54,7 +56,7 @@ public:
    * Each element is multiplied by corresponding element in weight_
    * @return Rotation from current to goal expressed in tool frame, scaled by weight_
    */
-  virtual Eigen::VectorXd calcError();
+  virtual Eigen::VectorXd calcError(const GoalOrientationData &cdata) const;
 
 }; // class GoalToolOrientation
 

@@ -26,6 +26,7 @@
 #define GOAL_ORIENTATION_H
 
 #include "constrained_ik/constraint.h"
+#include <constrained_ik/solver_state.h>
 
 namespace constrained_ik
 {
@@ -36,8 +37,17 @@ namespace constraints
 class GoalOrientation : public Constraint
 {
 public:
+  struct GoalOrientationData: public ConstraintData
+  {
+    double rot_err_;      /**< @brief current solution error */
+
+    GoalOrientationData(const constrained_ik::SolverState &state);
+  };
+
   GoalOrientation();
   virtual ~GoalOrientation() {}
+
+  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
 
   /**
    * @brief Jacobian is the last three rows of standard jacobian(in base frame).
@@ -45,15 +55,14 @@ public:
    * Each row is scaled by the corresponding element of weight_
    * @return Last 3 rows of standard jacobian scaled by weight_
    */
-  virtual Eigen::MatrixXd calcJacobian();
-
+  virtual Eigen::MatrixXd calcJacobian(const GoalOrientationData &cdata) const;
   /**
    * @brief Rotation to get from current orientation to goal orientation
    * Resolve into primary vectors (x,y,z) of base coordinate system
    * Each element is multiplied by corresponding element in weight_
    * @return Rotation from current to goal scaled by weight_
    */
-  virtual Eigen::VectorXd calcError();
+  virtual Eigen::VectorXd calcError(const GoalOrientationData &cdata) const;
 
   /**
    * @brief Shortest angle between current orientation and goal orientation
@@ -76,16 +85,13 @@ public:
    * Termination criteria for this constraint is that angle error is below threshold
    * @return True if angle error is below threshold
    */
-  virtual bool checkStatus() const;
+  virtual bool checkStatus(const GoalOrientationData &cdata) const;
 
   /**
    * @brief Getter for weight_
    * @return weight_
    */
   Eigen::Vector3d getWeight() {return weight_;}
-
-  /** @brief Resets constraint. Use this before performing new IK request. */
-  virtual void reset();
 
   /**
    * @brief Setter for tolerance (termination criteria)
@@ -99,16 +105,8 @@ public:
    */
   void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;}
 
-  /**
-   * @brief Update internal state of constraint (overrides constraint::update)
-   * Sets current rotation error
-   * @param state SolverState holding current state of IK solver
-   */
-  virtual void update(const SolverState &state);
-
 protected:
   double rot_err_tol_;  /**< @brief termination criteria */
-  double rot_err_;      /**< @brief current solution error */
   Eigen::Vector3d weight_;    /**< @brief weight for each direction */
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

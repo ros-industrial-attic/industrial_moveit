@@ -37,14 +37,26 @@ GoalMinimizeChange::GoalMinimizeChange() : Constraint(), weight_(1.0)
 {
 }
 
-Eigen::VectorXd GoalMinimizeChange::calcError()
+constrained_ik::ConstraintResults GoalMinimizeChange::evalConstraint(const SolverState &state) const
 {
-    VectorXd err = state_.joint_seed - state_.joints;
+  constrained_ik::ConstraintResults output;
+  GoalMinimizeChange::ConstraintData cdata(state);
+
+  output.error = calcError(cdata);
+  output.jacobian = calcJacobian(cdata);
+  output.status = checkStatus(cdata);
+
+  return output;
+}
+
+Eigen::VectorXd GoalMinimizeChange::calcError(const GoalMinimizeChange::ConstraintData &cdata) const
+{
+    VectorXd err = cdata.state_.joint_seed - cdata.state_.joints;
     err *= weight_;
     return err;
 }
 
-Eigen::MatrixXd GoalMinimizeChange::calcJacobian()
+Eigen::MatrixXd GoalMinimizeChange::calcJacobian(const GoalMinimizeChange::ConstraintData &cdata) const
 {
     size_t n = numJoints();    // number of joints
     MatrixXd  J = MatrixXd::Identity(n,n) * weight_;

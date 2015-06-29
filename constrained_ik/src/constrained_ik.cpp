@@ -385,19 +385,6 @@ constrained_ik::SolverState Constrained_IK::getState(const Eigen::Affine3d &goal
   return constrained_ik::SolverState(goal, joint_seed);
 }
 
-//void Constrained_IK::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed)
-//{
-//  if (!kin_.checkJoints(joint_seed))
-//    throw std::invalid_argument("Seed doesn't match kinematic model");
-
-//  if (!goal.matrix().block(0,0,3,3).isUnitary(1e-6))
-//        throw std::invalid_argument("Goal pose not proper affine");
-
-//  state_.reset(goal, joint_seed);  // reset state
-////  primary_constraints_.reset();            // reset primary constraints
-////  auxiliary_constraints_.reset();            // reset auxiliary constraints
-//}
-
 void Constrained_IK::updateState(constrained_ik::SolverState &state, const Eigen::VectorXd &joints) const
 {
   // update maximum iterations

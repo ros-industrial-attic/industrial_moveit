@@ -39,23 +39,25 @@ public:
   GoalZeroJVel();
   virtual ~GoalZeroJVel() {}
 
+  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
+
   /**
    * @brief Jacobian is identity because all joints are affected
    * @return Identity scaled by weight_
    */
-  virtual Eigen::MatrixXd calcJacobian();
+  virtual Eigen::MatrixXd calcJacobian(const ConstraintData &cdata) const;
 
   /**
    * @brief Error for this constraint is 0
    * @return nx1 vector of zeros
    */
-  virtual Eigen::VectorXd calcError();
+  virtual Eigen::VectorXd calcError(const ConstraintData &cdata) const;
 
   /**
    * @brief Termination criteria for mid-joint constraint
    * @return True always (no termination criteria)
    */
-  virtual bool checkStatus() const {return true;}  //always return true
+  virtual bool checkStatus(const ConstraintData &cdata) const {return true;}  //always return true
 
   /**
    * @brief Getter for weight_

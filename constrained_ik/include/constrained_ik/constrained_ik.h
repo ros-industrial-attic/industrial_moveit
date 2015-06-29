@@ -108,10 +108,9 @@ public:
                           Eigen::VectorXd &joint_angles,
                           int min_updates=0) const ;
 
-  /**, const constrained_ik::SolverState &state
+  /**
    * @brief Checks to see if object is initialized (ie: init() has been called)
-   * @param constraint_type Contraint type (primary or auxiliary)
-   * @return True if object is initialized
+   * @return InitializationState
    */
   initialization_state::InitializationState checkInitialized() const
   {
@@ -300,22 +299,13 @@ public:
 
   bool debug_;
 
+  /**
+   * @brief Pure definition for calculating constraint error, jacobian & status
+   * @param constraint_type Contraint type (primary or auxiliary)
+   * @param state SolverState
+   * @return ConstraintResults
+   */
   constrained_ik::ConstraintResults evalConstraint(constraint_types::ConstraintType constraint_type, const constrained_ik::SolverState &state) const;
-
-//  /**
-//   * @brief Pure definition for calculating constraint error
-//   * @param constraint_type Contraint type (primary or auxiliary)
-//   * @return Error vector (b-input in calcPInv)
-//   */
-//  virtual Eigen::VectorXd calcConstraintError(constraint_types::ConstraintType constraint_type);
-
-//  /**
-//   * @brief Pure definition for calculating Jacobian
-//   * @param constraint_type Contraint type (primary or auxiliary)
-//   * @return Jacobian matrix (A-input in calcPInv)
-//   */
-//  virtual Eigen::MatrixXd calcConstraintJacobian(constraint_types::ConstraintType constraint_type);
-
 
   //TODO document
   void clipToJointLimits(Eigen::VectorXd &joints) const;

@@ -37,16 +37,28 @@ GoalMidJoint::GoalMidJoint() : Constraint(), weight_(1.0)
 {
 }
 
-Eigen::VectorXd GoalMidJoint::calcError()
+constrained_ik::ConstraintResults GoalMidJoint::evalConstraint(const SolverState &state) const
 {
-    VectorXd err = mid_range_ - state_.joints;
+  constrained_ik::ConstraintResults output;
+  GoalMidJoint::ConstraintData cdata(state);
+
+  output.error = calcError(cdata);
+  output.jacobian = calcJacobian(cdata);
+  output.status = checkStatus(cdata);
+
+  return output;
+}
+
+Eigen::VectorXd GoalMidJoint::calcError(const GoalMidJoint::ConstraintData &cdata) const
+{
+    VectorXd err = mid_range_ - cdata.state_.joints;
     err *= weight_;
     return err;
 }
 
-Eigen::MatrixXd GoalMidJoint::calcJacobian()
+Eigen::MatrixXd GoalMidJoint::calcJacobian(const GoalMidJoint::ConstraintData &cdata) const
 {
-    size_t n = state_.joints.size();    // number of joints
+    size_t n = cdata.state_.joints.size();    // number of joints
     MatrixXd  J = MatrixXd::Identity(n,n) * weight_;
     return J;
 }

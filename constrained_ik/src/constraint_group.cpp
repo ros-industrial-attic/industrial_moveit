@@ -54,18 +54,6 @@ constrained_ik::ConstraintResults ConstraintGroup::evalConstraint(const SolverSt
   return output;
 }
 
-//bool ConstraintGroup::checkStatus() const
-//{
-//  bool done=true;
-
-//  for (size_t i=0; i<constraints_.size(); ++i)
-//    done &= constraints_[i].checkStatus();
-
-//  if (done) return done;
-
-//  return Constraint::checkStatus();
-//}
-
 void ConstraintGroup::init(const Constrained_IK* ik)
 {
   Constraint::init(ik);
