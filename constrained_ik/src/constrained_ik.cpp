@@ -181,14 +181,14 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     }
 
     // Check the status of convergence
-    if(state.condition = initialization_state::PrimaryAndAuxiliary)
+    if(state.condition == initialization_state::PrimaryAndAuxiliary)
     {
       status = checkStatus(state, primary, auxiliary);
 
       if(state.iter > max_iter_*.9)
         ROS_ERROR("theta_p = %f theta_a = %f ep = %f ea = %f", dJoint_p.norm(), dJoint_a.norm(), primary.error.norm(), auxiliary.error.norm());
     }
-    else if(state.condition = initialization_state::PrimaryOnly)
+    else if(state.condition == initialization_state::PrimaryOnly)
     {
       status = checkStatus(state, primary);
 
