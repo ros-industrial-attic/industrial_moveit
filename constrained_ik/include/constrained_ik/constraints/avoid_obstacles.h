@@ -29,6 +29,7 @@
 
 #include "constrained_ik/constraint.h"
 #include "constrained_ik/constrained_ik.h"
+#include <constrained_ik/collision_robot_fcl_detailed.h>
 #include <vector>
 #include <kdl/chain.hpp>
 #include <kdl/chainjnttojacsolver.hpp>
@@ -45,6 +46,13 @@ namespace constraints
 class AvoidObstacles: public Constraint
 {
 public:
+  struct AvoidObstaclesData: public ConstraintData
+  {
+    constrained_ik::CollisionRobotFCLDetailed::DistanceDetailedMap distance_map_;
+
+    AvoidObstaclesData(const constrained_ik::SolverState &state);
+  };
+
   /**
    * @brief constructor
    * @param link_name name of link which should avoid obstacles
@@ -68,21 +76,21 @@ public:
    * @brief Creates Jacobian for avoiding a collision with link closest to a collision
    * @return Jacobian scaled by weight
    */
-  virtual Eigen::MatrixXd calcJacobian(const ConstraintData &cdata) const;
+  virtual Eigen::MatrixXd calcJacobian(const AvoidObstaclesData &cdata) const;
 
   /**
    * @brief Creates vector representing velocity error term
    * corresponding to calcJacobian()
    * @return VectorXd of joint velocities for obstacle avoidance
    */
-  virtual Eigen::VectorXd calcError(const ConstraintData &cdata) const;
+  virtual Eigen::VectorXd calcError(const AvoidObstaclesData &cdata) const;
 
   /**
    * @brief Checks termination criteria
    * There are no termination criteria for this constraint
    * @return True
    */
-  virtual bool checkStatus(const ConstraintData &cdata) const;
+  virtual bool checkStatus(const AvoidObstaclesData &cdata) const;
 
   /**
    * @brief Initialize constraint (overrides Constraint::init)

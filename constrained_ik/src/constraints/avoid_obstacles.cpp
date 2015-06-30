@@ -28,7 +28,6 @@
  * limitations under the License.
  */
 #include "constrained_ik/constraints/avoid_obstacles.h"
-#include "constrained_ik/constrained_ik.h"
 #include <ros/ros.h>
 
 namespace constrained_ik
@@ -54,7 +53,7 @@ void AvoidObstacles::init(const Constrained_IK * ik)
 constrained_ik::ConstraintResults AvoidObstacles::evalConstraint(const SolverState &state) const
 {
   constrained_ik::ConstraintResults output;
-  AvoidObstacles::ConstraintData cdata(state);
+  AvoidObstacles::AvoidObstaclesData cdata(state);
 
   output.error = calcError(cdata);
   output.jacobian = calcJacobian(cdata);
@@ -63,11 +62,11 @@ constrained_ik::ConstraintResults AvoidObstacles::evalConstraint(const SolverSta
   return output;
 }
 
-VectorXd AvoidObstacles::calcError(const AvoidObstacles::ConstraintData &cdata) const
+VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cdata) const
 {
   Eigen::Vector3d error_vector(0,0,0);
-  Constrained_IK::DistanceInfo dist_info;
-  if(ik_->getDistanceInfo(link_name_, dist_info))
+  CollisionRobotFCLDetailed::DistanceInfo dist_info;
+  if(CollisionRobotFCLDetailed::getDistanceInfo(cdata.distance_map_, link_name_, dist_info))
   {
     double dist = dist_info.distance;
     double scale;
@@ -84,7 +83,7 @@ VectorXd AvoidObstacles::calcError(const AvoidObstacles::ConstraintData &cdata) 
   return  error_vector;
 }
 
-MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::ConstraintData &cdata) const
+MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &cdata) const
 {
   KDL::Jacobian link_jacobian(num_inboard_joints_); // 6xn Jacobian to link, then dist_info.link_point
   MatrixXd jacobian= MatrixXd::Zero(3, num_robot_joints_);  // 3xn jacobian to dist_info.link_point with just position, no rotation
@@ -96,8 +95,8 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::ConstraintData &cdat
 
   // use distance info to find reference point on link which is closest to a collision,
   // change the reference point of the link jacobian to that point
-  Constrained_IK::DistanceInfo dist_info;
-  if(ik_->getDistanceInfo(link_name_, dist_info))
+  CollisionRobotFCLDetailed::DistanceInfo dist_info;
+  if(CollisionRobotFCLDetailed::getDistanceInfo(cdata.distance_map_, link_name_, dist_info))
   {
     // change the referece point to the point on the link closest to a collision
     KDL::Vector link_point(dist_info.link_point.x(), dist_info.link_point.y(), dist_info.link_point.z());
@@ -121,12 +120,17 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::ConstraintData &cdat
   return jacobian;
 }
 
-bool AvoidObstacles::checkStatus(const AvoidObstacles::ConstraintData &cdata) const
+bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata) const
 {                               // returns true if its ok to stop with current ik conditions
-  Constrained_IK::DistanceInfo dist_info;
-  ik_->getDistanceInfo(link_name_,dist_info);
+  CollisionRobotFCLDetailed::DistanceInfo dist_info;
+  CollisionRobotFCLDetailed::getDistanceInfo(cdata.distance_map_, link_name_, dist_info);
   if(dist_info.distance<min_distance_*5.0) return false;
   return true;
+}
+
+AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state): ConstraintData(state)
+{
+  distance_map_ = state.collision_robot->distanceSelfDetailed(*state_.robot_state, state_.planning_scene->getAllowedCollisionMatrix());
 }
 
 } // end namespace constraints

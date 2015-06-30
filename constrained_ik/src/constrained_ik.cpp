@@ -28,13 +28,13 @@
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraint_group.h"
 #include <boost/make_shared.hpp>
-#include <moveit/collision_detection_fcl/collision_common.h>
+//#include <moveit/collision_detection_fcl/collision_common.h>
+#include <constrained_ik/collision_robot_fcl_detailed.h>
 #include <constrained_ik/constraint_results.h>
 #include <ros/ros.h>
 
 namespace constrained_ik
 {
-
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using Eigen::Affine3d;
@@ -115,53 +115,6 @@ Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J
   }
 }
 
-
-bool Constrained_IK::getDistanceInfo(const std::string link_name, Constrained_IK::DistanceInfo &dist_info) const
-{
-  std::map<std::string, fcl::DistanceResult>::const_iterator it;
-  it = distance_detailed_.find(link_name);
-
-  if (it != distance_detailed_.end())
-  {
-    fcl::DistanceResult dist = static_cast<const fcl::DistanceResult>(it->second);
-    const collision_detection::CollisionGeometryData* cd1 = static_cast<const collision_detection::CollisionGeometryData*>(dist.o1->getUserData());
-    const collision_detection::CollisionGeometryData* cd2 = static_cast<const collision_detection::CollisionGeometryData*>(dist.o2->getUserData());
-    if (cd1->ptr.link->getName() == link_name)
-    {
-      dist_info.nearest_obsticle = cd2->ptr.link->getName();
-      dist_info.link_point = Eigen::Vector3d(dist.nearest_points[0].data.vs);
-      dist_info.obsticle_point = Eigen::Vector3d(dist.nearest_points[1].data.vs);
-      dist_info.avoidance_vector = Eigen::Vector3d((dist.nearest_points[1]-dist.nearest_points[0]).data.vs);
-      dist_info.avoidance_vector.norm();
-      dist_info.distance = dist.min_distance;
-    }
-    else if (cd2->ptr.link->getName() == link_name)
-    {
-      dist_info.nearest_obsticle = cd1->ptr.link->getName();
-      dist_info.link_point = Eigen::Vector3d(dist.nearest_points[1].data.vs);
-      dist_info.obsticle_point = Eigen::Vector3d(dist.nearest_points[0].data.vs);
-      dist_info.avoidance_vector = Eigen::Vector3d((dist.nearest_points[0]-dist.nearest_points[1]).data.vs);
-      dist_info.avoidance_vector.norm();
-      dist_info.distance = dist.min_distance;
-    }
-    else
-    {
-      ROS_ERROR("getDistanceInfo was unable to find link after match!");
-      return false;
-    }
-    return true;
-  }
-  else
-  {
-    ROS_ERROR("couldn't find link with that name %s", link_name.c_str());
-    for( it=distance_detailed_.begin(); it != distance_detailed_.end(); it++)
-    {
-      ROS_ERROR("name: %s", it->first.c_str());
-    }
-    return false;
-  }
-}
-
 void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 const Eigen::VectorXd &joint_seed,
                                 Eigen::VectorXd &joint_angles,
@@ -180,7 +133,12 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   joint_angles = joint_seed;  // initialize result to seed value
   constrained_ik::SolverState state = getState(goal, joint_seed); // create state vars for this IK solve
   state.condition = checkInitialized();
-  updateState(state, joint_angles);       // update current state
+  state.planning_scene = planning_scene;
+  if(planning_scene)
+  {
+    state.robot_state = robot_state::RobotStatePtr(new moveit::core::RobotState(planning_scene->getCurrentState()));
+    state.collision_robot = CollisionRobotFCLDetailed::CollisionRobotFCLDetailedPtr(new CollisionRobotFCLDetailed(planning_scene->getRobotModel()));
+  }
 
   if (state.condition == initialization_state::NothingInitialized || state.condition == initialization_state::AuxiliaryOnly)
     throw std::runtime_error("Must call init() before using Constrained_IK and have a primary constraint.");
@@ -188,29 +146,13 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   //Cache the joint angles to return if max iteration is reached.
   Eigen::VectorXd cached_joint_angles = joint_seed;
 
-
-
-  if(planning_scene && collision_checks_required())// initialize detailed distance_ prior to checking statusn
-  {
-    moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
-    robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
-    robot_state->update();
-    //distance_detailed_ = planning_scene->getCollisionRobot()->distanceSelfDetailed(*robot_state, planning_scene->getAllowedCollisionMatrix());
-  }
-
   // iterate until solution converges (or aborted)
   bool status = false;
   while (true)
   {
-    // If planning_scene is not null we calculate distance data for collision
-    // avoidance.
-    if(planning_scene && collision_checks_required())
-    {
-      moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
-      robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
-      robot_state->update();
-      //distance_detailed_ = planning_scene->getCollisionRobot()->distanceSelfDetailed(*robot_state, planning_scene->getAllowedCollisionMatrix());
-    }
+    // re-update internal state variables
+    updateState(state, joint_angles);
+
     // calculate a Jacobian (relating joint-space updates/deltas to cartesian-space errors/deltas)
     // and the associated cartesian-space error/delta vector
     // Primary Constraints
@@ -263,9 +205,6 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
       // update joint solution by the calculated update (or a partial fraction)
       joint_angles += (dJoint_p + dJoint_a);
       clipToJointLimits(joint_angles);
-
-      // re-update internal state variables
-      updateState(state, joint_angles);
       min_updates--;
     }
   }
@@ -394,6 +333,12 @@ void Constrained_IK::updateState(constrained_ik::SolverState &state, const Eigen
   state.joints_delta = joints - state.joints;
   state.joints = joints;
   kin_.calcFwdKin(joints, state.pose_estimate);
+
+  if(state.planning_scene && state.robot_state)
+  {
+    state.robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(), joints);
+    state.robot_state->update();
+  }
 
   if (debug_)
       state.iteration_path.push_back(joints);

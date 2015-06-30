@@ -257,28 +257,6 @@ public:
   //TODO document
   virtual Eigen::MatrixXd calcDampedPseudoinverse(const Eigen::MatrixXd &J) const;
 
-  /** @brief Containst distance information in the planning frame queried from getDistanceInfo() */
-  struct DistanceInfo
-  {
-    std::string nearest_obsticle; /**< The link name for nearest obsticle/link to request link. */
-    Eigen::Vector3d link_point; /**< Point on request link */
-    Eigen::Vector3d obsticle_point; /**< Point on nearest link to requested link */
-    Eigen::Vector3d avoidance_vector; /**< Normilized Vector created by nearest points */
-    double distance; /**< Distance between nearest points */
-    public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  };
-
-  /**
-   * @brief getDistanceInfo
-   * @param link_name Requested link name for distance information
-   * @param dist_info Stores the distance information for requested link
-   * @return bool, true if distance information exists.
-   */
-  bool getDistanceInfo(const std::string link_name, DistanceInfo & dist_info) const;
-
-
  protected:
   // termination-criteria limits / tolerances
   unsigned int max_iter_;
@@ -294,8 +272,6 @@ public:
   bool initialized_;
   //SolverState state_;
   basic_kin::BasicKin kin_;
-
-  std::map<std::string, fcl::DistanceResult> distance_detailed_; /**< Closest distance for each object in model */
 
   bool debug_;
 
