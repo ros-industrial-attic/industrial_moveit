@@ -76,7 +76,7 @@ public:
    * @brief Initialize constraint, Should be called by any inheriting classes
    * @param ik, Pointer to Constrained_IK
    */
-  virtual void init(const constrained_ik::Constrained_IK* ik) { initialized_=true; ik_ = ik;}
+  virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik;}
 
   /**
    * @brief set debug mode
@@ -90,7 +90,7 @@ protected:
   bool initialized_;
   bool debug_;
 
-  const constrained_ik::Constrained_IK* ik_;
+  const Constrained_IK* ik_;
 
   int numJoints() const;
 
