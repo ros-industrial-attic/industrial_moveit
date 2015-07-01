@@ -74,6 +74,7 @@ public:
 
   /**
    * @brief Creates Jacobian for avoiding a collision with link closest to a collision
+   * @param cdata, The constraint specific data.
    * @return Jacobian scaled by weight
    */
   virtual Eigen::MatrixXd calcJacobian(const AvoidObstaclesData &cdata) const;
@@ -81,6 +82,7 @@ public:
   /**
    * @brief Creates vector representing velocity error term
    * corresponding to calcJacobian()
+   * @param cdata, The constraint specific data.
    * @return VectorXd of joint velocities for obstacle avoidance
    */
   virtual Eigen::VectorXd calcError(const AvoidObstaclesData &cdata) const;
@@ -88,6 +90,7 @@ public:
   /**
    * @brief Checks termination criteria
    * There are no termination criteria for this constraint
+   * @param cdata, The constraint specific data.
    * @return True
    */
   virtual bool checkStatus(const AvoidObstaclesData &cdata) const;

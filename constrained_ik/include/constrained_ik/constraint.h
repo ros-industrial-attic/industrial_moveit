@@ -44,18 +44,38 @@ class Constrained_IK;
 class Constraint
 {
 public:
+  /**
+   * @brief This structure is to be used by all constraints to store specific data
+   * that needs to get updated every iteration of the solver.
+   */
   struct ConstraintData
   {
+    /**
+     * @brief This is a copy of the current state of the parent solver
+     */
     SolverState state_;
 
+    /**
+     * @brief The constructure class which should be called by the inheriting structure.
+     * @param The current state of the solver.
+     */
     ConstraintData(const constrained_ik::SolverState &state) { state_ = state; }
   };
 
   Constraint() : initialized_(false), debug_(false), requires_collision_checks_(false) {}
   virtual ~Constraint() {}
 
+  /**
+   * @brief Pure definition for calculating constraint error, jacobian & status
+   * @param state, The state of the current solver.
+   * @return ConstraintResults
+   */
   virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const = 0;
 
+  /**
+   * @brief Initialize constraint, Should be called by any inheriting classes
+   * @param ik, Pointer to Constrained_IK
+   */
   virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik;}
 
   /**

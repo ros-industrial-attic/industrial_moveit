@@ -113,6 +113,7 @@ public:
   /**
    * @brief Creates jacobian rows corresponding to joint velocity limit avoidance
    * Each limited joint gets a 0 row with a 1 in that joint's column
+   * @param cdata, The constraint specific data
    * @return Pseudo-Identity scaled by weight_
    */
   Eigen::MatrixXd calcJacobian(const AvoidJointLimitsData &cdata) const;
@@ -120,6 +121,7 @@ public:
   /**
    * @brief Creates vector representing velocity error term
    * corresponding to calcJacobian()
+   * @param cdata, The constraint specific data.
    * @return VectorXd of joint velocities for joint limit avoidance
    */
   Eigen::VectorXd calcError(const AvoidJointLimitsData &cdata) const;
@@ -127,6 +129,7 @@ public:
   /**
    * @brief Checks termination criteria
    * There are no termination criteria for this constraint
+   * @param cdata, The constraint specific data.
    * @return True
    */
   bool checkStatus(const AvoidJointLimitsData &cdata) const;

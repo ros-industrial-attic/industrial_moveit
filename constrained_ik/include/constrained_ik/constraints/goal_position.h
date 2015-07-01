@@ -61,6 +61,7 @@ public:
    * @brief Jacobian is first three rows of standard jacobian
    * (expressed in base frame). Equivalent to each axis of rotation crossed with vector from joint to chain tip.
    * Each row is scaled by the corresponding element of weight_
+   * @param cdata, The constraint specific data.
    * @return First 3 rows of standard jacobian scaled by weight_
    */
   virtual Eigen::MatrixXd calcJacobian(const GoalPositionData &cdata) const;
@@ -69,6 +70,7 @@ public:
    * @brief Direction vector from current position to goal position
    * Expressed in base coordinate system
    * Each element is multiplied by corresponding element in weight_
+   * @param cdata, The constraint specific data.
    * @return Translation from current to goal scaled by weight_
    */
   virtual Eigen::VectorXd calcError(const GoalPositionData &cdata) const;
@@ -76,6 +78,7 @@ public:
   /**
    * @brief Checks termination criteria
    * Termination criteria for this constraint is that positional error is below threshold
+   * @param cdata, The constraint specific data.
    * @return True if positional error is below threshold
    */
   virtual bool checkStatus(const GoalPositionData &cdata) const;

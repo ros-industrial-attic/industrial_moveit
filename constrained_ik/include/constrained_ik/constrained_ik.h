@@ -269,26 +269,52 @@ public:
   bool debug_;
 
   /**
-   * @brief Pure definition for calculating constraint error, jacobian & status
+   * @brief Calculating error, jacobian & status for all constraints specified.
    * @param constraint_type Contraint type (primary or auxiliary)
-   * @param state SolverState
+   * @param state The state of the current solver
    * @return ConstraintResults
    */
   constrained_ik::ConstraintResults evalConstraint(constraint_types::ConstraintType constraint_type, const constrained_ik::SolverState &state) const;
 
-  //TODO document
+  /**
+   * @brief This function clips the joints within the joint limits.
+   * @param joints a Eigen::VectorXd passed by reference
+   */
   void clipToJointLimits(Eigen::VectorXd &joints) const;
 
-  //TODO document
+  /**
+   * @brief Method determine convergence when both primary
+   * and auxiliary constraints are present
+   * @param state, The state of the current solver
+   * @param primary, The primary constraint results
+   * @param auxiliary, The auxiliary constraint results
+   * @return bool, True for converged, False for not converged
+   */
   virtual bool checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const;
 
-  //TODO document
+  /**
+   * @brief This method determine convergence when primary
+   * constraint is only present
+   * @param state, The state of the current solver
+   * @param primary, The primary constraint results
+   * @return bool, True for converged, False for not converged
+   */
   virtual bool checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary) const;
 
-  //TODO document
+  /**
+   * @brief Creates a new SolverState and checks key elements.
+   * @param goal, The goal of the solver
+   * @param joint_seed, The inital joint position for the solver.
+   * @return SolverState
+   */
   virtual constrained_ik::SolverState getState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed) const;
 
-  //TODO document
+  /**
+   * @brief Method update an existing SolverState provided
+   * new joint positions.
+   * @param state, The state of the current solver
+   * @param joints, The new joint position to be used by the solver
+   */
   virtual void updateState(constrained_ik::SolverState &state, const Eigen::VectorXd &joints) const;
 
 private:

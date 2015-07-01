@@ -43,18 +43,21 @@ public:
 
   /**
    * @brief Jacobian is identity because all joints are affected
+   * @param cdata, The constraint specific data.
    * @return Identity scaled by weight_
    */
   virtual Eigen::MatrixXd calcJacobian(const ConstraintData &cdata) const;
 
   /**
    * @brief Error for this constraint is 0
+   * @param cdata, The constraint specific data.
    * @return nx1 vector of zeros
    */
   virtual Eigen::VectorXd calcError(const ConstraintData &cdata) const;
 
   /**
    * @brief Termination criteria for mid-joint constraint
+   * @param cdata, The constraint specific data.
    * @return True always (no termination criteria)
    */
   virtual bool checkStatus(const ConstraintData &cdata) const {return true;}  //always return true

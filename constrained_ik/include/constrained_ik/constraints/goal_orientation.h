@@ -53,6 +53,7 @@ public:
    * @brief Jacobian is the last three rows of standard jacobian(in base frame).
    * Equivalent to each axis of rotation expressed in base frame coordinates.
    * Each row is scaled by the corresponding element of weight_
+   * @param cdata, The constraint specific data.
    * @return Last 3 rows of standard jacobian scaled by weight_
    */
   virtual Eigen::MatrixXd calcJacobian(const GoalOrientationData &cdata) const;
@@ -60,6 +61,7 @@ public:
    * @brief Rotation to get from current orientation to goal orientation
    * Resolve into primary vectors (x,y,z) of base coordinate system
    * Each element is multiplied by corresponding element in weight_
+   * @param cdata, The constraint specific data.
    * @return Rotation from current to goal scaled by weight_
    */
   virtual Eigen::VectorXd calcError(const GoalOrientationData &cdata) const;
@@ -83,6 +85,7 @@ public:
   /**
    * @brief Checks termination criteria
    * Termination criteria for this constraint is that angle error is below threshold
+   * @param cdata, The constraint specific data.
    * @return True if angle error is below threshold
    */
   virtual bool checkStatus(const GoalOrientationData &cdata) const;
@@ -108,9 +111,9 @@ public:
 protected:
   double rot_err_tol_;  /**< @brief termination criteria */
   Eigen::Vector3d weight_;    /**< @brief weight for each direction */
- public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 }; // class GoalOrientation
 

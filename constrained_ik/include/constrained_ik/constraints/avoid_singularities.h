@@ -64,6 +64,7 @@ public:
 
   /**
    * @brief Jacobian for this constraint is identity (all joints may contribute)
+   * @param cdata, The constraint specific data.
    * @return Identity jacobian scaled by weight
    */
   virtual Eigen::MatrixXd calcJacobian(const AvoidSingularitiesData &cdata) const;
@@ -71,12 +72,14 @@ public:
   /**
    * @brief Velocity is gradient of smallest singular value
    * del(sv) = uT * del(J) * v
+   * @param cdata, The constraint specific data.
    * @return Joint velocity error scaled by weight
    */
   virtual Eigen::VectorXd calcError(const AvoidSingularitiesData &cdata) const;
 
   /**
    * @brief Termination criteria for singularity constraint
+   * @param cdata, The constraint specific data.
    * @return True always (no termination criteria)
    */
   virtual bool checkStatus(const AvoidSingularitiesData &cdata) const { return true;} //always return true
