@@ -20,7 +20,7 @@ namespace constrained_ik
   CollisionRobotFCLDetailed::DistanceDetailedMap CollisionRobotFCLDetailed::distanceSelfDetailedHelper(const robot_state::RobotState &state, const AllowedCollisionMatrix *acm) const
   {
     FCLManager manager;
-    CollisionRobotFCL::allocSelfCollisionBroadPhase(state, manager);
+    CollisionRobotFCLDetailed::allocSelfCollisionBroadPhase(state, manager);
 
     DistanceResultDetailed drd(acm);
     drd.enableGroup(getRobotModel());
