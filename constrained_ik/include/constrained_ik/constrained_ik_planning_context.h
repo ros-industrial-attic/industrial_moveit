@@ -38,7 +38,7 @@ namespace constrained_ik
   class CLIKPlanningContext : public planning_interface::PlanningContext
   {
   public:
-    CLIKPlanningContext(const std::string &name, const std::string &group) : planning_interface::PlanningContext(name, group) {}
+    CLIKPlanningContext(const std::string &name, const std::string &group) : planning_interface::PlanningContext(name, group)  {}
 
     virtual void clear() = 0;
 
@@ -60,6 +60,7 @@ namespace constrained_ik
   protected:
     /** Store the parameters for the CLIK planners. */
     CLIKParameters params_;
+
 
   };
 typedef boost::shared_ptr<CLIKPlanningContext> CLIKPlanningContextPtr;

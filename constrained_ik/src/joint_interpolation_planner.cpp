@@ -31,6 +31,9 @@
  */
 #include <constrained_ik/joint_interpolation_planner.h>
 #include <ros/ros.h>
+#include<eigen3/Eigen/Core>
+#include <eigen_conversions/eigen_msg.h>
+#include <moveit/robot_state/conversions.h>
 
 
 namespace constrained_ik
@@ -38,26 +41,60 @@ namespace constrained_ik
   bool JointInterpolationPlanner::solve(planning_interface::MotionPlanResponse &res)
   {
     ros::WallTime start_time = ros::WallTime::now();
-    robot_state::RobotState start_state = planning_scene_->getCurrentState();
+    robot_model::RobotModelConstPtr rob_model = planning_scene_->getRobotModel();
+    robot_state::RobotState start_state(rob_model);
+    robot_state::robotStateMsgToRobotState(request_.start_state, start_state);
     robot_state::RobotState goal_state = start_state;
     robot_state::RobotStatePtr mid_state;
-    const robot_model::JointModelGroup *group_model = planning_scene_->getRobotModel()->getJointModelGroup(request_.group_name);
+    const robot_model::JointModelGroup *group_model = rob_model->getJointModelGroup(request_.group_name);
     std::vector<std::string> joint_names = group_model->getActiveJointModelNames();
+    std::vector<std::string> link_names = group_model->getLinkModelNames();
+    Eigen::Affine3d goal_pose;
     std::vector<double> pos(1);
-    robot_trajectory::RobotTrajectoryPtr traj(new robot_trajectory::RobotTrajectory(planning_scene_->getRobotModel(), request_.group_name));
+    robot_trajectory::RobotTrajectoryPtr traj(new robot_trajectory::RobotTrajectory(rob_model, request_.group_name));
 
 
     ROS_INFO_STREAM("Joint Interpolation Planning for Group: " << request_.group_name);
-    for(unsigned int i = 0; i < request_.goal_constraints[0].joint_constraints.size(); i++)
+
+    // if we have path constraints, we prefer interpolating in pose space
+    if (!request_.goal_constraints[0].joint_constraints.empty())
     {
-      ROS_INFO_STREAM("Setting joint " << request_.goal_constraints[0].joint_constraints[i].joint_name
-                      << " from " << *start_state.getJointPositions(joint_names[i])
-                      << " to position " << request_.goal_constraints[0].joint_constraints[i].position);
+      for(unsigned int i = 0; i < request_.goal_constraints[0].joint_constraints.size(); i++)
+      {
+        pos[0]=request_.goal_constraints[0].joint_constraints[i].position;
+        goal_state.setJointPositions(joint_names[i], pos);
 
-      pos[0]=request_.goal_constraints[0].joint_constraints[i].position;
-      goal_state.setJointPositions(joint_names[i], pos);
+        ROS_DEBUG_NAMED("clik","Setting joint %s from %f to position %f", request_.goal_constraints[0].joint_constraints[i].joint_name.c_str(),
+            *start_state.getJointPositions(joint_names[i]), request_.goal_constraints[0].joint_constraints[i].position);
+      }
     }
+    else
+    {
+      geometry_msgs::Pose pose;
+      if (!request_.goal_constraints[0].position_constraints.empty() && !request_.goal_constraints[0].orientation_constraints.empty())
+      {
+        pose.position = request_.goal_constraints[0].position_constraints[0].constraint_region.primitive_poses[0].position;
+        pose.orientation = request_.goal_constraints[0].orientation_constraints[0].orientation;
+      }
+      else if (!request_.goal_constraints[0].position_constraints.empty() && request_.goal_constraints[0].orientation_constraints.empty())
+      {
+        tf::poseEigenToMsg(start_state.getFrameTransform(link_names.back()), pose);
+        pose.position = request_.goal_constraints[0].position_constraints[0].constraint_region.primitive_poses[0].position;
+      }
+      else if (request_.goal_constraints[0].position_constraints.empty() && !request_.goal_constraints[0].orientation_constraints.empty())
+      {
+        tf::poseEigenToMsg(start_state.getFrameTransform(link_names.back()), pose);
+        pose.orientation = request_.goal_constraints[0].orientation_constraints[0].orientation;
+      }
+      else
+      {
+        ROS_ERROR("No constraint was passed with request!");
+        return false;
+      }
 
+      tf::poseMsgToEigen(pose, goal_pose);
+      goal_state.setFromIK(group_model, goal_pose, link_names.back());
+    }
 
     // Calculate delta for for moveit interpolation function
     double dt;

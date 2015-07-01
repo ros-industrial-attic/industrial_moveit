@@ -32,6 +32,9 @@
 #include <constrained_ik/cartesian_planner.h>
 #include <ros/ros.h>
 #include <eigen3/Eigen/Core>
+#include <eigen_conversions/eigen_msg.h>
+#include <moveit/robot_state/conversions.h>
+
 
 
 namespace constrained_ik
@@ -39,32 +42,64 @@ namespace constrained_ik
   bool CartesianPlanner::solve(planning_interface::MotionPlanResponse &res)
   {
     ros::WallTime start_time = ros::WallTime::now();
-    robot_state::RobotState start_state = planning_scene_->getCurrentState();
+    robot_model::RobotModelConstPtr rob_model = planning_scene_->getRobotModel();
+    robot_state::RobotState start_state(rob_model);
+    robot_state::robotStateMsgToRobotState(request_.start_state, start_state);
     robot_state::RobotState goal_state = start_state;
     robot_state::RobotStatePtr mid_state;
-    const robot_model::JointModelGroup *group_model = planning_scene_->getRobotModel()->getJointModelGroup(request_.group_name);
+    const robot_model::JointModelGroup *group_model = rob_model->getJointModelGroup(request_.group_name);
+    //boost::shared_ptr<const robot_model::JointModelGroup> group_model_ptr(group_model);
     std::vector<std::string> joint_names = group_model->getActiveJointModelNames();
     std::vector<std::string> link_names = group_model->getLinkModelNames();
     Eigen::Affine3d start_pose = start_state.getFrameTransform(link_names.back());
     Eigen::Affine3d goal_pose;
     std::vector<double> pos(1);
-    robot_trajectory::RobotTrajectoryPtr traj(new robot_trajectory::RobotTrajectory(planning_scene_->getRobotModel(), request_.group_name));
-
+    robot_trajectory::RobotTrajectoryPtr traj(new robot_trajectory::RobotTrajectory(rob_model, request_.group_name));
 
     ROS_INFO_STREAM("Cartesian Planning for Group: " << request_.group_name);
-    for(unsigned int i = 0; i < request_.goal_constraints[0].joint_constraints.size(); i++)
-    {
-      pos[0]=request_.goal_constraints[0].joint_constraints[i].position;
-      goal_state.setJointPositions(joint_names[i], pos);
-    }
-    goal_pose = goal_state.getFrameTransform(link_names.back());
 
-    ROS_INFO("Setting Position x from %f to %f", start_pose.translation()(0),goal_pose.translation()(0));
-    ROS_INFO("Setting Position y from %f to %f", start_pose.translation()(1),goal_pose.translation()(1));
-    ROS_INFO("Setting Position z from %f to %f", start_pose.translation()(2),goal_pose.translation()(2));
-    ROS_INFO("Setting Position yaw   from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(0),goal_pose.rotation().eulerAngles(3,2,1)(0));
-    ROS_INFO("Setting Position pitch from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(1),goal_pose.rotation().eulerAngles(3,2,1)(1));
-    ROS_INFO("Setting Position roll  from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(2),goal_pose.rotation().eulerAngles(3,2,1)(2));
+    // if we have path constraints, we prefer interpolating in pose space
+    if (!request_.goal_constraints[0].joint_constraints.empty())
+    {
+      for(unsigned int i = 0; i < request_.goal_constraints[0].joint_constraints.size(); i++)
+      {
+        pos[0]=request_.goal_constraints[0].joint_constraints[i].position;
+        goal_state.setJointPositions(joint_names[i], pos);
+      }
+      goal_pose = goal_state.getFrameTransform(link_names.back());
+    }
+    else
+    {
+      geometry_msgs::Pose pose;
+      if (!request_.goal_constraints[0].position_constraints.empty() && !request_.goal_constraints[0].orientation_constraints.empty())
+      {
+        pose.position = request_.goal_constraints[0].position_constraints[0].constraint_region.primitive_poses[0].position;
+        pose.orientation = request_.goal_constraints[0].orientation_constraints[0].orientation;
+      }
+      else if (!request_.goal_constraints[0].position_constraints.empty() && request_.goal_constraints[0].orientation_constraints.empty())
+      {
+        tf::poseEigenToMsg(start_state.getFrameTransform(link_names.back()), pose);
+        pose.position = request_.goal_constraints[0].position_constraints[0].constraint_region.primitive_poses[0].position;
+      }
+      else if (request_.goal_constraints[0].position_constraints.empty() && !request_.goal_constraints[0].orientation_constraints.empty())
+      {
+        tf::poseEigenToMsg(start_state.getFrameTransform(link_names.back()), pose);
+        pose.orientation = request_.goal_constraints[0].orientation_constraints[0].orientation;
+      }
+      else
+      {
+        ROS_ERROR("No constraint was passed with request!");
+        return false;
+      }
+      tf::poseMsgToEigen(pose, goal_pose);
+    }
+
+    ROS_DEBUG_NAMED("clik", "Setting Position x from %f to %f", start_pose.translation()(0),goal_pose.translation()(0));
+    ROS_DEBUG_NAMED("clik", "Setting Position y from %f to %f", start_pose.translation()(1),goal_pose.translation()(1));
+    ROS_DEBUG_NAMED("clik", "Setting Position z from %f to %f", start_pose.translation()(2),goal_pose.translation()(2));
+    ROS_DEBUG_NAMED("clik", "Setting Position yaw   from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(0),goal_pose.rotation().eulerAngles(3,2,1)(0));
+    ROS_DEBUG_NAMED("clik", "Setting Position pitch from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(1),goal_pose.rotation().eulerAngles(3,2,1)(1));
+    ROS_DEBUG_NAMED("clik", "Setting Position roll  from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(2),goal_pose.rotation().eulerAngles(3,2,1)(2));
 
     // Generate Interpolated Cartesian Poses
     std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > poses = interpolateCartesian(start_pose, goal_pose, params_.getCartesianDiscretizationStep());
@@ -119,12 +154,15 @@ namespace constrained_ik
     double slerp_ratio = 1.0 / steps;
 
     std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > result;
+    Eigen::Vector3d trans;
+    Eigen::Quaterniond q;
+    Eigen::Affine3d pose;
     result.reserve(steps+1);
     for (unsigned i = 0; i <= steps; ++i)
     {
-      Eigen::Vector3d trans = start_pos + step * i;
-      Eigen::Quaterniond q = start_q.slerp(slerp_ratio * i, stop_q);
-      Eigen::Affine3d pose (Eigen::Translation3d(trans) * q);
+      trans = start_pos + step * i;
+      q = start_q.slerp(slerp_ratio * i, stop_q);
+      pose = (Eigen::Translation3d(trans) * q);
       result.push_back(pose);
     }
     return result;
