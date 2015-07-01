@@ -58,13 +58,6 @@ namespace constrained_ik
     ROS_INFO_STREAM("Cartesian Planning for Group: " << request_.group_name);
 
     // if we have path constraints, we prefer interpolating in pose space
-    if ((!request_.path_constraints.position_constraints.empty() || !request_.path_constraints.orientation_constraints.empty()) &&
-        request_.path_constraints.joint_constraints.empty())
-    {
-      ROS_ERROR("No constraint was passed with request!");
-      return false;
-    }
-
     if (!request_.goal_constraints[0].joint_constraints.empty())
     {
       for(unsigned int i = 0; i < request_.goal_constraints[0].joint_constraints.size(); i++)
@@ -91,6 +84,11 @@ namespace constrained_ik
       {
         tf::poseEigenToMsg(start_state.getFrameTransform(link_names.back()), pose);
         pose.orientation = request_.goal_constraints[0].orientation_constraints[0].orientation;
+      }
+      else
+      {
+        ROS_ERROR("No constraint was passed with request!");
+        return false;
       }
       tf::poseMsgToEigen(pose, goal_pose);
     }
