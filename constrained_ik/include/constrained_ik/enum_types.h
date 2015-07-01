@@ -46,7 +46,13 @@ namespace constrained_ik
 
   namespace initialization_state
   {
+    /**
+     * @brief Enum that identifies the state of the solver.
+     */
     enum InitializationState {PrimaryOnly, AuxiliaryOnly, PrimaryAndAuxiliary, NothingInitialized};
   }// namespace initialization_state
+
+  typedef constraint_types::ConstraintType ConstraintTypes;
+  typedef initialization_state::InitializationState InitializationState;
 }// namespace constrained_ik
 #endif // ENUM_TYPES_H

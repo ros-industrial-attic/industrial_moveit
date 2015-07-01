@@ -26,7 +26,7 @@
 #ifndef CONSTRAINT_GROUP_H
 #define CONSTRAINT_GROUP_H
 
-#include "constraint.h"
+#include <constrained_ik/constraint.h>
 #include <constrained_ik/constraint_results.h>
 #include <boost/ptr_container/ptr_vector.hpp>
 
@@ -42,7 +42,7 @@ public:
   ConstraintGroup();
   virtual ~ConstraintGroup() {}
 
-  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
+  virtual ConstraintResults evalConstraint(const SolverState &state) const;
 
   virtual void init(const Constrained_IK* ik);
 
@@ -51,8 +51,6 @@ public:
   virtual void clear() { constraints_.clear(); }
 
   bool empty() const { return constraints_.empty(); }
-
-  bool collision_checks_required() const;
 
 protected:
   boost::ptr_vector<Constraint> constraints_;

@@ -57,10 +57,7 @@ public:
    * @brief constructor
    * @param link_name name of link which should avoid obstacles
    */
-  AvoidObstacles(std::string link_name): Constraint(), weight_(1.0), min_distance_(0.006), link_name_(link_name)
-  {
-    requires_collision_checks_ = true;
-  }
+  AvoidObstacles(std::string link_name): Constraint(), weight_(1.0), min_distance_(0.006), link_name_(link_name) {}
 
   /**
    * @brief Destructor

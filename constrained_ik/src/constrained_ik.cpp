@@ -28,7 +28,6 @@
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraint_group.h"
 #include <boost/make_shared.hpp>
-//#include <moveit/collision_detection_fcl/collision_common.h>
 #include <constrained_ik/collision_robot_fcl_detailed.h>
 #include <constrained_ik/constraint_results.h>
 #include <ros/ros.h>
@@ -213,7 +212,7 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     joint_angles = cached_joint_angles;
 
   // checking for collision on a valid planning scene
-  if(planning_scene && collision_checks_required())
+  if(planning_scene)
   {
     moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
     robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
@@ -344,12 +343,6 @@ void Constrained_IK::updateState(constrained_ik::SolverState &state, const Eigen
       state.iteration_path.push_back(joints);
 
 }
-
-bool Constrained_IK::collision_checks_required() const
-{
-  return( primary_constraints_.collision_checks_required() | auxiliary_constraints_.collision_checks_required());
-}
-
 
 } // namespace constrained_ik
 

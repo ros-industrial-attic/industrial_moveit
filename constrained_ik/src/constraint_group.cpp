@@ -62,14 +62,5 @@ void ConstraintGroup::init(const Constrained_IK* ik)
     constraints_[i].init(ik);
 }
 
-bool ConstraintGroup::collision_checks_required() const
-{
-  bool rtn= false;
-  for (size_t i=0; i<constraints_.size(); ++i)
-  {
-    rtn |= constraints_[i].requires_collision_checks();
-  }
-  return rtn;
-}
 } // namespace constrained_ik
 

@@ -62,7 +62,7 @@ public:
     ConstraintData(const constrained_ik::SolverState &state) { state_ = state; }
   };
 
-  Constraint() : initialized_(false), debug_(false), requires_collision_checks_(false) {}
+  Constraint() : initialized_(false), debug_(false) {}
   virtual ~Constraint() {}
 
   /**
@@ -76,7 +76,7 @@ public:
    * @brief Initialize constraint, Should be called by any inheriting classes
    * @param ik, Pointer to Constrained_IK
    */
-  virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik;}
+  virtual void init(const constrained_ik::Constrained_IK* ik) { initialized_=true; ik_ = ik;}
 
   /**
    * @brief set debug mode
@@ -86,16 +86,14 @@ public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  bool requires_collision_checks() const { return requires_collision_checks_; }
-
 protected:
   bool initialized_;
   bool debug_;
-  bool requires_collision_checks_;
 
-  const Constrained_IK* ik_;
+  const constrained_ik::Constrained_IK* ik_;
 
   int numJoints() const;
+
 }; // class Constraint
 
 

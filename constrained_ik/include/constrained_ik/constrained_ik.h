@@ -317,8 +317,6 @@ public:
    */
   virtual void updateState(constrained_ik::SolverState &state, const Eigen::VectorXd &joints) const;
 
-private:
-  bool collision_checks_required() const;
 }; // class Constrained_IK
 
 } // namespace constrained_ik
