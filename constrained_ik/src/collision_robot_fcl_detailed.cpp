@@ -26,7 +26,7 @@ namespace constrained_ik
     drd.enableGroup(getRobotModel());
 
     //distance_detailed_.clear();
-    manager.manager_->distance(&drd, &collision_detection::distanceCallback);
+    manager.manager_->distance(&drd, &CollisionRobotFCLDetailed::distanceDetailedCallback);
 
     return drd.distance_detailed_;
   }

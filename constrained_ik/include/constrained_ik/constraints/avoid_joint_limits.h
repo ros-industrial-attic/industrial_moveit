@@ -88,7 +88,7 @@ public:
     std::vector<int> limited_joints_;  /**< @brief list of joints that will be constrained */
     const constraints::AvoidJointLimits* parent_;
     AvoidJointLimitsData(const constrained_ik::SolverState &state, const constraints::AvoidJointLimits* parent);
-    virtual ~AvoidJointLimitsData() { delete parent_; }
+    virtual ~AvoidJointLimitsData() {}
 
     /**
      * @brief Check if a given joint is near its lower limit

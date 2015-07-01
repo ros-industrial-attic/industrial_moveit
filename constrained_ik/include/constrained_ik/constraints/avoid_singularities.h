@@ -53,7 +53,7 @@ public:
     Eigen::MatrixXd jacobian_orig_;   // current jacobian
 
     AvoidSingularitiesData(const constrained_ik::SolverState &state, const constraints::AvoidSingularities* parent);
-    virtual ~AvoidSingularitiesData() { delete parent_; }
+    virtual ~AvoidSingularitiesData() {}
 
   };
 

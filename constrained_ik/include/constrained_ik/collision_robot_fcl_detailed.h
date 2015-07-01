@@ -2,6 +2,9 @@
 #define COLLISION_ROBOT_FCL_DETAILED_H
 
 #include <moveit/collision_detection_fcl/collision_robot_fcl.h>
+#include <eigen3/Eigen/Core>
+#include <moveit/robot_model/robot_model.h>
+#include <moveit/robot_state/robot_state.h>
 
 namespace constrained_ik
 {
@@ -23,8 +26,6 @@ namespace constrained_ik
 
       ~DistanceResultDetailed()
       {
-        delete active_components_only_;
-        delete acm_;
       }
 
       /// Compute \e active_components_only_ based on \e req_
@@ -66,9 +67,8 @@ namespace constrained_ik
       Eigen::Vector3d obsticle_point; /**< Point on nearest link to requested link */
       Eigen::Vector3d avoidance_vector; /**< Normilized Vector created by nearest points */
       double distance; /**< Distance between nearest points */
-      public:
-      EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+      EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     };
 
     /**

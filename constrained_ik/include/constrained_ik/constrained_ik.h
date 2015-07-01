@@ -168,12 +168,6 @@ public:
    */
   inline unsigned int getMaxIter() const {return max_iter_;}
 
-//  /**
-//   * @brief Getter for latest solver state
-//   * @return Latest solver state
-//   */
-//  inline const SolverState& getState() const { return state_; }
-
   /**
    * @brief Initializes object with kinematic model of robot
    * @param kin BasicKin object with robot info
@@ -270,7 +264,6 @@ public:
 
   // state/counter data
   bool initialized_;
-  //SolverState state_;
   basic_kin::BasicKin kin_;
 
   bool debug_;

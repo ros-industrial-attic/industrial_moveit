@@ -44,7 +44,7 @@ public:
     Eigen::VectorXd jvel_;
 
     JointVelLimitsData(const constrained_ik::SolverState &state, const constraints::JointVelLimits* parent);
-    virtual ~JointVelLimitsData() { delete parent_; }
+    virtual ~JointVelLimitsData() {}
 
   };
 
