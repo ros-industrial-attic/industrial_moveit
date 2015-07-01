@@ -114,17 +114,20 @@ public:
    */
   initialization_state::InitializationState checkInitialized() const
   {
-    if (initialized_ && !primary_constraints_.empty() && !auxiliary_constraints_.empty())
+    if (initialized_)
     {
-      return initialization_state::PrimaryAndAuxiliary;
-    }
-    else if (initialized_ && !primary_constraints_.empty() && auxiliary_constraints_.empty())
-    {
-      return initialization_state::PrimaryOnly;
-    }
-    else if (initialized_ && primary_constraints_.empty() && !auxiliary_constraints_.empty())
-    {
-      return initialization_state::AuxiliaryOnly;
+      if (!primary_constraints_.empty() && !auxiliary_constraints_.empty())
+      {
+        return initialization_state::PrimaryAndAuxiliary;
+      }
+      else if (!primary_constraints_.empty() && auxiliary_constraints_.empty())
+      {
+        return initialization_state::PrimaryOnly;
+      }
+      else if (primary_constraints_.empty() && !auxiliary_constraints_.empty())
+      {
+        return initialization_state::AuxiliaryOnly;
+      }
     }
     else
     {
