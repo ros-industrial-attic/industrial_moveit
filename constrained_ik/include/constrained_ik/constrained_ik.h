@@ -106,7 +106,7 @@ public:
   virtual void calcInvKin(const Eigen::Affine3d &pose,
                           const Eigen::VectorXd &joint_seed,
                           Eigen::VectorXd &joint_angles,
-                          int min_updates=0) const ;
+                          int min_updates = 0) const ;
 
   /**
    * @brief Checks to see if object is initialized (ie: init() has been called)

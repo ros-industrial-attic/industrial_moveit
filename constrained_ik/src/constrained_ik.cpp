@@ -128,7 +128,7 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 Eigen::VectorXd &joint_angles,
                                 int min_updates) const
 {
-  // initialize state
+    // initialize state
   joint_angles = joint_seed;  // initialize result to seed value
   constrained_ik::SolverState state = getState(goal, joint_seed); // create state vars for this IK solve
   state.condition = checkInitialized();
@@ -212,12 +212,12 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     joint_angles = cached_joint_angles;
 
   // checking for collision on a valid planning scene
-  if(planning_scene)
+  if(state.planning_scene)
   {
-    moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(planning_scene->getCurrentState()));
+    moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(state.planning_scene->getCurrentState()));
     robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
     robot_state->update();
-    if(planning_scene->isStateColliding(*robot_state,kin_.getJointModelGroup()->getName()))
+    if(state.planning_scene->isStateColliding(*robot_state,kin_.getJointModelGroup()->getName()))
     {
       ROS_ERROR("Robot is in collision at this pose");
     }
