@@ -68,6 +68,8 @@ protected:
   };
 
   std::map<std::string, LinkAvoidance> links_;
+  std::vector<std::string> link_names_;
+  std::set<const robot_model::LinkModel *> link_models_;
 
   bool getLinkData(std::string link_name, LinkAvoidance &link) const
   {
@@ -85,16 +87,17 @@ protected:
 public:
   struct AvoidObstaclesData: public ConstraintData
   {
+    const constraints::AvoidObstacles* parent_;
     constrained_ik::CollisionRobotFCLDetailed::DistanceDetailedMap distance_map_;
 
-    AvoidObstaclesData(const constrained_ik::SolverState &state);
+    AvoidObstaclesData(const constrained_ik::SolverState &state, const constraints::AvoidObstacles* parent);
   };
 
   /**
    * @brief constructor
    * @param link_name name of link which should avoid obstacles
    */
-  AvoidObstacles(std::vector<std::string> link_names);
+  AvoidObstacles(std::vector<std::string> &link_names);
   virtual ~AvoidObstacles() {}
 
   virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;

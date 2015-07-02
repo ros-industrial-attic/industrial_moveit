@@ -1,6 +1,7 @@
 
 #include <constrained_ik/collision_robot_fcl_detailed.h>
 #include <ros/ros.h>
+#include <ctime>
 
 namespace constrained_ik
 {
@@ -9,25 +10,37 @@ namespace constrained_ik
 
   CollisionRobotFCLDetailed::DistanceDetailedMap CollisionRobotFCLDetailed::distanceSelfDetailed(const robot_state::RobotState &state) const
   {
-    return CollisionRobotFCLDetailed::distanceSelfDetailedHelper(state, NULL);
+    return CollisionRobotFCLDetailed::distanceSelfDetailedHelper(state, NULL, NULL);
   }
 
   CollisionRobotFCLDetailed::DistanceDetailedMap CollisionRobotFCLDetailed::distanceSelfDetailed(const robot_state::RobotState &state, const AllowedCollisionMatrix &acm) const
   {
-    return CollisionRobotFCLDetailed::distanceSelfDetailedHelper(state, &acm);
+    return CollisionRobotFCLDetailed::distanceSelfDetailedHelper(state, &acm, NULL);
   }
 
-  CollisionRobotFCLDetailed::DistanceDetailedMap CollisionRobotFCLDetailed::distanceSelfDetailedHelper(const robot_state::RobotState &state, const AllowedCollisionMatrix *acm) const
+  CollisionRobotFCLDetailed::DistanceDetailedMap CollisionRobotFCLDetailed::distanceSelfDetailed(const robot_state::RobotState &state, const std::set<const robot_model::LinkModel*> &active_components_only) const
   {
+    return CollisionRobotFCLDetailed::distanceSelfDetailedHelper(state, NULL, &active_components_only);
+  }
+
+  CollisionRobotFCLDetailed::DistanceDetailedMap CollisionRobotFCLDetailed::distanceSelfDetailed(const robot_state::RobotState &state, const AllowedCollisionMatrix &acm, const std::set<const robot_model::LinkModel*> &active_components_only) const
+  {
+    return CollisionRobotFCLDetailed::distanceSelfDetailedHelper(state, &acm, &active_components_only);
+  }
+
+  CollisionRobotFCLDetailed::DistanceDetailedMap CollisionRobotFCLDetailed::distanceSelfDetailedHelper(const robot_state::RobotState &state, const AllowedCollisionMatrix *acm, const std::set<const robot_model::LinkModel*> *active_components_only) const
+  {
+    double duration;
+    std::clock_t start = std::clock();
+
     FCLManager manager;
     CollisionRobotFCLDetailed::allocSelfCollisionBroadPhase(state, manager);
 
-    DistanceResultDetailed drd(acm);
-    drd.enableGroup(getRobotModel());
+    DistanceResultDetailed drd(acm, active_components_only);
 
-    //distance_detailed_.clear();
     manager.manager_->distance(&drd, &CollisionRobotFCLDetailed::distanceDetailedCallback);
-
+    duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+    ROS_INFO("Duration: %f", duration);
     return drd.distance_detailed_;
   }
 
@@ -107,41 +120,46 @@ namespace constrained_ik
     if (!cdata->verbose)
       logDebug("Actually checking collisions between %s and %s", cd1->getID().c_str(), cd2->getID().c_str());
 
+
     fcl::DistanceResult dist_result;
+    dist_result.min_distance = 0.1;
+    //dist_result.update(0.1, NULL, NULL, fcl::DistanceResult::NONE, fcl::DistanceResult::NONE);
     double d = fcl::distance(o1, o2, fcl::DistanceRequest(true), dist_result);
 
     // Check if either object is already in the map. If not add it or if present
     // check to see if the new distance is closer. If closer remove the existing
     // one and add the new distance information.
-    std::map<std::string, fcl::DistanceResult>::iterator it;
-    it = cdata->distance_detailed_.find(cd1->ptr.obj->id_);
-    if (it == cdata->distance_detailed_.end())
+    if (d < 0.1)
     {
-      cdata->distance_detailed_.insert(std::make_pair<std::string, fcl::DistanceResult>(cd1->ptr.obj->id_, dist_result));
-    }
-    else
-    {
-      if (dist_result.min_distance < it->second.min_distance)
+      std::map<std::string, fcl::DistanceResult>::iterator it;
+      it = cdata->distance_detailed_.find(cd1->ptr.obj->id_);
+      if (it == cdata->distance_detailed_.end())
       {
-        cdata->distance_detailed_.erase(cd1->ptr.obj->id_);
         cdata->distance_detailed_.insert(std::make_pair<std::string, fcl::DistanceResult>(cd1->ptr.obj->id_, dist_result));
       }
-    }
-
-    it = cdata->distance_detailed_.find(cd2->ptr.obj->id_);
-    if (it == cdata->distance_detailed_.end())
-    {
-      cdata->distance_detailed_.insert(std::make_pair<std::string, fcl::DistanceResult>(cd2->ptr.obj->id_, dist_result));
-    }
-    else
-    {
-      if (dist_result.min_distance < it->second.min_distance)
+      else
       {
-        cdata->distance_detailed_.erase(cd2->ptr.obj->id_);
+        if (dist_result.min_distance < it->second.min_distance)
+        {
+          cdata->distance_detailed_.erase(cd1->ptr.obj->id_);
+          cdata->distance_detailed_.insert(std::make_pair<std::string, fcl::DistanceResult>(cd1->ptr.obj->id_, dist_result));
+        }
+      }
+
+      it = cdata->distance_detailed_.find(cd2->ptr.obj->id_);
+      if (it == cdata->distance_detailed_.end())
+      {
         cdata->distance_detailed_.insert(std::make_pair<std::string, fcl::DistanceResult>(cd2->ptr.obj->id_, dist_result));
       }
+      else
+      {
+        if (dist_result.min_distance < it->second.min_distance)
+        {
+          cdata->distance_detailed_.erase(cd2->ptr.obj->id_);
+          cdata->distance_detailed_.insert(std::make_pair<std::string, fcl::DistanceResult>(cd2->ptr.obj->id_, dist_result));
+        }
+      }
     }
-
     return false;
   }
 
@@ -182,10 +200,10 @@ namespace constrained_ik
     }
     else
     {
-      ROS_ERROR("couldn't find link with that name %s", link_name.c_str());
+      ROS_DEBUG("couldn't find link with that name %s", link_name.c_str());
       for( it=distance_detailed.begin(); it != distance_detailed.end(); it++)
       {
-        ROS_ERROR("name: %s", it->first.c_str());
+        ROS_DEBUG("name: %s", it->first.c_str());
       }
       return false;
     }

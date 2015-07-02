@@ -22,13 +22,21 @@ namespace constrained_ik
       status &= cdata.status;
     }
 
+    bool isEmpty()
+    {
+      if (error.rows() == 0 || jacobian.rows() == 0)
+        return true;
+      else
+        return false;
+    }
+
   protected:
     // NOTE: This method does a resize in-place, and may be inefficient if called many times
     void appendError(const Eigen::VectorXd &addError)
     {
       if (addError.rows() == 0)
       {
-        ROS_WARN("trying to add a Error with no data");
+        ROS_DEBUG("trying to add a Error with no data");
         return;
       }
 
@@ -47,7 +55,7 @@ namespace constrained_ik
     {
       if(addJacobian.rows() == 0 || addJacobian.cols() == 0)
       {
-        ROS_WARN("trying to add a Jacobian with no data");
+        ROS_DEBUG("trying to add a Jacobian with no data");
         return;
       }
       if (jacobian.rows() == 0) // first call gets to set size

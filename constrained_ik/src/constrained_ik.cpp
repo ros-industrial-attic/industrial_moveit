@@ -160,9 +160,9 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     // otherwise, we are repeating the expensive calculation of the SVD
     MatrixXd Ji_p = calcDampedPseudoinverse(primary.jacobian);
     VectorXd dJoint_p = kpp_*(Ji_p*primary.error);
-    if(dJoint_p.norm() > 1.0)// limit maximum update to unit size 1 radian /meter
+    if(dJoint_p.norm() > 2.0)// limit maximum update to unit size 1 radian /meter
     {
-      dJoint_p = dJoint_p/dJoint_p.norm();
+      dJoint_p = dJoint_p/dJoint_p.norm()/2.0;
     }
     ROS_DEBUG("theta_p = %f ep = %f",dJoint_p.norm(), primary.error.norm());
 
@@ -174,9 +174,12 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     if (state.condition == initialization_state::PrimaryAndAuxiliary)
     {
       auxiliary = evalConstraint(constraint_types::Auxiliary, state);
-      MatrixXd N_p = calcNullspaceProjectionTheRightWay(auxiliary.jacobian);
-      MatrixXd Jnull_a = calcDampedPseudoinverse(auxiliary.jacobian*N_p);
-      dJoint_a = kpa_*Jnull_a*(auxiliary.error-auxiliary.jacobian*dJoint_p);
+      if (!auxiliary.isEmpty()) // This is required because not all constraints always return data.
+      {
+        MatrixXd N_p = calcNullspaceProjectionTheRightWay(auxiliary.jacobian);
+        MatrixXd Jnull_a = calcDampedPseudoinverse(auxiliary.jacobian*N_p);
+        dJoint_a = kpa_*Jnull_a*(auxiliary.error-auxiliary.jacobian*dJoint_p);
+      }
     }
 
     // Check the status of convergence
@@ -223,7 +226,7 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     }
   }
 
-  ROS_INFO_STREAM("IK solution: " << joint_angles.transpose());
+  ROS_DEBUG_STREAM("IK solution: " << joint_angles.transpose());
 }
 
 bool Constrained_IK::checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary) const

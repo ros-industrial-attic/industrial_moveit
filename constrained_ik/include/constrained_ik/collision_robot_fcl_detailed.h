@@ -20,7 +20,7 @@ namespace constrained_ik
       {
       }
 
-      DistanceResultDetailed(const collision_detection::AllowedCollisionMatrix *acm) : active_components_only_(NULL), acm_(acm), verbose(false)
+      DistanceResultDetailed(const collision_detection::AllowedCollisionMatrix *acm, const std::set<const robot_model::LinkModel*> *active_components_only) : active_components_only_(active_components_only), acm_(acm), verbose(false)
       {
       }
 
@@ -33,8 +33,7 @@ namespace constrained_ik
 
       /// If the collision request includes a group name, this set contains the pointers to the link models that are considered for collision;
       /// If the pointer is NULL, all collisions are considered.
-      const std::set<const robot_model::LinkModel*>
-                                   *active_components_only_;
+      const std::set<const robot_model::LinkModel*> *active_components_only_;
 
       /// The user specified collision matrix (may be NULL)
       const collision_detection::AllowedCollisionMatrix *acm_;
@@ -55,7 +54,11 @@ namespace constrained_ik
 
     virtual DistanceDetailedMap distanceSelfDetailed(const robot_state::RobotState &state, const collision_detection::AllowedCollisionMatrix &acm) const;
 
-    virtual DistanceDetailedMap distanceSelfDetailedHelper(const robot_state::RobotState &state, const collision_detection::AllowedCollisionMatrix *acm) const;
+    virtual DistanceDetailedMap distanceSelfDetailed(const robot_state::RobotState &state, const std::set<const robot_model::LinkModel*> &active_components_only) const;
+
+    virtual DistanceDetailedMap distanceSelfDetailed(const robot_state::RobotState &state, const collision_detection::AllowedCollisionMatrix &acm, const std::set<const robot_model::LinkModel*> &active_components_only) const;
+
+    virtual DistanceDetailedMap distanceSelfDetailedHelper(const robot_state::RobotState &state, const collision_detection::AllowedCollisionMatrix *acm, const std::set<const robot_model::LinkModel *> *active_components_only) const;
 
     static bool distanceDetailedCallback(fcl::CollisionObject* o1, fcl::CollisionObject* o2, void *data, double& min_dist);
 
