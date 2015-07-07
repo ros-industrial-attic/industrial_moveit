@@ -32,58 +32,9 @@ using namespace Eigen;
 namespace constrained_ik
 {
 
-// NOTE: This method does a resize in-place, and may be inefficient if called many times
-void Constraint::appendError(Eigen::VectorXd &error, const Eigen::VectorXd &addErr)
-{
-  if (addErr.rows() == 0) return;
-
-  if (error.rows() == 0)
-    error = addErr;
-  else
-  {
-    size_t nAddRows = addErr.rows();
-    error.conservativeResize(error.rows() + nAddRows);
-    error.tail(nAddRows) = addErr;
-  }
-}
-
-// NOTE: This method does a resize in-place, and may be inefficient if called many times
-void Constraint::appendJacobian(Eigen::MatrixXd &jacobian, const Eigen::MatrixXd &addJacobian)
-{
-  if(addJacobian.rows() == 0 || addJacobian.cols() == 0)
-  {
-    ROS_ERROR("trying to add a Jacobian with no data");
-  }
-  if (jacobian.rows() == 0) // first call gets to set size
-  {
-    size_t nAddRows = addJacobian.rows();
-    jacobian.conservativeResize(jacobian.rows() + nAddRows, addJacobian.cols());
-    jacobian.bottomRows(nAddRows) = addJacobian;
-  }
-  else
-  {
-    ROS_ASSERT(jacobian.cols() == addJacobian.cols());
-    size_t nAddRows = addJacobian.rows();
-    jacobian.conservativeResize(jacobian.rows() + nAddRows, Eigen::NoChange);
-    jacobian.bottomRows(nAddRows) = addJacobian;
-  }
-}
-
-int Constraint::numJoints()
+int Constraint::numJoints() const
 {
   return ik_->getKin().numJoints();
-}
-
-void Constraint::updateError(Eigen::VectorXd &error)
-{
-  appendError(error, calcError());
-}
-
-void Constraint::updateJacobian(Eigen::MatrixXd &jacobian)
-{
-
-  Eigen::MatrixXd addJacobian = calcJacobian();
-  appendJacobian(jacobian, addJacobian);
 }
 
 } // namespace constrained_ik

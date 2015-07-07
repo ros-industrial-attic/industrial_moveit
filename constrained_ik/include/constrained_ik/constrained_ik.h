@@ -37,6 +37,7 @@
 #include <urdf/model.h>
 #include <constrained_ik/enum_types.h>
 #include <moveit/planning_scene/planning_scene.h>
+#include <constrained_ik/constraint_results.h>
 
 
 namespace constrained_ik
@@ -59,7 +60,7 @@ public:
    * @param poses the desired pose transforms
    * @param link_names the names of the links
    * @return true on success
-   */  
+   */
   bool linkTransforms(const Eigen::VectorXd &joints,
                       std::vector<KDL::Frame> &poses,
                       const std::vector<std::string> link_names = std::vector<std::string>()) const
@@ -74,10 +75,10 @@ public:
   {
     switch(constraint_type)
     {
-      case constraint_types::primary:
+      case constraint_types::Primary:
         primary_constraints_.add(constraint);
         break;
-      case constraint_types::auxiliary:
+      case constraint_types::Auxiliary:
         auxiliary_constraints_.add(constraint);
         break;
     }
@@ -94,7 +95,7 @@ public:
   virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed,
                           const planning_scene::PlanningSceneConstPtr planning_scene,
                           Eigen::VectorXd &joint_angles,
-                          int min_updates = 0) ;
+                          int min_updates = 0) const ;
 
   /**
    * @brief computes the inverse kinematics for the given pose of the tip link
@@ -105,21 +106,32 @@ public:
   virtual void calcInvKin(const Eigen::Affine3d &pose,
                           const Eigen::VectorXd &joint_seed,
                           Eigen::VectorXd &joint_angles,
-                          int min_updates=0);
+                          int min_updates=0) const ;
 
   /**
    * @brief Checks to see if object is initialized (ie: init() has been called)
-   * @param constraint_type Contraint type (primary or auxiliary)
-   * @return True if object is initialized
+   * @return InitializationState
    */
-  bool checkInitialized(constraint_types::ConstraintType constraint_type) const
+  initialization_state::InitializationState checkInitialized() const
   {
-    switch(constraint_type)
+    if (initialized_)
     {
-      case constraint_types::primary:
-        return initialized_ && !primary_constraints_.empty();
-      case constraint_types::auxiliary:
-        return initialized_ && !auxiliary_constraints_.empty();
+      if (!primary_constraints_.empty() && !auxiliary_constraints_.empty())
+      {
+        return initialization_state::PrimaryAndAuxiliary;
+      }
+      else if (!primary_constraints_.empty() && auxiliary_constraints_.empty())
+      {
+        return initialization_state::PrimaryOnly;
+      }
+      else if (primary_constraints_.empty() && !auxiliary_constraints_.empty())
+      {
+        return initialization_state::AuxiliaryOnly;
+      }
+    }
+    else
+    {
+      return initialization_state::NothingInitialized;
     }
   }
 
@@ -158,12 +170,6 @@ public:
    * @return Value of max_iter_
    */
   inline unsigned int getMaxIter() const {return max_iter_;}
-
-  /**
-   * @brief Getter for latest solver state
-   * @return Latest solver state
-   */
-  inline const SolverState& getState() const { return state_; }
 
   /**
    * @brief Initializes object with kinematic model of robot
@@ -248,28 +254,6 @@ public:
   //TODO document
   virtual Eigen::MatrixXd calcDampedPseudoinverse(const Eigen::MatrixXd &J) const;
 
-  /** @brief Containst distance information in the planning frame queried from getDistanceInfo() */
-  struct DistanceInfo
-  {
-    std::string nearest_obsticle; /**< The link name for nearest obsticle/link to request link. */
-    Eigen::Vector3d link_point; /**< Point on request link */
-    Eigen::Vector3d obsticle_point; /**< Point on nearest link to requested link */
-    Eigen::Vector3d avoidance_vector; /**< Normilized Vector created by nearest points */
-    double distance; /**< Distance between nearest points */
-    public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-  };
-
-  /**
-   * @brief getDistanceInfo
-   * @param link_name Requested link name for distance information
-   * @param dist_info Stores the distance information for requested link
-   * @return bool, true if distance information exists.
-   */
-  bool getDistanceInfo(const std::string link_name, DistanceInfo & dist_info) const;
-
-
  protected:
   // termination-criteria limits / tolerances
   unsigned int max_iter_;
@@ -283,43 +267,59 @@ public:
 
   // state/counter data
   bool initialized_;
-  SolverState state_;
   basic_kin::BasicKin kin_;
 
-  std::map<std::string, fcl::DistanceResult> distance_detailed_; /**< Closest distance for each object in model */
-
   bool debug_;
-  std::vector<Eigen::VectorXd> iteration_path_;
 
   /**
-   * @brief Pure definition for calculating constraint error
+   * @brief Calculating error, jacobian & status for all constraints specified.
    * @param constraint_type Contraint type (primary or auxiliary)
-   * @return Error vector (b-input in calcPInv)
+   * @param state The state of the current solver
+   * @return ConstraintResults
    */
-  virtual Eigen::VectorXd calcConstraintError(constraint_types::ConstraintType constraint_type);
+  constrained_ik::ConstraintResults evalConstraint(constraint_types::ConstraintType constraint_type, const constrained_ik::SolverState &state) const;
 
   /**
-   * @brief Pure definition for calculating Jacobian
-   * @param constraint_type Contraint type (primary or auxiliary)
-   * @return Jacobian matrix (A-input in calcPInv)
+   * @brief This function clips the joints within the joint limits.
+   * @param joints a Eigen::VectorXd passed by reference
    */
-  virtual Eigen::MatrixXd calcConstraintJacobian(constraint_types::ConstraintType constraint_type);
+  void clipToJointLimits(Eigen::VectorXd &joints) const;
 
+  /**
+   * @brief Method determine convergence when both primary
+   * and auxiliary constraints are present
+   * @param state, The state of the current solver
+   * @param primary, The primary constraint results
+   * @param auxiliary, The auxiliary constraint results
+   * @return bool, True for converged, False for not converged
+   */
+  virtual bool checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const;
 
-  //TODO document
-  void clipToJointLimits(Eigen::VectorXd &joints);
+  /**
+   * @brief This method determine convergence when primary
+   * constraint is only present
+   * @param state, The state of the current solver
+   * @param primary, The primary constraint results
+   * @return bool, True for converged, False for not converged
+   */
+  virtual bool checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary) const;
 
-  //TODO document
-  virtual bool checkStatus() const;
+  /**
+   * @brief Creates a new SolverState and checks key elements.
+   * @param goal, The goal of the solver
+   * @param joint_seed, The inital joint position for the solver.
+   * @return SolverState
+   */
+  virtual constrained_ik::SolverState getState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed) const;
 
-  //TODO document
-  virtual void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
+  /**
+   * @brief Method update an existing SolverState provided
+   * new joint positions.
+   * @param state, The state of the current solver
+   * @param joints, The new joint position to be used by the solver
+   */
+  virtual void updateState(constrained_ik::SolverState &state, const Eigen::VectorXd &joints) const;
 
-  //TODO document
-  virtual void update(const Eigen::VectorXd &joints);
-
-private:
-  bool collision_checks_required();
 }; // class Constrained_IK
 
 } // namespace constrained_ik

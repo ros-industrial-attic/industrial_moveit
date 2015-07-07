@@ -45,36 +45,13 @@ void ConstraintGroup::add(Constraint* constraint)
   constraints_.push_back(constraint);
 }
 
-Eigen::VectorXd ConstraintGroup::calcError()
+constrained_ik::ConstraintResults ConstraintGroup::evalConstraint(const SolverState &state) const
 {
-  VectorXd error;
+  constrained_ik::ConstraintResults output;
   for (size_t i=0; i<constraints_.size(); ++i)
-    constraints_[i].updateError(error);
+    output.append(constraints_[i].evalConstraint(state));
 
-  return error;
-}
-
-// translate task-space errors into joint-space errors
-Eigen::MatrixXd ConstraintGroup::calcJacobian()
-{
-  MatrixXd jacobian;
-  for (size_t i=0; i<constraints_.size(); ++i)
-  {
-    constraints_[i].updateJacobian(jacobian);
-  }
-  return jacobian;
-}
-
-bool ConstraintGroup::checkStatus() const
-{
-  bool done=true;
-
-  for (size_t i=0; i<constraints_.size(); ++i)
-    done &= constraints_[i].checkStatus();
-
-  if (done) return done;
-
-  return Constraint::checkStatus();
+  return output;
 }
 
 void ConstraintGroup::init(const Constrained_IK* ik)
@@ -85,29 +62,5 @@ void ConstraintGroup::init(const Constrained_IK* ik)
     constraints_[i].init(ik);
 }
 
-void ConstraintGroup::reset()
-{
-  Constraint::reset();
-
-  for (size_t i=0; i<constraints_.size(); ++i)
-    constraints_[i].reset();
-}
-
-void ConstraintGroup::update(const SolverState &state)
-{
-  Constraint::update(state);
-
-  for (size_t i=0; i<constraints_.size(); ++i)
-    constraints_[i].update(state);
-}
-bool ConstraintGroup::collision_checks_required()
-{
-  bool rtn= false;
-  for (size_t i=0; i<constraints_.size(); ++i)
-  {
-    rtn |= constraints_[i].requires_collision_checks();
-  }
-  return rtn;
-}
 } // namespace constrained_ik
 

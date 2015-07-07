@@ -26,6 +26,7 @@
 #define GOAL_POSITION_H
 
 #include "constrained_ik/constraint.h"
+#include <constrained_ik/solver_state.h>
 
 namespace constrained_ik
 {
@@ -36,8 +37,17 @@ namespace constraints
 class GoalPosition : public Constraint
 {
 public:
+  struct GoalPositionData: public ConstraintData
+  {
+    double pos_err_;      /**< @brief current solution error */
+
+    GoalPositionData(const constrained_ik::SolverState &state);
+  };
+
   GoalPosition();
   virtual ~GoalPosition() {}
+
+  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
 
   /**
    * @brief Calculates distance between two frames
@@ -51,40 +61,33 @@ public:
    * @brief Jacobian is first three rows of standard jacobian
    * (expressed in base frame). Equivalent to each axis of rotation crossed with vector from joint to chain tip.
    * Each row is scaled by the corresponding element of weight_
+   * @param cdata, The constraint specific data.
    * @return First 3 rows of standard jacobian scaled by weight_
    */
-  virtual Eigen::MatrixXd calcJacobian();
+  virtual Eigen::MatrixXd calcJacobian(const GoalPositionData &cdata) const;
 
   /**
    * @brief Direction vector from current position to goal position
    * Expressed in base coordinate system
    * Each element is multiplied by corresponding element in weight_
+   * @param cdata, The constraint specific data.
    * @return Translation from current to goal scaled by weight_
    */
-  virtual Eigen::VectorXd calcError();
+  virtual Eigen::VectorXd calcError(const GoalPositionData &cdata) const;
 
   /**
    * @brief Checks termination criteria
    * Termination criteria for this constraint is that positional error is below threshold
+   * @param cdata, The constraint specific data.
    * @return True if positional error is below threshold
    */
-  virtual bool checkStatus() const;
+  virtual bool checkStatus(const GoalPositionData &cdata) const;
 
   /**
    * @brief Getter for weight_
    * @return weight_
    */
   Eigen::Vector3d getWeight() {return weight_;}
-
-  /** @brief Resets constraint. Use this before performing new IK request. */
-  virtual void reset();
-
-  /**
-   * @brief Update internal state of constraint (overrides constraint::update)
-   * Sets current positional error
-   * @param state SolverState holding current state of IK solver
-   */
-  virtual void update(const SolverState &state);
 
   /**
    * @brief Setter for weight_
@@ -94,7 +97,6 @@ public:
 
 protected:
   double pos_err_tol_;  /**< @brief termination criteria */
-  double pos_err_;      /**< @brief current solution error */
   Eigen::Vector3d weight_;
 }; // class GoalPosition
 

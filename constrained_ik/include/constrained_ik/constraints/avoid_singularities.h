@@ -44,27 +44,45 @@ namespace constraints
 class AvoidSingularities: public Constraint
 {
 public:
+  struct AvoidSingularitiesData: public ConstraintData
+  {
+    const constraints::AvoidSingularities* parent_;
+    bool avoidance_enabled_;
+    double smallest_sv_;
+    Eigen::VectorXd Ui_, Vi_;
+    Eigen::MatrixXd jacobian_orig_;   // current jacobian
+
+    AvoidSingularitiesData(const constrained_ik::SolverState &state, const constraints::AvoidSingularities* parent);
+    virtual ~AvoidSingularitiesData() {}
+
+  };
+
     AvoidSingularities();
   virtual ~AvoidSingularities() {}
 
+  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
+
   /**
    * @brief Jacobian for this constraint is identity (all joints may contribute)
+   * @param cdata, The constraint specific data.
    * @return Identity jacobian scaled by weight
    */
-  virtual Eigen::MatrixXd calcJacobian();
+  virtual Eigen::MatrixXd calcJacobian(const AvoidSingularitiesData &cdata) const;
 
   /**
    * @brief Velocity is gradient of smallest singular value
    * del(sv) = uT * del(J) * v
+   * @param cdata, The constraint specific data.
    * @return Joint velocity error scaled by weight
    */
-  virtual Eigen::VectorXd calcError();
+  virtual Eigen::VectorXd calcError(const AvoidSingularitiesData &cdata) const;
 
   /**
    * @brief Termination criteria for singularity constraint
+   * @param cdata, The constraint specific data.
    * @return True always (no termination criteria)
    */
-  virtual bool checkStatus() const { return true;} //always return true
+  virtual bool checkStatus(const AvoidSingularitiesData &cdata) const { return true;} //always return true
 
   /**
    * @brief Getter for weight_
@@ -78,22 +96,11 @@ public:
    */
   void setWeight(double weight) {weight_ = weight;}
 
-  /**
-   * @brief Updates internal state of constraint (overrides constraint::update)
-   * Sets jacobian and performs SVD decomposition
-   * @param state SolverState holding current state of IK solver
-   */
-  virtual void update(const SolverState &state);
-
 protected:
   double weight_;
   double enable_threshold_, ignore_threshold_; /**< @brief how small singular value must be to trigger avoidance, how small is too small */
-  bool avoidance_enabled_;
-  double smallest_sv_;
-  Eigen::VectorXd Ui_, Vi_;
-  Eigen::MatrixXd jacobian_orig_;   // current jacobian
 
-  Eigen::MatrixXd jacobianPartialDerivative(size_t jntIdx, double eps=1e-6);
+  Eigen::MatrixXd jacobianPartialDerivative(const AvoidSingularitiesData &cdata, size_t jntIdx, double eps=1e-6) const;
 
 }; // class AvoidSingularities
 

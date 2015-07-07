@@ -28,7 +28,6 @@
  * limitations under the License.
  */
 #include "constrained_ik/constraints/avoid_obstacles.h"
-#include "constrained_ik/constrained_ik.h"
 #include <ros/ros.h>
 
 namespace constrained_ik
@@ -51,18 +50,30 @@ void AvoidObstacles::init(const Constrained_IK * ik)
   jac_solver_ = new  KDL::ChainJntToJacSolver(avoid_chain_);
 }
 
-VectorXd AvoidObstacles::calcError()
+constrained_ik::ConstraintResults AvoidObstacles::evalConstraint(const SolverState &state) const
+{
+  constrained_ik::ConstraintResults output;
+  AvoidObstacles::AvoidObstaclesData cdata(state);
+
+  output.error = calcError(cdata);
+  output.jacobian = calcJacobian(cdata);
+  output.status = checkStatus(cdata);
+
+  return output;
+}
+
+VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cdata) const
 {
   Eigen::Vector3d error_vector(0,0,0);
-  Constrained_IK::DistanceInfo dist_info;
-  if(ik_->getDistanceInfo(link_name_, dist_info))
+  CollisionRobotFCLDetailed::DistanceInfo dist_info;
+  if(CollisionRobotFCLDetailed::getDistanceInfo(cdata.distance_map_, link_name_, dist_info))
   {
     double dist = dist_info.distance;
     double scale;
-    if(dist > min_distance_) 
+    if(dist > min_distance_)
     {
       scale = 1.0/(dist * dist);  // inverse square law
-    } 
+    }
     else
     {
       scale = 1/(min_distance_ * min_distance_ );
@@ -72,28 +83,20 @@ VectorXd AvoidObstacles::calcError()
   return  error_vector;
 }
 
-MatrixXd AvoidObstacles::calcJacobian()
-{
-  VectorXd joint_states;
-  SolverState ss = ik_->getState();
-  MatrixXd J = calcJacobian(ss.joints);
-  return J;
-}
-
-MatrixXd AvoidObstacles::calcJacobian(VectorXd &joint_states)
+MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &cdata) const
 {
   KDL::Jacobian link_jacobian(num_inboard_joints_); // 6xn Jacobian to link, then dist_info.link_point
   MatrixXd jacobian= MatrixXd::Zero(3, num_robot_joints_);  // 3xn jacobian to dist_info.link_point with just position, no rotation
 
   // calculate the link jacobian
   KDL::JntArray joint_array(num_inboard_joints_);
-  for(int i=0; i<num_inboard_joints_; i++)   joint_array(i) = joint_states(i);
+  for(int i=0; i<num_inboard_joints_; i++)   joint_array(i) = cdata.state_.joints(i);
   jac_solver_->JntToJac(joint_array, link_jacobian);// this computes a 6xn jacobian, we only need 3xn
 
   // use distance info to find reference point on link which is closest to a collision,
   // change the reference point of the link jacobian to that point
-  Constrained_IK::DistanceInfo dist_info;
-  if(ik_->getDistanceInfo(link_name_, dist_info))
+  CollisionRobotFCLDetailed::DistanceInfo dist_info;
+  if(CollisionRobotFCLDetailed::getDistanceInfo(cdata.distance_map_, link_name_, dist_info))
   {
     // change the referece point to the point on the link closest to a collision
     KDL::Vector link_point(dist_info.link_point.x(), dist_info.link_point.y(), dist_info.link_point.z());
@@ -117,25 +120,18 @@ MatrixXd AvoidObstacles::calcJacobian(VectorXd &joint_states)
   return jacobian;
 }
 
-bool AvoidObstacles::checkStatus() const
+bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata) const
 {                               // returns true if its ok to stop with current ik conditions
-  Constrained_IK::DistanceInfo dist_info;
-  ik_->getDistanceInfo(link_name_,dist_info);
+  CollisionRobotFCLDetailed::DistanceInfo dist_info;
+  CollisionRobotFCLDetailed::getDistanceInfo(cdata.distance_map_, link_name_, dist_info);
   if(dist_info.distance<min_distance_*5.0) return false;
   return true;
 }
 
-void AvoidObstacles::reset()
+AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state): ConstraintData(state)
 {
-  // TODO, what to do here?
+  distance_map_ = state.collision_robot->distanceSelfDetailed(*state_.robot_state, state_.planning_scene->getAllowedCollisionMatrix());
 }
 
-void AvoidObstacles::update(const SolverState &state)
-{
-  // updates the joint states, finds link nearest to a collision, 
-  if (!initialized_) return;
-  Constraint::update(state);
-}
-
-} // end namespace constraints 
+} // end namespace constraints
 } // end namespace constrained_ik

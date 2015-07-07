@@ -34,14 +34,26 @@ namespace constraints
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalPosition::GoalPosition() : Constraint(), pos_err_tol_(0.001), pos_err_(0.0), weight_(Vector3d::Ones())
+GoalPosition::GoalPosition() : Constraint(), pos_err_tol_(0.001), weight_(Vector3d::Ones())
 {
 }
 
-Eigen::VectorXd GoalPosition::calcError()
+constrained_ik::ConstraintResults GoalPosition::evalConstraint(const SolverState &state) const
 {
-  Vector3d goalPos = state_.goal.translation();
-  Vector3d estPos  = state_.pose_estimate.translation();
+  constrained_ik::ConstraintResults output;
+  GoalPosition::GoalPositionData cdata(state);
+
+  output.error = calcError(cdata);
+  output.jacobian = calcJacobian(cdata);
+  output.status = checkStatus(cdata);
+
+  return output;
+}
+
+Eigen::VectorXd GoalPosition::calcError(const GoalPosition::GoalPositionData &cdata) const
+{
+  Vector3d goalPos = cdata.state_.goal.translation();
+  Vector3d estPos  = cdata.state_.pose_estimate.translation();
   Vector3d err = (goalPos - estPos).cwiseProduct(weight_);
 
   ROS_ASSERT( err.rows() == 3 );
@@ -49,10 +61,10 @@ Eigen::VectorXd GoalPosition::calcError()
 }
 
 // translate cartesian errors into joint-space errors
-Eigen::MatrixXd GoalPosition::calcJacobian()
+Eigen::MatrixXd GoalPosition::calcJacobian(const GoalPosition::GoalPositionData &cdata) const
 {
   MatrixXd tmpJ;
-  if (!ik_->getKin().calcJacobian(state_.joints, tmpJ))
+  if (!ik_->getKin().calcJacobian(cdata.state_.joints, tmpJ))
     throw std::runtime_error("Failed to calculate Jacobian");
   MatrixXd  J = tmpJ.topRows(3);
 
@@ -69,25 +81,17 @@ double GoalPosition::calcDistance(const Eigen::Affine3d &p1, const Eigen::Affine
   return (p2.translation() - p1.translation()).norm();
 }
 
-bool GoalPosition::checkStatus() const
+bool GoalPosition::checkStatus(const GoalPosition::GoalPositionData &cdata) const
 {
   // check to see if we've reached the goal position
-  if (pos_err_ < pos_err_tol_)
+  if (cdata.pos_err_ < pos_err_tol_)
     return true;
 
-  return Constraint::checkStatus();
+  return false;
 }
 
-void GoalPosition::reset()
+GoalPosition::GoalPositionData::GoalPositionData(const SolverState &state): ConstraintData(state)
 {
-  Constraint::reset();
-  pos_err_ = 0;
-}
-
-void GoalPosition::update(const SolverState &state)
-{
-  Constraint::update(state);
-
   pos_err_ = calcDistance(state.goal, state.pose_estimate);
 }
 

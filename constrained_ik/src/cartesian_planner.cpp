@@ -48,7 +48,6 @@ namespace constrained_ik
     robot_state::RobotState goal_state = start_state;
     robot_state::RobotStatePtr mid_state;
     const robot_model::JointModelGroup *group_model = rob_model->getJointModelGroup(request_.group_name);
-    //boost::shared_ptr<const robot_model::JointModelGroup> group_model_ptr(group_model);
     std::vector<std::string> joint_names = group_model->getActiveJointModelNames();
     std::vector<std::string> link_names = group_model->getLinkModelNames();
     Eigen::Affine3d start_pose = start_state.getFrameTransform(link_names.back());

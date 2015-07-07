@@ -39,23 +39,28 @@ public:
   GoalMinimizeChange();
   virtual ~GoalMinimizeChange() {}
 
+  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
+
   /**
    * @brief Jacobian is identity becasue all joints are affected
+   * @param cdata, The constraint specific data.
    * @return Identity scaled by weight_
    */
-  virtual Eigen::MatrixXd calcJacobian();
+  virtual Eigen::MatrixXd calcJacobian(const ConstraintData &cdata) const;
 
   /**
    * @brief Joint velocity is difference between starting position and current position
+   * @param cdata, The constraint specific data.
    * @return Joint difference scaled by weight_
    */
-  virtual Eigen::VectorXd calcError();
+  virtual Eigen::VectorXd calcError(const ConstraintData &cdata) const;
 
   /**
    * @brief Termination criteria for singularity constraint
+   * @param cdata, The constraint specific data.
    * @return True always (no termination criteria)
    */
-  virtual bool checkStatus() const { return true;}
+  virtual bool checkStatus(const ConstraintData &cdata) const { return true;}
 
   /**
    * @brief Getter for weight_

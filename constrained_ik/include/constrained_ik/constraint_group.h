@@ -26,7 +26,8 @@
 #ifndef CONSTRAINT_GROUP_H
 #define CONSTRAINT_GROUP_H
 
-#include "constraint.h"
+#include <constrained_ik/constraint.h>
+#include <constrained_ik/constraint_results.h>
 #include <boost/ptr_container/ptr_vector.hpp>
 
 namespace constrained_ik
@@ -41,18 +42,15 @@ public:
   ConstraintGroup();
   virtual ~ConstraintGroup() {}
 
-  virtual Eigen::MatrixXd calcJacobian();
-  virtual Eigen::VectorXd calcError();
+  virtual ConstraintResults evalConstraint(const SolverState &state) const;
 
   virtual void init(const Constrained_IK* ik);
-  virtual void reset();
-  virtual void update(const SolverState &state);
-  virtual bool checkStatus() const;
 
   virtual void add(Constraint* constraint);
+
   virtual void clear() { constraints_.clear(); }
+
   bool empty() const { return constraints_.empty(); }
-  bool collision_checks_required();
 
 protected:
   boost::ptr_vector<Constraint> constraints_;

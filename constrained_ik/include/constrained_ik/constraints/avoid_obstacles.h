@@ -29,6 +29,7 @@
 
 #include "constrained_ik/constraint.h"
 #include "constrained_ik/constrained_ik.h"
+#include <constrained_ik/collision_robot_fcl_detailed.h>
 #include <vector>
 #include <kdl/chain.hpp>
 #include <kdl/chainjnttojacsolver.hpp>
@@ -45,65 +46,58 @@ namespace constraints
 class AvoidObstacles: public Constraint
 {
 public:
+  struct AvoidObstaclesData: public ConstraintData
+  {
+    constrained_ik::CollisionRobotFCLDetailed::DistanceDetailedMap distance_map_;
+
+    AvoidObstaclesData(const constrained_ik::SolverState &state);
+  };
+
   /**
    * @brief constructor
    * @param link_name name of link which should avoid obstacles
    */
-  
-  AvoidObstacles(std::string link_name): Constraint(), weight_(1.0), min_distance_(0.006), link_name_(link_name)
-  {
-    requires_collision_checks_ = true;
-  };
+  AvoidObstacles(std::string link_name): Constraint(), weight_(1.0), min_distance_(0.006), link_name_(link_name) {}
+
   /**
    * @brief Destructor
    */
-  virtual ~AvoidObstacles() 
+  virtual ~AvoidObstacles()
   {
     delete jac_solver_;
   }
+
+  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
+
   /**
    * @brief Creates Jacobian for avoiding a collision with link closest to a collision
+   * @param cdata, The constraint specific data.
    * @return Jacobian scaled by weight
    */
-  virtual Eigen::MatrixXd calcJacobian();
-  /**
-   * @brief Creates Jacobian for avoiding a collision with link closest to a collision
-   * @return Jacobian scaled by weight
-   */
-  virtual Eigen::MatrixXd calcJacobian(Eigen::VectorXd &joint_angles);
-  
+  virtual Eigen::MatrixXd calcJacobian(const AvoidObstaclesData &cdata) const;
+
   /**
    * @brief Creates vector representing velocity error term
    * corresponding to calcJacobian()
+   * @param cdata, The constraint specific data.
    * @return VectorXd of joint velocities for obstacle avoidance
    */
-  virtual Eigen::VectorXd calcError();
-  
+  virtual Eigen::VectorXd calcError(const AvoidObstaclesData &cdata) const;
+
   /**
    * @brief Checks termination criteria
    * There are no termination criteria for this constraint
+   * @param cdata, The constraint specific data.
    * @return True
    */
-  virtual bool checkStatus() const;
-  
+  virtual bool checkStatus(const AvoidObstaclesData &cdata) const;
+
   /**
    * @brief Initialize constraint (overrides Constraint::init)
    * Should be called before using class.
    * @param ik Pointer to Constrained_IK used for base-class init
    */
   virtual void init(const Constrained_IK * ik);
-
-  /**
-   * @brief Resets constraint before new use.
-   * Call this method before beginning a new IK calculation
-   */
-  virtual void reset();
-
-  /**
-   * @brief Update internal state of constraint (overrides constraint::update)
-   * @param state SolverState holding current state of IK solver
-   */
-  virtual void update(const SolverState &state);
 
   /**
    * @brief getter for weight_

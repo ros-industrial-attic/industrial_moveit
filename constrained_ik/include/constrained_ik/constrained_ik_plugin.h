@@ -116,7 +116,7 @@ namespace constrained_ik
     planning_scene::PlanningScenePtr planning_scene_; // Used for collision queries
     moveit::core::RobotStatePtr robot_state_;
     robot_model::RobotModelPtr robot_model_ptr_;
-    mutable test_ik::Test_IK solver_; //This is a hack until industrial_moveit can modified to be called from a const
+    test_ik::Test_IK solver_;
   };
 
 }   //namespace constrained_ik

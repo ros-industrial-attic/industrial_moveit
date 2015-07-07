@@ -38,10 +38,22 @@ GoalToolOrientation::GoalToolOrientation() : GoalOrientation()
 {
 }
 
-Eigen::VectorXd GoalToolOrientation::calcError()
+constrained_ik::ConstraintResults GoalToolOrientation::evalConstraint(const SolverState &state) const
+{
+  constrained_ik::ConstraintResults output;
+  GoalOrientation::GoalOrientationData cdata(state);
+
+  output.error = calcError(cdata);
+  output.jacobian = calcJacobian(cdata);
+  output.status = checkStatus(cdata);
+
+  return output;
+}
+
+Eigen::VectorXd GoalToolOrientation::calcError(const GoalOrientation::GoalOrientationData &cdata) const
 {
   //rotate jacobian into tool frame by premultiplying by otR.transpose()
-  Vector3d err = state_.pose_estimate.rotation().transpose() * calcAngleError(state_.pose_estimate, state_.goal);
+  Vector3d err = cdata.state_.pose_estimate.rotation().transpose() * calcAngleError(cdata.state_.pose_estimate, cdata.state_.goal);
 
   err = err.cwiseProduct(weight_);
   ROS_ASSERT(err.rows() == 3);
@@ -49,14 +61,14 @@ Eigen::VectorXd GoalToolOrientation::calcError()
 }
 
 // translate cartesian errors into joint-space errors
-Eigen::MatrixXd GoalToolOrientation::calcJacobian()
+Eigen::MatrixXd GoalToolOrientation::calcJacobian(const GoalOrientation::GoalOrientationData &cdata) const
 {
   MatrixXd tmpJ;
-  if (!ik_->getKin().calcJacobian(state_.joints, tmpJ))
+  if (!ik_->getKin().calcJacobian(cdata.state_.joints, tmpJ))
     throw std::runtime_error("Failed to calculate Jacobian");
 
   //rotate jacobian into tool frame by premultiplying by otR.transpose()
-  MatrixXd J = state_.pose_estimate.rotation().transpose() * tmpJ.bottomRows(3);
+  MatrixXd J = cdata.state_.pose_estimate.rotation().transpose() * tmpJ.bottomRows(3);
 
   // weight each row of J
   for (size_t ii=0; ii<3; ++ii)

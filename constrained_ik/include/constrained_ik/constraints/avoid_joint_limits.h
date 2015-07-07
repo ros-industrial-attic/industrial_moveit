@@ -47,106 +47,55 @@ namespace constraints
  */
 class AvoidJointLimits: public Constraint
 {
-public:
-    AvoidJointLimits(): Constraint(), weight_(1.0), threshold_(0.05) {}
-    virtual ~AvoidJointLimits() {}
-
-    /**
-     * @brief Creates jacobian rows corresponding to joint velocity limit avoidance
-     * Each limited joint gets a 0 row with a 1 in that joint's column
-     * @return Pseudo-Identity scaled by weight_
-     */
-    virtual Eigen::MatrixXd calcJacobian();
-
-    /**
-     * @brief Creates vector representing velocity error term
-     * corresponding to calcJacobian()
-     * @return VectorXd of joint velocities for joint limit avoidance
-     */
-    virtual Eigen::VectorXd calcError();
-
-    /**
-     * @brief Checks termination criteria
-     * There are no termination criteria for this constraint
-     * @return True
-     */
-    virtual bool checkStatus() const;// { return limited_joints_.size() < 1;/*true;*/ }  // always satisfied, even if "close to limits"
-
-    /**
-     * @brief Initialize constraint (overrides Constraint::init)
-     * Initializes internal limit variables
-     * Should be called before using class.
-     * @param ik Pointer to Constrained_IK used for base-class init
-     */
-    virtual void init(const Constrained_IK* ik);
-
-    /**
-     * @brief Resets constraint before new use.
-     * Call this method before beginning a new IK calculation
-     */
-    virtual void reset();
-
-    /**
-     * @brief Update internal state of constraint (overrides constraint::update)
-     * Sets which joints are near limits
-     * @param state SolverState holding current state of IK solver
-     */
-    virtual void update(const SolverState &state);
-
-    /**
-     * @brief getter for weight_
-     * @return weight_
-     */
-    double getWeight() {return weight_;}
-
-    /**
-     * @brief setter for weight_
-     * @param weight Value to set weight_ to
-     */
-    void setWeight(const double &weight) {weight_ = weight;}
-
 protected:
+  /**
+   * @brief Stores joint limit constraint data for a single joint.
+   */
+  struct LimitsT
+  {
+    double min_pos;       /**< @brief minimum joint position */
+    double max_pos;       /**< @brief maximum joint position */
+    double lower_thresh;  /**< @brief lower threshold at which limiting begins */
+    double upper_thresh;  /**< @brief upper threshold at which limiting begins */
+    double e;             /**< @brief threshold as a distance from limit */
+    double k3;            /**< @brief factor used in cubic velocity ramp */
+
     /**
-     * @brief Stores joint limit constraint data for a single joint.
+     * @brief Constructor for LimitsT
+     * @param minPos Minimum allowed joint position
+     * @param maxPos Maximum allowed joint position
+     * @param threshold Limiting threshold given as a percentage of joint range
      */
-    struct LimitsT
-    {
-      double min_pos;       /**< @brief minimum joint position */
-      double max_pos;       /**< @brief maximum joint position */
-      double lower_thresh;  /**< @brief lower threshold at which limiting begins */
-      double upper_thresh;  /**< @brief upper threshold at which limiting begins */
-      double e;             /**< @brief threshold as a distance from limit */
-      double k3;            /**< @brief factor used in cubic velocity ramp */
+    LimitsT(double minPos, double maxPos, double threshold);
 
-      /**
-       * @brief Constructor for LimitsT
-       * @param minPos Minimum allowed joint position
-       * @param maxPos Maximum allowed joint position
-       * @param threshold Limiting threshold given as a percentage of joint range
-       */
-      LimitsT(double minPos, double maxPos, double threshold);
+    /**
+     * @brief Calculates velocity for joint position avoidance
+     * Uses cubic function v = y-y0 = k(x-x0)^3 where k=max_vel/(joint_range/2)^3
+     * @param angle Angle to calculate velocity for
+     * @param limit Angle limit
+     * @return joint velocity to avoid joint limits
+     */
+    double cubicVelRamp(double angle, double limit) const;
+  };
 
-      /**
-       * @brief Calculates velocity for joint position avoidance
-       * Uses cubic function v = y-y0 = k(x-x0)^3 where k=max_vel/(joint_range/2)^3
-       * @param angle Angle to calculate velocity for
-       * @param limit Angle limit
-       * @return joint velocity to avoid joint limits
-       */
-      double cubicVelRamp(double angle, double limit) const;
-    };
+  std::vector<LimitsT> limits_;
+  double weight_;
+  double threshold_;   /**< @brief threshold (% of range) at which to engage limit avoidance */
 
-    std::vector<LimitsT> limits_;
+public:
+  struct AvoidJointLimitsData: public ConstraintData
+  {
     std::vector<int> limited_joints_;  /**< @brief list of joints that will be constrained */
-    double weight_;
-    double threshold_;   /**< @brief threshold (% of range) at which to engage limit avoidance */
+    const constraints::AvoidJointLimits* parent_;
+    AvoidJointLimitsData(const constrained_ik::SolverState &state, const constraints::AvoidJointLimits* parent);
+    virtual ~AvoidJointLimitsData() {}
 
     /**
      * @brief Check if a given joint is near its lower limit
      * @param idx Index of joint
      * @return True if joint position is within threshold of lower limit
      */
-    bool nearLowerLimit(size_t idx);
+    bool nearLowerLimit(size_t idx) const;
 
     /**
      * @brief Check if a given joint is near its upper limit
@@ -154,7 +103,56 @@ protected:
      * @return True if joint position is within threshold of upper limit
      */
     bool nearUpperLimit(size_t idx);
+  };
 
+  AvoidJointLimits(): Constraint(), weight_(1.0), threshold_(0.05) {}
+  virtual ~AvoidJointLimits() {}
+
+  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
+
+  /**
+   * @brief Creates jacobian rows corresponding to joint velocity limit avoidance
+   * Each limited joint gets a 0 row with a 1 in that joint's column
+   * @param cdata, The constraint specific data
+   * @return Pseudo-Identity scaled by weight_
+   */
+  Eigen::MatrixXd calcJacobian(const AvoidJointLimitsData &cdata) const;
+
+  /**
+   * @brief Creates vector representing velocity error term
+   * corresponding to calcJacobian()
+   * @param cdata, The constraint specific data.
+   * @return VectorXd of joint velocities for joint limit avoidance
+   */
+  Eigen::VectorXd calcError(const AvoidJointLimitsData &cdata) const;
+
+  /**
+   * @brief Checks termination criteria
+   * There are no termination criteria for this constraint
+   * @param cdata, The constraint specific data.
+   * @return True
+   */
+  bool checkStatus(const AvoidJointLimitsData &cdata) const;
+
+  /**
+   * @brief Initialize constraint (overrides Constraint::init)
+   * Initializes internal limit variables
+   * Should be called before using class.
+   * @param ik Pointer to Constrained_IK used for base-class init
+   */
+  virtual void init(const Constrained_IK* ik);
+
+  /**
+   * @brief getter for weight_
+   * @return weight_
+   */
+  double getWeight() {return weight_;}
+
+  /**
+   * @brief setter for weight_
+   * @param weight Value to set weight_ to
+   */
+  void setWeight(const double &weight) {weight_ = weight;}
 };
 
 } /* namespace constraints */

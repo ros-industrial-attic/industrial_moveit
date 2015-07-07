@@ -34,8 +34,20 @@ namespace constraints
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalOrientation::GoalOrientation() : Constraint(), rot_err_tol_(0.009), rot_err_(0.0), weight_(Vector3d::Ones())
+GoalOrientation::GoalOrientation() : Constraint(), rot_err_tol_(0.009), weight_(Vector3d::Ones())
 {
+}
+
+constrained_ik::ConstraintResults GoalOrientation::evalConstraint(const SolverState &state) const
+{
+  constrained_ik::ConstraintResults output;
+  GoalOrientation::GoalOrientationData cdata(state);
+
+  output.error = calcError(cdata);
+  output.jacobian = calcJacobian(cdata);
+  output.status = checkStatus(cdata);
+
+  return output;
 }
 
 double GoalOrientation::calcAngle(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2)
@@ -51,19 +63,19 @@ Eigen::Vector3d GoalOrientation::calcAngleError(const Eigen::Affine3d &p1, const
   return p1.rotation() * r12.axis() * theta;                        // axis k * theta expressed in frame0
 }
 
-Eigen::VectorXd GoalOrientation::calcError()
+Eigen::VectorXd GoalOrientation::calcError(const GoalOrientation::GoalOrientationData &cdata) const
 {
-  Vector3d err = calcAngleError(state_.pose_estimate, state_.goal);
+  Vector3d err = calcAngleError(cdata.state_.pose_estimate, cdata.state_.goal);
   err = err.cwiseProduct(weight_);
   ROS_ASSERT(err.rows() == 3);
   return err;
 }
 
 // translate cartesian errors into joint-space errors
-Eigen::MatrixXd GoalOrientation::calcJacobian()
+Eigen::MatrixXd GoalOrientation::calcJacobian(const GoalOrientation::GoalOrientationData &cdata) const
 {
   MatrixXd tmpJ;
-  if (!ik_->getKin().calcJacobian(state_.joints, tmpJ))
+  if (!ik_->getKin().calcJacobian(cdata.state_.joints, tmpJ))
     throw std::runtime_error("Failed to calculate Jacobian");
   MatrixXd J = tmpJ.bottomRows(3);
 
@@ -75,27 +87,20 @@ Eigen::MatrixXd GoalOrientation::calcJacobian()
   return J;
 }
 
-bool GoalOrientation::checkStatus() const
+bool GoalOrientation::checkStatus(const GoalOrientation::GoalOrientationData &cdata) const
 {
   // check to see if we've reached the goal orientation
-  if (rot_err_ < rot_err_tol_)
+  if (cdata.rot_err_ < rot_err_tol_)
     return true;
 
-  return Constraint::checkStatus();
+  return false;
 }
 
-void GoalOrientation::reset()
+GoalOrientation::GoalOrientationData::GoalOrientationData(const SolverState &state): ConstraintData(state)
 {
-  Constraint::reset();
-  rot_err_ = 0;
+  rot_err_ = calcAngle(state_.goal, state_.pose_estimate);
 }
 
-void GoalOrientation::update(const SolverState &state)
-{
-  Constraint::update(state);
-
-  rot_err_ = calcAngle(state.goal, state.pose_estimate);
-}
 
 } // namespace constraints
 } // namespace constrained_ik

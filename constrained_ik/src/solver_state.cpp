@@ -31,6 +31,11 @@ using namespace Eigen;
 namespace constrained_ik
 {
 
+SolverState::SolverState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed)
+{
+  reset(goal, joint_seed);
+}
+
 void SolverState::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed)
 {
   this->goal = goal;
@@ -39,6 +44,7 @@ void SolverState::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &join
   this->joints = VectorXd::Constant(joint_seed.size(), std::numeric_limits<double>::max());
   this->joints_delta = VectorXd::Zero(joint_seed.size());
   this->pose_estimate = Affine3d::Identity();
+  this->condition = initialization_state::NothingInitialized;
 }
 
 

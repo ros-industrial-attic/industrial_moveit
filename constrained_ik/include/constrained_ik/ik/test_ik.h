@@ -53,8 +53,8 @@ public:
               avoid_singularities_(new constraints::AvoidSingularities),
               vel_limits_(new constraints::JointVelLimits)
   {
-    addConstraint(position_, constraint_types::primary);
-    addConstraint(orientation_, constraint_types::primary);
+    addConstraint(position_, constraint_types::Primary);
+    addConstraint(orientation_, constraint_types::Primary);
 //    addConstraint(tool_orientation_);
     Eigen::Vector3d w_ori;
     w_ori << 1,0.1,1;
@@ -65,7 +65,7 @@ public:
 //    addConstraint(avoid_joint_limits_);
 //    avoid_joint_limits_->setWeight(.25);
 
-    addConstraint(min_change_, constraint_types::primary);
+    addConstraint(min_change_, constraint_types::Primary);
     min_change_->setWeight(.3);
 
     //    addConstraint(zero_vel_);
@@ -74,10 +74,10 @@ public:
 //    addConstraint(avoid_singularities_);
 //    avoid_singularities_->setWeight(0.25);
 
-    addConstraint(vel_limits_, constraint_types::primary);
+    addConstraint(vel_limits_, constraint_types::Primary);
     vel_limits_->setWeight(.75);
   }
-  ~Test_IK() {};
+  ~Test_IK() {}
 
 protected:
 
