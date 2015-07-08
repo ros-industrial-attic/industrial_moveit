@@ -48,7 +48,7 @@ Constrained_IK::Constrained_IK()
   kpa_ = 0.5;// default auxillary proportional gain
 }
 
-constrained_ik::ConstraintResults Constrained_IK::evalConstraint(constraint_types::ConstraintType constraint_type, const constrained_ik::SolverState &state) const
+constrained_ik::ConstraintResults Constrained_IK::evalConstraint(constraint_types::ConstraintTypes constraint_type, const constrained_ik::SolverState &state) const
 {
   switch(constraint_type)
   {
