@@ -71,7 +71,7 @@ public:
    * @param constraint Constraint to limit IK solution
    * @param constraint_type Contraint type (primary or auxiliary)
    */
-  virtual void addConstraint(Constraint* constraint, constraint_types::ConstraintType constraint_type)
+  virtual void addConstraint(Constraint* constraint, ConstraintTypes constraint_type)
   {
     switch(constraint_type)
     {
@@ -277,7 +277,7 @@ public:
    * @param state The state of the current solver
    * @return ConstraintResults
    */
-  constrained_ik::ConstraintResults evalConstraint(constraint_types::ConstraintType constraint_type, const constrained_ik::SolverState &state) const;
+  constrained_ik::ConstraintResults evalConstraint(constraint_types::ConstraintTypes constraint_type, const constrained_ik::SolverState &state) const;
 
   /**
    * @brief This function clips the joints within the joint limits.

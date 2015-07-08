@@ -29,6 +29,8 @@
  */
 #ifndef ENUM_TYPES_H
 #define ENUM_TYPES_H
+#include <boost/assign/list_of.hpp>
+#include <map>
 
 namespace constrained_ik
 {
@@ -40,8 +42,31 @@ namespace constrained_ik
      * Auxiliary - These constraints try to manipulate the null space to be
      *             satisfied.
      */
-    enum ConstraintType {Primary,Auxiliary};
+    enum ConstraintTypes {Primary,Auxiliary,Inactive};
+    struct ConstraintType
+    {
+      ConstraintType(ConstraintTypes constraint_type):type_(constraint_type) {}
+      ConstraintType() {}
 
+      ~ConstraintType(){}
+
+      inline std::string toString() const { return names_[type_]; }
+
+      inline ConstraintTypes getType() const { return type_; }
+
+      inline void setType(ConstraintTypes constraint_type) { type_ = constraint_type; }
+
+      inline void setType(std::string constraint_type_name) { type_ = stringToEnum(constraint_type_name); }
+
+      inline static std::string enumToString(ConstraintTypes constraint_type) { return names_[constraint_type]; }
+
+      static ConstraintTypes stringToEnum(std::string constraint_type_name);
+
+    protected:
+      ConstraintTypes type_;
+      static const std::string names_[];
+      static const std::map<std::string, ConstraintTypes> name_to_enum_map_;
+    };
   }// namespace constraint_types
 
   namespace initialization_state
@@ -52,7 +77,7 @@ namespace constrained_ik
     enum InitializationState {PrimaryOnly, AuxiliaryOnly, PrimaryAndAuxiliary, NothingInitialized};
   }// namespace initialization_state
 
-  typedef constraint_types::ConstraintType ConstraintTypes;
+  typedef constraint_types::ConstraintTypes ConstraintTypes;
   typedef initialization_state::InitializationState InitializationState;
 }// namespace constrained_ik
 #endif // ENUM_TYPES_H
