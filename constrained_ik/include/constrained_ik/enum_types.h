@@ -43,23 +43,58 @@ namespace constrained_ik
      *             satisfied.
      */
     enum ConstraintTypes {Primary,Auxiliary,Inactive};
+
+    /**
+     * @brief A structure for ConstraintTypes enum providing addition functionality
+     * like enumToString and stringToEnum.
+     */
     struct ConstraintType
     {
+      /**
+       * @brief ConstraintType constructor
+       * @param constraint_type, ConstraintTypes Enumerator value
+       */
       ConstraintType(ConstraintTypes constraint_type):type_(constraint_type) {}
       ConstraintType() {}
 
       ~ConstraintType(){}
 
+      /**
+       * @brief A string representation of the enumerator
+       * @return std::string
+       */
       inline std::string toString() const { return names_[type_]; }
 
+      /**
+       * @brief Gets the enumerator
+       * @return ConstraintTypes
+       */
       inline ConstraintTypes getType() const { return type_; }
 
+      /**
+       * @brief Sets the enumerator type
+       * @param constraint_type, Enumerator value (Primary, Auxiliary, Inactive)
+       */
       inline void setType(ConstraintTypes constraint_type) { type_ = constraint_type; }
 
+      /**
+       * @brief Sets the enumerator type given the string representation.
+       * @param constraint_type_name, Enumerator string value (Primary, Auxiliary, Inactive)
+       */
       inline void setType(std::string constraint_type_name) { type_ = stringToEnum(constraint_type_name); }
 
+      /**
+       * @brief Coverts ConstraintTypes value to its string representation.
+       * @param constraint_type, Enumerator value (Primary, Auxiliary, Inactive)
+       * @return std::string
+       */
       inline static std::string enumToString(ConstraintTypes constraint_type) { return names_[constraint_type]; }
 
+      /**
+       * @brief Converts string to ConstraintTypes value
+       * @param constraint_type_name, Enumerator string value (Primary, Auxiliary, Inactive)
+       * @return ConstraintTypes
+       */
       static ConstraintTypes stringToEnum(std::string constraint_type_name);
 
     protected:
