@@ -160,9 +160,9 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     // otherwise, we are repeating the expensive calculation of the SVD
     MatrixXd Ji_p = calcDampedPseudoinverse(primary.jacobian);
     VectorXd dJoint_p = kpp_*(Ji_p*primary.error);
-    if(dJoint_p.norm() > 2.0)// limit maximum update to unit size 1 radian /meter
+    if(dJoint_p.norm() > 1.0)// limit maximum update to unit size 1 radian /meter
     {
-      dJoint_p = dJoint_p/dJoint_p.norm()/2.0;
+      dJoint_p = dJoint_p/dJoint_p.norm();
     }
     ROS_DEBUG("theta_p = %f ep = %f",dJoint_p.norm(), primary.error.norm());
 
