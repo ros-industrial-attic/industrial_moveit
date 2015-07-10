@@ -176,7 +176,7 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
       auxiliary = evalConstraint(constraint_types::Auxiliary, state);
       if (!auxiliary.isEmpty()) // This is required because not all constraints always return data.
       {
-        MatrixXd N_p = calcNullspaceProjectionTheRightWay(auxiliary.jacobian);
+        MatrixXd N_p = calcNullspaceProjectionTheRightWay(primary.jacobian);
         MatrixXd Jnull_a = calcDampedPseudoinverse(auxiliary.jacobian*N_p);
         dJoint_a = kpa_*Jnull_a*(auxiliary.error-auxiliary.jacobian*dJoint_p);
       }
