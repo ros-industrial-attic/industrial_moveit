@@ -45,27 +45,60 @@ namespace constraints
  */
 class AvoidObstacles: public Constraint
 {
+protected:
+  struct LinkAvoidance
+  {
+    LinkAvoidance(std::string link_name): weight_(1.0), min_distance_(0.006), jac_solver_(NULL), link_name_(link_name) {}
+    LinkAvoidance() {}
+    virtual ~LinkAvoidance()
+    {
+      delete jac_solver_;
+    }
+
+    double weight_; /**< importance weight applied to this avoidance constraint */
+    double min_distance_; /**< minimum obstacle distance allowed */
+    int num_robot_joints_; /**< number of joints in the whole robot*/
+    int num_obstacle_joints_; /**< number of joints inboard to the obstacle link */
+    std::string link_name_; /**< the name of the link that is to avoid obstacles */
+    KDL::Chain avoid_chain_; /**< the kinematic chain from base to the obstacle avoidance link */
+    int num_inboard_joints_; /**< number of joints in the inboard chain */
+    KDL::Vector link_point_; /**< vector to point on link closest to an obstacle */
+    KDL::ChainJntToJacSolver * jac_solver_; /**< a KDL object for computing jacobians */
+    KDL::Vector obstacle_point_; /**< vector to point on link closest to an obstacle */
+  };
+
+  std::map<std::string, LinkAvoidance> links_;
+  std::vector<std::string> link_names_;
+  std::set<const robot_model::LinkModel *> link_models_;
+
+  bool getLinkData(std::string link_name, LinkAvoidance &link) const
+  {
+    std::map<std::string, LinkAvoidance>::const_iterator it = links_.find(link_name);
+    if(it != links_.end())
+    {
+      link = it->second;
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+  }
 public:
   struct AvoidObstaclesData: public ConstraintData
   {
+    const constraints::AvoidObstacles* parent_;
     constrained_ik::CollisionRobotFCLDetailed::DistanceDetailedMap distance_map_;
 
-    AvoidObstaclesData(const constrained_ik::SolverState &state);
+    AvoidObstaclesData(const constrained_ik::SolverState &state, const constraints::AvoidObstacles* parent);
   };
 
   /**
    * @brief constructor
    * @param link_name name of link which should avoid obstacles
    */
-  AvoidObstacles(std::string link_name): Constraint(), weight_(1.0), min_distance_(0.006), link_name_(link_name) {}
-
-  /**
-   * @brief Destructor
-   */
-  virtual ~AvoidObstacles()
-  {
-    delete jac_solver_;
-  }
+  AvoidObstacles(std::vector<std::string> &link_names);
+  virtual ~AvoidObstacles() {}
 
   virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
 
@@ -74,7 +107,7 @@ public:
    * @param cdata, The constraint specific data.
    * @return Jacobian scaled by weight
    */
-  virtual Eigen::MatrixXd calcJacobian(const AvoidObstaclesData &cdata) const;
+  virtual Eigen::MatrixXd calcJacobian(const AvoidObstaclesData &cdata, const LinkAvoidance &link) const;
 
   /**
    * @brief Creates vector representing velocity error term
@@ -82,7 +115,7 @@ public:
    * @param cdata, The constraint specific data.
    * @return VectorXd of joint velocities for obstacle avoidance
    */
-  virtual Eigen::VectorXd calcError(const AvoidObstaclesData &cdata) const;
+  virtual Eigen::VectorXd calcError(const AvoidObstaclesData &cdata, const LinkAvoidance &link) const;
 
   /**
    * @brief Checks termination criteria
@@ -90,7 +123,7 @@ public:
    * @param cdata, The constraint specific data.
    * @return True
    */
-  virtual bool checkStatus(const AvoidObstaclesData &cdata) const;
+  virtual bool checkStatus(const AvoidObstaclesData &cdata, const LinkAvoidance &link) const;
 
   /**
    * @brief Initialize constraint (overrides Constraint::init)
@@ -103,25 +136,45 @@ public:
    * @brief getter for weight_
    * @return weight_
    */
-  double getWeight() {return weight_;}
+  double getWeight(const std::string &link_name)
+  {
+    LinkAvoidance link;
+    if(getLinkData(link_name, link))
+      return link.weight_;
+  }
 
   /**
    * @brief setter for weight_
    * @param weight Value to set weight_ to
    */
-  void setWeight(const double &weight) {weight_ = weight;}
+  void setWeight(const std::string &link_name, const double &weight)
+  {
+    LinkAvoidance link;
+    if(getLinkData(link_name, link))
+      link.weight_ = weight;
+  }
 
-protected:
-  double weight_;/**< importance weight applied to this avoidance constraint */
-  double min_distance_;         /**< minimum obstacle distance allowed */
-  int num_robot_joints_; /**< number of joints in the whole robot*/
-  int num_obstacle_joints_; /**< number of joints inboard to the obstacle link */
-  std::string link_name_; /**< the name of the link that is to avoid obstacles */
-  KDL::Chain avoid_chain_; /**< the kinematic chain from base to the obstacle avoidance link */
-  int num_inboard_joints_; /**< number of joints in the inboard chain */
-  KDL::Vector link_point_;/**< vector to point on link closest to an obstacle */
-  KDL::ChainJntToJacSolver * jac_solver_; /**< a KDL object for computing jacobians */
-  KDL::Vector obstacle_point_;/**< vector to point on link closest to an obstacle */
+  /**
+   * @brief getter for min_distance_
+   * @return min_distance_
+   */
+  double getMinDistance(const std::string &link_name)
+  {
+    LinkAvoidance link;
+    if(getLinkData(link_name, link))
+      return link.min_distance_;
+  }
+
+  /**
+   * @brief setter for min_distance_
+   * @param weight Value to set min_distance_ to
+   */
+  void setMinDistance(const std::string &link_name, const double &min_distance)
+  {
+    LinkAvoidance link;
+    if(getLinkData(link_name, link))
+      link.min_distance_ = min_distance;
+  }
 };
 
 } /* namespace constraints */
