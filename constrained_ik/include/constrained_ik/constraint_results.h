@@ -9,6 +9,8 @@ namespace constrained_ik
   class ConstraintResults
   {
   public:
+    ConstraintResults():status(true){}
+
     Eigen::VectorXd error;
 
     Eigen::MatrixXd jacobian;
