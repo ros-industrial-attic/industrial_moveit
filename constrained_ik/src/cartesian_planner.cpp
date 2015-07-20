@@ -112,9 +112,20 @@ namespace constrained_ik
         mid_state->setFromIK(group_model, poses[j], link_names.back());
 
       traj->addSuffixWayPoint(*mid_state, 0.0);
+
+      if (terminate_)
+        break;
     }
 
     res.planning_time_ = (ros::WallTime::now() - start_time).toSec();
+
+    // Check if planner was terminated
+    if (terminate_)
+    {
+      ROS_INFO("Cartesian Trajectory was terminated!");
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
+      return false;
+    }
 
     // Check if traj is a collision free path
     if (planning_scene_->isPathValid(*traj, request_.group_name))

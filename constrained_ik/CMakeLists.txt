@@ -46,7 +46,7 @@ find_package(Eigen REQUIRED)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
- LIBRARIES constrained_ik
+ LIBRARIES constrained_ik moveit_clik_planner_plugin
  CATKIN_DEPENDS roscpp urdf eigen_conversions
  DEPENDS boost eigen orocos_kdl
 )
