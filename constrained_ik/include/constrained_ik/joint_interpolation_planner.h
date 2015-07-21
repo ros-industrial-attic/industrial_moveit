@@ -35,6 +35,7 @@
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include <constrained_ik/constrained_ik_planning_context.h>
+#include <boost/atomic.hpp>
 
 namespace constrained_ik
 {
@@ -50,14 +51,22 @@ namespace constrained_ik
   class JointInterpolationPlanner : public constrained_ik::CLIKPlanningContext
   {
   public:
-    JointInterpolationPlanner(const std::string &name, const std::string &group) : constrained_ik::CLIKPlanningContext(name, group) {}
+    JointInterpolationPlanner(const std::string &name, const std::string &group) : constrained_ik::CLIKPlanningContext(name, group), terminate_(false) {}
+
+    JointInterpolationPlanner(const JointInterpolationPlanner &other) : constrained_ik::CLIKPlanningContext(other), terminate_(false) {}
 
     void clear() { params_.reset(); }
 
-    bool terminate() {}
+    bool terminate()
+    {
+      terminate_ = true;
+      return true;
+    }
 
     bool solve(planning_interface::MotionPlanResponse &res);
 
+  private:
+    boost::atomic<bool> terminate_;
   };
 } //namespace constrained_ik
 

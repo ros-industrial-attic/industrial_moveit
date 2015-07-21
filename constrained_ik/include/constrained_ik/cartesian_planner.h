@@ -35,6 +35,7 @@
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include <constrained_ik/constrained_ik_planning_context.h>
+#include <boost/atomic.hpp>
 
 namespace constrained_ik
 {
@@ -51,11 +52,17 @@ namespace constrained_ik
   {
   public:
 
-    CartesianPlanner(const std::string &name, const std::string &group) : constrained_ik::CLIKPlanningContext(name, group) {}
+    CartesianPlanner(const std::string &name, const std::string &group) : constrained_ik::CLIKPlanningContext(name, group), terminate_(false) {}
+
+    CartesianPlanner(const CartesianPlanner &other) : constrained_ik::CLIKPlanningContext(other), terminate_(false) {}
 
     void clear() { params_.reset(); }
 
-    bool terminate() {}
+    bool terminate()
+    {
+      terminate_ = true;
+      return true;
+    }
 
     bool solve(planning_interface::MotionPlanResponse &res);
 
@@ -69,6 +76,7 @@ namespace constrained_ik
      */
     std::vector<Eigen::Affine3d,Eigen::aligned_allocator<Eigen::Affine3d> >
     interpolateCartesian(const Eigen::Affine3d& start, const Eigen::Affine3d& stop, double ds) const;
+    boost::atomic<bool> terminate_;
 
   };
 } //namespace constrained_ik
