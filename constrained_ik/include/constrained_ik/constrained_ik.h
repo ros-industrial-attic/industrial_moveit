@@ -161,6 +161,18 @@ public:
   bool getLinkNames(std::vector<std::string> &names) const {return kin_.getLinkNames(names);}
 
   /**
+   * @brief Getter for solver configuration
+   * @return ConstrainedIKDynamicReconfigureConfig
+   */
+  ConstrainedIKDynamicReconfigureConfig getSolverConfiguration() const {return config_;}
+
+  /**
+   * @brief Setter for solver configuration
+   * @param config new object for config_
+   */
+  void setSolverConfiguration(const ConstrainedIKDynamicReconfigureConfig &config) {config_ = config;}
+
+  /**
    * @brief Initializes object with kinematic model of robot
    * @param kin BasicKin object with robot info
    */
