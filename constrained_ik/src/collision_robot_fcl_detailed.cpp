@@ -193,17 +193,16 @@ namespace constrained_ik
     return false;
   }
 
-  bool CollisionRobotFCLDetailed::getDistanceInfo(const DistanceDetailedMap distance_detailed, const std::string link_name, CollisionRobotFCLDetailed::DistanceInfo &dist_info)
+  bool CollisionRobotFCLDetailed::getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map)
   {
-    std::map<std::string, fcl::DistanceResult>::const_iterator it;
-    it = distance_detailed.find(link_name);
-
-    if (it != distance_detailed.end())
+    bool status = true;
+    for (DistanceDetailedMap::const_iterator it = distance_detailed.begin(); it != distance_detailed.end(); ++it)
     {
+      DistanceInfo dist_info;
       fcl::DistanceResult dist = static_cast<const fcl::DistanceResult>(it->second);
       const collision_detection::CollisionGeometryData* cd1 = static_cast<const collision_detection::CollisionGeometryData*>(dist.o1->getUserData());
       const collision_detection::CollisionGeometryData* cd2 = static_cast<const collision_detection::CollisionGeometryData*>(dist.o2->getUserData());
-      if (cd1->ptr.link->getName() == link_name)
+      if (cd1->ptr.link->getName() == it->first)
       {
         dist_info.nearest_obsticle = cd2->ptr.link->getName();
         dist_info.link_point = Eigen::Vector3d(dist.nearest_points[0].data.vs);
@@ -212,7 +211,7 @@ namespace constrained_ik
         dist_info.avoidance_vector.norm();
         dist_info.distance = dist.min_distance;
       }
-      else if (cd2->ptr.link->getName() == link_name)
+      else if (cd2->ptr.link->getName() == it->first)
       {
         dist_info.nearest_obsticle = cd1->ptr.link->getName();
         dist_info.link_point = Eigen::Vector3d(dist.nearest_points[1].data.vs);
@@ -224,19 +223,12 @@ namespace constrained_ik
       else
       {
         ROS_ERROR("getDistanceInfo was unable to find link after match!");
-        return false;
+        status &= false;
       }
-      return true;
+      distance_info_map.insert(std::make_pair<std::string, DistanceInfo>(it->first, dist_info));
     }
-    else
-    {
-      ROS_DEBUG("couldn't find link with that name %s", link_name.c_str());
-      for( it=distance_detailed.begin(); it != distance_detailed.end(); it++)
-      {
-        ROS_DEBUG("name: %s", it->first.c_str());
-      }
-      return false;
-    }
+
+    return status;
   }
 
   void CollisionRobotFCLDetailed::DistanceResultDetailed::enableGroup(const robot_model::RobotModelConstPtr &kmodel)

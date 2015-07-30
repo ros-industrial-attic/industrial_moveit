@@ -4,13 +4,18 @@ project(constrained_ik)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS kdl_parser roscpp urdf eigen_conversions moveit_ros_planning moveit_core)
+find_package(catkin REQUIRED COMPONENTS kdl_parser roscpp urdf eigen_conversions moveit_ros_planning moveit_core dynamic_reconfigure)
 
 ## System dependencies are found with CMake's conventions
 find_package(orocos_kdl REQUIRED)
 find_package(cmake_modules REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Eigen REQUIRED)
+
+#add dynamic reconfigure api
+generate_dynamic_reconfigure_options(
+  cfg/ConstrainedIKDynamicReconfigureConfig.cfg
+)
 
 #######################################
 ## Declare ROS messages and services ##
@@ -80,7 +85,10 @@ add_library(constrained_ik
             src/constraints/joint_vel_limits.cpp
             src/constraints/avoid_obstacles.cpp
 )
+
 target_link_libraries(constrained_ik ${catkin_LIBRARIES})
+
+add_dependencies(constrained_ik ${PROJECT_NAME}_gencfg)
 
 add_library(constrained_ik_plugin
             src/constrained_ik_plugin.cpp

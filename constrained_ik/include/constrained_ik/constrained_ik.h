@@ -38,7 +38,9 @@
 #include <constrained_ik/enum_types.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include <constrained_ik/constraint_results.h>
-
+#include <dynamic_reconfigure/server.h>
+#include <dynamic_reconfigure/Reconfigure.h>
+#include <constrained_ik/ConstrainedIKDynamicReconfigureConfig.h>
 
 namespace constrained_ik
 {
@@ -88,25 +90,25 @@ public:
    * @brief computes the inverse kinematics for the given pose of the tip link
    * @param pose  The pose of the tip link
    * @param joint_seed joint values that is used as the initial guess
-   * @param planning_scene pointer to a planning scene that holds all the object in the environment.  Use by the solver to check for collision; if
-   *            a null pointer is passed then collisions are ignored.
    * @param joint_angles The joint pose that places the tip link to the desired pose.
    */
-  virtual void calcInvKin(const Eigen::Affine3d &pose, const Eigen::VectorXd &joint_seed,
-                          const planning_scene::PlanningSceneConstPtr planning_scene,
-                          Eigen::VectorXd &joint_angles,
-                          int min_updates = 0) const ;
+  virtual void calcInvKin(const Eigen::Affine3d &goal,
+                          const Eigen::VectorXd &joint_seed,
+                          Eigen::VectorXd &joint_angles) const;
+
 
   /**
    * @brief computes the inverse kinematics for the given pose of the tip link
    * @param pose  The pose of the tip link
    * @param joint_seed joint values that is used as the initial guess
+   * @param planning_scene pointer to a planning scene that holds all the object in the environment.  Use by the solver to check for collision; if
+   *            a null pointer is passed then collisions are ignored.
    * @param joint_angles The joint pose that places the tip link to the desired pose.
    */
-  virtual void calcInvKin(const Eigen::Affine3d &pose,
+  virtual void calcInvKin(const Eigen::Affine3d &goal,
                           const Eigen::VectorXd &joint_seed,
-                          Eigen::VectorXd &joint_angles,
-                          int min_updates = 0) const ;
+                          const planning_scene::PlanningSceneConstPtr planning_scene,
+                          Eigen::VectorXd &joint_angles) const;
 
   /**
    * @brief Checks to see if object is initialized (ie: init() has been called)
@@ -146,13 +148,6 @@ public:
   bool getJointNames(std::vector<std::string> &names) const {return kin_.getJointNames(names);}
 
   /**
-   * @brief Getter for joint_convergence_tol_ (convergence criteria in IK loop)
-   * Used to check if solution is progressing or has settled
-   * @return Value of joint_convergence_tol_
-   */
-  inline double getJtCnvTolerance() const {return joint_convergence_tol_;}
-
-  /**
    * @brief Getter for kinematics object
    * @return Reference to active kinematics object
    */
@@ -164,12 +159,6 @@ public:
    * @return True is BasicKin object is initialized
    */
   bool getLinkNames(std::vector<std::string> &names) const {return kin_.getLinkNames(names);}
-
-  /**
-   * @brief Getter for max_iter_ (maximum allowable iterations in IK loop)
-   * @return Value of max_iter_
-   */
-  inline unsigned int getMaxIter() const {return max_iter_;}
 
   /**
    * @brief Initializes object with kinematic model of robot
@@ -190,61 +179,6 @@ public:
    */
   static double rangedAngle(double angle);
 
-  /**
-   * @brief Setter for joint_convergence_tol_ (convergence criteria in IK loop)
-   * @param jt_cnv_tol new value for joint_convergence_tol_
-   */
-  inline void setJtCnvTolerance(const double jt_cnv_tol) {joint_convergence_tol_ = jt_cnv_tol;}
-
-  /**
-   * @brief Setter for man_iter_ (maximum allowable iterations in IK loop)
-   * @param max_iter New value for max_iter_
-   */
-  inline void setMaxIter(const unsigned int max_iter) {max_iter_ = max_iter;}
-
-  /**
-   * @brief Setter for primary proportional gain
-   * @param kp
-   * @returns true if new value is within [0 1.0]
-   */
-  inline bool setPrimaryKp(const double kp) {
-    bool rtn = true;
-    if(kp<= 1.0 && kp>= 0.0)
-    {
-      kpp_ = kp;
-    }
-    else
-    {
-      rtn = false;
-    }
-    return(rtn);
-  }
-  /**
-   * @brief Setter for auxillary proportional gain
-   * @param kp
-   * @returns true if new value is within [0 1.0]
-   */
-  inline bool setAuxiliaryKp(const double kp) {
-    bool rtn = true;
-    if(kp<= 1.0 && kp>= 0.0)
-    {
-      kpa_ = kp;
-    }
-    else
-    {
-      rtn = false;
-    }
-    return(rtn);
-  }
-  /**
-   * @brief Getter for primary proportional gain
-   */
-  double getPrimaryKp() const {return kpp_;}
-  /**
-   * @brief Getter for auxillary proportional gain
-   */
-  double getAuxillaryKp() const {return kpa_;}
-
   //TODO document
   virtual Eigen::MatrixXd calcNullspaceProjection(const Eigen::MatrixXd &J) const;
 
@@ -254,12 +188,14 @@ public:
   //TODO document
   virtual Eigen::MatrixXd calcDampedPseudoinverse(const Eigen::MatrixXd &J) const;
 
+  void dynamicReconfigureCallback(ConstrainedIKDynamicReconfigureConfig &config, uint32_t level);
+
  protected:
-  // termination-criteria limits / tolerances
-  unsigned int max_iter_;
-  double joint_convergence_tol_;
-  double kpp_;  /**< primary proportional gain */
-  double kpa_; /**< auxillary proportional gain */
+  // solver configuration parameters
+  ros::NodeHandle nh_;
+  ConstrainedIKDynamicReconfigureConfig config_;
+  boost::scoped_ptr<dynamic_reconfigure::Server<ConstrainedIKDynamicReconfigureConfig> > dynamic_reconfigure_server_;
+  boost::recursive_mutex mutex_;
 
   // constraints
   ConstraintGroup primary_constraints_;
@@ -294,15 +230,6 @@ public:
    * @return bool, True for converged, False for not converged
    */
   virtual bool checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const;
-
-  /**
-   * @brief This method determine convergence when primary
-   * constraint is only present
-   * @param state, The state of the current solver
-   * @param primary, The primary constraint results
-   * @return bool, True for converged, False for not converged
-   */
-  virtual bool checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary) const;
 
   /**
    * @brief Creates a new SolverState and checks key elements.

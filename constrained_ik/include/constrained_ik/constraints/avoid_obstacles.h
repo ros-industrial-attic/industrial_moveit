@@ -88,7 +88,8 @@ public:
   struct AvoidObstaclesData: public ConstraintData
   {
     const constraints::AvoidObstacles* parent_;
-    constrained_ik::CollisionRobotFCLDetailed::DistanceDetailedMap distance_map_;
+    CollisionRobotFCLDetailed::DistanceDetailedMap distance_map_;
+    CollisionRobotFCLDetailed::DistanceInfoMap distance_info_map_;
 
     AvoidObstaclesData(const constrained_ik::SolverState &state, const constraints::AvoidObstacles* parent);
   };
