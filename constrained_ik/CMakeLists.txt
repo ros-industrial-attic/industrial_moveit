@@ -15,6 +15,7 @@ find_package(Eigen REQUIRED)
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
   cfg/ConstrainedIKDynamicReconfigureConfig.cfg
+  cfg/ConstrainedIKPlannerDynamicReconfigureConfig.cfg
 )
 
 #######################################

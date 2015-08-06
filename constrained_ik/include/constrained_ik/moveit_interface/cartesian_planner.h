@@ -52,11 +52,13 @@ namespace constrained_ik
   {
   public:
 
-    CartesianPlanner(const std::string &name, const std::string &group) : constrained_ik::CLIKPlanningContext(name, group), terminate_(false) {}
+    CartesianPlanner(const std::string &name, const std::string &group) : constrained_ik::CLIKPlanningContext(name, group), terminate_(false), robot_description_("robot_description"), initialized_(false) {}
 
-    CartesianPlanner(const CartesianPlanner &other) : constrained_ik::CLIKPlanningContext(other), terminate_(false) {}
+    CartesianPlanner(const CartesianPlanner &other) : constrained_ik::CLIKPlanningContext(other), terminate_(false), robot_description_("robot_description"), initialized_(false) {}
 
-    void clear() { params_.reset(); }
+    void initialize();
+
+    void clear() { config_.__getDefault__(); }
 
     bool terminate()
     {
@@ -65,6 +67,17 @@ namespace constrained_ik
     }
 
     bool solve(planning_interface::MotionPlanResponse &res);
+
+    /**
+     * \brief Helper function to decide which, and how many, tip frames a planning group has
+     * \param jmg - joint model group pointer
+     * \return tips - list of valid links in a planning group to plan for
+     */
+    std::vector<std::string> chooseTipFrames(const robot_model::JointModelGroup *jmg);
+
+    boost::shared_ptr<kinematics::KinematicsBase> allocKinematicsSolver(const robot_model::JointModelGroup *jmg);
+
+    bool getConstrainedIKSolverData();
 
   private:
     /**
@@ -76,8 +89,21 @@ namespace constrained_ik
      */
     std::vector<Eigen::Affine3d,Eigen::aligned_allocator<Eigen::Affine3d> >
     interpolateCartesian(const Eigen::Affine3d& start, const Eigen::Affine3d& stop, double ds) const;
-    boost::atomic<bool> terminate_;
 
+    bool initialized_;
+    boost::atomic<bool> terminate_;
+    std::string robot_description_;
+    boost::shared_ptr<pluginlib::ClassLoader<kinematics::KinematicsBase> > kinematics_loader_;
+    robot_model::RobotModelConstPtr robot_model_;
+    robot_model::SolverAllocatorFn solver_allocator_;
+    std::map<std::string, robot_model::JointModelGroup*> joint_model_groups_;
+    std::vector<std::string> groups_;
+    std::map<std::string, double> ik_timeout_;
+    std::map<std::string, unsigned int> ik_attempts_;
+    std::map<std::string, std::vector<std::string> > possible_kinematics_solvers_;
+    std::map<std::string, std::vector<double> > search_res_;
+    std::map<std::string, std::vector<std::string> > iksolver_to_tip_links_;  // a map between each ik solver and a vector of custom-specified tip link(s)
+    boost::mutex mutex_;
   };
 } //namespace constrained_ik
 
