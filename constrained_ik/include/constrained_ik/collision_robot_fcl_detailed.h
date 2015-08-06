@@ -73,14 +73,15 @@ namespace constrained_ik
 
       EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     };
+    typedef std::map<std::string, DistanceInfo> DistanceInfoMap;
 
     /**
      * @brief getDistanceInfo
-     * @param link_name Requested link name for distance information
-     * @param dist_info Stores the distance information for requested link
+     * @param distance_detailed Detailed Distance Map
+     * @param distance_info_map Stores the distance information for each link in DistanceDetailedMap
      * @return bool, true if distance information exists.
      */
-    static bool getDistanceInfo(const DistanceDetailedMap distance_detailed, const std::string link_name, DistanceInfo & dist_info);
+    static bool getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map);
 
   };
 } //namespace constrained_ik

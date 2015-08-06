@@ -87,10 +87,12 @@ ConstraintResults AvoidObstacles::evalConstraint(const SolverState &state) const
 VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cdata, const LinkAvoidance &link) const
 {
   Eigen::VectorXd error_vector;
-  CollisionRobotFCLDetailed::DistanceInfo dist_info;
-  if(CollisionRobotFCLDetailed::getDistanceInfo(cdata.distance_map_, link.link_name_, dist_info))
+  CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
+
+  it = cdata.distance_info_map_.find(link.link_name_);
+  if (it != cdata.distance_info_map_.end())
   {
-    double dist = dist_info.distance;
+    double dist = it->second.distance;
     double scale;
     if(dist > link.min_distance_)
     {
@@ -98,9 +100,13 @@ VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cda
     }
     else
     {
-      scale = 1/(link.min_distance_ * link.min_distance_ );
+      scale = 1.0/(link.min_distance_ * link.min_distance_ );
     }
-    error_vector = scale*dist_info.avoidance_vector;
+    error_vector = scale*it->second.avoidance_vector;
+  }
+  else
+  {
+    ROS_DEBUG("Unable to retrieve distance info, couldn't find link with that name %s", link.link_name_.c_str());
   }
   return  error_vector;
 }
@@ -112,8 +118,9 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
 
   // use distance info to find reference point on link which is closest to a collision,
   // change the reference point of the link jacobian to that point
-  CollisionRobotFCLDetailed::DistanceInfo dist_info;
-  if(CollisionRobotFCLDetailed::getDistanceInfo(cdata.distance_map_, link.link_name_, dist_info))
+  CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
+  it = cdata.distance_info_map_.find(link.link_name_);
+  if (it != cdata.distance_info_map_.end())
   {
     jacobian.setZero(3, link.num_robot_joints_); // 3xn jacobian to dist_info.link_point with just position, no rotation
     // calculate the link jacobian
@@ -122,7 +129,7 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
     link.jac_solver_->JntToJac(joint_array, link_jacobian);// this computes a 6xn jacobian, we only need 3xn
 
     // change the referece point to the point on the link closest to a collision
-    KDL::Vector link_point(dist_info.link_point.x(), dist_info.link_point.y(), dist_info.link_point.z());
+    KDL::Vector link_point(it->second.link_point.x(), it->second.link_point.y(), it->second.link_point.z());
     link_jacobian.changeRefPoint(link_point);
 
     // copy the upper 3xn portion of full sized link jacobian into positional jacobain (3xm)
@@ -138,7 +145,7 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
   }
   else
   {
-    ROS_DEBUG("couldn't get distance info");
+    ROS_DEBUG("Unable to retrieve distance info, couldn't find link with that name %s", link.link_name_.c_str());
   }
 
   return jacobian;
@@ -146,9 +153,17 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
 
 bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata, const LinkAvoidance &link) const
 {                               // returns true if its ok to stop with current ik conditions
-  CollisionRobotFCLDetailed::DistanceInfo dist_info;
-  if (CollisionRobotFCLDetailed::getDistanceInfo(cdata.distance_map_, link.link_name_, dist_info))
-    if(dist_info.distance<link.min_distance_*5.0) return false;
+  CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
+
+  it = cdata.distance_info_map_.find(link.link_name_);
+  if (it != cdata.distance_info_map_.end())
+  {
+    if(it->second.distance<link.min_distance_*5.0) return false;
+  }
+  else
+  {
+    ROS_DEBUG("couldn't find link with that name %s", link.link_name_.c_str());
+  }
 
   return true;
 }
@@ -156,6 +171,7 @@ bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata
 AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state, const AvoidObstacles *parent): ConstraintData(state), parent_(parent)
 {
   distance_map_ = state.collision_robot->distanceSelfDetailed(*state_.robot_state, state_.planning_scene->getAllowedCollisionMatrix(), parent_->link_models_);
+  CollisionRobotFCLDetailed::getDistanceInfo(distance_map_, distance_info_map_);
 }
 
 } // end namespace constraints

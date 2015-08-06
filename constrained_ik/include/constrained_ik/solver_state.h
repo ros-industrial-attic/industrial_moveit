@@ -46,6 +46,9 @@ struct SolverState
   Eigen::VectorXd joints_delta;
   Eigen::Affine3d pose_estimate;
   std::vector<Eigen::VectorXd> iteration_path;
+  double primary_sum; /**< The absolute sum of the cumulative primary motion */
+  double auxiliary_sum; /**< The absolute sum of the cumulative auxiliary motion */
+  bool auxiliary_at_limit; /**< This is set if auxiliary reached motion or iteration limit. */
   initialization_state::InitializationState condition;
   planning_scene::PlanningSceneConstPtr planning_scene;
   constrained_ik::CollisionRobotFCLDetailed::CollisionRobotFCLDetailedPtr collision_robot;

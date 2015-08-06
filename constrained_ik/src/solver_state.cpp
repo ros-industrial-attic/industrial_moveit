@@ -43,10 +43,12 @@ void SolverState::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &join
   this->iter = 0;
   this->joints = VectorXd::Constant(joint_seed.size(), std::numeric_limits<double>::max());
   this->joints_delta = VectorXd::Zero(joint_seed.size());
+  this->primary_sum = 0.0;
+  this->auxiliary_sum = 0.0;
+  this->auxiliary_at_limit = false;
   this->pose_estimate = Affine3d::Identity();
   this->condition = initialization_state::NothingInitialized;
 }
-
 
 } // namespace constrained_ik
 
