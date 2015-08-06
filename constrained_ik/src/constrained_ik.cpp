@@ -42,9 +42,6 @@ Constrained_IK::Constrained_IK():nh_("~")
 {
   initialized_ = false;
   debug_ = false;
-
-  dynamic_reconfigure_server_.reset(new dynamic_reconfigure::Server<ConstrainedIKDynamicReconfigureConfig>(mutex_, ros::NodeHandle(nh_, "constrained_ik_solver")));
-  dynamic_reconfigure_server_->setCallback(boost::bind(&Constrained_IK::dynamicReconfigureCallback, this, _1, _2));
 }
 
 void Constrained_IK::dynamicReconfigureCallback(ConstrainedIKDynamicReconfigureConfig &config, uint32_t level)
@@ -296,6 +293,8 @@ void Constrained_IK::init(const basic_kin::BasicKin &kin)
     throw std::invalid_argument("Input argument 'BasicKin' must be initialized");
 
   kin_ = kin;
+  dynamic_reconfigure_server_.reset(new dynamic_reconfigure::Server<ConstrainedIKDynamicReconfigureConfig>(mutex_, ros::NodeHandle(nh_, "constrained_ik_solver/" + kin_.getJointModelGroup()->getName())));
+  dynamic_reconfigure_server_->setCallback(boost::bind(&Constrained_IK::dynamicReconfigureCallback, this, _1, _2));
   initialized_ = true;
   primary_constraints_.init(this);
   auxiliary_constraints_.init(this);
