@@ -25,6 +25,9 @@
 #include <constrained_ik/constrained_ik_planner_plugin.h>
 #include <class_loader/class_loader.h>
 
+const std::string JOINT_INTERP_PLANNER = "JointInterpolation";
+const std::string CARTESIAN_PLANNER = "Cartesian";
+
 namespace constrained_ik
 {
   bool CLIKPlannerManager::initialize(const robot_model::RobotModelConstPtr &model, const std::string &ns)
@@ -33,9 +36,8 @@ namespace constrained_ik
       nh_ = ros::NodeHandle(ns);
 
     // Create map of planners
-    planners_.insert(std::make_pair("Default", new CartesianPlanner("", "")));
-    planners_.insert(std::make_pair("JointInterpolation", new JointInterpolationPlanner("", "")));
-    planners_.insert(std::make_pair("Cartesian", new CartesianPlanner("", "")));
+    planners_.insert(std::make_pair(JOINT_INTERP_PLANNER, new JointInterpolationPlanner("", "")));
+    planners_.insert(std::make_pair(CARTESIAN_PLANNER, new CartesianPlanner("", "")));
 
     return true;
   }
@@ -46,10 +48,7 @@ namespace constrained_ik
 
     for(std::map<std::string, constrained_ik::CLIKPlanningContextPtr>::const_iterator iter = planners_.begin(); iter != planners_.end(); ++iter)
     {
-      if (iter->first != "Default")
-      {
-        algs.push_back(iter->first); 
-      }
+      algs.push_back(iter->first);
     }
 
   }
@@ -89,7 +88,7 @@ namespace constrained_ik
     }
     else 
     {
-      planner = planners_.find("Default")->second; 
+      planner = planners_.find(CARTESIAN_PLANNER)->second;
     }
 
     // Setup Planner
