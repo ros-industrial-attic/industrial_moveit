@@ -36,7 +36,6 @@ namespace constrained_ik
       nh_ = ros::NodeHandle(ns);
 
     // Create map of planners
-    planners_.insert(std::make_pair("Default", new CartesianPlanner("", "")));
     planners_.insert(std::make_pair(JOINT_INTERP_PLANNER, new JointInterpolationPlanner("", "")));
     planners_.insert(std::make_pair(CARTESIAN_PLANNER, new CartesianPlanner("", "")));
 
