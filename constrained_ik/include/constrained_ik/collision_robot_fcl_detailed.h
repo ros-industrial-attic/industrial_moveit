@@ -79,7 +79,16 @@ namespace constrained_ik
      * @brief getDistanceInfo
      * @param distance_detailed Detailed Distance Map
      * @param distance_info_map Stores the distance information for each link in DistanceDetailedMap
-     * @return bool, true if distance information exists.
+     * @param tf This allows for a transformation to be applied the distance data since it is always returned in the world frame from fcl.
+     * @return bool, true if succesfully converted DistanceDetailedMap to DistanceInfoMap
+     */
+    static bool getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map, const Eigen::Affine3d tf);
+
+    /**
+     * @brief getDistanceInfo
+     * @param distance_detailed Detailed Distance Map
+     * @param distance_info_map Stores the distance information for each link in DistanceDetailedMap
+     * @return bool, true if succesfully converted DistanceDetailedMap to DistanceInfoMap
      */
     static bool getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map);
 

@@ -171,7 +171,8 @@ bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata
 AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state, const AvoidObstacles *parent): ConstraintData(state), parent_(parent)
 {
   distance_map_ = state.collision_robot->distanceSelfDetailed(*state_.robot_state, state_.planning_scene->getAllowedCollisionMatrix(), parent_->link_models_);
-  CollisionRobotFCLDetailed::getDistanceInfo(distance_map_, distance_info_map_);
+  Eigen::Affine3d tf = parent_->ik_->getKin().getRobotBaseInWorld().inverse();
+  CollisionRobotFCLDetailed::getDistanceInfo(distance_map_, distance_info_map_, tf);
 }
 
 } // end namespace constraints

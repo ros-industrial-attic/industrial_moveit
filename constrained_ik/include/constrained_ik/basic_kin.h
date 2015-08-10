@@ -169,15 +169,9 @@ public:
 
   /**
    * @brief get a subchain of the kinematic group
-   * @return subchain 
+   * @return subchain
    */
-  KDL::Chain getSubChain(std::string link_name) const 
-  { 
-    std::string base_name = robot_chain_.getSegment(0).getName();
-    KDL::Chain subchain;
-    kdl_tree_.getChain(base_name, link_name, subchain);
-    return subchain;
-  }
+  KDL::Chain getSubChain(std::string link_name) const;
 
   /**
    * @brief Calculates transforms of each link relative to base (not including base)
@@ -190,6 +184,12 @@ public:
   bool linkTransforms(const Eigen::VectorXd &joint_angles,
                       std::vector<KDL::Frame> &poses,
                       const std::vector<std::string> &link_names = std::vector<std::string>()) const;
+
+  /**
+   * @brief Returns the location of the robot base in world coordinate frame.
+   * @return Eigen::Affine3d
+   */
+  Eigen::Affine3d getRobotBaseInWorld() const { return robot_base_pose_; }
 
   /**
    * @brief Assigns values from another BasicKin to this
@@ -222,6 +222,8 @@ private:
   const moveit::core::JointModelGroup* group_;
   KDL::Chain  robot_chain_;
   KDL::Tree   kdl_tree_;
+  std::string base_name_,  tip_name_, world_frame_;
+  Eigen::Affine3d robot_base_pose_;
   std::vector<std::string> joint_list_, link_list_;
   Eigen::Matrix<double, Eigen::Dynamic, 2> joint_limits_;
   boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_;
