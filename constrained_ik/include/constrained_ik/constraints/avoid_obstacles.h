@@ -138,13 +138,15 @@ public:
   /**
    * @brief getter for link weight_
    * @param link_name Name of link to get weight_
-   * @return weight_
+   * @return weight_, On error -1.0 is returned
    */
   double getWeight(const std::string &link_name)
   {
     LinkAvoidance link;
     if(getLinkData(link_name, link))
       return link.weight_;
+    else
+      return -1.0;
   }
 
   /**
@@ -162,13 +164,15 @@ public:
   /**
    * @brief getter for link min_distance_
    * @param link_name Name of link to get min_distance_
-   * @return min_distance_
+   * @return min_distance_, On error -1.0 is returned
    */
   double getMinDistance(const std::string &link_name)
   {
     LinkAvoidance link;
     if(getLinkData(link_name, link))
       return link.min_distance_;
+    else
+      return -1.0;
   }
 
   /**
@@ -186,13 +190,15 @@ public:
   /**
    * @brief getter for link amplitude
    * @param link_name Name of link to get amplitude data
-   * @return amplitude_
+   * @return amplitude_, On error -1.0 is returned
    */
   double getAmplitude(const std::string &link_name)
   {
     LinkAvoidance link;
     if(getLinkData(link_name, link))
       return link.amplitude_;
+    else
+      return -1.0;
   }
 
   /**
