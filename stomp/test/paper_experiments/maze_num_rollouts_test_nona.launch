@@ -1,0 +1,12 @@
+<launch>
+
+  <arg name="debug" default="false"/>
+  <arg if="$(arg debug)" name="launch_prefix" value="xterm -rv -e gdb -ex run -args"/>
+  <arg unless="$(arg debug)" name="launch_prefix" value=""/>
+
+  <node pkg="stomp" name="test_stomp2d" type="test_stomp2d" output="screen" launch-prefix="$(arg launch_prefix)">
+    <rosparam command="load" file="$(find stomp)/test/paper_experiments/maze_num_rollouts_test_nona.yaml"/>
+    <rosparam command="load" file="$(find stomp)/test/paper_experiments/cost_functions.yaml"/>
+  </node>
+</launch>
+

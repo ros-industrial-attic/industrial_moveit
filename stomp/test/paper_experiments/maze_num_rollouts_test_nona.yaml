@@ -1,0 +1,38 @@
+# Run all provided tests exhaustively
+large_scale: true
+large_scale_output_dir: stomp_test_large_scale
+stomp_repetitions: 20
+#stomp_rollouts: [5, 10]
+stomp_rollouts: [5, 10, 20, 50, 100]
+stomp_noises: [2.0, 1.0, 0.5, 0.25, 0.1]
+#stomp_noises: [0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+#chomp_learning_rates: [0.1, 0.01]
+chomp_learning_rates: []
+cost_function_names:
+  - maze
+cost_function_bools: [-1.0]
+stomp_noise_adaptations: [-1.0]
+
+num_iterations: 500
+num_time_steps: 100
+movement_duration: 1.0
+control_cost_weight: 0.0001
+output_dir: stomp_test
+use_chomp: true
+save_noisy_trajectories: false
+save_noiseless_trajectories: false
+save_cost_function: false
+
+stomp:
+  max_rollouts: 10
+  min_rollouts: 10
+  num_rollouts_per_iteration: 10
+  noise_stddev: [ 1.0, 1.0 ]
+  noise_decay: [ 1.0, 1.0 ]
+  noise_min_stddev: [0.01, 0.01]
+  use_noise_adaptation: true
+
+chomp:
+  learning_rate: 0.1
+  max_update: 1000.0
+

@@ -1,0 +1,46 @@
+<?xml version="1.0" ?>
+
+<!--Generates a urdf from the macro in kr210_macro.xacro -->
+
+<robot name="test_kr210" xmlns:xacro="http://ros.org/wiki/xacro">
+	<xacro:include filename="$(find stomp_test_support)/urdf/kr210l150_macro.xacro"/>
+	<xacro:kuka_kr210l150 prefix=""/>
+
+  <link name="world"/>
+
+
+  <xacro:property name="cylinder_height" value="8.0"/>
+  <link name="obstacle_cylinder">
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.2" length="${cylinder_height}"/>
+      </geometry>
+     <material name="cyan">
+       <color rgba="0 1.0 1.0 1.0"/>
+     </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.2" length="${cylinder_height}"/>
+      </geometry>
+     <material name="cyan">
+       <color rgba="0 1.0 1.0 1.0"/>
+     </material>
+    </collision>
+  </link>
+
+  <joint name="world_to_base" type="fixed">
+    <parent link="world" />
+    <child link="base_link" />
+    <origin xyz="0 0 0"/>
+  </joint>
+
+  <joint name="world_to_cylinder" type="fixed">
+    <parent link="world" />
+    <child link="obstacle_cylinder" />
+    <origin xyz="0 1.5 ${0.5*cylinder_height}"/>
+  </joint>
+</robot>
+

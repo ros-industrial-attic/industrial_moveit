@@ -1,0 +1,9 @@
+<launch>
+
+  <node name="moveit_benchmark_server" pkg="moveit_ros_benchmarks" type="moveit_run_benchmark" respawn="false" output="screen">
+    <rosparam command="load" file="$(find pr2_moveit_config)/config/kinematics.yaml"/>
+    <rosparam command="load" file="$(find stomp_moveit_interface)/config/pr2/stomp_planning.yaml"/>
+  </node>
+
+
+</launch>
