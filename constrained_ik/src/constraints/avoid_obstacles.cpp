@@ -54,7 +54,14 @@ void AvoidObstacles::init(const Constrained_IK * ik)
   for (std::map<std::string, LinkAvoidance>::iterator it = links_.begin(); it != links_.end(); ++it)
   {
     it->second.num_robot_joints_ = ik_->getKin().numJoints();
-    it->second.avoid_chain_ =   ik_->getKin().getSubChain(it->second.link_name_);
+    if (!ik_->getKin().getSubChain(it->second.link_name_, it->second.avoid_chain_))
+    {
+      ROS_ERROR_STREAM("Failed to initialize Avoid Obstalces constraint because"
+                       "it failed to create a KDL chain between URDF links: '" <<
+                       ik_->getKin().getRobotBaseLinkName() << "' and '" << it->second.link_name_ <<"'");
+      initialized_ = false;
+      return;
+    }
     it->second.num_inboard_joints_ = it->second.avoid_chain_.getNrOfJoints();
     it->second.jac_solver_ = new  KDL::ChainJntToJacSolver(it->second.avoid_chain_);
   }
