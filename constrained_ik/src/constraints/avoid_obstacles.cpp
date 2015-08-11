@@ -100,15 +100,11 @@ VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cda
   if (it != cdata.distance_info_map_.end())
   {
     double dist = it->second.distance;
-    double scale;
-    if(dist > link.min_distance_)
-    {
-      scale = 1.0/(dist * dist);  // inverse square law
-    }
-    else
-    {
-      scale = 1.0/(link.min_distance_ * link.min_distance_ );
-    }
+    double shift = 5.0;
+    double zero_point = 20.0 - shift;
+    double scale_x = link.min_distance_/zero_point;
+    double scale_y = link.amplitude_;
+    double scale = scale_y/(1.0 + std::exp((dist/scale_x) - shift));
     error_vector = scale*it->second.avoidance_vector;
   }
   else

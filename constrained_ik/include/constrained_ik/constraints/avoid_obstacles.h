@@ -48,7 +48,7 @@ class AvoidObstacles: public Constraint
 protected:
   struct LinkAvoidance
   {
-    LinkAvoidance(std::string link_name): weight_(1.0), min_distance_(0.006), jac_solver_(NULL), link_name_(link_name) {}
+    LinkAvoidance(std::string link_name): weight_(1.0), min_distance_(0.5), amplitude_(0.3), jac_solver_(NULL), link_name_(link_name) {}
     LinkAvoidance() {}
     virtual ~LinkAvoidance()
     {
@@ -57,6 +57,7 @@ protected:
 
     double weight_; /**< importance weight applied to this avoidance constraint */
     double min_distance_; /**< minimum obstacle distance allowed */
+    double amplitude_; /**< The amplitude of the sigmoid error curve */
     int num_robot_joints_; /**< number of joints in the whole robot*/
     int num_obstacle_joints_; /**< number of joints inboard to the obstacle link */
     std::string link_name_; /**< the name of the link that is to avoid obstacles */
@@ -134,7 +135,8 @@ public:
   virtual void init(const Constrained_IK * ik);
 
   /**
-   * @brief getter for weight_
+   * @brief getter for link weight_
+   * @param link_name Name of link to get weight_
    * @return weight_
    */
   double getWeight(const std::string &link_name)
@@ -145,7 +147,8 @@ public:
   }
 
   /**
-   * @brief setter for weight_
+   * @brief setter for link weight_
+   * @param link_name Name of link to set weight_
    * @param weight Value to set weight_ to
    */
   void setWeight(const std::string &link_name, const double &weight)
@@ -156,7 +159,8 @@ public:
   }
 
   /**
-   * @brief getter for min_distance_
+   * @brief getter for link min_distance_
+   * @param link_name Name of link to get min_distance_
    * @return min_distance_
    */
   double getMinDistance(const std::string &link_name)
@@ -167,7 +171,8 @@ public:
   }
 
   /**
-   * @brief setter for min_distance_
+   * @brief setter for link min_distance_
+   * @param link_name Name of link to set min_distance_
    * @param weight Value to set min_distance_ to
    */
   void setMinDistance(const std::string &link_name, const double &min_distance)
@@ -176,6 +181,31 @@ public:
     if(getLinkData(link_name, link))
       link.min_distance_ = min_distance;
   }
+
+  /**
+   * @brief getter for link amplitude
+   * @param link_name Name of link to get amplitude data
+   * @return amplitude_
+   */
+  double getAmplitude(const std::string &link_name)
+  {
+    LinkAvoidance link;
+    if(getLinkData(link_name, link))
+      return link.amplitude_;
+  }
+
+  /**
+   * @brief setter for link amplitude
+   * @param link_name Name of link to set amplitude_
+   * @param amplitude Value to set amplitude_ to
+   */
+  void setAmplitude(const std::string &link_name, const double &amplitude)
+  {
+    LinkAvoidance link;
+    if(getLinkData(link_name, link))
+      link.amplitude_ = amplitude;
+  }
+
 };
 
 } /* namespace constraints */
