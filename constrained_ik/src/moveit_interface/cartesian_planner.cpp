@@ -1,12 +1,12 @@
 /**
- * @file joint_interpolation_planner.cpp
- * @brief Joint interpolation planner for moveit.
+ * @file cartesian_planner.cpp
+ * @brief Cartesian path planner for moveit.
  *
- * This class is used to represent a joint interpolated path planner for
- * moveit.  This planner does not have the inherent ability to avoid
- * collision. It does check if the path created is collision free before it
- * returns a trajectory.  If a collision is found it returns an empty
- * trajectory and moveit error.
+ * This class is used to represent a cartesian path planner for moveit.
+ * It finds a straight line path between the start and goal position. This
+ * planner does not have the inherent ability to avoid collision. It does
+ * check if the path created is collision free before it returns a trajectory.
+ * If a collision is found it returns an empty trajectory and moveit error.
  *
  * @author Levi Armstrong
  * @date May 4, 2015
@@ -29,16 +29,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <constrained_ik/joint_interpolation_planner.h>
+#include <constrained_ik/moveit_interface/cartesian_planner.h>
 #include <ros/ros.h>
-#include<eigen3/Eigen/Core>
+#include <eigen3/Eigen/Core>
 #include <eigen_conversions/eigen_msg.h>
 #include <moveit/robot_state/conversions.h>
 
 
+
 namespace constrained_ik
 {
-  bool JointInterpolationPlanner::solve(planning_interface::MotionPlanResponse &res)
+  bool CartesianPlanner::solve(planning_interface::MotionPlanResponse &res)
   {
     ros::WallTime start_time = ros::WallTime::now();
     robot_model::RobotModelConstPtr rob_model = planning_scene_->getRobotModel();
@@ -49,12 +50,12 @@ namespace constrained_ik
     const robot_model::JointModelGroup *group_model = rob_model->getJointModelGroup(request_.group_name);
     std::vector<std::string> joint_names = group_model->getActiveJointModelNames();
     std::vector<std::string> link_names = group_model->getLinkModelNames();
+    Eigen::Affine3d start_pose = start_state.getFrameTransform(link_names.back());
     Eigen::Affine3d goal_pose;
     std::vector<double> pos(1);
     robot_trajectory::RobotTrajectoryPtr traj(new robot_trajectory::RobotTrajectory(rob_model, request_.group_name));
 
-
-    ROS_INFO_STREAM("Joint Interpolation Planning for Group: " << request_.group_name);
+    ROS_INFO_STREAM("Cartesian Planning for Group: " << request_.group_name);
 
     // if we have path constraints, we prefer interpolating in pose space
     if (!request_.goal_constraints[0].joint_constraints.empty())
@@ -63,10 +64,8 @@ namespace constrained_ik
       {
         pos[0]=request_.goal_constraints[0].joint_constraints[i].position;
         goal_state.setJointPositions(joint_names[i], pos);
-
-        ROS_DEBUG_NAMED("clik","Setting joint %s from %f to position %f", request_.goal_constraints[0].joint_constraints[i].joint_name.c_str(),
-            *start_state.getJointPositions(joint_names[i]), request_.goal_constraints[0].joint_constraints[i].position);
       }
+      goal_pose = goal_state.getFrameTransform(link_names.back());
     }
     else
     {
@@ -91,46 +90,39 @@ namespace constrained_ik
         ROS_ERROR("No constraint was passed with request!");
         return false;
       }
-
       tf::poseMsgToEigen(pose, goal_pose);
-      goal_state.setFromIK(group_model, goal_pose, link_names.back());
     }
 
-    // Calculate delta for for moveit interpolation function
-    double dt;
-    Eigen::VectorXd jv_step;
-    Eigen::VectorXd jv_start;
-    Eigen::VectorXd delta;
+    ROS_DEBUG_NAMED("clik", "Setting Position x from %f to %f", start_pose.translation()(0),goal_pose.translation()(0));
+    ROS_DEBUG_NAMED("clik", "Setting Position y from %f to %f", start_pose.translation()(1),goal_pose.translation()(1));
+    ROS_DEBUG_NAMED("clik", "Setting Position z from %f to %f", start_pose.translation()(2),goal_pose.translation()(2));
+    ROS_DEBUG_NAMED("clik", "Setting Position yaw   from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(0),goal_pose.rotation().eulerAngles(3,2,1)(0));
+    ROS_DEBUG_NAMED("clik", "Setting Position pitch from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(1),goal_pose.rotation().eulerAngles(3,2,1)(1));
+    ROS_DEBUG_NAMED("clik", "Setting Position roll  from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(2),goal_pose.rotation().eulerAngles(3,2,1)(2));
 
-    start_state.copyJointGroupPositions(request_.group_name, jv_start);
+    // Generate Interpolated Cartesian Poses
+    std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > poses = interpolateCartesian(start_pose, goal_pose, params_.getCartesianDiscretizationStep());
+
+    // Generate Cartesian Trajectory
+    int steps = poses.size();
     mid_state = robot_model::RobotStatePtr(new robot_model::RobotState(start_state));
-    start_state.interpolate(goal_state, 0.1, *mid_state);
-    mid_state->copyJointGroupPositions(request_.group_name, jv_step);
-    delta = (jv_step - jv_start).cwiseAbs();
-    dt = params_.getJointDiscretizationStep()*(0.1/delta.maxCoeff());
-
-    // Generate Path
-    int steps = (1.0/dt) + 1;
-    dt = 1.0/steps;
-
-    for (int j=0; j<=steps; j++)
+    for (int j=0; j<steps; j++)
     {
-      if (j!=steps)
-        start_state.interpolate(goal_state, j*dt, *mid_state);
-      else
-        start_state.interpolate(goal_state, 1, *mid_state);
+      if (j!=0)
+        mid_state->setFromIK(group_model, poses[j], link_names.back());
 
       traj->addSuffixWayPoint(*mid_state, 0.0);
 
       if (terminate_)
         break;
     }
+
     res.planning_time_ = (ros::WallTime::now() - start_time).toSec();
 
     // Check if planner was terminated
     if (terminate_)
     {
-      ROS_INFO("Joint Interpolated Trajectory was terminated!");
+      ROS_INFO("Cartesian Trajectory was terminated!");
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
       return false;
     }
@@ -138,16 +130,52 @@ namespace constrained_ik
     // Check if traj is a collision free path
     if (planning_scene_->isPathValid(*traj, request_.group_name))
     {
-      ROS_INFO("Joint Interpolated Trajectory is collision free! :)");
+      ROS_INFO("Cartesian Trajectory is collision free! :)");
       res.trajectory_=traj;
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
       return true;
     }
     else
     {
-      ROS_INFO("Joint Interpolated Trajectory is not collision free. :(");
+      ROS_INFO("Cartesian Trajectory is not collision free. :(");
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
       return false;
     }
   }
+
+  std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> >
+  CartesianPlanner::interpolateCartesian(const Eigen::Affine3d& start,
+                                            const Eigen::Affine3d& stop,
+                                            double ds) const
+  {
+    // Required position change
+    Eigen::Vector3d delta = (stop.translation() - start.translation());
+    Eigen::Vector3d start_pos = start.translation();
+
+    // Calculate number of steps
+    unsigned steps = static_cast<unsigned>(delta.norm() / ds) + 1;
+
+    // Step size
+    Eigen::Vector3d step = delta / steps;
+
+    // Orientation interpolation
+    Eigen::Quaterniond start_q (start.rotation());
+    Eigen::Quaterniond stop_q (stop.rotation());
+    double slerp_ratio = 1.0 / steps;
+
+    std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > result;
+    Eigen::Vector3d trans;
+    Eigen::Quaterniond q;
+    Eigen::Affine3d pose;
+    result.reserve(steps+1);
+    for (unsigned i = 0; i <= steps; ++i)
+    {
+      trans = start_pos + step * i;
+      q = start_q.slerp(slerp_ratio * i, stop_q);
+      pose = (Eigen::Translation3d(trans) * q);
+      result.push_back(pose);
+    }
+    return result;
+  }
 } //namespace constrained_ik
+

@@ -22,7 +22,7 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
-#include <constrained_ik/constrained_ik_planner_plugin.h>
+#include <constrained_ik/moveit_interface/constrained_ik_planner_plugin.h>
 #include <class_loader/class_loader.h>
 
 const std::string JOINT_INTERP_PLANNER = "JointInterpolation";
@@ -82,11 +82,11 @@ namespace constrained_ik
 
     // Get planner
     std::map<std::string, constrained_ik::CLIKPlanningContextPtr>::const_iterator it = planners_.find(req.planner_id);
-    if (it != planners_.end()) 
+    if (it != planners_.end())
     {
       planner = it->second;
     }
-    else 
+    else
     {
       planner = planners_.find(CARTESIAN_PLANNER)->second;
     }

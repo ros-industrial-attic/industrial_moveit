@@ -22,7 +22,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <constrained_ik/constrained_ik_plugin.h>
+#include <constrained_ik/moveit_interface/constrained_ik_plugin.h>
 #include <ros/ros.h>
 
 #include <kdl_parser/kdl_parser.hpp>
