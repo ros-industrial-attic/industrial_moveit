@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package>
+  <name>stomp</name>
+  <version>0.4.0</version>
+  <description>STOMP motion planner, core optimizer</description>
+  <maintainer email="kalakris@usc.edu">Mrinal Kalakrishnan</maintainer>
+  <author email="kalakris@usc.edu">Mrinal Kalakrishnan</author>
+  <license>BSD</license>
+  <url>https://github.com/kalakris/stomp</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>eigen</build_depend>
+  <build_depend>cmake_modules</build_depend>
+
+  <run_depend>roscpp</run_depend>
+</package>

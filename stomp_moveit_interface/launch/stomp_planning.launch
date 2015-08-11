@@ -1,0 +1,25 @@
+<launch>  
+
+  <arg name="debug" default="false"/>
+  <arg if="$(arg debug)" name="launch_prefix" value="xterm -rv -e gdb -ex run -args"/>
+  <arg unless="$(arg debug)" name="launch_prefix" value=""/>
+
+  <node pkg="stomp_ros_interface" name="STOMP" type="stomp_node" respawn="false" output="screen" launch-prefix="$(arg launch_prefix)">
+    <rosparam command="load" ns="task" file="$(find arm_planning_config)/config/stomp_config.yaml" />
+    <rosparam command="load" ns="optimizer" file="$(find arm_planning_config)/config/stomp_optimizer.yaml"/>
+  </node>
+  
+<!-- old node for reference -->
+<!--<node pkg="stomp_motion_planner" name="STOMPMotionPlanner" type="stomp_motion_planner" respawn="false" output="screen">
+<remap from="joint_states" to="joint_states_des_10hz" />
+<remap from="tf" to="tf_10hz" />
+          <remap from="/trajectory_filter/filter_trajectory_with_constraints" to="TrajectoryFilter/filter_trajectory_with_constraints" />
+          <rosparam command="load" file="$(find arm_planning_config)/config/chomp.yaml" />
+          <rosparam command="load" file="$(find arm_planning_config)/config/stomp_parameters.yaml" />
+
+          <rosparam command="load" file="$(find arm_planning_config)/config/robot_padding.yaml" />
+  </node>-->
+
+</launch>
+
+

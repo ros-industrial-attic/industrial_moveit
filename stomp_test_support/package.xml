@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package>
+  <name>stomp_test_support</name>
+  <version>0.0.0</version>
+  <description>The stomp_test_support package</description>
+  <maintainer email="jnicho@swri.org">Jorge Nicho</maintainer>
+  <license>TODO</license>
+  <author email="jnicho@swri.org">Jorge Nicho</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <export>
+  </export>
+</package>
