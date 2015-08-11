@@ -48,7 +48,7 @@ class AvoidObstacles: public Constraint
 protected:
   struct LinkAvoidance
   {
-    LinkAvoidance(std::string link_name): weight_(1.0), min_distance_(0.5), amplitude_(0.3), jac_solver_(NULL), link_name_(link_name) {}
+    LinkAvoidance(std::string link_name);
     LinkAvoidance() {}
     virtual ~LinkAvoidance()
     {
@@ -82,6 +82,7 @@ protected:
     }
     else
     {
+      ROS_WARN_STREAM("Failed to retrieve avoidance data for link: " << link_name);
       return false;
     }
   }

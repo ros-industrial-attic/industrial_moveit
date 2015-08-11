@@ -31,6 +31,12 @@
 #include <utility>
 #include <ros/ros.h>
 
+const double DEFAULT_WEIGHT = 1.0;
+const double DEFAULT_MIN_DISTANCE = 0.5;
+const double DEFAULT_AMPLITUDE = 0.3;
+const double DEFAULT_SHIFT = 5.0;
+const double DEFAULT_ZERO_POINT = 10;
+
 namespace constrained_ik
 {
 namespace constraints
@@ -41,6 +47,8 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using std::string;
 using std::vector;
+
+AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL), link_name_(link_name) {}
 
 AvoidObstacles::AvoidObstacles(std::vector<std::string> &link_names):  Constraint(), link_names_(link_names)
 {
@@ -100,11 +108,9 @@ VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cda
   if (it != cdata.distance_info_map_.end())
   {
     double dist = it->second.distance;
-    double shift = 5.0;
-    double zero_point = 20.0 - shift;
-    double scale_x = link.min_distance_/zero_point;
+    double scale_x = link.min_distance_/(DEFAULT_ZERO_POINT + DEFAULT_SHIFT);
     double scale_y = link.amplitude_;
-    double scale = scale_y/(1.0 + std::exp((dist/scale_x) - shift));
+    double scale = scale_y/(1.0 + std::exp((dist/scale_x) - DEFAULT_SHIFT));
     error_vector = scale*it->second.avoidance_vector;
   }
   else
