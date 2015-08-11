@@ -54,7 +54,14 @@ void AvoidObstacles::init(const Constrained_IK * ik)
   for (std::map<std::string, LinkAvoidance>::iterator it = links_.begin(); it != links_.end(); ++it)
   {
     it->second.num_robot_joints_ = ik_->getKin().numJoints();
-    it->second.avoid_chain_ =   ik_->getKin().getSubChain(it->second.link_name_);
+    if (!ik_->getKin().getSubChain(it->second.link_name_, it->second.avoid_chain_))
+    {
+      ROS_ERROR_STREAM("Failed to initialize Avoid Obstalces constraint because"
+                       "it failed to create a KDL chain between URDF links: '" <<
+                       ik_->getKin().getRobotBaseLinkName() << "' and '" << it->second.link_name_ <<"'");
+      initialized_ = false;
+      return;
+    }
     it->second.num_inboard_joints_ = it->second.avoid_chain_.getNrOfJoints();
     it->second.jac_solver_ = new  KDL::ChainJntToJacSolver(it->second.avoid_chain_);
   }
@@ -171,7 +178,8 @@ bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata
 AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state, const AvoidObstacles *parent): ConstraintData(state), parent_(parent)
 {
   distance_map_ = state.collision_robot->distanceSelfDetailed(*state_.robot_state, state_.planning_scene->getAllowedCollisionMatrix(), parent_->link_models_);
-  CollisionRobotFCLDetailed::getDistanceInfo(distance_map_, distance_info_map_);
+  Eigen::Affine3d tf = parent_->ik_->getKin().getRobotBaseInWorld().inverse();
+  CollisionRobotFCLDetailed::getDistanceInfo(distance_map_, distance_info_map_, tf);
 }
 
 } // end namespace constraints

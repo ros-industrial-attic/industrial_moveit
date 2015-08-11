@@ -195,6 +195,13 @@ namespace constrained_ik
 
   bool CollisionRobotFCLDetailed::getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map)
   {
+    Eigen::Affine3d tf;
+    tf.setIdentity();
+    return getDistanceInfo(distance_detailed, distance_info_map, tf);
+  }
+
+  bool CollisionRobotFCLDetailed::getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map, const Eigen::Affine3d tf)
+  {
     bool status = true;
     for (DistanceDetailedMap::const_iterator it = distance_detailed.begin(); it != distance_detailed.end(); ++it)
     {
@@ -205,18 +212,18 @@ namespace constrained_ik
       if (cd1->ptr.link->getName() == it->first)
       {
         dist_info.nearest_obsticle = cd2->ptr.link->getName();
-        dist_info.link_point = Eigen::Vector3d(dist.nearest_points[0].data.vs);
-        dist_info.obsticle_point = Eigen::Vector3d(dist.nearest_points[1].data.vs);
-        dist_info.avoidance_vector = Eigen::Vector3d((dist.nearest_points[1]-dist.nearest_points[0]).data.vs);
+        dist_info.link_point = tf * Eigen::Vector3d(dist.nearest_points[0].data.vs);
+        dist_info.obsticle_point = tf * Eigen::Vector3d(dist.nearest_points[1].data.vs);
+        dist_info.avoidance_vector = dist_info.obsticle_point - dist_info.link_point;
         dist_info.avoidance_vector.norm();
         dist_info.distance = dist.min_distance;
       }
       else if (cd2->ptr.link->getName() == it->first)
       {
         dist_info.nearest_obsticle = cd1->ptr.link->getName();
-        dist_info.link_point = Eigen::Vector3d(dist.nearest_points[1].data.vs);
-        dist_info.obsticle_point = Eigen::Vector3d(dist.nearest_points[0].data.vs);
-        dist_info.avoidance_vector = Eigen::Vector3d((dist.nearest_points[0]-dist.nearest_points[1]).data.vs);
+        dist_info.link_point = tf * Eigen::Vector3d(dist.nearest_points[1].data.vs);
+        dist_info.obsticle_point = tf * Eigen::Vector3d(dist.nearest_points[0].data.vs);
+        dist_info.avoidance_vector = dist_info.obsticle_point - dist_info.link_point;
         dist_info.avoidance_vector.norm();
         dist_info.distance = dist.min_distance;
       }

@@ -168,16 +168,12 @@ public:
   unsigned int numJoints() const { return robot_chain_.getNrOfJoints(); }
 
   /**
-   * @brief get a subchain of the kinematic group
-   * @return subchain 
+   * @brief Get a subchain of the kinematic group
+   * @param link_name Name of final link in chain
+   * @param chain Output kinematic chain
+   * @return True if the subchain was successfully created
    */
-  KDL::Chain getSubChain(std::string link_name) const 
-  { 
-    std::string base_name = robot_chain_.getSegment(0).getName();
-    KDL::Chain subchain;
-    kdl_tree_.getChain(base_name, link_name, subchain);
-    return subchain;
-  }
+  bool getSubChain(const std::string link_name, KDL::Chain &chain) const;
 
   /**
    * @brief Calculates transforms of each link relative to base (not including base)
@@ -190,6 +186,30 @@ public:
   bool linkTransforms(const Eigen::VectorXd &joint_angles,
                       std::vector<KDL::Frame> &poses,
                       const std::vector<std::string> &link_names = std::vector<std::string>()) const;
+
+  /**
+   * @brief Returns the location of the robot base in world coordinate frame.
+   * @return Eigen::Affine3d
+   */
+  Eigen::Affine3d getRobotBaseInWorld() const { return robot_base_pose_; }
+
+  /**
+   * @brief getter for the robot base link name
+   * @return std::string base_name_
+   */
+  std::string getRobotBaseLinkName() const { return base_name_; }
+
+  /**
+   * @brief getter for the robot tip link name
+   * @return std::string tip_name_
+   */
+  std::string getRobotTipLinkName() const { return tip_name_; }
+
+  /**
+   * @brief getter for the kdl tree root link name
+   * @return std::string root_name_
+   */
+  std::string getRootLinkName() const { return root_name_; }
 
   /**
    * @brief Assigns values from another BasicKin to this
@@ -222,6 +242,8 @@ private:
   const moveit::core::JointModelGroup* group_;
   KDL::Chain  robot_chain_;
   KDL::Tree   kdl_tree_;
+  std::string base_name_,  tip_name_, root_name_;
+  Eigen::Affine3d robot_base_pose_;
   std::vector<std::string> joint_list_, link_list_;
   Eigen::Matrix<double, Eigen::Dynamic, 2> joint_limits_;
   boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_;
