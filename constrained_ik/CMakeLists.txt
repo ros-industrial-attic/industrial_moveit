@@ -51,7 +51,7 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
- LIBRARIES constrained_ik moveit_clik_planner_plugin
+ LIBRARIES constrained_ik moveit_clik_planner_plugin constrained_ik_plugin
  CATKIN_DEPENDS roscpp urdf eigen_conversions
  DEPENDS boost eigen orocos_kdl
 )
@@ -91,14 +91,14 @@ target_link_libraries(constrained_ik ${catkin_LIBRARIES})
 add_dependencies(constrained_ik ${PROJECT_NAME}_gencfg)
 
 add_library(constrained_ik_plugin
-            src/constrained_ik_plugin.cpp
+            src/moveit_interface/constrained_ik_plugin.cpp
 )
 target_link_libraries(constrained_ik_plugin constrained_ik ${catkin_LIBRARIES})
 
 add_library(moveit_clik_planner_plugin
-            src/constrained_ik_planner_plugin.cpp
-            src/joint_interpolation_planner.cpp
-            src/cartesian_planner.cpp)
+            src/moveit_interface/constrained_ik_planner_plugin.cpp
+            src/moveit_interface/joint_interpolation_planner.cpp
+            src/moveit_interface/cartesian_planner.cpp)
 
 target_link_libraries(moveit_clik_planner_plugin constrained_ik ${catkin_LIBRARIES})
 

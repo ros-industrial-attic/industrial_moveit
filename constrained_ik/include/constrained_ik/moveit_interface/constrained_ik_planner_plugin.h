@@ -28,9 +28,9 @@
 #include <moveit/planning_scene/planning_scene.h>
 #include <class_loader/class_loader.h>
 #include <ros/ros.h>
-#include <constrained_ik/joint_interpolation_planner.h>
-#include <constrained_ik/cartesian_planner.h>
-#include <constrained_ik/constrained_ik_planner_parameters.h>
+#include <constrained_ik/moveit_interface/joint_interpolation_planner.h>
+#include <constrained_ik/moveit_interface/cartesian_planner.h>
+#include <constrained_ik/moveit_interface/constrained_ik_planner_parameters.h>
 
 namespace constrained_ik
 {

@@ -34,7 +34,7 @@
 
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene/planning_scene.h>
-#include <constrained_ik/constrained_ik_planning_context.h>
+#include <constrained_ik/moveit_interface/constrained_ik_planning_context.h>
 #include <boost/atomic.hpp>
 
 namespace constrained_ik
