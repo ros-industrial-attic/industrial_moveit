@@ -36,6 +36,7 @@
 #include <moveit/planning_scene/planning_scene.h>
 #include <constrained_ik/moveit_interface/constrained_ik_planning_context.h>
 #include <boost/atomic.hpp>
+#include <pluginlib/class_loader.h>
 
 namespace constrained_ik
 {
@@ -58,7 +59,7 @@ namespace constrained_ik
 
     void initialize();
 
-    void clear() { config_.__getDefault__(); }
+    void clear() { terminate_ = false; }
 
     bool terminate()
     {

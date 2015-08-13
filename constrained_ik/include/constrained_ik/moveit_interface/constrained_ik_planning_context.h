@@ -58,6 +58,11 @@ namespace constrained_ik
      */
     void setConfiguration(const ConstrainedIKPlannerDynamicReconfigureConfig &config) { config_ = config; }
 
+    /**
+     * @brief resetConfiguration - Resets configuration parameters to their default values.
+     */
+    void resetConfiguration() { config_.__getDefault__(); }
+
   protected:
     /** Store the parameters for the CLIK planners. */
     ConstrainedIKPlannerDynamicReconfigureConfig config_;

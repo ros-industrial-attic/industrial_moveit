@@ -36,8 +36,8 @@ namespace constrained_ik
       nh_ = ros::NodeHandle(ns);
 
     // Create map of planners
-    planners_.insert(std::make_pair(JOINT_INTERP_PLANNER, new JointInterpolationPlanner("", "")));
-    planners_.insert(std::make_pair(CARTESIAN_PLANNER, new CartesianPlanner("", "")));
+    planners_.insert(std::make_pair(JOINT_INTERP_PLANNER, new JointInterpolationPlanner(JOINT_INTERP_PLANNER, "")));
+    planners_.insert(std::make_pair(CARTESIAN_PLANNER, new CartesianPlanner(CARTESIAN_PLANNER, "")));
 
     dynamic_reconfigure_server_.reset(new dynamic_reconfigure::Server<ConstrainedIKPlannerDynamicReconfigureConfig>(mutex_, ros::NodeHandle(nh_, "constrained_ik_planner")));
     dynamic_reconfigure_server_->setCallback(boost::bind(&CLIKPlannerManager::dynamicReconfigureCallback, this, _1, _2));

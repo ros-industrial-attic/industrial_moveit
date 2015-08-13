@@ -55,7 +55,7 @@ namespace constrained_ik
 
     JointInterpolationPlanner(const JointInterpolationPlanner &other) : constrained_ik::CLIKPlanningContext(other), terminate_(false) {}
 
-    void clear() { config_.__getDefault__(); }
+    void clear() { terminate_ = false; }
 
     bool terminate()
     {
