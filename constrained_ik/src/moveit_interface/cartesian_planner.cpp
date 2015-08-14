@@ -73,7 +73,7 @@ namespace constrained_ik
     // read the list of plugin names for possible kinematics solvers
     for (std::size_t i = 0 ; i < known_groups.size() ; ++i)
     {
-      std::string base_param_name = known_groups[i].name_;
+      std::string base_param_name = "constrained_ik_solver/" + known_groups[i].name_;
       ROS_DEBUG_NAMED("kinematics_plugin_loader","Looking for param %s ", (base_param_name + "/kinematics_solver").c_str());
       std::string ksolver_param_name;
       bool found = nh.searchParam(base_param_name + "/kinematics_solver", ksolver_param_name);
@@ -99,7 +99,6 @@ namespace constrained_ik
               groups_.push_back(known_groups[i].name_);
             }
             std::string solver; ss >> solver >> std::ws;
-            solver = "ifa_clik_planner/IfaClikPlugin"; // This is a hack until a parameter is setup
             possible_kinematics_solvers_[known_groups[i].name_].push_back(solver);
             ROS_DEBUG_NAMED("kinematics_plugin_loader","Using kinematics solver '%s' for group '%s'.", solver.c_str(), known_groups[i].name_.c_str());
           }
