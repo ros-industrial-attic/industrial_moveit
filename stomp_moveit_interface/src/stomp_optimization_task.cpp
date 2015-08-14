@@ -432,18 +432,30 @@ void StompOptimizationTask::publishDistanceFieldMarker(ros::Publisher& viz_pub)
   viz_pub.publish(world_df_marker);
 }
 
-void StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen::VectorXd>& parameters, trajectory_msgs::JointTrajectory& trajectory)
+bool StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen::VectorXd>& parameters, trajectory_msgs::JointTrajectory& trajectory)
 {
 
   if(parameters.empty() || (parameters.size() != num_dimensions_) ||(parameters.front().size() != num_time_steps_) )
   {
-    ROS_WARN_STREAM("Parameters do not match the right number of data points or dimensions, JointTrajectory message will not be created");
-    return;
+    ROS_WARN_STREAM("Parameters contain no data, JointTrajectory message will not be created");
+    return false;
   }
 
-  //kinematic_model_->getJoin
-  trajectory.joint_names = joint_model_group_->getVariableNames();
+  if(parameters.size() != num_dimensions_)
+  {
+    ROS_ERROR_STREAM("Parameters array dimensions "<<parameters.size()<<"do not match the expected number of dimensions"
+                     <<num_dimensions_<<" JointTrajectory message will not be created");
+    return false;
+  }
 
+  if(parameters.front().size() != num_time_steps_)
+  {
+    ROS_ERROR_STREAM("Parameters array time steps "<<parameters.front().size()<<"do not match the expected number of points"
+                     <<num_time_steps_<<" JointTrajectory message will not be created");
+    return false;
+  }
+
+  trajectory.joint_names = joint_model_group_->getVariableNames();
   trajectory.points.clear();
   trajectory.points.resize(num_time_steps_ + 2);
   trajectory.points[0].positions = start_joints_;
@@ -457,6 +469,7 @@ void StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen:
 //    stomp::differentiate(parameters[d], stomp::STOMP_VELOCITY, vels[d], dt_);
 //    stomp::differentiate(parameters[d], stomp::STOMP_ACCELERATION, accs[d], dt_);
 //  }
+
 
   for (int i=0; i<num_time_steps_; ++i)
   {
@@ -476,6 +489,8 @@ void StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen:
   {
     trajectory.points[i].time_from_start = ros::Duration(i*dt_);
   }
+
+  return true;
 }
 
 void StompOptimizationTask::setFeatureWeights(const std::vector<double>& weights)

@@ -282,27 +282,37 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   stomp_->getBestNoiselessParameters(best_params, best_cost);
   stomp_task->publishResultsMarkers(best_params);
   trajectory_msgs::JointTrajectory trajectory;
-  stomp_task->parametersToJointTrajectory(best_params, trajectory);
 
-  moveit::core::RobotState robot_state(planning_scene_->getRobotModel());
-  res.trajectory_.resize(1,robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(kinematic_model_,request_.group_name)));
-  res.trajectory_.back()->setRobotTrajectoryMsg( robot_state,trajectory);
   res.description_.resize(1);
   res.description_[0] = getDescription();
   res.processing_time_.resize(1);
   ros::WallDuration wd = ros::WallTime::now() - start_time;
   res.processing_time_[0] = ros::Duration(wd.sec, wd.nsec).toSec();
 
-  if (success)
+  if(success)
   {
-    res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
-    ROS_INFO_STREAM("STOMP found a motion plan after "<<res.processing_time_[0]<<" seconds");
+    if(stomp_task->parametersToJointTrajectory(best_params, trajectory))
+    {
+      moveit::core::RobotState robot_state(planning_scene_->getRobotModel());
+      res.trajectory_.resize(1,robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(
+          kinematic_model_,request_.group_name)));
+      res.trajectory_.back()->setRobotTrajectoryMsg( robot_state,trajectory);
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+      ROS_INFO_STREAM("STOMP found a motion plan after "<<res.processing_time_[0]<<" seconds");
+    }
+    else
+    {
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
+      success = false;
+      ROS_INFO_STREAM("STOMP returned an invalid motion plan");
+    }
   }
   else
   {
     ROS_WARN("STOMP failed to find a collision-free plan");
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
   }
+
 
   setSolving(false);
   return success;

@@ -70,7 +70,7 @@ public:
   void setFeatureScalingFromFile(const std::string& abs_means_file,
                                  const std::string& abs_variance_file);
 
-  void parametersToJointTrajectory(const std::vector<Eigen::VectorXd>& parameters, trajectory_msgs::JointTrajectory& trajectory);
+  bool parametersToJointTrajectory(const std::vector<Eigen::VectorXd>& parameters, trajectory_msgs::JointTrajectory& trajectory);
 
   int getNumFeatures();
 
