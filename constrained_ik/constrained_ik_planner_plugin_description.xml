@@ -1,0 +1,7 @@
+<library path="libmoveit_clik_planner_plugin">
+  <class name="constrained_ik/CLIKPlanner" type="constrained_ik::CLIKPlannerManager" base_class_type="planning_interface::PlannerManager">
+    <description>
+      CLIK Planners!
+    </description>
+  </class>
+</library>

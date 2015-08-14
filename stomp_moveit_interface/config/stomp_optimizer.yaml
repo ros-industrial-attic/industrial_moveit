@@ -1,0 +1,12 @@
+max_rollouts: 10
+min_rollouts: 10
+num_rollouts_per_iteration: 10
+use_noise_adaptation: true
+noise_stddev: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+#noise_stddev: [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]
+noise_min_stddev: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+#noise_stddev: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+#noise_stddev: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+noise_decay: [0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999]
+write_to_file: false
+use_openmp: false

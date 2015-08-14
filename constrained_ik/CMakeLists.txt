@@ -4,11 +4,18 @@ project(constrained_ik)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS kdl_parser orocos_kdl roscpp urdf eigen_conversions)
+find_package(catkin REQUIRED COMPONENTS kdl_parser roscpp urdf eigen_conversions moveit_ros_planning moveit_core dynamic_reconfigure)
 
 ## System dependencies are found with CMake's conventions
+find_package(orocos_kdl REQUIRED)
+find_package(cmake_modules REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Eigen REQUIRED)
+
+#add dynamic reconfigure api
+generate_dynamic_reconfigure_options(
+  cfg/ConstrainedIKDynamicReconfigureConfig.cfg
+)
 
 #######################################
 ## Declare ROS messages and services ##
@@ -43,10 +50,10 @@ find_package(Eigen REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES constrained_ik
-#  CATKIN_DEPENDS other_catkin_pkg
-#  DEPENDS system_lib
+ INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
+ LIBRARIES constrained_ik moveit_clik_planner_plugin constrained_ik_plugin
+ CATKIN_DEPENDS roscpp urdf eigen_conversions
+ DEPENDS boost eigen orocos_kdl
 )
 
 ###########
@@ -55,15 +62,18 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIRS})
 
 ## Declare a cpp library
 add_library(constrained_ik
             src/basic_kin.cpp
             src/constrained_ik.cpp
             src/constraint.cpp
-            src/constraint_group.cpp
+            src/solver_state.cpp
+            src/enum_types.cpp
+            src/collision_robot_fcl_detailed.cpp
             src/constraints/avoid_joint_limits.cpp
+            src/constraint_group.cpp
             src/constraints/goal_orientation.cpp
             src/constraints/goal_position.cpp
             src/constraints/tool_position.cpp
@@ -73,14 +83,24 @@ add_library(constrained_ik
             src/constraints/goal_zero_jvel.cpp
             src/constraints/avoid_singularities.cpp
             src/constraints/joint_vel_limits.cpp
-            src/solver_state.cpp
+            src/constraints/avoid_obstacles.cpp
 )
+
 target_link_libraries(constrained_ik ${catkin_LIBRARIES})
 
-add_library(constrained_ik_plugin 
-            src/constrained_ik_plugin.cpp
+add_dependencies(constrained_ik ${PROJECT_NAME}_gencfg)
+
+add_library(constrained_ik_plugin
+            src/moveit_interface/constrained_ik_plugin.cpp
 )
 target_link_libraries(constrained_ik_plugin constrained_ik ${catkin_LIBRARIES})
+
+add_library(moveit_clik_planner_plugin
+            src/moveit_interface/constrained_ik_planner_plugin.cpp
+            src/moveit_interface/joint_interpolation_planner.cpp
+            src/moveit_interface/cartesian_planner.cpp)
+
+target_link_libraries(moveit_clik_planner_plugin constrained_ik ${catkin_LIBRARIES})
 
 ## Declare a cpp executable
 # add_executable(constrained_ik_node src/constrained_ik_node.cpp)
@@ -111,11 +131,11 @@ target_link_libraries(constrained_ik_plugin constrained_ik ${catkin_LIBRARIES})
 # )
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN ".svn" EXCLUDE
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
@@ -129,8 +149,18 @@ target_link_libraries(constrained_ik_plugin constrained_ik ${catkin_LIBRARIES})
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(test_BasicKin test/test_BasicKin.cpp WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
-target_link_libraries(test_BasicKin constrained_ik)
+if(CATKIN_ENABLE_TESTING)
+  find_package(rostest REQUIRED)
 
-catkin_add_gtest(test_BasicIK test/test_BasicIK.cpp WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
-target_link_libraries(test_BasicIK constrained_ik)
+  add_rostest_gtest(test_basic_kin test/test_basic_kin.launch test/test_BasicKin.cpp )
+  target_link_libraries(test_basic_kin constrained_ik)
+
+  add_rostest_gtest(test_basic_ik test/test_basic_ik.launch test/test_BasicIK.cpp )
+  target_link_libraries(test_basic_ik constrained_ik)
+
+  add_rostest_gtest(test_constrained_ik
+    test/test_constrained_ik.launch
+    test/test_constrained_ik.cpp )
+  target_link_libraries(test_constrained_ik constrained_ik)
+endif()
+

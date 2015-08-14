@@ -1,0 +1,34 @@
+animate_path: false
+animate_endeffector: true
+animate_endeffector_segment: R_PALM
+trajectory_duration: 6.0
+trajectory_discretization: 0.06
+max_iterations: 100
+max_iterations_after_collision_free: 20
+smoothness_cost_velocity: 0.0
+smoothness_cost_acceleration: 1.0
+smoothness_cost_jerk: 0.1
+ridge_factor: 0.000001
+smoothness_cost_weight: 0.0001
+constraint_cost_weight: 0.0
+torque_cost_weight: 0.0
+state_validity_cost_weight: 20.0
+endeffector_velocity_cost_weight: 4.0
+ignore_state_validity_percent: 10.0
+
+use_cumulative_costs: false
+num_rollouts: 10
+num_reused_rollouts: 5
+#noise_stddev: [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
+#noise_stddev: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+noise_stddev: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+#noise_stddev: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+#noise_stddev: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+#noise_stddev: [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
+#noise_stddev: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
+#noise_decay: [0.995, 0.995, 0.995, 0.995, 0.995, 0.995, 0.995]
+#noise_decay: [0.995, 0.995, 0.995, 0.995, 0.995, 0.995, 0.995]
+noise_decay: [0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999]
+#noise_decay: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+num_time_steps: 99
+write_to_file: false

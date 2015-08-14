@@ -1,28 +1,35 @@
-/*
- * Software License Agreement (Apache License)
+/**
+ * @file constraint.h
+ * @brief Base class for IK-solver Constraints
+ * Specify relationship between joint velocities and constraint "error"
+ * @author dsolomon
+ * @date Sep 15, 2013
+ * @version TODO
+ * @bug No known bugs
  *
- * Copyright (c) 2013, Southwest Research Institute
+ * @copyright Copyright (c) 2013, Southwest Research Institute
  *
+ * @license Software License Agreement (Apache License)\n
+ * \n
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * You may obtain a copy of the License at\n
+ * \n
+ * http://www.apache.org/licenses/LICENSE-2.0\n
+ * \n
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-
 #ifndef CONSTRAINT_H
 #define CONSTRAINT_H
 
 #include "solver_state.h"
 #include <boost/scoped_ptr.hpp>
 #include <Eigen/Core>
+#include <constrained_ik/constraint_results.h>
 
 namespace constrained_ik
 {
@@ -31,49 +38,62 @@ namespace constrained_ik
 class Constrained_IK;
 
 /**
- * \brief Base class for IK-solver Constraints
- *          - specify relationship between joint velocities and constraint "error"
+ * @brief Base class for IK-solver Constraints
+ * Specify relationship between joint velocities and constraint "error"
  */
 class Constraint
 {
 public:
-  Constraint() : initialized_(false), debug_(false) {};
-  virtual ~Constraint() {};
+  /**
+   * @brief This structure is to be used by all constraints to store specific data
+   * that needs to get updated every iteration of the solver.
+   */
+  struct ConstraintData
+  {
+    /**
+     * @brief This is a copy of the current state of the parent solver
+     */
+    SolverState state_;
 
-  static void appendError(Eigen::VectorXd &error, const Eigen::VectorXd &addErr);
+    /**
+     * @brief The constructure class which should be called by the inheriting structure.
+     * @param The current state of the solver.
+     */
+    ConstraintData(const constrained_ik::SolverState &state) { state_ = state; }
+  };
 
-  static void appendJacobian(Eigen::MatrixXd &jacobian, const Eigen::MatrixXd &addJacobian);
+  Constraint() : initialized_(false), debug_(false) {}
+  virtual ~Constraint() {}
 
-  virtual Eigen::VectorXd calcError() = 0;
+  /**
+   * @brief Pure definition for calculating constraint error, jacobian & status
+   * @param state, The state of the current solver.
+   * @return ConstraintResults
+   */
+  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const = 0;
 
-  virtual Eigen::MatrixXd calcJacobian() = 0;
+  /**
+   * @brief Initialize constraint, Should be called by any inheriting classes
+   * @param ik, Pointer to Constrained_IK
+   */
+  virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik;}
 
-  virtual bool checkStatus() const { return false; }
-
-  virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik; }
-
-  virtual void reset() { };
-
-  /**@brief set debug mode
+  /**
+   * @brief set debug mode
    * @param debug Value to set debug_ to (defaults to true)
    */
-  void setDebug(bool debug = true) {debug_= debug;};
-
-  virtual void update(const SolverState &state) { state_ = state; }
-
-  virtual void updateError(Eigen::VectorXd &error);
-
-  virtual void updateJacobian(Eigen::MatrixXd &jacobian);
+  void setDebug(bool debug = true) {debug_= debug;}
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
   bool initialized_;
   bool debug_;
-  const Constrained_IK* ik_;
-  SolverState state_;
 
-  int numJoints();
+  const Constrained_IK* ik_;
+
+  int numJoints() const;
+
 }; // class Constraint
 
 

@@ -1,22 +1,27 @@
-/*
- * Software License Agreement (Apache License)
- *
- * Copyright (c) 2013, Southwest Research Institute
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-
+/**
+* @file test_ik.h
+* @brief Test ik solver for debugging and testing new constraints.
+* @author dsolomon
+* @date Sep 23, 2013
+* @version TODO
+* @bug No known bugs
+*
+* @copyright Copyright (c) 2013, Southwest Research Institute
+*
+* @license Software License Agreement (Apache License)\n
+* \n
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at\n
+* \n
+* http://www.apache.org/licenses/LICENSE-2.0\n
+* \n
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 #ifndef TEST_IK_H
 #define TEST_IK_H
 
@@ -29,6 +34,7 @@
 #include "constrained_ik/constraints/goal_zero_jvel.h"
 #include "constrained_ik/constraints/avoid_singularities.h"
 #include "constrained_ik/constraints/joint_vel_limits.h"
+#include "constrained_ik/enum_types.h"
 
 namespace constrained_ik
 {
@@ -38,7 +44,7 @@ namespace test_ik
 class Test_IK : public Constrained_IK
 {
 public:
-  Test_IK():  position_(new constraints::GoalPosition),
+  Test_IK(): Constrained_IK(), position_(new constraints::GoalPosition),
               orientation_(new constraints::GoalOrientation),
               tool_orientation_(new constraints::GoalToolOrientation),
               avoid_joint_limits_(new constraints::AvoidJointLimits),
@@ -47,8 +53,8 @@ public:
               avoid_singularities_(new constraints::AvoidSingularities),
               vel_limits_(new constraints::JointVelLimits)
   {
-    addConstraint(position_);
-    addConstraint(orientation_);
+    addConstraint(position_, constraint_types::Primary);
+    addConstraint(orientation_, constraint_types::Primary);
 //    addConstraint(tool_orientation_);
     Eigen::Vector3d w_ori;
     w_ori << 1,0.1,1;
@@ -59,7 +65,7 @@ public:
 //    addConstraint(avoid_joint_limits_);
 //    avoid_joint_limits_->setWeight(.25);
 
-    addConstraint(min_change_);
+    addConstraint(min_change_, constraint_types::Primary);
     min_change_->setWeight(.3);
 
     //    addConstraint(zero_vel_);
@@ -68,10 +74,10 @@ public:
 //    addConstraint(avoid_singularities_);
 //    avoid_singularities_->setWeight(0.25);
 
-    addConstraint(vel_limits_);
+    addConstraint(vel_limits_, constraint_types::Primary);
     vel_limits_->setWeight(.75);
   }
-  ~Test_IK() {};
+  ~Test_IK() {}
 
 protected:
 
