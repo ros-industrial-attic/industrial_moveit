@@ -273,9 +273,9 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 
   ros::Time start = ros::Time::now();
   stomp_->initialize(node_handle_, stomp_task);
-  ROS_DEBUG_STREAM("STOMP optimization started");
+  ROS_DEBUG_STREAM("STOMP planning started");
   bool success = stomp_->runUntilValid(DEFAULT_MAX_ITERATIONS,DEFAULT_ITERATIONS_AFTER_COLLISION_FREE);
-  ROS_DEBUG_STREAM("STOMP optimization completed");
+  ROS_DEBUG_STREAM("STOMP planning " <<(success ? "completed" : "failed"));
 
   std::vector<Eigen::VectorXd> best_params;
   double best_cost;
@@ -283,16 +283,17 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   stomp_task->publishResultsMarkers(best_params);
   trajectory_msgs::JointTrajectory trajectory;
 
-  res.description_.resize(1);
-  res.description_[0] = getDescription();
-  res.processing_time_.resize(1);
-  ros::WallDuration wd = ros::WallTime::now() - start_time;
-  res.processing_time_[0] = ros::Duration(wd.sec, wd.nsec).toSec();
 
   if(success)
   {
     if(stomp_task->parametersToJointTrajectory(best_params, trajectory))
     {
+
+      res.description_.resize(1);
+      res.description_[0] = getDescription();
+      res.processing_time_.resize(1);
+      ros::WallDuration wd = ros::WallTime::now() - start_time;
+      res.processing_time_[0] = ros::Duration(wd.sec, wd.nsec).toSec();
       moveit::core::RobotState robot_state(planning_scene_->getRobotModel());
       res.trajectory_.resize(1,robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(
           kinematic_model_,request_.group_name)));
@@ -302,14 +303,21 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     }
     else
     {
-      res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
+
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
       success = false;
-      ROS_INFO_STREAM("STOMP returned an invalid motion plan");
+      ROS_ERROR_STREAM("STOMP returned an invalid motion plan");
     }
   }
   else
   {
-    ROS_WARN("STOMP failed to find a collision-free plan");
+
+    res.description_.resize(1);
+    res.description_[0] = getDescription();
+    res.processing_time_.resize(1);
+    ros::WallDuration wd = ros::WallTime::now() - start_time;
+    res.processing_time_[0] = ros::Duration(wd.sec, wd.nsec).toSec();
+    ROS_ERROR("STOMP failed to find a collision-free plan");
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
   }
 
