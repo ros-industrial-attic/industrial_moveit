@@ -64,9 +64,11 @@ namespace constrained_ik
     void dynamicReconfigureCallback(ConstrainedIKPlannerDynamicReconfigureConfig &config, uint32_t level);
 
   protected:
+    typedef dynamic_reconfigure::Server<ConstrainedIKPlannerDynamicReconfigureConfig> DynReconfigServer;
+
     ros::NodeHandle nh_;
     ConstrainedIKPlannerDynamicReconfigureConfig config_;
-    boost::scoped_ptr<dynamic_reconfigure::Server<ConstrainedIKPlannerDynamicReconfigureConfig> > dynamic_reconfigure_server_;
+    boost::scoped_ptr<DynReconfigServer> dynamic_reconfigure_server_;
     boost::recursive_mutex mutex_;
 
     /** Containes all the availble CLIK planners */
