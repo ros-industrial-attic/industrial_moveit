@@ -182,7 +182,6 @@ namespace constrained_ik
           {
             for (int32_t j = 0; j < ksolver_ik_links.size(); ++j)
             {
-              ROS_ASSERT(ksolver_ik_links[j].getType() == XmlRpc::XmlRpcValue::TypeString);
               ROS_DEBUG_STREAM_NAMED("kinematics_plugin_loader","found tip " << static_cast<std::string>(ksolver_ik_links[j]) << " for group " << known_groups[i].name_ );
               iksolver_to_tip_links_[known_groups[i].name_].push_back( static_cast<std::string>(ksolver_ik_links[j]) );
             }
