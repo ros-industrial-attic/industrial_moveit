@@ -389,7 +389,7 @@ namespace constrained_ik
     ROS_DEBUG_NAMED("clik", "Setting Position roll  from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(2),goal_pose.rotation().eulerAngles(3,2,1)(2));
 
     // Generate Interpolated Cartesian Poses
-    std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > poses = interpolateCartesian(start_pose, goal_pose, config_.cartesian_discretization_step);
+    std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > poses = interpolateCartesian(start_pose, goal_pose, config_.translational_discretization_step, config_.orientational_discretization_step);
 
     // Generate Cartesian Trajectory
     int steps = poses.size();
@@ -435,17 +435,23 @@ namespace constrained_ik
   std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> >
   CartesianPlanner::interpolateCartesian(const Eigen::Affine3d& start,
                                             const Eigen::Affine3d& stop,
-                                            double ds) const
+                                            double ds, double dt) const
   {
     // Required position change
-    Eigen::Vector3d delta = (stop.translation() - start.translation());
+    Eigen::Vector3d delta_translation = (stop.translation() - start.translation());
     Eigen::Vector3d start_pos = start.translation();
+    Eigen::Affine3d stop_prime = start.inverse()*stop; //This the stop pose represented in the start pose coordinate system
+    Eigen::AngleAxisd delta_rotation(stop_prime.rotation());
+    //delta_rotation.fromRotationMatrix(stop_prime.rotation())
+
 
     // Calculate number of steps
-    unsigned steps = static_cast<unsigned>(delta.norm() / ds) + 1;
+    unsigned steps_translation = static_cast<unsigned>(delta_translation.norm() / ds) + 1;
+    unsigned steps_rotation = static_cast<unsigned>(delta_rotation.angle() / dt) + 1;
+    unsigned steps = std::max(steps_translation, steps_rotation);
 
     // Step size
-    Eigen::Vector3d step = delta / steps;
+    Eigen::Vector3d step = delta_translation / steps;
 
     // Orientation interpolation
     Eigen::Quaterniond start_q (start.rotation());
