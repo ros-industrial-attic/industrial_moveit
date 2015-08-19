@@ -107,7 +107,7 @@ namespace constrained_ik
     start_state.interpolate(goal_state, 0.1, *mid_state);
     mid_state->copyJointGroupPositions(request_.group_name, jv_step);
     delta = (jv_step - jv_start).cwiseAbs();
-    dt = params_.getJointDiscretizationStep()*(0.1/delta.maxCoeff());
+    dt = config_.joint_discretization_step*(0.1/delta.maxCoeff());
 
     // Generate Path
     int steps = (1.0/dt) + 1;

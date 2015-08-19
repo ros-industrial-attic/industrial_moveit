@@ -36,8 +36,11 @@ namespace constrained_ik
       nh_ = ros::NodeHandle(ns);
 
     // Create map of planners
-    planners_.insert(std::make_pair(JOINT_INTERP_PLANNER, new JointInterpolationPlanner("", "")));
-    planners_.insert(std::make_pair(CARTESIAN_PLANNER, new CartesianPlanner("", "")));
+    planners_.insert(std::make_pair(JOINT_INTERP_PLANNER, new JointInterpolationPlanner(JOINT_INTERP_PLANNER, "")));
+    planners_.insert(std::make_pair(CARTESIAN_PLANNER, new CartesianPlanner(CARTESIAN_PLANNER, "")));
+
+    dynamic_reconfigure_server_.reset(new DynReconfigServer(mutex_, ros::NodeHandle(nh_, "constrained_ik_planner")));
+    dynamic_reconfigure_server_->setCallback(boost::bind(&CLIKPlannerManager::dynamicReconfigureCallback, this, _1, _2));
 
     return true;
   }
@@ -77,9 +80,6 @@ namespace constrained_ik
       return planning_interface::PlanningContextPtr();
     }
 
-    // Load Parameters from ROS Parameter Server
-    CLIKParameters params = loadParameters();
-
     // Get planner
     std::map<std::string, constrained_ik::CLIKPlanningContextPtr>::const_iterator it = planners_.find(req.planner_id);
     if (it != planners_.end())
@@ -95,10 +95,22 @@ namespace constrained_ik
     planner->clear();
     planner->setPlanningScene(planning_scene);
     planner->setMotionPlanRequest(req);
-    planner->setParameters(params);
 
     // Return Planner
     return planner;
   }
+
+  void CLIKPlannerManager::dynamicReconfigureCallback(ConstrainedIKPlannerDynamicReconfigureConfig &config, uint32_t level)
+  {
+    typedef std::map< std::string, constrained_ik::CLIKPlanningContextPtr>::const_iterator it_type;
+
+    config_ = config;
+    for (it_type it = planners_.begin(); it != planners_.end(); it++)
+    {
+      it->second->setConfiguration(config_);
+    }
+
+  }
+
 } //namespace constrained_ik
 CLASS_LOADER_REGISTER_CLASS(constrained_ik::CLIKPlannerManager, planning_interface::PlannerManager)
