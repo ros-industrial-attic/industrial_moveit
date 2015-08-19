@@ -444,7 +444,7 @@ bool StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen:
 
   if(parameters.empty() || (parameters.size() != num_dimensions_) ||(parameters.front().size() != num_time_steps_) )
   {
-    ROS_WARN_STREAM("Parameters contain no data, JointTrajectory message will not be created");
+    ROS_ERROR_STREAM("Parameters contain no data, JointTrajectory message will not be created");
     return false;
   }
 
