@@ -28,7 +28,7 @@
       <material name="yellow">
        <color rgba="1.0 1.0 0 1.0"/>
       </material>
-    </collision>    
+    </collision>   
   </link>
 
 

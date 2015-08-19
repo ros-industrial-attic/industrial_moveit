@@ -43,6 +43,8 @@
 #include <stomp/stomp.h>
 #include <boost/filesystem.hpp>
 
+const double BEST_COST_THRESHOLD = 0.01;
+
 namespace stomp
 {
 
@@ -211,7 +213,7 @@ bool STOMP::doNoiselessRollout(int iteration_number)
   bool validity = false;
   STOMP_VERIFY(task_->execute(parameters_, parameters_, tmp_rollout_cost_[0], tmp_rollout_weighted_features_[0], iteration_number,
                             -1, 0, false, gradients, validity));
-  double total_cost;
+  double total_cost = 0;
   policy_improvement_.setNoiselessRolloutCosts(tmp_rollout_cost_[0], total_cost);
 
   ROS_DEBUG_STREAM("Noiseless cost : "<< total_cost<<", best noiseless cost: "<<best_noiseless_cost_);
@@ -302,6 +304,7 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
   unsigned int num_iterations = 0;
   bool success = false;
   proceed(true);
+  best_noiseless_cost_ = std::numeric_limits<double>::max();
   for (int i=0; i<max_iterations; ++i)
   {
     if(!getProceed())
@@ -319,12 +322,19 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
       collision_free_iterations++;
     }
 
+    num_iterations++;
+
+    if(best_noiseless_cost_ < BEST_COST_THRESHOLD)
+    {
+      ROS_DEBUG_STREAM("Best noiseless cost reached minimum required threshold of "<<BEST_COST_THRESHOLD <<
+                       ", exiting");
+      break;
+    }
+
     if (collision_free_iterations>=iterations_after_collision_free)
     {
       break;
     }
-
-    num_iterations++;
   }
 
 

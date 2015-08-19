@@ -16,7 +16,7 @@ collision_space:
   origin_y: 0.0 
   origin_z: 2.0 
   resolution: 0.05  
-  collision_tolerance: 0.01
+  collision_tolerance: 0.04
   max_propagation_distance: 0.1
 
 # Stomp Planner solve()
