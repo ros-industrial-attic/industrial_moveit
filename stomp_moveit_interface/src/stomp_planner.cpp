@@ -14,8 +14,6 @@
 namespace stomp_moveit_interface
 {
 
-const static int DEFAULT_MAX_ITERATIONS = 100;
-const static int DEFAULT_ITERATIONS_AFTER_COLLISION_FREE = 20 ;
 const static double DEFAULT_CONTROL_COST_WEIGHT = 0.001;
 const static double DEFAULT_SCALE = 1.0;
 const static double DEFAULT_PADDING = 0.05f;
@@ -216,15 +214,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   boost::shared_ptr<const collision_detection::CollisionRobot> collision_robot = planning_scene_->getCollisionRobot();
   boost::shared_ptr<const collision_detection::CollisionWorld> collision_world = planning_scene_->getCollisionWorld();
 
-  // check for termination
-  if(!stomp_->getProceed())
-  {
-    res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
-    res.trajectory_.resize(1);
-    setSolving(false);
-    return false;
-  }
-
   if(planning_scene_)
   {
     updateCollisionModels(planning_scene_);
@@ -232,15 +221,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   else
   {
     ROS_DEBUG_STREAM("Planning scene not set skipping update of collision models");
-  }
-
-  // check for termination
-  if(!stomp_->getProceed())
-  {
-    res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
-    res.trajectory_.resize(1);
-    setSolving(false);
-    return false;
   }
 
   // optimization task setup
@@ -262,26 +242,14 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   stomp_task->setMotionPlanRequest(planning_scene_, request_);
 
 
-  // check for termination
-  if(!stomp_->getProceed())
-  {
-    res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
-    res.trajectory_.resize(1);
-    setSolving(false);
-    return false;
-  }
-
   ros::Time start = ros::Time::now();
-  stomp_->initialize(node_handle_, stomp_task);
-  ROS_DEBUG_STREAM("STOMP planning started");
-  bool success = stomp_->runUntilValid(DEFAULT_MAX_ITERATIONS,DEFAULT_ITERATIONS_AFTER_COLLISION_FREE);
-  ROS_DEBUG_STREAM("STOMP planning " <<(success ? "completed" : "failed"));
-
-  std::vector<Eigen::VectorXd> best_params;
-  double best_cost;
-  stomp_->getBestNoiselessParameters(best_params, best_cost);
-  stomp_task->publishResultsMarkers(best_params);
-  trajectory_msgs::JointTrajectory trajectory;
+  bool success = false;
+  if(stomp_->initialize(node_handle_, stomp_task))
+  {
+    ROS_DEBUG_STREAM("STOMP planning started");
+    success = stomp_->runUntilValid();
+    ROS_DEBUG_STREAM("STOMP planning " <<(success ? "completed" : "failed"));
+  }
 
   res.description_.resize(1);
   res.description_[0] = getDescription();
@@ -292,8 +260,14 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 
   if(success)
   {
+    std::vector<Eigen::VectorXd> best_params;
+    double best_cost;
+    stomp_->getBestNoiselessParameters(best_params, best_cost);
+    trajectory_msgs::JointTrajectory trajectory;
+
     if(stomp_task->parametersToJointTrajectory(best_params, trajectory))
     {
+      stomp_task->publishResultsMarkers(best_params);
 
       moveit::core::RobotState robot_state(planning_scene_->getRobotModel());
       res.trajectory_.resize(1);
