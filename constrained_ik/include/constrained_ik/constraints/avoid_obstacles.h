@@ -48,6 +48,7 @@ class AvoidObstacles: public Constraint
 protected:
   struct LinkAvoidance
   {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     LinkAvoidance(std::string link_name);
     LinkAvoidance() {}
     virtual ~LinkAvoidance()
@@ -87,8 +88,10 @@ protected:
     }
   }
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   struct AvoidObstaclesData: public ConstraintData
   {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     const constraints::AvoidObstacles* parent_;
     CollisionRobotFCLDetailed::DistanceDetailedMap distance_map_;
     CollisionRobotFCLDetailed::DistanceInfoMap distance_info_map_;
@@ -212,7 +215,6 @@ public:
     if(getLinkData(link_name, link))
       link.amplitude_ = amplitude;
   }
-
 };
 
 } /* namespace constraints */

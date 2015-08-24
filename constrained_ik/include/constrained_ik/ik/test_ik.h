@@ -89,6 +89,7 @@ protected:
   constraints::GoalZeroJVel* zero_vel_;
   constraints::AvoidSingularities* avoid_singularities_;
   constraints::JointVelLimits* vel_limits_;
+
 }; // class Test_IK
 
 } // namespace test_ik

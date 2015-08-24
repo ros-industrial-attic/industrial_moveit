@@ -44,6 +44,8 @@ namespace constrained_ik
   class CLIKPlannerManager : public planning_interface::PlannerManager
   {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     CLIKPlannerManager() : planning_interface::PlannerManager(),
                            nh_("~")
     {

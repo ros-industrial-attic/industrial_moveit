@@ -44,8 +44,10 @@ namespace constraints
 class AvoidSingularities: public Constraint
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   struct AvoidSingularitiesData: public ConstraintData
   {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     const constraints::AvoidSingularities* parent_;
     bool avoidance_enabled_;
     double smallest_sv_;

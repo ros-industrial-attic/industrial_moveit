@@ -53,6 +53,8 @@ namespace basic_kin
 class BasicKin
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   BasicKin() :
     initialized_(false),
     group_(NULL)
@@ -284,8 +286,6 @@ private:
    */
   static void KDLToEigen(const KDL::Jacobian &jacobian, Eigen::MatrixXd &matrix);
 
- public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 }; // class BasicKin
 
 } // namespace basic_kin

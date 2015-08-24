@@ -39,6 +39,8 @@ namespace constrained_ik
   class ConstrainedIKPlugin: public kinematics::KinematicsBase
   {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     ConstrainedIKPlugin();
 
     bool isActive();

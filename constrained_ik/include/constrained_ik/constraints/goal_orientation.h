@@ -37,8 +37,10 @@ namespace constraints
 class GoalOrientation : public Constraint
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   struct GoalOrientationData: public ConstraintData
   {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     double rot_err_;      /**< @brief current solution error */
 
     GoalOrientationData(const constrained_ik::SolverState &state);
@@ -111,9 +113,6 @@ public:
 protected:
   double rot_err_tol_;  /**< @brief termination criteria */
   Eigen::Vector3d weight_;    /**< @brief weight for each direction */
-
-public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 }; // class GoalOrientation
 

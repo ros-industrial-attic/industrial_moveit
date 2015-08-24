@@ -48,7 +48,7 @@ public:
     w_ori << 1,1,1;
     goal_pose_->setWeightOrientation(w_ori);
   }
-  ~Basic_IK() {};
+  ~Basic_IK() {}
 
 protected:
 
