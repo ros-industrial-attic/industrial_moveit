@@ -85,11 +85,12 @@ namespace constrained_ik
      * @brief Preform position and orientation interpolation between start and stop.
      * @param start begining pose of trajectory
      * @param stop end pose of trajectory
-     * @param ds max catesian interpolation step
+     * @param ds max cartesian translation interpolation step
+     * @param dt max cartesian orientation interpolation step
      * @return std::vector<Eigen::Affine3d>
      */
     std::vector<Eigen::Affine3d,Eigen::aligned_allocator<Eigen::Affine3d> >
-    interpolateCartesian(const Eigen::Affine3d& start, const Eigen::Affine3d& stop, double ds) const;
+    interpolateCartesian(const Eigen::Affine3d& start, const Eigen::Affine3d& stop, double ds, double dt) const;
 
     bool initialized_;
     boost::atomic<bool> terminate_;
