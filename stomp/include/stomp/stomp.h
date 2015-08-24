@@ -73,6 +73,7 @@ public:
     void getAdaptedStddevs(std::vector<double>& stddevs);
     void getBestNoiselessParameters(std::vector<Eigen::VectorXd>& parameters, double& cost);
 
+    bool runUntilValid();
     bool runUntilValid(int max_iterations, int iterations_after_collision_free);
     void setCostCumulation(bool use_cumulative_costs);
 
@@ -93,6 +94,8 @@ private:
     int num_rollouts_per_iteration_;
     int num_time_steps_;
     int num_dimensions_;
+    int max_iterations_;
+    int max_iterations_after_collision_free_;
 
     bool write_to_file_;
     bool use_noise_adaptation_;

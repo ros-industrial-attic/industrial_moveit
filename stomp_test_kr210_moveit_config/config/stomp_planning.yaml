@@ -1,28 +1,28 @@
-# Stomp Optimization Task
+# Optimization Task
 num_feature_basis_functions: 1
 trajectory_duration: 4.0
-num_time_steps: 50
+num_time_steps: 100
 publish_trajectory_markers: False
 publish_best_trajectory_marker: True
 publish_distance_field_marker: False
 publish_collision_model_markers: True
 
-# Stomp Planner init()
+# Collision Space
 collision_space:
-  size_x: 4.0 # The X dimension in meters of the volume to represent
-  size_y: 4.0 # The Y dimension in meters of the volume to represent
-  size_z: 4.0 # The Z dimension in meters of the volume to represent
+  size_x: 6.0 # The X dimension in meters of the volume to represent
+  size_y: 6.0 # The Y dimension in meters of the volume to represent
+  size_z: 8.0 # The Z dimension in meters of the volume to represent
   origin_x: 0.0 
   origin_y: 0.0 
-  origin_z: 2.0 
-  resolution: 0.05
-  collision_tolerance: 0.05
+  origin_z: 4.0 
+  resolution: 0.05  
+  collision_tolerance: 0.04
   max_propagation_distance: 0.1
 
-# Stomp Planner solve()
+# STOMP 
+max_iterations: 100
+max_iterations_after_collision_free: 40
 max_rollouts: 100
-
-# Unknown
 min_rollouts: 20
 num_rollouts_per_iteration: 50
 use_noise_adaptation: true
@@ -32,9 +32,9 @@ use_noise_adaptation: true
 #noise_stddev: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
 #noise_min_stddev: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
 
-noise_stddev: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
-noise_min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
-noise_decay:  [2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+noise_stddev: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+noise_min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
+noise_decay:  [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
 write_to_file: false
 use_openmp: false
 
@@ -42,5 +42,5 @@ features:
 -
   class: stomp_moveit_interface/CollisionFeature
   report_validity: false # report state validity based on distance field
-  collision_clearance: 0.2
+  collision_clearance: 0.1
   debug_collisions: false

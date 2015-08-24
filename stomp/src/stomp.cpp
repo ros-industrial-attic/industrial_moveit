@@ -43,6 +43,8 @@
 #include <stomp/stomp.h>
 #include <boost/filesystem.hpp>
 
+const double BEST_COST_THRESHOLD = 0.01;
+
 namespace stomp
 {
 
@@ -59,21 +61,36 @@ STOMP::~STOMP()
 bool STOMP::initialize(const ros::NodeHandle& node_handle, boost::shared_ptr<stomp::Task> task)
 {
   node_handle_ = node_handle;
-  STOMP_VERIFY(readParameters());
+  if(!readParameters())
+  {
+    return false;
+  }
 
   task_ = task;
-  STOMP_VERIFY(task_->getPolicy(policy_));
-  STOMP_VERIFY(policy_->getNumTimeSteps(num_time_steps_));
+  if(!task_->getPolicy(policy_))
+  {
+    ROS_ERROR_STREAM("STOMP Policy instance could not be retrieved from assigned task instance.");
+    return false;
+  }
+
+  policy_->getNumTimeSteps(num_time_steps_);
   control_cost_weight_ = task_->getControlCostWeight();
+  policy_->getNumDimensions(num_dimensions_);
+  if((num_dimensions_ > static_cast<int>(noise_decay_.size())) ||
+      (num_dimensions_ > static_cast<int>(noise_stddev_.size())) ||
+      (num_dimensions_ > static_cast<int>(noise_min_stddev_.size())))
+  {
+    ROS_ERROR_STREAM("Number of dimension "<<num_dimensions_<<
+                     "is greater than the number of noise stddev coefficients");
+    return false;
+  }
 
-  STOMP_VERIFY(policy_->getNumDimensions(num_dimensions_));
-  ROS_ASSERT(num_dimensions_ == static_cast<int>(noise_decay_.size()));
-  ROS_ASSERT(num_dimensions_ == static_cast<int>(noise_stddev_.size()));
-  ROS_ASSERT(num_dimensions_ == static_cast<int>(noise_min_stddev_.size()));
-  //    ROS_INFO("Learning policy with %i dimensions.", num_dimensions_);
-
-  policy_improvement_.initialize(num_time_steps_, min_rollouts_, max_rollouts_, num_rollouts_per_iteration_,
-                                 policy_, use_noise_adaptation_, noise_min_stddev_);
+  if(!policy_improvement_.initialize(num_time_steps_, min_rollouts_, max_rollouts_, num_rollouts_per_iteration_,
+                                 policy_, use_noise_adaptation_, noise_min_stddev_))
+  {
+    ROS_ERROR_STREAM("STOMP policy improvement initialization failed");
+    return false;
+  }
 
   rollout_costs_ = Eigen::MatrixXd::Zero(max_rollouts_, num_time_steps_);
 
@@ -97,13 +114,22 @@ bool STOMP::initialize(const ros::NodeHandle& node_handle, boost::shared_ptr<sto
 
 bool STOMP::readParameters()
 {
-  STOMP_VERIFY(node_handle_.getParam("min_rollouts", min_rollouts_));
-  STOMP_VERIFY(node_handle_.getParam("max_rollouts", max_rollouts_));
-  STOMP_VERIFY(node_handle_.getParam("num_rollouts_per_iteration", num_rollouts_per_iteration_));
-  STOMP_VERIFY(readDoubleArray(node_handle_, "noise_stddev", noise_stddev_));
-  STOMP_VERIFY(readDoubleArray(node_handle_, "noise_decay", noise_decay_));
-  STOMP_VERIFY(readDoubleArray(node_handle_, "noise_min_stddev", noise_min_stddev_));
-  node_handle_.param("write_to_file", write_to_file_, true); // defaults are sometimes good!
+  if(!( node_handle_.getParam("min_rollouts", min_rollouts_) &&
+      node_handle_.getParam("max_rollouts", max_rollouts_) &&
+      node_handle_.getParam("num_rollouts_per_iteration", num_rollouts_per_iteration_) &&
+      node_handle_.getParam("noise_stddev", noise_stddev_) &&
+      node_handle_.getParam("noise_decay", noise_decay_) &&
+      node_handle_.getParam("noise_min_stddev", noise_min_stddev_) &&
+      node_handle_.getParam("max_iterations",max_iterations_) &&
+      node_handle_.getParam("max_iterations_after_collision_free",max_iterations_after_collision_free_))
+      )
+  {
+    ROS_ERROR_STREAM("One or more STOMP required parameters were not found in the parameter server");
+    return false;
+  }
+
+
+  node_handle_.param("write_to_file", write_to_file_, false);
   node_handle_.param("use_noise_adaptation", use_noise_adaptation_, true);
   node_handle_.param("use_openmp", use_openmp_, false);
   return true;
@@ -211,7 +237,7 @@ bool STOMP::doNoiselessRollout(int iteration_number)
   bool validity = false;
   STOMP_VERIFY(task_->execute(parameters_, parameters_, tmp_rollout_cost_[0], tmp_rollout_weighted_features_[0], iteration_number,
                             -1, 0, false, gradients, validity));
-  double total_cost;
+  double total_cost = 0;
   policy_improvement_.setNoiselessRolloutCosts(tmp_rollout_cost_[0], total_cost);
 
   ROS_DEBUG_STREAM("Noiseless cost : "<< total_cost<<", best noiseless cost: "<<best_noiseless_cost_);
@@ -296,13 +322,19 @@ void STOMP::proceed(bool proceed)
 
 }
 
+bool STOMP::runUntilValid()
+{
+  return runUntilValid(max_iterations_,max_iterations_after_collision_free_);
+}
+
 bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_free)
 {
   int collision_free_iterations = 0;
   unsigned int num_iterations = 0;
   bool success = false;
   proceed(true);
-  for (int i=0; i<max_iterations; ++i)
+  best_noiseless_cost_ = std::numeric_limits<double>::max();
+  for (int i=0; i<max_iterations_; ++i)
   {
     if(!getProceed())
     {
@@ -319,12 +351,19 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
       collision_free_iterations++;
     }
 
-    if (collision_free_iterations>=iterations_after_collision_free)
+    num_iterations++;
+
+    if(best_noiseless_cost_ < BEST_COST_THRESHOLD)
     {
+      ROS_DEBUG_STREAM("Best noiseless cost reached minimum required threshold of "<<BEST_COST_THRESHOLD <<
+                       ", exiting");
       break;
     }
 
-    num_iterations++;
+    if (collision_free_iterations>=max_iterations_after_collision_free_)
+    {
+      break;
+    }
   }
 
 

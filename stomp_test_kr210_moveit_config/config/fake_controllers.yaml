@@ -10,3 +10,12 @@ controller_list:
   - name: fake_eef_controller
     joints:
       []
+  - name: fake_manipulator_rail_controller
+    joints:
+      - rail_to_base
+      - joint_1
+      - joint_2
+      - joint_3
+      - joint_4
+      - joint_5
+      - joint_6
