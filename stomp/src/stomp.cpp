@@ -345,16 +345,22 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
 
     runSingleIteration(i);
     task_->onEveryIteration();
+    num_iterations++;
     if (last_noiseless_rollout_valid_)
     {
       success = true;
       collision_free_iterations++;
     }
+    else
+    {
+      success = false;
+      collision_free_iterations = 0;
+    }
 
-    num_iterations++;
 
     if(best_noiseless_cost_ < BEST_COST_THRESHOLD)
     {
+      success = true;
       ROS_DEBUG_STREAM("Best noiseless cost reached minimum required threshold of "<<BEST_COST_THRESHOLD <<
                        ", exiting");
       break;
