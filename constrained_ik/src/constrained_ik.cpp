@@ -164,7 +164,10 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     VectorXd dJoint_p = config_.primary_gain*(Ji_p*primary.error);
     dJoint_norm = dJoint_p.norm();
     if(config_.allow_primary_normalization && dJoint_norm > config_.primary_norm)// limit maximum update radian/meter
+    {
       dJoint_p = config_.primary_norm * (dJoint_p/dJoint_norm);
+      dJoint_norm = dJoint_p.norm();
+    }
     state.primary_sum += dJoint_norm;
 
     // Auxiliary Constraints
@@ -184,7 +187,10 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
           dJoint_a = config_.auxiliary_gain*Jnull_a*(auxiliary.error-auxiliary.jacobian*dJoint_p);
           dJoint_norm = dJoint_a.norm();
           if(config_.allow_auxiliary_nomalization && dJoint_norm > config_.auxiliary_norm)// limit maximum update radian/meter
+          {
             dJoint_a = config_.auxiliary_norm * (dJoint_a/dJoint_norm);
+            dJoint_norm = dJoint_a.norm();
+          }
           state.auxiliary_sum += dJoint_norm;
         }
       }
