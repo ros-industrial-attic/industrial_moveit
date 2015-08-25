@@ -31,7 +31,6 @@
 #define ENUM_TYPES_H
 #include <boost/assign/list_of.hpp>
 #include <map>
-#include <eigen3/Eigen/Eigen>
 
 namespace constrained_ik
 {
@@ -51,8 +50,6 @@ namespace constrained_ik
      */
     struct ConstraintType
     {
-      EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
       /**
        * @brief ConstraintType constructor
        * @param constraint_type, ConstraintTypes Enumerator value
