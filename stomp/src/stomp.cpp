@@ -233,10 +233,13 @@ bool STOMP::doNoiselessRollout(int iteration_number)
 {
   // get a noise-less rollout to check the cost
   std::vector<Eigen::VectorXd> gradients;
-  STOMP_VERIFY(policy_->getParameters(parameters_));
+  policy_->getParameters(parameters_);
   bool validity = false;
-  STOMP_VERIFY(task_->execute(parameters_, parameters_, tmp_rollout_cost_[0], tmp_rollout_weighted_features_[0], iteration_number,
-                            -1, 0, false, gradients, validity));
+  if(!task_->execute(parameters_, parameters_, tmp_rollout_cost_[0], tmp_rollout_weighted_features_[0], iteration_number,
+                            -1, 0, false, gradients, validity))
+  {
+    ROS_DEBUG_STREAM("STOMP Optimization Task failed to complete at the iteration "<<iteration_number);
+  }
   double total_cost = 0;
   policy_improvement_.setNoiselessRolloutCosts(tmp_rollout_cost_[0], total_cost);
 
@@ -278,7 +281,6 @@ bool STOMP::runSingleIteration(const int iteration_number)
     // store updated policy to disc
     ROS_DEBUG_STREAM(__FUNCTION__<< " writing policy to file");
     STOMP_VERIFY(writePolicy(iteration_number));
-    //STOMP_VERIFY(writePolicyImprovementStatistics(stats_msg));
   }
 
   return true;

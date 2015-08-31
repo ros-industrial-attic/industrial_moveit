@@ -7,8 +7,107 @@
 	<xacro:kuka_kr210l150 prefix=""/>
 
   <xacro:property name="rail_cross_section" value="0.1"/>
-
+  <xacro:property name="workcell_width" value="5.0"/>
+  <xacro:property name="workcell_length" value="8.0"/>
+  <xacro:property name="workcell_height" value="3.0"/>
+  <xacro:property name="workcell_thickness" value="0.01"/>
+  <xacro:property name="workcell_z" value="-0.1"/>
+  
   <link name="world"/>
+
+  <material name="workcell_material">
+   <color rgba="0.8 1.0 0.8 0.2"/>
+  </material>
+  <link name="workcell_bounds">
+
+    <!-- visual geometries -->
+    <!--<visual> --><!-- top -->
+    <!-- <origin xyz="0 0 ${workcell_height}"/>
+      <geometry>
+        <box size="${workcell_length} ${workcell_width} ${workcell_thickness}"/>
+      </geometry>
+      <material name="workcell_material"/>
+    </visual> -->
+    <visual><!-- right ( +x ) -->
+      <origin xyz="${0.5*workcell_length} 0 ${0.5*workcell_height}"/>
+      <geometry>
+        <box size="${workcell_thickness} ${workcell_width} ${workcell_height}"/>
+      </geometry>
+      <material name="workcell_material"/>
+    </visual>
+    <visual><!-- bottom -->
+      <material name="workcell_material"/>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <box size="${workcell_length} ${workcell_width} ${workcell_thickness}"/>
+      </geometry>
+    </visual>
+    <visual><!-- left ( -x ) -->
+      <origin xyz="${-0.5*workcell_length} 0 ${0.5*workcell_height}"/>
+      <geometry>
+        <box size="${workcell_thickness} ${workcell_width} ${workcell_height}"/>
+      </geometry>
+      <material name="workcell_material"/>
+    </visual>
+    <!--<visual>--> <!-- front ( +y ) -->
+      <!--<origin xyz="0 ${0.5*workcell_width} ${0.5*workcell_height}"/>
+      <geometry>
+        <box size="${workcell_length} ${workcell_thickness} ${workcell_height}"/>
+      </geometry>
+      <material name="workcell_material"/>
+    </visual>-->
+    <visual><!-- rear ( -y ) -->
+      <origin xyz="0 ${-0.5*workcell_width} ${0.5*workcell_height}"/>
+      <geometry>
+        <box size="${workcell_length} ${workcell_thickness} ${workcell_height}"/>
+      </geometry>
+      <material name="workcell_material"/>
+    </visual> 
+
+    <!-- collision geometries -->
+    <collision><!-- top -->
+      <origin xyz="0 0 ${workcell_height}"/>
+      <geometry>
+        <box size="${workcell_length} ${workcell_width} ${workcell_thickness}"/>
+      </geometry>
+      <material name="workcell_material"/>
+    </collision>
+    <collision><!-- right ( +x ) -->
+      <origin xyz="${0.5*workcell_length} 0 ${0.5*workcell_height}"/>
+      <geometry>
+        <box size="${workcell_thickness} ${workcell_width} ${workcell_height}"/>
+      </geometry>
+      <material name="workcell_material"/>
+    </collision>
+    <collision><!-- bottom -->
+      <material name="workcell_material"/>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <box size="${workcell_length} ${workcell_width} ${workcell_thickness}"/>
+      </geometry>
+    </collision>
+    <collision><!-- left ( -x ) -->
+      <origin xyz="${-0.5*workcell_length} 0 ${0.5*workcell_height}"/>
+      <geometry>
+        <box size="${workcell_thickness} ${workcell_width} ${workcell_height}"/>
+      </geometry>
+      <material name="workcell_material"/>
+    </collision>
+    <collision><!-- front ( +y ) -->
+      <origin xyz="0 ${0.5*workcell_width} ${0.5*workcell_height}"/>
+      <geometry>
+        <box size="${workcell_length} ${workcell_thickness} ${workcell_height}"/>
+      </geometry>
+      <material name="workcell_material"/>
+    </collision>
+    <collision><!-- rear ( -y ) -->
+      <origin xyz="0 ${-0.5*workcell_width} ${0.5*workcell_height}"/>
+      <geometry>
+        <box size="${workcell_length} ${workcell_thickness} ${workcell_height}"/>
+      </geometry>
+      <material name="workcell_material"/>
+    </collision>  
+  </link>
 
   <link name="rail">
     <visual>
@@ -53,6 +152,12 @@
      </material>
     </collision>
   </link>
+
+  <joint name="world_to_bounds" type="fixed">
+    <parent link="world" />
+    <child link="workcell_bounds" />
+    <origin xyz="0 0 ${workcell_z}"/>
+  </joint>
 
   <joint name="world_to_rails" type="fixed">
     <parent link="world" />
