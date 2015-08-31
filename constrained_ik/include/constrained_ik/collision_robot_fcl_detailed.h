@@ -11,11 +11,15 @@ namespace constrained_ik
   class CollisionRobotFCLDetailed : public collision_detection::CollisionRobotFCL
   {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     typedef boost::shared_ptr<CollisionRobotFCLDetailed> CollisionRobotFCLDetailedPtr;
     typedef std::map<std::string, fcl::DistanceResult> DistanceDetailedMap;
 
     struct DistanceResultDetailed
     {
+      EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
       DistanceResultDetailed() : active_components_only_(NULL), acm_(NULL), verbose(false)
       {
       }
@@ -65,13 +69,12 @@ namespace constrained_ik
     /** @brief Containst distance information in the planning frame queried from getDistanceInfo() */
     struct DistanceInfo
     {
+      EIGEN_MAKE_ALIGNED_OPERATOR_NEW
       std::string nearest_obsticle; /**< The link name for nearest obsticle/link to request link. */
       Eigen::Vector3d link_point; /**< Point on request link */
       Eigen::Vector3d obsticle_point; /**< Point on nearest link to requested link */
       Eigen::Vector3d avoidance_vector; /**< Normilized Vector created by nearest points */
       double distance; /**< Distance between nearest points */
-
-      EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     };
     typedef std::map<std::string, DistanceInfo> DistanceInfoMap;
 
@@ -82,7 +85,7 @@ namespace constrained_ik
      * @param tf This allows for a transformation to be applied the distance data since it is always returned in the world frame from fcl.
      * @return bool, true if succesfully converted DistanceDetailedMap to DistanceInfoMap
      */
-    static bool getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map, const Eigen::Affine3d tf);
+    static bool getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map, const Eigen::Affine3d &tf);
 
     /**
      * @brief getDistanceInfo

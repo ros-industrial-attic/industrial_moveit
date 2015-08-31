@@ -52,6 +52,7 @@ namespace constrained_ik
   class CartesianPlanner : public constrained_ik::CLIKPlanningContext
   {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     CartesianPlanner(const std::string &name, const std::string &group) : constrained_ik::CLIKPlanningContext(name, group), terminate_(false), robot_description_("robot_description"), initialized_(false) {}
 

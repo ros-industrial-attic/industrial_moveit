@@ -36,6 +36,7 @@ namespace constraints
 class GoalMidJoint : public Constraint
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   GoalMidJoint();
   virtual ~GoalMidJoint() {}
 

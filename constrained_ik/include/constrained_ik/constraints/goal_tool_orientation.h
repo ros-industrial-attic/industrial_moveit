@@ -37,6 +37,7 @@ namespace constraints
 class GoalToolOrientation : public GoalOrientation
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   GoalToolOrientation();
   virtual ~GoalToolOrientation() {}
 

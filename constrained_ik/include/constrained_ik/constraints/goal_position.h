@@ -37,8 +37,10 @@ namespace constraints
 class GoalPosition : public Constraint
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   struct GoalPositionData: public ConstraintData
   {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     double pos_err_;      /**< @brief current solution error */
 
     GoalPositionData(const constrained_ik::SolverState &state);
@@ -98,6 +100,7 @@ public:
 protected:
   double pos_err_tol_;  /**< @brief termination criteria */
   Eigen::Vector3d weight_;
+
 }; // class GoalPosition
 
 } // namespace constraints

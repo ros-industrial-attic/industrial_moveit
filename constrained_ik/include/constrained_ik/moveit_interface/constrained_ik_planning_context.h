@@ -39,6 +39,8 @@ namespace constrained_ik
   class CLIKPlanningContext : public planning_interface::PlanningContext
   {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     CLIKPlanningContext(const std::string &name, const std::string &group) : planning_interface::PlanningContext(name, group)  {}
 
     virtual void clear() = 0;

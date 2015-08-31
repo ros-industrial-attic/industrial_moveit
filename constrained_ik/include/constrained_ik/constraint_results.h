@@ -9,6 +9,8 @@ namespace constrained_ik
   class ConstraintResults
   {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     ConstraintResults():status(true){}
 
     Eigen::VectorXd error;

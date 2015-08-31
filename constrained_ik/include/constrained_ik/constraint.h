@@ -44,12 +44,16 @@ class Constrained_IK;
 class Constraint
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   /**
    * @brief This structure is to be used by all constraints to store specific data
    * that needs to get updated every iteration of the solver.
    */
   struct ConstraintData
   {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     /**
      * @brief This is a copy of the current state of the parent solver
      */
@@ -83,8 +87,6 @@ public:
    * @param debug Value to set debug_ to (defaults to true)
    */
   void setDebug(bool debug = true) {debug_= debug;}
-
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
   bool initialized_;

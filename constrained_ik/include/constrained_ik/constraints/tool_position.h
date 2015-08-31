@@ -37,6 +37,7 @@ namespace constraints
 class ToolPosition : public GoalPosition
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   ToolPosition();
   virtual ~ToolPosition() {}
 

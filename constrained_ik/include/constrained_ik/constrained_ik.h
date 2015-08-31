@@ -53,6 +53,8 @@ class Constrained_IK
 {
 
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   Constrained_IK();
   virtual ~Constrained_IK() { }
 

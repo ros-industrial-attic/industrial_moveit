@@ -39,6 +39,8 @@ namespace constrained_ik
 class ConstraintGroup : public Constraint
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   ConstraintGroup();
   virtual ~ConstraintGroup() {}
 
