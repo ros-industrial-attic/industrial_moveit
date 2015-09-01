@@ -35,6 +35,24 @@
         <joint name="joint_5" value="0" />
         <joint name="joint_6" value="0" />
     </group_state>
+    <group_state name="rails_start_pose" group="manipulator_rail">
+        <joint name="joint_1" value="1.4149" />
+        <joint name="joint_2" value="0.553" />
+        <joint name="joint_3" value="0.1098" />
+        <joint name="joint_4" value="-1.0295" />
+        <joint name="joint_5" value="0" />
+        <joint name="joint_6" value="0" />
+        <joint name="rail_to_base" value="1.3933" />
+    </group_state>
+    <group_state name="rail_end_pose" group="manipulator_rail">
+        <joint name="joint_1" value="1.4874" />
+        <joint name="joint_2" value="0.0942" />
+        <joint name="joint_3" value="-0.1329" />
+        <joint name="joint_4" value="-1.0295" />
+        <joint name="joint_5" value="0" />
+        <joint name="joint_6" value="0" />
+        <joint name="rail_to_base" value="-1.2584" />
+    </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="eef" parent_link="link_6" group="eef" parent_group="manipulator" />
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
@@ -43,19 +61,24 @@
     <disable_collisions link1="Link1" link2="link_3" reason="Never" />
     <disable_collisions link1="Link1" link2="obstacle_cylinder" reason="Never" />
     <disable_collisions link1="Link1" link2="rail" reason="Never" />
+    <disable_collisions link1="Link1" link2="workcell_bounds" reason="Never" />
     <disable_collisions link1="base_link" link2="link_2" reason="Never" />
     <disable_collisions link1="base_link" link2="link_3" reason="Never" />
     <disable_collisions link1="base_link" link2="obstacle_cylinder" reason="Never" />
     <disable_collisions link1="base_link" link2="rail" reason="Adjacent" />
+    <disable_collisions link1="base_link" link2="workcell_bounds" reason="Never" />
     <disable_collisions link1="link_2" link2="link_3" reason="Adjacent" />
     <disable_collisions link1="link_2" link2="link_4" reason="Never" />
     <disable_collisions link1="link_2" link2="link_5" reason="Never" />
     <disable_collisions link1="link_2" link2="link_6" reason="Never" />
     <disable_collisions link1="link_2" link2="rail" reason="Never" />
+    <disable_collisions link1="link_2" link2="workcell_bounds" reason="Never" />
     <disable_collisions link1="link_3" link2="link_4" reason="Adjacent" />
     <disable_collisions link1="link_3" link2="link_5" reason="Never" />
     <disable_collisions link1="link_3" link2="link_6" reason="Never" />
     <disable_collisions link1="link_4" link2="link_5" reason="Adjacent" />
     <disable_collisions link1="link_5" link2="link_6" reason="Adjacent" />
     <disable_collisions link1="obstacle_cylinder" link2="rail" reason="Adjacent" />
+    <disable_collisions link1="obstacle_cylinder" link2="workcell_bounds" reason="Adjacent" />
+    <disable_collisions link1="rail" link2="workcell_bounds" reason="Adjacent" />
 </robot>
