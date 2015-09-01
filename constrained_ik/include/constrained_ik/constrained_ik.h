@@ -45,6 +45,13 @@
 namespace constrained_ik
 {
 
+enum SolverStatus
+{
+  Converged,
+  NotConverged,
+  Failed
+};
+
 /**
  * @brief Damped Least-Squares Inverse Kinematic Solution
  *          - see derived classes for more complex constrained-IK solvers
@@ -243,7 +250,7 @@ public:
    * @param auxiliary, The auxiliary constraint results
    * @return bool, True for converged, False for not converged
    */
-  virtual bool checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const;
+  virtual SolverStatus checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const;
 
   /**
    * @brief Creates a new SolverState and checks key elements.
@@ -265,5 +272,6 @@ public:
 
 } // namespace constrained_ik
 
+typedef constrained_ik::SolverStatus SolverStatus;
 #endif // CONSTRAINED_IK_H
 
