@@ -1,7 +1,7 @@
 # Optimization Task
 num_feature_basis_functions: 1
 trajectory_duration: 8.0
-num_time_steps: 50
+num_time_steps: 80
 publish_trajectory_markers: False
 publish_best_trajectory_marker: True
 publish_distance_field_marker: False
