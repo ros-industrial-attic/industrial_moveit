@@ -41,6 +41,7 @@ namespace constraints
 class GoalPose : public ConstraintGroup
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   GoalPose() : ConstraintGroup(), position_(new GoalPosition()), orientation_(new GoalOrientation())
   {
     this->add(position_);

@@ -200,7 +200,7 @@ namespace constrained_ik
     return getDistanceInfo(distance_detailed, distance_info_map, tf);
   }
 
-  bool CollisionRobotFCLDetailed::getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map, const Eigen::Affine3d tf)
+  bool CollisionRobotFCLDetailed::getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map, const Eigen::Affine3d &tf)
   {
     bool status = true;
     for (DistanceDetailedMap::const_iterator it = distance_detailed.begin(); it != distance_detailed.end(); ++it)

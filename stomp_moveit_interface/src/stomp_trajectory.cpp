@@ -25,12 +25,24 @@ StompTrajectory::StompTrajectory(int num_time_steps, const moveit::core::RobotMo
   ROS_ASSERT(joint_group != NULL);
 
   std::vector<std::string> endeffector_group_names = joint_group->getAttachedEndEffectorNames();
-  ROS_ASSERT_MSG(endeffector_group_names.size() == 1, "STOMP: We only handle groups with one endeffector for now");
-  const moveit::core::JointModelGroup* endeff_joint_group = kinematic_model->getEndEffector(endeffector_group_names[0]);
-  ROS_ASSERT(endeff_joint_group != NULL);
-  std::string endeffector_name = endeff_joint_group->getEndEffectorParentGroup().second;
+  std::string endeffector_name;
+  if(endeffector_group_names.size() == 0)
+  {
+    endeffector_name = joint_group->getLinkModelNames().back();
+  }
+  else if(endeffector_group_names.size() == 1)
+  {
+    const moveit::core::JointModelGroup* endeff_joint_group = kinematic_model->getEndEffector(endeffector_group_names[0]);
+    ROS_ASSERT(endeff_joint_group != NULL);
+    endeffector_name = endeff_joint_group->getEndEffectorParentGroup().second;
+  }
+  else
+  {
+    const moveit::core::JointModelGroup* endeff_joint_group = kinematic_model->getEndEffector(endeffector_group_names[0]);
+    ROS_ASSERT(endeff_joint_group != NULL);
+    endeffector_name = endeff_joint_group->getEndEffectorParentGroup().second;
+  }
 
-  //ROS_INFO("StompTrajectory: Group %s has endeffector %s", group_name_.c_str(), endeffector_name.c_str());
 
   // pre allocate all memory
   kinematic_states_.resize(num_time_steps, moveit::core::RobotState(kinematic_model));
@@ -107,11 +119,9 @@ void StompTrajectory::setJointPositions(const std::vector<Eigen::VectorXd>& join
     {
       tmp_joint_angles_[j] = joint_pos_(j,t);
     }
-    //joint_state_groups_[t]->setVariableValues(tmp_joint_angles_);
     kinematic_states_[t].setJointGroupPositions(joint_state_groups_[t],tmp_joint_angles_);
 
     // get end-effector positions
-    //endeffector_pos_[t] = endeffector_link_states_[t]->getGlobalLinkTransform();
     endeffector_pos_[t] = kinematic_states_[t].getFrameTransform(endeffector_link_states_[t]->getName());
   }
 

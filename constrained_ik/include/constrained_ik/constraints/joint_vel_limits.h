@@ -37,8 +37,10 @@ namespace constraints
 class JointVelLimits: public Constraint
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   struct JointVelLimitsData: public ConstraintData
   {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     const constraints::JointVelLimits* parent_;
     std::vector<int> limited_joints_;  /**< @brief list of joints that will be constrained */
     Eigen::VectorXd jvel_;

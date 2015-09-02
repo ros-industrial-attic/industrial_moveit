@@ -4,17 +4,17 @@ project(constrained_ik)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS kdl_parser roscpp urdf eigen_conversions moveit_ros_planning moveit_core dynamic_reconfigure)
+find_package(catkin REQUIRED COMPONENTS kdl_parser roscpp urdf eigen_conversions moveit_ros_planning moveit_core dynamic_reconfigure tf_conversions cmake_modules)
 
 ## System dependencies are found with CMake's conventions
 find_package(orocos_kdl REQUIRED)
-find_package(cmake_modules REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Eigen REQUIRED)
 
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
   cfg/ConstrainedIKDynamicReconfigureConfig.cfg
+  cfg/ConstrainedIKPlannerDynamicReconfigureConfig.cfg
 )
 
 #######################################
@@ -52,7 +52,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
  LIBRARIES constrained_ik moveit_clik_planner_plugin constrained_ik_plugin
- CATKIN_DEPENDS roscpp urdf eigen_conversions
+ CATKIN_DEPENDS roscpp urdf eigen_conversions tf_conversions urdf moveit_ros_planning moveit_core dynamic_reconfigure kdl_parser cmake_modules
  DEPENDS boost eigen orocos_kdl
 )
 

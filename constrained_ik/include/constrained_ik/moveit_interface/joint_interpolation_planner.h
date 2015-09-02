@@ -51,11 +51,13 @@ namespace constrained_ik
   class JointInterpolationPlanner : public constrained_ik::CLIKPlanningContext
   {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     JointInterpolationPlanner(const std::string &name, const std::string &group) : constrained_ik::CLIKPlanningContext(name, group), terminate_(false) {}
 
     JointInterpolationPlanner(const JointInterpolationPlanner &other) : constrained_ik::CLIKPlanningContext(other), terminate_(false) {}
 
-    void clear() { params_.reset(); }
+    void clear() { terminate_ = false; }
 
     bool terminate()
     {

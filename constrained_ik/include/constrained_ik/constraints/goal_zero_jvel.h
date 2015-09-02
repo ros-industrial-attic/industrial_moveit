@@ -36,6 +36,7 @@ namespace constraints
 class GoalZeroJVel: public Constraint
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   GoalZeroJVel();
   virtual ~GoalZeroJVel() {}
 

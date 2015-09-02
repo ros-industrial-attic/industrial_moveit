@@ -38,6 +38,7 @@ namespace constrained_ik
 /** @brief Internal state of Constrained_IK solver */
 struct SolverState
 {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   Eigen::Affine3d goal;
   Eigen::VectorXd joint_seed;
 
@@ -58,9 +59,6 @@ struct SolverState
   SolverState(){}
 
   void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
-
- public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 };
 

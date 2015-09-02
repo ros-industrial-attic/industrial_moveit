@@ -53,6 +53,7 @@ protected:
    */
   struct LimitsT
   {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     double min_pos;       /**< @brief minimum joint position */
     double max_pos;       /**< @brief maximum joint position */
     double lower_thresh;  /**< @brief lower threshold at which limiting begins */
@@ -83,8 +84,11 @@ protected:
   double threshold_;   /**< @brief threshold (% of range) at which to engage limit avoidance */
 
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   struct AvoidJointLimitsData: public ConstraintData
   {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     std::vector<int> limited_joints_;  /**< @brief list of joints that will be constrained */
     const constraints::AvoidJointLimits* parent_;
     AvoidJointLimitsData(const constrained_ik::SolverState &state, const constraints::AvoidJointLimits* parent);

@@ -308,27 +308,26 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   num_dimensions_ = joint_model_group_->getVariableCount();
 
   // get the start and goal positions from the message
-  moveit::core::RobotState kinematic_state(kinematic_model_);
+  moveit::core::RobotState start_state(kinematic_model_);
+  moveit::core::RobotState goal_state(kinematic_model_);
 
-  //kinematic_state.setStateValues(request.start_state.joint_state);
+  // storing start position joint values
   const sensor_msgs::JointState &js = request.start_state.joint_state;
-  kinematic_state.setVariablePositions(js.name,js.position);
-
+  start_state.setVariableValues(js);
   start_joints_.clear();
-  kinematic_state.copyJointGroupPositions(planning_group_name_,start_joints_);
+  start_state.copyJointGroupPositions(planning_group_name_,start_joints_);
 
+  // storing goal position joint values
   std::map<std::string, double> goal_joint_map;
   for (size_t i=0; i<request.goal_constraints[0].joint_constraints.size(); ++i)
   {
     goal_joint_map[request.goal_constraints[0].joint_constraints[i].joint_name] =
         request.goal_constraints[0].joint_constraints[i].position;
   }
-  //kinematic_state.setStateValues(goal_joint_map);
-  kinematic_state.setVariablePositions(goal_joint_map);
-
-  //kinematic_state.getJointStateGroup(planning_group_name_)->getVariableValues(goal_joints_);
+  goal_state.setVariableValues(js);
+  goal_state.setVariablePositions(goal_joint_map);
   goal_joints_.clear();
-  kinematic_state.copyJointGroupPositions(planning_group_name_,goal_joints_);
+  goal_state.copyJointGroupPositions(planning_group_name_,goal_joints_);
 
   // create the derivative costs
   std::vector<Eigen::MatrixXd> derivative_costs(num_dimensions_,
@@ -365,6 +364,14 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
     trajectories_[i]->costs_ = Eigen::VectorXd(num_time_steps_all_);
     trajectories_[i]->gradients_.resize(num_split_features_, Eigen::MatrixXd::Zero(num_dimensions_, num_time_steps_all_));
     trajectories_[i]->validities_.resize(num_time_steps_all_, 1);
+
+    // initializing all trajectory state variables to the start position
+    for(int j = 0; j < trajectories_[i]->kinematic_states_.size(); j++)
+    {
+      moveit::core::RobotState& state = trajectories_[i]->kinematic_states_[j];
+      state.setVariablePositions(start_state.getVariablePositions());
+    }
+
     trajectories_[i]->setJointPositions(params_all, 0);
   }
 
@@ -396,9 +403,9 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   collision_request.contacts = true;
   collision_request.max_contacts = 1;
   collision_result.collision = false;
-  kinematic_state.updateLinkTransforms();
+  goal_state.updateLinkTransforms();
   collision_world_df_->checkRobotCollision(collision_request, collision_result, *collision_robot_df_,
-                                      kinematic_state, planning_scene_->getAllowedCollisionMatrix());
+                                      goal_state, planning_scene_->getAllowedCollisionMatrix());
   // this is the goal state, there should be no collisions
 
   if (collision_result.collision)
@@ -432,18 +439,30 @@ void StompOptimizationTask::publishDistanceFieldMarker(ros::Publisher& viz_pub)
   viz_pub.publish(world_df_marker);
 }
 
-void StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen::VectorXd>& parameters, trajectory_msgs::JointTrajectory& trajectory)
+bool StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen::VectorXd>& parameters, trajectory_msgs::JointTrajectory& trajectory)
 {
 
   if(parameters.empty() || (parameters.size() != num_dimensions_) ||(parameters.front().size() != num_time_steps_) )
   {
-    ROS_WARN_STREAM("Parameters do not match the right number of data points or dimensions, JointTrajectory message will not be created");
-    return;
+    ROS_ERROR_STREAM("Parameters contain no data, JointTrajectory message will not be created");
+    return false;
   }
 
-  //kinematic_model_->getJoin
-  trajectory.joint_names = joint_model_group_->getVariableNames();
+  if(parameters.size() != num_dimensions_)
+  {
+    ROS_ERROR_STREAM("Parameters array dimensions "<<parameters.size()<<"do not match the expected number of dimensions"
+                     <<num_dimensions_<<" JointTrajectory message will not be created");
+    return false;
+  }
 
+  if(parameters.front().size() != num_time_steps_)
+  {
+    ROS_ERROR_STREAM("Parameters array time steps "<<parameters.front().size()<<"do not match the expected number of points"
+                     <<num_time_steps_<<" JointTrajectory message will not be created");
+    return false;
+  }
+
+  trajectory.joint_names = joint_model_group_->getVariableNames();
   trajectory.points.clear();
   trajectory.points.resize(num_time_steps_ + 2);
   trajectory.points[0].positions = start_joints_;
@@ -457,6 +476,7 @@ void StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen:
 //    stomp::differentiate(parameters[d], stomp::STOMP_VELOCITY, vels[d], dt_);
 //    stomp::differentiate(parameters[d], stomp::STOMP_ACCELERATION, accs[d], dt_);
 //  }
+
 
   for (int i=0; i<num_time_steps_; ++i)
   {
@@ -476,6 +496,8 @@ void StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen:
   {
     trajectory.points[i].time_from_start = ros::Duration(i*dt_);
   }
+
+  return true;
 }
 
 void StompOptimizationTask::setFeatureWeights(const std::vector<double>& weights)

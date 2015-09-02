@@ -31,6 +31,9 @@
 #include <constrained_ik/moveit_interface/joint_interpolation_planner.h>
 #include <constrained_ik/moveit_interface/cartesian_planner.h>
 #include <constrained_ik/moveit_interface/constrained_ik_planner_parameters.h>
+#include <dynamic_reconfigure/server.h>
+#include <dynamic_reconfigure/Reconfigure.h>
+#include <constrained_ik/ConstrainedIKPlannerDynamicReconfigureConfig.h>
 
 namespace constrained_ik
 {
@@ -41,6 +44,8 @@ namespace constrained_ik
   class CLIKPlannerManager : public planning_interface::PlannerManager
   {
   public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     CLIKPlannerManager() : planning_interface::PlannerManager(),
                            nh_("~")
     {
@@ -58,19 +63,15 @@ namespace constrained_ik
 
     planning_interface::PlanningContextPtr getPlanningContext(const planning_scene::PlanningSceneConstPtr &planning_scene, const planning_interface::MotionPlanRequest &req, moveit_msgs::MoveItErrorCodes &error_code) const;
 
-    /**
-     * @brief This loads the planner parameters from the ROS paramter server.
-     * @return CLIKParameters
-     */
-    CLIKParameters loadParameters() const
-    {
-      CLIKParameters param;
-      param.load(nh_);
-      return param;
-    }
+    void dynamicReconfigureCallback(ConstrainedIKPlannerDynamicReconfigureConfig &config, uint32_t level);
 
   protected:
+    typedef dynamic_reconfigure::Server<ConstrainedIKPlannerDynamicReconfigureConfig> DynReconfigServer;
+
     ros::NodeHandle nh_;
+    ConstrainedIKPlannerDynamicReconfigureConfig config_;
+    boost::scoped_ptr<DynReconfigServer> dynamic_reconfigure_server_;
+    boost::recursive_mutex mutex_;
 
     /** Containes all the availble CLIK planners */
     std::map< std::string, constrained_ik::CLIKPlanningContextPtr> planners_;
