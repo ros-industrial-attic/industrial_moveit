@@ -28,6 +28,7 @@ class Stomp2DTest: public Task, public boost::enable_shared_from_this<Stomp2DTes
 public:
 
   Stomp2DTest():
+    Task(""),
     node_handle_("~")
   {
   }

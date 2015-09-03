@@ -76,17 +76,19 @@ bool STOMP::initialize(const ros::NodeHandle& node_handle, boost::shared_ptr<sto
   policy_->getNumTimeSteps(num_time_steps_);
   control_cost_weight_ = task_->getControlCostWeight();
   policy_->getNumDimensions(num_dimensions_);
-  if((num_dimensions_ > static_cast<int>(noise_decay_.size())) ||
-      (num_dimensions_ > static_cast<int>(noise_stddev_.size())) ||
-      (num_dimensions_ > static_cast<int>(noise_min_stddev_.size())))
+
+  const NoiseCoefficients& noise_coeffs = noise_coefficients_[task_->getGroupName()];
+  if((num_dimensions_ != noise_coeffs.stddev .size()) ||
+      (num_dimensions_ != noise_coeffs.min_stddev.size()) ||
+      (num_dimensions_ != noise_coeffs.decay.size()))
   {
     ROS_ERROR_STREAM("Number of dimension "<<num_dimensions_<<
-                     "is greater than the number of noise stddev coefficients");
+                     "differs from the number of noise  coefficients in group "<<task_->getGroupName());
     return false;
   }
 
   if(!policy_improvement_.initialize(num_time_steps_, min_rollouts_, max_rollouts_, num_rollouts_per_iteration_,
-                                 policy_, use_noise_adaptation_, noise_min_stddev_))
+                                 policy_, use_noise_adaptation_, noise_coeffs.min_stddev))
   {
     ROS_ERROR_STREAM("STOMP policy improvement initialization failed");
     return false;
@@ -117,14 +119,46 @@ bool STOMP::readParameters()
   if(!( node_handle_.getParam("min_rollouts", min_rollouts_) &&
       node_handle_.getParam("max_rollouts", max_rollouts_) &&
       node_handle_.getParam("num_rollouts_per_iteration", num_rollouts_per_iteration_) &&
-      node_handle_.getParam("noise_stddev", noise_stddev_) &&
-      node_handle_.getParam("noise_decay", noise_decay_) &&
-      node_handle_.getParam("noise_min_stddev", noise_min_stddev_) &&
       node_handle_.getParam("max_iterations",max_iterations_) &&
       node_handle_.getParam("max_iterations_after_collision_free",max_iterations_after_collision_free_))
+
+
       )
   {
     ROS_ERROR_STREAM("One or more STOMP required parameters were not found in the parameter server");
+    return false;
+  }
+
+  // loading noise coefficients for each group
+  XmlRpc::XmlRpcValue groups_coeffs;
+  XmlRpc::XmlRpcValue coeffs_entry;
+  NoiseCoefficients group_coeffs;
+  if(node_handle_.getParam("noise_coefficients",groups_coeffs) &&
+      groups_coeffs.getType() == XmlRpc::XmlRpcValue::TypeArray &&
+      (groups_coeffs.size() > 0))
+  {
+    for(unsigned int i = 0; i < groups_coeffs.size(); i++)
+    {
+      coeffs_entry = groups_coeffs[i];
+      if(coeffs_entry.getType()== XmlRpc::XmlRpcValue::TypeStruct &&
+          coeffs_entry.hasMember("group_name") &&
+          getParam(coeffs_entry,"stddev",group_coeffs.stddev) &&
+          getParam(coeffs_entry,"min_stddev",group_coeffs.min_stddev) &&
+          getParam(coeffs_entry,"decay",group_coeffs.decay) )
+      {
+        group_coeffs.group_name = static_cast<std::string>(coeffs_entry["group_name"]);
+        noise_coefficients_.insert(std::make_pair(group_coeffs.group_name,group_coeffs));
+      }
+      else
+      {
+        ROS_ERROR_STREAM("One or more entries in the 'noise_coefficients' parameter is invalid");
+        return false;
+      }
+    }
+  }
+  else
+  {
+    ROS_ERROR_STREAM("STOMP could not load the 'noise_coefficients' structure array parameter");
     return false;
   }
 
@@ -162,10 +196,17 @@ bool STOMP::doGenRollouts(int iteration_number)
 {
   // compute appropriate noise values
   std::vector<double> noise;
+  if(noise_coefficients_.count(task_->getGroupName()) == 0)
+  {
+    ROS_ERROR_STREAM("Coefficients for group "<<task_->getGroupName()<<" are not available");
+    return false;
+  }
+
   noise.resize(num_dimensions_);
+  const NoiseCoefficients& noise_coeffs = noise_coefficients_[task_->getGroupName()];
   for (int i=0; i<num_dimensions_; ++i)
   {
-    noise[i] = noise_stddev_[i] * pow(noise_decay_[i], iteration_number-1);
+    noise[i] = noise_coeffs.stddev[i] * pow(noise_coeffs.decay[i], iteration_number-1);
   }
 
   // get rollouts

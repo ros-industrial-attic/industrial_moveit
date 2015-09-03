@@ -22,6 +22,7 @@ StompOptimizationTask::StompOptimizationTask(ros::NodeHandle node_handle,
                                              boost::shared_ptr<const collision_detection::CollisionWorld> collision_world,
                                              boost::shared_ptr<const collision_detection::CollisionRobotDistanceField> collision_robot_df,
                                              boost::shared_ptr<const collision_detection::CollisionWorldDistanceField> collision_world_df):
+    Task(planning_group),
     node_handle_(node_handle),
     planning_group_name_(planning_group),
     feature_loader_("stomp_moveit_interface", "stomp_moveit_interface::StompCostFeature"),
@@ -439,7 +440,8 @@ void StompOptimizationTask::publishDistanceFieldMarker(ros::Publisher& viz_pub)
   viz_pub.publish(world_df_marker);
 }
 
-bool StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen::VectorXd>& parameters, trajectory_msgs::JointTrajectory& trajectory)
+bool StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen::VectorXd>& parameters,
+                                                        trajectory_msgs::JointTrajectory& trajectory)
 {
 
   if(parameters.empty() || (parameters.size() != num_dimensions_) ||(parameters.front().size() != num_time_steps_) )
