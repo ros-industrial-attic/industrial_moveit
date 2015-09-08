@@ -6,6 +6,7 @@
  */
 
 #include <ros/ros.h>
+#include <moveit/robot_state/conversions.h>
 #include <stomp_moveit_interface/stomp_optimization_task.h>
 #include <stomp_moveit_interface/stomp_planner.h>
 #include <stomp/stomp_utils.h>
@@ -16,7 +17,7 @@ namespace stomp_moveit_interface
 
 const static double DEFAULT_CONTROL_COST_WEIGHT = 0.001;
 const static double DEFAULT_SCALE = 1.0;
-const static double DEFAULT_PADDING = 0.05f;
+const static double DEFAULT_PADDING = 0.01f;
 const static int OPTIMIZATION_TASK_THREADS = 1;
 const static bool USE_SIGNED_DISTANCE_FIELD = true;
 const static int TERMINATION_ATTEMPTS = 200;
@@ -53,6 +54,7 @@ void StompPlanner::init(const moveit::core::RobotModelConstPtr& model)
   STOMP_VERIFY(node_handle_.getParam("collision_space/resolution", df_resolution_));
   STOMP_VERIFY(node_handle_.getParam("collision_space/collision_tolerance", df_collision_tolerance_));
   STOMP_VERIFY(node_handle_.getParam("collision_space/max_propagation_distance", df_max_propagation_distance_));
+
 
   df_size_ = Eigen::Vector3d(sx,sy,sz);
   df_origin_ = Eigen::Vector3d(orig_x,orig_y,orig_z);
@@ -270,6 +272,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
       stomp_task->publishResultsMarkers(best_params);
 
       moveit::core::RobotState robot_state(planning_scene_->getRobotModel());
+      moveit::core::robotStateMsgToRobotState(request_.start_state,robot_state);
       res.trajectory_.resize(1);
       res.trajectory_[0]= robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(
           kinematic_model_,request_.group_name));

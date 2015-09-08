@@ -51,7 +51,12 @@ class Task
 
 public:
 
-    Task(){};
+    Task(const std::string& group_name):
+      group_name_(group_name)
+    {
+
+    };
+
     virtual ~Task(){};
 
     /**
@@ -112,6 +117,17 @@ public:
      * Callback executed after each iteration
      */
     virtual void onEveryIteration(){};
+
+    /**
+     * Get the name of the planning group
+     */
+    const std::string& getGroupName()
+    {
+      return group_name_;
+    }
+
+protected:
+    std::string group_name_;
 
 };
 

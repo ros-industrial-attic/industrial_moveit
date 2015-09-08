@@ -15,16 +15,16 @@ collision_space:
   origin_x: 0.0 
   origin_y: 0.0 
   origin_z: 1.5 
-  resolution: 0.04    
-  collision_tolerance: 0.01
+  resolution: 0.03    
+  collision_tolerance: 0.0
   max_propagation_distance: 4.0
 
 # STOMP 
 max_iterations: 120
 max_iterations_after_collision_free: 10
 max_rollouts: 100
-min_rollouts: 10
-num_rollouts_per_iteration: 60
+min_rollouts: 20
+num_rollouts_per_iteration: 40
 use_noise_adaptation: true
 #noise_stddev: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
 #noise_stddev: [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]
@@ -32,9 +32,16 @@ use_noise_adaptation: true
 #noise_stddev: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
 #noise_min_stddev: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
 
-noise_stddev: [0.3, 0.4, 1.0, 0.4, 0.3, 0.3, 0.3]
-noise_min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
-noise_decay:  [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+noise_coefficients:
+ - group_name: manipulator_rail
+   stddev: [0.3, 0.4, 1.0, 0.4, 0.3, 0.3, 0.3]
+   min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
+   decay:  [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+ - group_name: manipulator
+   stddev: [0.4, 1.0, 0.4, 0.3, 0.3, 0.3]
+   min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
+   decay:  [2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+
 write_to_file: false
 use_openmp: false
 

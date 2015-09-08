@@ -48,6 +48,14 @@
 namespace stomp
 {
 
+struct NoiseCoefficients
+{
+  std::string group_name;
+  std::vector<double> stddev;
+  std::vector<double> min_stddev;
+  std::vector<double> decay;
+};
+
 class STOMP
 {
 public:
@@ -123,6 +131,9 @@ private:
     std::vector<double> noise_stddev_;
     std::vector<double> noise_decay_;
     std::vector<double> noise_min_stddev_;
+
+    // noise coefficients for each planning group
+    std::map<std::string,NoiseCoefficients> noise_coefficients_;
     double control_cost_weight_;
 
     // temporary variables
