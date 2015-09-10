@@ -277,8 +277,18 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
       res.trajectory_[0]= robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(
           kinematic_model_,request_.group_name));
       res.trajectory_.back()->setRobotTrajectoryMsg( robot_state,trajectory);
-      res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
-      ROS_INFO_STREAM("STOMP found a motion plan after "<<res.processing_time_[0]<<" seconds");
+
+      if(planning_scene_ && !planning_scene_->isPathValid(*res.trajectory_.back(),group_))
+      {
+        res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        success = false;
+        ROS_ERROR_STREAM("STOMP generated an invalid path");
+      }
+      else
+      {
+        res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+        ROS_INFO_STREAM("STOMP found a motion plan after "<<res.processing_time_[0]<<" seconds");
+      }
     }
     else
     {
