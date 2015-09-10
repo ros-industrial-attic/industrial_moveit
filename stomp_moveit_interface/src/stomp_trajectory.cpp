@@ -28,7 +28,7 @@ StompTrajectory::StompTrajectory(int num_time_steps, const moveit::core::RobotMo
   std::string endeffector_name;
   if(endeffector_group_names.size() == 0)
   {
-    endeffector_name = joint_group->getLinkModelNames().back();
+    endeffector_name = joint_group->getUpdatedLinkModelNames().back();
   }
   else if(endeffector_group_names.size() == 1)
   {
