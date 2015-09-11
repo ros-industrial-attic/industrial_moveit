@@ -220,17 +220,6 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     }
   }
 
-  // checking for collision on a valid planning scene
-  if(state.planning_scene)
-  {
-    moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(state.planning_scene->getCurrentState()));
-    robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
-    robot_state->update();
-    if(state.planning_scene->isStateColliding(*robot_state,kin_.getJointModelGroup()->getName()))
-    {
-      ROS_ERROR("Robot is in collision at this pose");
-    }
-  }
 
   ROS_DEBUG_STREAM("IK solution: " << joint_angles.transpose());
 }
@@ -264,7 +253,7 @@ bool Constrained_IK::checkStatus(const constrained_ik::SolverState &state, const
   //   - this is an error: joints stabilize, but goal pose not reached
   if (config_.allow_joint_convergence && state.joints_delta.cwiseAbs().maxCoeff() < config_.joint_convergence_tol)
   {
-    ROS_WARN_STREAM("Joint convergence reached " << state.iter << " / " << config_.solver_max_iterations << " iterations before convergence.");
+    ROS_DEBUG_STREAM("Joint convergence reached " << state.iter << " / " << config_.solver_max_iterations << " iterations before convergence.");
     status = true;
   }
 
