@@ -220,13 +220,6 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     }
   }
 
-  // checking for collision on a valid planning scene
-  if(state.planning_scene)
-  {
-    moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(state.planning_scene->getCurrentState()));
-    robot_state->setJointGroupPositions(kin_.getJointModelGroup()->getName(),joint_angles);
-    robot_state->update();
-  }
 
   ROS_DEBUG_STREAM("IK solution: " << joint_angles.transpose());
 }
