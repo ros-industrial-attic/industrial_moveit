@@ -397,31 +397,11 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
     }
   }
 
-  // ping the distance field once to initialize it so that we can publish
-  collision_detection::CollisionRequest collision_request;
-  collision_detection::CollisionResult collision_result;
-  collision_request.group_name = planning_group_name_;
-  collision_request.contacts = true;
-  collision_request.max_contacts = 1;
-  collision_result.collision = false;
-  goal_state.updateLinkTransforms();
-  collision_world_df_->checkRobotCollision(collision_request, collision_result, *collision_robot_df_,
-                                      goal_state, planning_scene_->getAllowedCollisionMatrix());
-  // this is the goal state, there should be no collisions
-
-  if (collision_result.collision)
+  if(planning_scene_->isStateColliding(goal_state,planning_group_name_,true))
   {
     ROS_ERROR("STOMP: goal state in collision!");
-    collision_detection::CollisionResult::ContactMap::iterator it;
-    for (it = collision_result.contacts.begin(); it!= collision_result.contacts.end(); ++it)
-    {
-      ROS_ERROR("Collision between %s and %s", it->first.first.c_str(), it->first.second.c_str());
-    }
-
     return false;
   }
-
-
 
   return true;
 }

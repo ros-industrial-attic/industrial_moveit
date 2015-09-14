@@ -22,6 +22,7 @@ const static int OPTIMIZATION_TASK_THREADS = 1;
 const static bool USE_SIGNED_DISTANCE_FIELD = true;
 const static int TERMINATION_ATTEMPTS = 200;
 const double TERMINATION_DELAY = 0.1f;
+static const std::string OCTOMAP_ID = "<octomap>";
 
 StompPlanner::StompPlanner(const std::string& group,const moveit::core::RobotModelConstPtr& model):
     PlanningContext("STOMP",group),
@@ -141,7 +142,22 @@ void StompPlanner::updateCollisionModels(planning_scene::PlanningSceneConstPtr& 
       scene_diff = planning_scene::PlanningScene::clone(last_planning_scene_);
       last_planning_scene_->getPlanningSceneDiffMsg(scene_diff_msg);
       scene_diff->setPlanningSceneMsg(scene_diff_msg);
-      reset_collision_world = !scene_diff->getWorld()->getObjectIds().empty();
+      std::vector<std::string> ids = scene_diff->getWorld()->getObjectIds();
+      reset_collision_world = !(ids.empty());
+
+      // check for octomap
+      if(ids.empty())
+      {
+        ids = current_planning_scene->getWorld()->getObjectIds();
+        std::vector<std::string>::iterator pos = std::find(ids.begin(),ids.end(),OCTOMAP_ID);
+        reset_collision_world = (pos == ids.end()) ? false : true;
+
+        if(reset_collision_world)
+        {
+          ROS_DEBUG_STREAM("Octomap detected, resetting CollisionWorldDistanceField");
+        }
+      }
+
     }
   }
 
@@ -241,7 +257,12 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   stomp_task->setTrajectoryVizPublisher(const_cast<ros::Publisher&>(trajectory_viz_pub_));
   stomp_task->setCollisionRobotMarkerPublisher(robot_body_viz_pub_);
   stomp_task->setDistanceFieldMarkerPublisher(trajectory_viz_pub_);
-  stomp_task->setMotionPlanRequest(planning_scene_, request_);
+  if(!stomp_task->setMotionPlanRequest(planning_scene_, request_))
+  {
+    ROS_ERROR("MotionPlanRequest is invalid");
+    res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_GOAL_CONSTRAINTS;
+    return false;
+  }
 
 
   ros::Time start = ros::Time::now();
