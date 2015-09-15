@@ -239,7 +239,8 @@ SolverStatus Constrained_IK::checkStatus(const constrained_ik::SolverState &stat
       return Converged;
     }
   }
-  else if(state.condition == initialization_state::PrimaryOnly)
+  
+  if(state.condition == initialization_state::PrimaryOnly)
   {   
     if (primary.status && state.iter >= config_.solver_min_iterations)
     {
