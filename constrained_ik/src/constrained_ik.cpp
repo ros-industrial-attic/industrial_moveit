@@ -228,13 +228,9 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
 SolverStatus Constrained_IK::checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const
 {
   // Check the status of convergence
-  bool status = false;
   if(state.condition == initialization_state::PrimaryAndAuxiliary)
   {
-    status = (primary.status && auxiliary.status);
-    
-    if(state.iter > config_.solver_max_iterations * 0.9)
-      ROS_DEBUG("ep = %f ea = %f", primary.error.norm(), auxiliary.error.norm());
+    bool status = (primary.status && auxiliary.status);
 
     if (!status && primary.status && state.auxiliary_at_limit && state.iter >= config_.solver_min_iterations)
     {
@@ -247,13 +243,8 @@ SolverStatus Constrained_IK::checkStatus(const constrained_ik::SolverState &stat
     }
   }
   else if(state.condition == initialization_state::PrimaryOnly)
-  {
-    status = primary.status;
-
-    if(state.iter > config_.solver_max_iterations * 0.9)
-      ROS_DEBUG("ep = %f ", primary.error.norm());
-    
-    if (status && state.iter >= config_.solver_min_iterations)
+  {   
+    if (primary.status && state.iter >= config_.solver_min_iterations)
     {
       return Converged;
     }
