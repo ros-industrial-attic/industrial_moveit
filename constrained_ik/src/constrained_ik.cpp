@@ -115,19 +115,20 @@ Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J
   }
 }
 
-void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
+bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 const Eigen::VectorXd &joint_seed,
                                 Eigen::VectorXd &joint_angles) const
 {
-  calcInvKin(goal,joint_seed, planning_scene::PlanningSceneConstPtr(), joint_angles);
+  return calcInvKin(goal,joint_seed, planning_scene::PlanningSceneConstPtr(), joint_angles);
 }
 
-void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
+bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 const Eigen::VectorXd &joint_seed,
                                 const planning_scene::PlanningSceneConstPtr planning_scene,
                                 Eigen::VectorXd &joint_angles) const
 {
   double dJoint_norm;
+  SolverStatus status;
 
     // initialize state
   joint_angles = joint_seed;  // initialize result to seed value
@@ -148,7 +149,6 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   Eigen::VectorXd cached_joint_angles = joint_seed;
 
   // iterate until solution converges (or aborted)
-  bool status = false;
   while (true)
   {
     // re-update internal state variables
@@ -201,63 +201,75 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     }
 
     status = checkStatus(state, primary, auxiliary);
-
-    if(status && state.iter >= config_.solver_min_iterations)
+    
+    
+    if (status == Converged)
     {
-      break;
+      ROS_DEBUG_STREAM("IK solution: " << joint_angles.transpose());
+      return true;
     }
-    else if (state.iter > config_.solver_max_iterations)
-    {
-      joint_angles = cached_joint_angles;
-      throw std::runtime_error("Maximum iterations reached.  No solution returned.");
-      break;
-    }
-    else
+    else if (status == NotConverged)
     {
       // update joint solution by the calculated update (or a partial fraction)
       joint_angles += (dJoint_p + dJoint_a);
       clipToJointLimits(joint_angles);
     }
+    else if (status == Failed)
+    {
+      joint_angles = cached_joint_angles;
+      return false;
+    }
   }
-
-
-  ROS_DEBUG_STREAM("IK solution: " << joint_angles.transpose());
 }
 
-bool Constrained_IK::checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const
+SolverStatus Constrained_IK::checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const
 {
-  bool status = false;
   // Check the status of convergence
   if(state.condition == initialization_state::PrimaryAndAuxiliary)
   {
-    status = (primary.status && auxiliary.status);
+    bool status = (primary.status && auxiliary.status);
 
-    if (!status && primary.status && state.auxiliary_at_limit)
+    if (!status && primary.status && state.auxiliary_at_limit && state.iter >= config_.solver_min_iterations)
     {
-      status = true;
       ROS_DEBUG("Auxiliary motion or iteration limit reached!");
+      return Converged;
     }
-
-    if(state.iter > config_.solver_max_iterations * 0.9)
-      ROS_DEBUG("ep = %f ea = %f", primary.error.norm(), auxiliary.error.norm());
+    else if(status && state.iter >= config_.solver_min_iterations)
+    {
+      return Converged;
+    }
   }
-  else if(state.condition == initialization_state::PrimaryOnly)
-  {
-    status = primary.status;
-
-    if(state.iter > config_.solver_max_iterations * 0.9)
-      ROS_DEBUG("ep = %f ", primary.error.norm());
+  
+  if(state.condition == initialization_state::PrimaryOnly)
+  {   
+    if (primary.status && state.iter >= config_.solver_min_iterations)
+    {
+      return Converged;
+    }
   }
 
   // check for joint convergence
   //   - this is an error: joints stabilize, but goal pose not reached
-  if (config_.allow_joint_convergence && state.joints_delta.cwiseAbs().maxCoeff() < config_.joint_convergence_tol)
+  if (config_.allow_joint_convergence && state.joints_delta.cwiseAbs().maxCoeff() < config_.joint_convergence_tol && state.iter >= config_.solver_min_iterations)
   {
     ROS_DEBUG_STREAM("Joint convergence reached " << state.iter << " / " << config_.solver_max_iterations << " iterations before convergence.");
-    status = true;
+    return Converged;
+  }
+  
+  if (state.iter > config_.solver_max_iterations)
+  {
+    if (!primary.status)
+    {
+      return Failed;
+    }
+    else if (state.condition == initialization_state::PrimaryAndAuxiliary)
+    {
+      ROS_WARN_STREAM("Maximum iterations reached but primary converged so returning solution.");
+      return Converged;
+    }
   }
 
-  return status;
+  return NotConverged;
 }
 
 void Constrained_IK::clearConstraintList()

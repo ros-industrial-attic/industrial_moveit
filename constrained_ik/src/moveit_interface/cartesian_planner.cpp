@@ -393,12 +393,19 @@ namespace constrained_ik
 
     // Generate Cartesian Trajectory
     int steps = poses.size();
+    bool found_ik;
     mid_state = robot_model::RobotStatePtr(new robot_model::RobotState(start_state));
     for (int j=0; j<steps; j++)
     {
       if (j!=0)
       {
-        mid_state->setFromIK(jmg, poses[j], link_names.back());
+        found_ik = mid_state->setFromIK(jmg, poses[j], link_names.back());
+        if (!found_ik || planning_scene_->isStateColliding(*mid_state, request_.group_name))
+        {
+          ROS_INFO("Cartesian planner was unable to find a valid solution. :(");
+          res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
+          return false;
+        }
       }
       traj->addSuffixWayPoint(*mid_state, 0.0);
 
