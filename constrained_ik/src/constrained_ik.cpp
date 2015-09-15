@@ -115,14 +115,14 @@ Eigen::MatrixXd Constrained_IK::calcDampedPseudoinverse(const Eigen::MatrixXd &J
   }
 }
 
-void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
+bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 const Eigen::VectorXd &joint_seed,
                                 Eigen::VectorXd &joint_angles) const
 {
-  calcInvKin(goal,joint_seed, planning_scene::PlanningSceneConstPtr(), joint_angles);
+  return calcInvKin(goal,joint_seed, planning_scene::PlanningSceneConstPtr(), joint_angles);
 }
 
-void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
+bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
                                 const Eigen::VectorXd &joint_seed,
                                 const planning_scene::PlanningSceneConstPtr planning_scene,
                                 Eigen::VectorXd &joint_angles) const
@@ -205,7 +205,8 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     
     if (status == Converged)
     {
-      break;
+      ROS_DEBUG_STREAM("IK solution: " << joint_angles.transpose());
+      return true;
     }
     else if (status == NotConverged)
     {
@@ -216,13 +217,9 @@ void Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     else if (status == Failed)
     {
       joint_angles = cached_joint_angles;
-      throw std::runtime_error("Maximum iterations reached.  No solution returned.");
-      break;
+      return false;
     }
   }
-
-  ROS_DEBUG_STREAM("IK solution: " << joint_angles.transpose());
-
 }
 
 SolverStatus Constrained_IK::checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const

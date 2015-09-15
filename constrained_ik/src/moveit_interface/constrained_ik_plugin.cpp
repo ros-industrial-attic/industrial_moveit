@@ -164,7 +164,12 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
   //Do IK and report results
   try
   {
-    solver_.calcInvKin(goal, seed, planning_scene_, joint_angles);
+    if(!solver_.calcInvKin(goal, seed, planning_scene_, joint_angles))
+    {
+      ROS_ERROR_STREAM("Unable to find IK solution.");
+      error_code.val = error_code.NO_IK_SOLUTION;
+      return false;
+    }
   }
   catch (exception &e)
   {
