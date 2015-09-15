@@ -387,11 +387,8 @@ bool BasicKin::solvePInv(const MatrixXd &A, const VectorXd &b, VectorXd &x) cons
   return true;
 }
 
-bool BasicKin::dampedPInv(const MatrixXd &A, MatrixXd &P)
+bool BasicKin::dampedPInv(const MatrixXd &A, MatrixXd &P, const double eps, const double lambda)
 {
-  const double eps = 0.00001;  // Singular value threshold, TODO: Turn into class member var
-  const double lambda = 0.01;  // Damping factor, TODO: Turn into class member var
-
   if ( (A.rows() == 0) || (A.cols() == 0) )
   {
     ROS_ERROR("Empty matrices not supported in dampedPInv()");

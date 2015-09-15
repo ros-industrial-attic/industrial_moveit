@@ -235,9 +235,11 @@ public:
    * Use this SVD to compute A+ (pseudoinverse of A). Weighting still TBD.
    * @param A Input matrix (represents Jacobian)
    * @param P Output matrix (represents pseudoinverse of A)
+   * @param eps Singular value threshold
+   * @param lambda Damping factor
    * @return True if Pseudoinverse completes properly
    */
-static  bool dampedPInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P);
+static  bool dampedPInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P, const double eps = 0.011, const double lambda = 0.01);
 
 private:
   bool initialized_;
