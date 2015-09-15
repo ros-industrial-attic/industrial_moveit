@@ -222,11 +222,16 @@ void StompPlanner::updateCollisionModels(planning_scene::PlanningSceneConstPtr& 
 
 bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 {
+  // initializing response
+  res.description_.resize(1);
+  res.description_[0] = getDescription();
+  res.processing_time_.resize(1);
+  res.trajectory_.resize(1);
+
   setSolving(true);
   stomp_.reset(new stomp::STOMP());
   ros::WallTime start_time = ros::WallTime::now();
   boost::shared_ptr<StompOptimizationTask> stomp_task;
-
 
   // prepare the collision checkers
   boost::shared_ptr<const collision_detection::CollisionRobot> collision_robot = planning_scene_->getCollisionRobot();
@@ -257,10 +262,9 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   stomp_task->setTrajectoryVizPublisher(const_cast<ros::Publisher&>(trajectory_viz_pub_));
   stomp_task->setCollisionRobotMarkerPublisher(robot_body_viz_pub_);
   stomp_task->setDistanceFieldMarkerPublisher(trajectory_viz_pub_);
-  if(!stomp_task->setMotionPlanRequest(planning_scene_, request_))
+  if(!stomp_task->setMotionPlanRequest(planning_scene_, request_, res.error_code_))
   {
-    ROS_ERROR("MotionPlanRequest is invalid");
-    res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_GOAL_CONSTRAINTS;
+    ROS_ERROR("STOMP failed to set MotionPlanRequest ");
     return false;
   }
 
@@ -272,12 +276,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     ROS_DEBUG_STREAM("STOMP planning started");
     success = stomp_->runUntilValid();
   }
-
-  res.description_.resize(1);
-  res.description_[0] = getDescription();
-  res.processing_time_.resize(1);
-  res.trajectory_.resize(1);
-
 
   if(success)
   {
@@ -325,7 +323,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     ROS_ERROR("STOMP failed to find a collision-free plan");
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
   }
-
 
   setSolving(false);
   return success;

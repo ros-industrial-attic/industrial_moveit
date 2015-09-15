@@ -286,7 +286,8 @@ void StompOptimizationTask::setControlCostWeight(double w)
 //}
 
 bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& scene,
-                                                 const moveit_msgs::MotionPlanRequest& request)
+                                                 const moveit_msgs::MotionPlanRequest& request,
+                                                 moveit_msgs::MoveItErrorCodes& error_code)
 {
   planning_scene_ = scene;
   feature_set_->setPlanningScene(planning_scene_);
@@ -301,6 +302,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   if (!kinematic_model_->hasJointModelGroup(planning_group_name_))
   {
     ROS_ERROR("STOMP: Planning group %s doesn't exist!", planning_group_name_.c_str());
+    error_code.val = error_code.INVALID_GROUP_NAME;
     return false;
   }
 
@@ -329,6 +331,21 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   goal_state.setVariablePositions(goal_joint_map);
   goal_joints_.clear();
   goal_state.copyJointGroupPositions(planning_group_name_,goal_joints_);
+
+  // checking collision at start and end
+  if(planning_scene_->isStateColliding(start_state,planning_group_name_,true))
+  {
+    ROS_ERROR("Start state in collision!");
+    error_code.val = error_code.START_STATE_IN_COLLISION;
+    return false;
+  }
+
+  if(planning_scene_->isStateColliding(goal_state,planning_group_name_,true))
+  {
+    ROS_ERROR("Goal state in collision!");
+    error_code.val = error_code.GOAL_IN_COLLISION;
+    return false;
+  }
 
   // create the derivative costs
   std::vector<Eigen::MatrixXd> derivative_costs(num_dimensions_,
@@ -397,12 +414,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
     }
   }
 
-  if(planning_scene_->isStateColliding(goal_state,planning_group_name_,true))
-  {
-    ROS_ERROR("STOMP: goal state in collision!");
-    return false;
-  }
-
+  error_code.val = error_code.SUCCESS;
   return true;
 }
 
