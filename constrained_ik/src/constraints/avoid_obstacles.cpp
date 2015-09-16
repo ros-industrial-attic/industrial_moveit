@@ -87,7 +87,6 @@ ConstraintResults AvoidObstacles::evalConstraint(const SolverState &state) const
 {
   ConstraintResults output;
   AvoidObstaclesData cdata(state, this);
-  double err;
   for (std::map<std::string, LinkAvoidance>::const_iterator it = links_.begin(); it != links_.end(); ++it)
   {
     constrained_ik::ConstraintResults tmp;
