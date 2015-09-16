@@ -147,9 +147,6 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
     // The jacobian to improve distance only requires 1 redundant degree of freedom
     // so we project the jacobian onto the avoidance vector.
     jacobian.block(0, 0, 1, j_tmp.cols()) = it->second.avoidance_vector.transpose() * j_tmp.topRows(3);
-
-    ROS_ASSERT(jacobian.rows()==1);
-    ROS_ASSERT(jacobian.cols()== link.num_robot_joints_);
   }
   else
   {
