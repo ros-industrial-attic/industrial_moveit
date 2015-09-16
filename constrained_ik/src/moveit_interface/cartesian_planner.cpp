@@ -402,9 +402,16 @@ namespace constrained_ik
         found_ik = mid_state->setFromIK(jmg, poses[j], link_names.back());
         if (!found_ik || planning_scene_->isStateColliding(*mid_state, request_.group_name))
         {
-          ROS_INFO("Cartesian planner was unable to find a valid solution. :(");
-          res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
-          return false;
+          if (!config_.debug_mode)
+          {
+            ROS_INFO("Cartesian planner was unable to find a valid solution. :(");
+            res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
+            return false;
+          }
+          else
+          {
+            break;
+          }
         }
       }
       traj->addSuffixWayPoint(*mid_state, 0.0);

@@ -228,8 +228,6 @@ public:
   bool initialized_;
   basic_kin::BasicKin kin_;
 
-  bool debug_;
-
   /**
    * @brief Calculating error, jacobian & status for all constraints specified.
    * @param constraint_type Contraint type (primary or auxiliary)

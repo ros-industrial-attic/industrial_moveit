@@ -41,7 +41,6 @@ using Eigen::Affine3d;
 Constrained_IK::Constrained_IK():nh_("~")
 {
   initialized_ = false;
-  debug_ = false;
 }
 
 void Constrained_IK::dynamicReconfigureCallback(ConstrainedIKDynamicReconfigureConfig &config, uint32_t level)
@@ -290,7 +289,7 @@ void Constrained_IK::clipToJointLimits(Eigen::VectorXd &joints) const
   {
     joints[i] = std::max(limits(i,0), std::min(limits(i,1), joints[i]));
   }
-  if (debug_ && !joints.isApprox(orig_joints))
+  if (config_.debug_mode && !joints.isApprox(orig_joints))
       ROS_WARN("Joints have been clipped");
 }
 
@@ -343,8 +342,8 @@ void Constrained_IK::updateState(constrained_ik::SolverState &state, const Eigen
     state.robot_state->update();
   }
 
-  if (debug_)
-      state.iteration_path.push_back(joints);
+  if (config_.debug_mode)
+    state.iteration_path.push_back(joints);
 
 }
 
