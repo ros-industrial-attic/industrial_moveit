@@ -69,6 +69,12 @@ namespace constrained_ik
           active2 = false;
       }
     }
+    
+    // Check if it is and internal link geometry check
+    if (l1->getName() == l2->getName())
+    {
+      return false;
+    }
 
     // use the collision matrix (if any) to avoid certain distance checks
     bool always_allow_collision = false;
