@@ -101,23 +101,23 @@ ConstraintResults AvoidObstacles::evalConstraint(const SolverState &state) const
 
 VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cdata, const LinkAvoidance &link) const
 {
-  Eigen::VectorXd error_vector;
+  Eigen::VectorXd dist_err;
   CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
 
+  dist_err.resize(1,1);
   it = cdata.distance_info_map_.find(link.link_name_);
   if (it != cdata.distance_info_map_.end())
   {
     double dist = it->second.distance;
     double scale_x = link.min_distance_/(DEFAULT_ZERO_POINT + DEFAULT_SHIFT);
     double scale_y = link.amplitude_;
-    double scale = scale_y/(1.0 + std::exp((dist/scale_x) - DEFAULT_SHIFT));
-    error_vector = scale*it->second.avoidance_vector;
+    dist_err(0, 0) = scale_y/(1.0 + std::exp((dist/scale_x) - DEFAULT_SHIFT));
   }
   else
   {
     ROS_DEBUG("Unable to retrieve distance info, couldn't find link with that name %s", link.link_name_.c_str());
   }
-  return  error_vector;
+  return  dist_err;
 }
 
 MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &cdata, const LinkAvoidance &link) const
@@ -128,11 +128,10 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
   // use distance info to find reference point on link which is closest to a collision,
   // change the reference point of the link jacobian to that point
   CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
+  jacobian.setZero(1, link.num_robot_joints_);
   it = cdata.distance_info_map_.find(link.link_name_);
   if (it != cdata.distance_info_map_.end())
   {
-    jacobian.setZero(3, link.num_robot_joints_); // 3xn jacobian to dist_info.link_point with just position, no rotation
-    // calculate the link jacobian
     KDL::JntArray joint_array(link.num_inboard_joints_);
     for(int i=0; i<link.num_inboard_joints_; i++)   joint_array(i) = cdata.state_.joints(i);
     link.jac_solver_->JntToJac(joint_array, link_jacobian);// this computes a 6xn jacobian, we only need 3xn
@@ -140,17 +139,13 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
     // change the referece point to the point on the link closest to a collision
     KDL::Vector link_point(it->second.link_point.x(), it->second.link_point.y(), it->second.link_point.z());
     link_jacobian.changeRefPoint(link_point);
-
-    // copy the upper 3xn portion of full sized link jacobian into positional jacobain (3xm)
-    for(int i=0; i<3; i++)
-    {
-      for(int j=0; j<(int) link_jacobian.columns(); j++)
-      {
-        jacobian(i,j) = link_jacobian(i,j);
-      }
-    }
-    ROS_ASSERT(jacobian.rows()==3);
-    ROS_ASSERT(jacobian.cols()== link.num_robot_joints_);
+    
+    MatrixXd j_tmp;
+    basic_kin::BasicKin::KDLToEigen(link_jacobian,j_tmp);
+    
+    // The jacobian to improve distance only requires 1 redundant degree of freedom
+    // so we project the jacobian onto the avoidance vector.
+    jacobian.block(0, 0, 1, j_tmp.cols()) = it->second.avoidance_vector.transpose() * j_tmp.topRows(3);
   }
   else
   {

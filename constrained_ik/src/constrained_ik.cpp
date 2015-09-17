@@ -45,6 +45,18 @@ Constrained_IK::Constrained_IK():nh_("~")
 
 void Constrained_IK::dynamicReconfigureCallback(ConstrainedIKDynamicReconfigureConfig &config, uint32_t level)
 {
+  if (config.limit_auxiliary_motion)
+  {
+    if (config.auxiliary_norm > config.auxiliary_max_motion)
+    {
+      config.auxiliary_norm = config.auxiliary_max_motion;
+    }
+    else if (config.auxiliary_norm < config.auxiliary_max_motion)
+    {
+      unsigned int divisor = floor(config.auxiliary_max_motion/config.auxiliary_norm) + 1;
+      config.auxiliary_norm = config.auxiliary_max_motion/divisor;
+    }
+  }
   config_ = config;
 }
 

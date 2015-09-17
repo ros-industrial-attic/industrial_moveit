@@ -241,6 +241,27 @@ public:
    */
 static  bool dampedPInv(const Eigen::MatrixXd &A, Eigen::MatrixXd &P, const double eps = 0.011, const double lambda = 0.01);
 
+/**
+ * @brief Convert KDL::Frame to Eigen::Affine3d
+ * @param frame Input KDL Frame
+ * @param transform Output Eigen transform (Affine3d)
+ */
+static void KDLToEigen(const KDL::Frame &frame, Eigen::Affine3d &transform);
+
+/**
+ * @brief Convert KDL::Jacobian to Eigen::Matrix
+ * @param jacobian Input KDL Jacobian
+ * @param matrix Output Eigen MatrixXd
+ */
+static void KDLToEigen(const KDL::Jacobian &jacobian, Eigen::MatrixXd &matrix);
+
+/**
+ * @brief Convert Eigen::Vector to KDL::JntArray
+ * @param vec Input Eigen vector
+ * @param joints Output KDL joint array
+ */
+static void EigenToKDL(const Eigen::VectorXd &vec, KDL::JntArray &joints) {joints.data = vec;}
+
 private:
   bool initialized_;
   const moveit::core::JointModelGroup* group_;
@@ -252,13 +273,6 @@ private:
   Eigen::Matrix<double, Eigen::Dynamic, 2> joint_limits_;
   boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_;
   boost::scoped_ptr<KDL::ChainJntToJacSolver> jac_solver_;
-
-  /**
-   * @brief Convert Eigen::Vector to KDL::JntArray
-   * @param vec Input Eigen vector
-   * @param joints Output KDL joint array
-   */
-  static void EigenToKDL(const Eigen::VectorXd &vec, KDL::JntArray &joints) {joints.data = vec;}
 
   /**
    * @brief Get joint number of given joint in initialized robot
@@ -273,20 +287,6 @@ private:
    * @return link index if link_name part of link_list_, l+1 otherwise
    */
   int getLinkNum(const std::string &link_name) const;
-
-  /**
-   * @brief Convert KDL::Frame to Eigen::Affine3d
-   * @param frame Input KDL Frame
-   * @param transform Output Eigen transform (Affine3d)
-   */
-  static void KDLToEigen(const KDL::Frame &frame, Eigen::Affine3d &transform);
-
-  /**
-   * @brief Convert KDL::Jacobian to Eigen::Matrix
-   * @param jacobian Input KDL Jacobian
-   * @param matrix Output Eigen MatrixXd
-   */
-  static void KDLToEigen(const KDL::Jacobian &jacobian, Eigen::MatrixXd &matrix);
 
 }; // class BasicKin
 
