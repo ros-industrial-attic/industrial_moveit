@@ -57,7 +57,8 @@ protected:
     }
 
     double weight_; /**< importance weight applied to this avoidance constraint */
-    double min_distance_; /**< minimum obstacle distance allowed */
+    double min_distance_; /**< minimum obstacle distance allowed for convergence */
+    double avoidance_distance_; /**< distance at which to start avoiding the obstacle */
     double amplitude_; /**< The amplitude of the sigmoid error curve */
     int num_robot_joints_; /**< number of joints in the whole robot*/
     int num_obstacle_joints_; /**< number of joints inboard to the obstacle link */
