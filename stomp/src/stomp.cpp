@@ -83,7 +83,7 @@ bool STOMP::initialize(const ros::NodeHandle& node_handle, boost::shared_ptr<sto
       (num_dimensions_ != noise_coeffs.decay.size()))
   {
     ROS_ERROR_STREAM("Number of dimension "<<num_dimensions_<<
-                     "differs from the number of noise  coefficients in group "<<task_->getGroupName());
+                     " differs from the number of noise  coefficients in group "<<task_->getGroupName());
     return false;
   }
 
