@@ -306,6 +306,13 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
     return false;
   }
 
+  if(request.goal_constraints.empty() || request.goal_constraints.front().joint_constraints.empty())
+  {
+    ROS_ERROR("Invalid goal definition, STOMP can only accept joint goals");
+    error_code.val = error_code.INVALID_GOAL_CONSTRAINTS;
+    return false;
+  }
+
   joint_model_group_ = kinematic_model_->getJointModelGroup(planning_group_name_);
 
   num_dimensions_ = joint_model_group_->getVariableCount();
