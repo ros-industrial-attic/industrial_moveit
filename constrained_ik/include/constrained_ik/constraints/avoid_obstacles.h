@@ -216,6 +216,32 @@ public:
     if(getLinkData(link_name, link))
       link.amplitude_ = amplitude;
   }
+  
+  /**
+   * @brief getter for link avoidance distance
+   * @param link_name Name of link to get avoidance distance data
+   * @return avoidance_distance_, On error -1.0 is returned
+   */
+  double getAvoidanceDistance(const std::string &link_name)
+  {
+    LinkAvoidance link;
+    if(getLinkData(link_name, link))
+      return link.avoidance_distance_;
+    else
+      return -1.0;
+  }
+
+  /**
+   * @brief setter for link avoidance distance
+   * @param link_name Name of link to set avoidance_distance_
+   * @param avoidance_distance Value to set avoidance_distance_ to
+   */
+  void setAvoidanceDistance(const std::string &link_name, const double &avoidance_distance)
+  {
+    LinkAvoidance link;
+    if(getLinkData(link_name, link))
+      link.avoidance_distance_ = avoidance_distance;
+  }
 };
 
 } /* namespace constraints */
