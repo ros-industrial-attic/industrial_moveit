@@ -32,7 +32,8 @@
 #include <ros/ros.h>
 
 const double DEFAULT_WEIGHT = 1.0;
-const double DEFAULT_MIN_DISTANCE = 0.5;
+const double DEFAULT_MIN_DISTANCE = 0.1;
+const double DEFAULT_AVOIDANCE_DISTANCE = 0.3;
 const double DEFAULT_AMPLITUDE = 0.3;
 const double DEFAULT_SHIFT = 5.0;
 const double DEFAULT_ZERO_POINT = 10;
@@ -48,7 +49,7 @@ using Eigen::MatrixXd;
 using std::string;
 using std::vector;
 
-AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL), link_name_(link_name) {}
+AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), avoidance_distance_(DEFAULT_AVOIDANCE_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL), link_name_(link_name) {}
 
 AvoidObstacles::AvoidObstacles(std::vector<std::string> &link_names):  Constraint(), link_names_(link_names)
 {
@@ -109,7 +110,7 @@ VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cda
   if (it != cdata.distance_info_map_.end())
   {
     double dist = it->second.distance;
-    double scale_x = link.min_distance_/(DEFAULT_ZERO_POINT + DEFAULT_SHIFT);
+    double scale_x = link.avoidance_distance_/(DEFAULT_ZERO_POINT + DEFAULT_SHIFT);
     double scale_y = link.amplitude_;
     dist_err(0, 0) = scale_y/(1.0 + std::exp((dist/scale_x) - DEFAULT_SHIFT));
   }
@@ -162,7 +163,7 @@ bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata
   it = cdata.distance_info_map_.find(link.link_name_);
   if (it != cdata.distance_info_map_.end())
   {
-    if(it->second.distance<link.min_distance_*5.0) return false;
+    if(it->second.distance<link.min_distance_) return false;
   }
   else
   {
