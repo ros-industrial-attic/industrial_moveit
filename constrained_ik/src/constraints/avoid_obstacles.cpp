@@ -32,7 +32,8 @@
 #include <ros/ros.h>
 
 const double DEFAULT_WEIGHT = 1.0;
-const double DEFAULT_MIN_DISTANCE = 0.5;
+const double DEFAULT_MIN_DISTANCE = 0.1;
+const double DEFAULT_AVOIDANCE_DISTANCE = 0.3;
 const double DEFAULT_AMPLITUDE = 0.3;
 const double DEFAULT_SHIFT = 5.0;
 const double DEFAULT_ZERO_POINT = 10;
@@ -48,7 +49,7 @@ using Eigen::MatrixXd;
 using std::string;
 using std::vector;
 
-AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL), link_name_(link_name) {}
+AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), avoidance_distance_(DEFAULT_AVOIDANCE_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL), link_name_(link_name) {}
 
 AvoidObstacles::AvoidObstacles(std::vector<std::string> &link_names):  Constraint(), link_names_(link_names)
 {
@@ -101,23 +102,23 @@ ConstraintResults AvoidObstacles::evalConstraint(const SolverState &state) const
 
 VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cdata, const LinkAvoidance &link) const
 {
-  Eigen::VectorXd error_vector;
+  Eigen::VectorXd dist_err;
   CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
 
+  dist_err.resize(1,1);
   it = cdata.distance_info_map_.find(link.link_name_);
   if (it != cdata.distance_info_map_.end())
   {
     double dist = it->second.distance;
-    double scale_x = link.min_distance_/(DEFAULT_ZERO_POINT + DEFAULT_SHIFT);
+    double scale_x = link.avoidance_distance_/(DEFAULT_ZERO_POINT + DEFAULT_SHIFT);
     double scale_y = link.amplitude_;
-    double scale = scale_y/(1.0 + std::exp((dist/scale_x) - DEFAULT_SHIFT));
-    error_vector = scale*it->second.avoidance_vector;
+    dist_err(0, 0) = scale_y/(1.0 + std::exp((dist/scale_x) - DEFAULT_SHIFT));
   }
   else
   {
     ROS_DEBUG("Unable to retrieve distance info, couldn't find link with that name %s", link.link_name_.c_str());
   }
-  return  error_vector;
+  return  dist_err;
 }
 
 MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &cdata, const LinkAvoidance &link) const
@@ -128,11 +129,10 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
   // use distance info to find reference point on link which is closest to a collision,
   // change the reference point of the link jacobian to that point
   CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
+  jacobian.setZero(1, link.num_robot_joints_);
   it = cdata.distance_info_map_.find(link.link_name_);
   if (it != cdata.distance_info_map_.end())
   {
-    jacobian.setZero(3, link.num_robot_joints_); // 3xn jacobian to dist_info.link_point with just position, no rotation
-    // calculate the link jacobian
     KDL::JntArray joint_array(link.num_inboard_joints_);
     for(int i=0; i<link.num_inboard_joints_; i++)   joint_array(i) = cdata.state_.joints(i);
     link.jac_solver_->JntToJac(joint_array, link_jacobian);// this computes a 6xn jacobian, we only need 3xn
@@ -140,17 +140,13 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
     // change the referece point to the point on the link closest to a collision
     KDL::Vector link_point(it->second.link_point.x(), it->second.link_point.y(), it->second.link_point.z());
     link_jacobian.changeRefPoint(link_point);
-
-    // copy the upper 3xn portion of full sized link jacobian into positional jacobain (3xm)
-    for(int i=0; i<3; i++)
-    {
-      for(int j=0; j<(int) link_jacobian.columns(); j++)
-      {
-        jacobian(i,j) = link_jacobian(i,j);
-      }
-    }
-    ROS_ASSERT(jacobian.rows()==3);
-    ROS_ASSERT(jacobian.cols()== link.num_robot_joints_);
+    
+    MatrixXd j_tmp;
+    basic_kin::BasicKin::KDLToEigen(link_jacobian,j_tmp);
+    
+    // The jacobian to improve distance only requires 1 redundant degree of freedom
+    // so we project the jacobian onto the avoidance vector.
+    jacobian.block(0, 0, 1, j_tmp.cols()) = it->second.avoidance_vector.transpose() * j_tmp.topRows(3);
   }
   else
   {
@@ -167,7 +163,7 @@ bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata
   it = cdata.distance_info_map_.find(link.link_name_);
   if (it != cdata.distance_info_map_.end())
   {
-    if(it->second.distance<link.min_distance_*5.0) return false;
+    if(it->second.distance<link.min_distance_) return false;
   }
   else
   {

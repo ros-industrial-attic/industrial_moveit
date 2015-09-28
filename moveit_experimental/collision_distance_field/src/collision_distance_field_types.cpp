@@ -40,7 +40,7 @@
 #include <moveit/distance_field/find_internal_points.h>
 #include <ros/console.h>
 
-const static double RESOLUTION_SCALE = 2.0;
+const static double RESOLUTION_SCALE = 1.0;
 const static double EPSILON = 0.0001;
 
 std::vector<collision_detection::CollisionSphere> collision_detection::determineCollisionSpheres(const bodies::Body* body, 
@@ -94,7 +94,7 @@ bool collision_detection::PosedDistanceField::getCollisionSphereGradients(const 
       {
         dist -= sphere_list[i].radius_;
 
-        if( (dist< 0) && (-dist <= tolerance) )
+        if( (dist< 0) && (-dist >= tolerance) )
         {
           in_collision = true;
         }
@@ -163,11 +163,10 @@ bool collision_detection::getCollisionSphereGradients(const distance_field::Dist
       {
         dist -= sphere_list[i].radius_;
 
-        if( (dist< 0) && (-dist <= tolerance) )
+        if( (dist< 0) && (-dist >= tolerance) )
         {
           in_collision = true;
         }
-        dist = std::abs(dist);
       }
       else
       {
@@ -236,7 +235,8 @@ bool collision_detection::getCollisionSphereCollision(const distance_field::Dist
                                                            std::vector<unsigned int>& colls)
 {
   colls.clear();
-  for(unsigned int i = 0; i < sphere_list.size(); i++) {
+  for(unsigned int i = 0; i < sphere_list.size(); i++)
+  {
     Eigen::Vector3d p = sphere_centers[i];
     Eigen::Vector3d grad;
     bool in_bounds = true;
@@ -349,10 +349,28 @@ collision_detection::PosedBodyPointDecomposition::PosedBodyPointDecomposition(co
   updatePose(trans);
 }
 
-void collision_detection::PosedBodyPointDecomposition::updatePose(const Eigen::Affine3d& trans) {
-  posed_collision_points_.resize(body_decomposition_->getCollisionPoints().size());
-  for(unsigned int i = 0; i < body_decomposition_->getCollisionPoints().size(); i++) {
-    posed_collision_points_[i] = trans*body_decomposition_->getCollisionPoints()[i];
+collision_detection::PosedBodyPointDecomposition::PosedBodyPointDecomposition(boost::shared_ptr<const octomap::OcTree> octree):
+    body_decomposition_()
+{
+  int num_nodes = octree->getNumLeafNodes();
+  posed_collision_points_.reserve(num_nodes);
+  for(octomap::OcTree::tree_iterator tree_iter =  octree->begin_tree(); tree_iter != octree->end_tree(); ++tree_iter)
+  {
+    Eigen::Vector3d p = Eigen::Vector3d(tree_iter.getX(),tree_iter.getY(),tree_iter.getZ());
+    posed_collision_points_.push_back(p);
+  }
+}
+
+void collision_detection::PosedBodyPointDecomposition::updatePose(const Eigen::Affine3d& trans)
+{
+  if(body_decomposition_)
+  {
+    posed_collision_points_.resize(body_decomposition_->getCollisionPoints().size());
+
+    for(unsigned int i = 0; i < body_decomposition_->getCollisionPoints().size(); i++)
+    {
+      posed_collision_points_[i] = trans*body_decomposition_->getCollisionPoints()[i];
+    }
   }
 }
 

@@ -57,7 +57,8 @@ public:
   void computeCosts(const Eigen::MatrixXd& features, Eigen::VectorXd& costs, Eigen::MatrixXd& weighted_feature_values) const;
 
   bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
-                   const moveit_msgs::MotionPlanRequest &req);
+                   const moveit_msgs::MotionPlanRequest &req,
+                   moveit_msgs::MoveItErrorCodes& error_code);
 
   void setInitialTrajectory(const std::vector<sensor_msgs::JointState>& joint_states);
   //void getTrajectory(std::vector<sensor_msgs::JointState>& joint_states);

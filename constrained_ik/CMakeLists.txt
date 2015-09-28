@@ -13,8 +13,8 @@ find_package(Eigen REQUIRED)
 
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
-  cfg/ConstrainedIKDynamicReconfigureConfig.cfg
-  cfg/ConstrainedIKPlannerDynamicReconfigureConfig.cfg
+  cfg/ConstrainedIKDynamicReconfigure.cfg
+  cfg/ConstrainedIKPlannerDynamicReconfigure.cfg
 )
 
 #######################################
@@ -84,6 +84,7 @@ add_library(constrained_ik
             src/constraints/avoid_singularities.cpp
             src/constraints/joint_vel_limits.cpp
             src/constraints/avoid_obstacles.cpp
+            src/constraints/goal_tool_pointing.cpp
 )
 
 target_link_libraries(constrained_ik ${catkin_LIBRARIES})

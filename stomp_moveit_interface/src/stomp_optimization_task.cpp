@@ -22,6 +22,7 @@ StompOptimizationTask::StompOptimizationTask(ros::NodeHandle node_handle,
                                              boost::shared_ptr<const collision_detection::CollisionWorld> collision_world,
                                              boost::shared_ptr<const collision_detection::CollisionRobotDistanceField> collision_robot_df,
                                              boost::shared_ptr<const collision_detection::CollisionWorldDistanceField> collision_world_df):
+    Task(planning_group),
     node_handle_(node_handle),
     planning_group_name_(planning_group),
     feature_loader_("stomp_moveit_interface", "stomp_moveit_interface::StompCostFeature"),
@@ -285,7 +286,8 @@ void StompOptimizationTask::setControlCostWeight(double w)
 //}
 
 bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& scene,
-                                                 const moveit_msgs::MotionPlanRequest& request)
+                                                 const moveit_msgs::MotionPlanRequest& request,
+                                                 moveit_msgs::MoveItErrorCodes& error_code)
 {
   planning_scene_ = scene;
   feature_set_->setPlanningScene(planning_scene_);
@@ -300,6 +302,14 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   if (!kinematic_model_->hasJointModelGroup(planning_group_name_))
   {
     ROS_ERROR("STOMP: Planning group %s doesn't exist!", planning_group_name_.c_str());
+    error_code.val = error_code.INVALID_GROUP_NAME;
+    return false;
+  }
+
+  if(request.goal_constraints.empty() || request.goal_constraints.front().joint_constraints.empty())
+  {
+    ROS_ERROR("Invalid goal definition, STOMP can only accept joint goals");
+    error_code.val = error_code.INVALID_GOAL_CONSTRAINTS;
     return false;
   }
 
@@ -328,6 +338,21 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   goal_state.setVariablePositions(goal_joint_map);
   goal_joints_.clear();
   goal_state.copyJointGroupPositions(planning_group_name_,goal_joints_);
+
+  // checking collision at start and end
+  if(planning_scene_->isStateColliding(start_state,planning_group_name_,true))
+  {
+    ROS_ERROR("Start state in collision!");
+    error_code.val = error_code.START_STATE_IN_COLLISION;
+    return false;
+  }
+
+  if(planning_scene_->isStateColliding(goal_state,planning_group_name_,true))
+  {
+    ROS_ERROR("Goal state in collision!");
+    error_code.val = error_code.GOAL_IN_COLLISION;
+    return false;
+  }
 
   // create the derivative costs
   std::vector<Eigen::MatrixXd> derivative_costs(num_dimensions_,
@@ -396,32 +421,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
     }
   }
 
-  // ping the distance field once to initialize it so that we can publish
-  collision_detection::CollisionRequest collision_request;
-  collision_detection::CollisionResult collision_result;
-  collision_request.group_name = planning_group_name_;
-  collision_request.contacts = true;
-  collision_request.max_contacts = 1;
-  collision_result.collision = false;
-  goal_state.updateLinkTransforms();
-  collision_world_df_->checkRobotCollision(collision_request, collision_result, *collision_robot_df_,
-                                      goal_state, planning_scene_->getAllowedCollisionMatrix());
-  // this is the goal state, there should be no collisions
-
-  if (collision_result.collision)
-  {
-    ROS_ERROR("STOMP: goal state in collision!");
-    collision_detection::CollisionResult::ContactMap::iterator it;
-    for (it = collision_result.contacts.begin(); it!= collision_result.contacts.end(); ++it)
-    {
-      ROS_ERROR("Collision between %s and %s", it->first.first.c_str(), it->first.second.c_str());
-    }
-
-    return false;
-  }
-
-
-
+  error_code.val = error_code.SUCCESS;
   return true;
 }
 
@@ -439,7 +439,8 @@ void StompOptimizationTask::publishDistanceFieldMarker(ros::Publisher& viz_pub)
   viz_pub.publish(world_df_marker);
 }
 
-bool StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen::VectorXd>& parameters, trajectory_msgs::JointTrajectory& trajectory)
+bool StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen::VectorXd>& parameters,
+                                                        trajectory_msgs::JointTrajectory& trajectory)
 {
 
   if(parameters.empty() || (parameters.size() != num_dimensions_) ||(parameters.front().size() != num_time_steps_) )

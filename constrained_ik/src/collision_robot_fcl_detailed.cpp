@@ -69,6 +69,12 @@ namespace constrained_ik
           active2 = false;
       }
     }
+    
+    // Check if it is and internal link geometry check
+    if (l1->getName() == l2->getName())
+    {
+      return false;
+    }
 
     // use the collision matrix (if any) to avoid certain distance checks
     bool always_allow_collision = false;
@@ -214,8 +220,8 @@ namespace constrained_ik
         dist_info.nearest_obsticle = cd2->ptr.link->getName();
         dist_info.link_point = tf * Eigen::Vector3d(dist.nearest_points[0].data.vs);
         dist_info.obsticle_point = tf * Eigen::Vector3d(dist.nearest_points[1].data.vs);
-        dist_info.avoidance_vector = dist_info.obsticle_point - dist_info.link_point;
-        dist_info.avoidance_vector.norm();
+        dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
+        dist_info.avoidance_vector.normalize();
         dist_info.distance = dist.min_distance;
       }
       else if (cd2->ptr.link->getName() == it->first)
@@ -223,8 +229,8 @@ namespace constrained_ik
         dist_info.nearest_obsticle = cd1->ptr.link->getName();
         dist_info.link_point = tf * Eigen::Vector3d(dist.nearest_points[1].data.vs);
         dist_info.obsticle_point = tf * Eigen::Vector3d(dist.nearest_points[0].data.vs);
-        dist_info.avoidance_vector = dist_info.obsticle_point - dist_info.link_point;
-        dist_info.avoidance_vector.norm();
+        dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
+        dist_info.avoidance_vector.normalize();
         dist_info.distance = dist.min_distance;
       }
       else

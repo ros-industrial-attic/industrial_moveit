@@ -45,6 +45,13 @@
 namespace constrained_ik
 {
 
+enum SolverStatus
+{
+  Converged,
+  NotConverged,
+  Failed
+};
+
 /**
  * @brief Damped Least-Squares Inverse Kinematic Solution
  *          - see derived classes for more complex constrained-IK solvers
@@ -93,8 +100,9 @@ public:
    * @param pose  The pose of the tip link
    * @param joint_seed joint values that is used as the initial guess
    * @param joint_angles The joint pose that places the tip link to the desired pose.
+   * @return True if valid IK solution is found
    */
-  virtual void calcInvKin(const Eigen::Affine3d &goal,
+  virtual bool calcInvKin(const Eigen::Affine3d &goal,
                           const Eigen::VectorXd &joint_seed,
                           Eigen::VectorXd &joint_angles) const;
 
@@ -106,8 +114,9 @@ public:
    * @param planning_scene pointer to a planning scene that holds all the object in the environment.  Use by the solver to check for collision; if
    *            a null pointer is passed then collisions are ignored.
    * @param joint_angles The joint pose that places the tip link to the desired pose.
+   * @return True if valid IK solution is found
    */
-  virtual void calcInvKin(const Eigen::Affine3d &goal,
+  virtual bool calcInvKin(const Eigen::Affine3d &goal,
                           const Eigen::VectorXd &joint_seed,
                           const planning_scene::PlanningSceneConstPtr planning_scene,
                           Eigen::VectorXd &joint_angles) const;
@@ -219,8 +228,6 @@ public:
   bool initialized_;
   basic_kin::BasicKin kin_;
 
-  bool debug_;
-
   /**
    * @brief Calculating error, jacobian & status for all constraints specified.
    * @param constraint_type Contraint type (primary or auxiliary)
@@ -243,7 +250,7 @@ public:
    * @param auxiliary, The auxiliary constraint results
    * @return bool, True for converged, False for not converged
    */
-  virtual bool checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const;
+  virtual SolverStatus checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const;
 
   /**
    * @brief Creates a new SolverState and checks key elements.
@@ -265,5 +272,6 @@ public:
 
 } // namespace constrained_ik
 
+typedef constrained_ik::SolverStatus SolverStatus;
 #endif // CONSTRAINED_IK_H
 
