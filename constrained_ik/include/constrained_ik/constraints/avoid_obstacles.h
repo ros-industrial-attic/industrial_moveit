@@ -74,12 +74,11 @@ protected:
   std::vector<std::string> link_names_;
   std::set<const robot_model::LinkModel *> link_models_;
 
-  bool getLinkData(std::string link_name, LinkAvoidance &link) const
+  bool getLinkData(std::string link_name, std::map<std::string, LinkAvoidance>::iterator &link)
   {
-    std::map<std::string, LinkAvoidance>::const_iterator it = links_.find(link_name);
-    if(it != links_.end())
+    link = links_.find(link_name);
+    if(link != links_.end())
     {
-      link = it->second;
       return true;
     }
     else
@@ -88,6 +87,7 @@ protected:
       return false;
     }
   }
+  void loadParameters(std::string group_name);
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   struct AvoidObstaclesData: public ConstraintData
@@ -104,7 +104,7 @@ public:
    * @brief constructor
    * @param link_name name of link which should avoid obstacles
    */
-  AvoidObstacles(std::vector<std::string> &link_names);
+  AvoidObstacles() {}
   virtual ~AvoidObstacles() {}
 
   virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
@@ -146,9 +146,9 @@ public:
    */
   double getWeight(const std::string &link_name)
   {
-    LinkAvoidance link;
+    std::map<std::string, LinkAvoidance>::iterator link;
     if(getLinkData(link_name, link))
-      return link.weight_;
+      return link->second.weight_;
     else
       return -1.0;
   }
@@ -160,9 +160,9 @@ public:
    */
   void setWeight(const std::string &link_name, const double &weight)
   {
-    LinkAvoidance link;
+    std::map<std::string, LinkAvoidance>::iterator link;
     if(getLinkData(link_name, link))
-      link.weight_ = weight;
+      link->second.weight_ = weight;
   }
 
   /**
@@ -172,9 +172,9 @@ public:
    */
   double getMinDistance(const std::string &link_name)
   {
-    LinkAvoidance link;
+    std::map<std::string, LinkAvoidance>::iterator link;
     if(getLinkData(link_name, link))
-      return link.min_distance_;
+      return link->second.min_distance_;
     else
       return -1.0;
   }
@@ -186,9 +186,9 @@ public:
    */
   void setMinDistance(const std::string &link_name, const double &min_distance)
   {
-    LinkAvoidance link;
+    std::map<std::string, LinkAvoidance>::iterator link;
     if(getLinkData(link_name, link))
-      link.min_distance_ = min_distance;
+      link->second.min_distance_ = min_distance;
   }
 
   /**
@@ -198,9 +198,9 @@ public:
    */
   double getAmplitude(const std::string &link_name)
   {
-    LinkAvoidance link;
+    std::map<std::string, LinkAvoidance>::iterator link;
     if(getLinkData(link_name, link))
-      return link.amplitude_;
+      return link->second.amplitude_;
     else
       return -1.0;
   }
@@ -212,9 +212,9 @@ public:
    */
   void setAmplitude(const std::string &link_name, const double &amplitude)
   {
-    LinkAvoidance link;
+    std::map<std::string, LinkAvoidance>::iterator link;
     if(getLinkData(link_name, link))
-      link.amplitude_ = amplitude;
+      link->second.amplitude_ = amplitude;
   }
   
   /**
@@ -224,9 +224,9 @@ public:
    */
   double getAvoidanceDistance(const std::string &link_name)
   {
-    LinkAvoidance link;
+    std::map<std::string, LinkAvoidance>::iterator link;
     if(getLinkData(link_name, link))
-      return link.avoidance_distance_;
+      return link->second.avoidance_distance_;
     else
       return -1.0;
   }
@@ -238,10 +238,33 @@ public:
    */
   void setAvoidanceDistance(const std::string &link_name, const double &avoidance_distance)
   {
-    LinkAvoidance link;
+    std::map<std::string, LinkAvoidance>::iterator link;
     if(getLinkData(link_name, link))
-      link.avoidance_distance_ = avoidance_distance;
+      link->second.avoidance_distance_ = avoidance_distance;
   }
+  
+  /**
+   * @brief getter for obstacle avoidance links
+   * @return link_names_
+   */
+  std::vector<std::string> getAvoidanceLinks()
+  {
+    return link_names_;
+  }
+
+  /**
+   * @brief setter for obstacle avoidance links
+   * @param link_name Name of link to set link_names_
+   */
+  void setAvoidanceLinks(std::vector<std::string> &link_names)
+  {
+    link_names_ = link_names;
+    links_.clear();
+    
+    for (std::vector<std::string>::const_iterator it = link_names.begin(); it < link_names.end(); ++it)
+      links_.insert(std::make_pair(*it, LinkAvoidance(*it)));
+  }
+  
 };
 
 } /* namespace constraints */
