@@ -56,7 +56,8 @@ Eigen::VectorXd GoalToolPointing::calcError(const GoalToolPointing::GoalToolPoin
   MatrixXd R = cdata.state_.pose_estimate.rotation().transpose();
   
   tmp_err << (R * (cdata.state_.goal.translation() - cdata.state_.pose_estimate.translation())),
-         (R * GoalOrientation::calcAngleError(cdata.state_.pose_estimate, cdata.state_.goal)).topRows(2);
+             (R * GoalOrientation::calcAngleError(cdata.state_.pose_estimate, cdata.state_.goal)).topRows(2);
+  
   err = weight_ * tmp_err;
 
   return err;
@@ -64,18 +65,19 @@ Eigen::VectorXd GoalToolPointing::calcError(const GoalToolPointing::GoalToolPoin
 
 Eigen::MatrixXd GoalToolPointing::calcJacobian(const GoalToolPointing::GoalToolPointingData &cdata) const
 {
-  MatrixXd tmpJ(5, 6), J(5, 6), R;
+  MatrixXd tmpJ, J, Jt, R;
   
   if (!ik_->getKin().calcJacobian(cdata.state_.joints, tmpJ))
     throw std::runtime_error("Failed to calculate Jacobian");
 
   //rotate jacobian into tool frame by premultiplying by otR.transpose()
   R = cdata.state_.pose_estimate.rotation().transpose();
-  tmpJ << (R * tmpJ.topRows(3)),
-          (R * tmpJ.bottomRows(3)).topRows(2);
+  Jt.resize(5, ik_->numJoints());
+  Jt << (R * tmpJ.topRows(3)),
+        (R * tmpJ.bottomRows(3)).topRows(2);
 
   // weight each row of J
-  J = weight_ * J;
+  J = weight_ * Jt;
 
   return J;
 }
