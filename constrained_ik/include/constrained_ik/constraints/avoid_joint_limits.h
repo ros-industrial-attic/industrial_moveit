@@ -157,6 +157,18 @@ public:
    * @param weight Value to set weight_ to
    */
   void setWeight(const double &weight) {weight_ = weight;}
+  
+  /**
+   * @brief getter for threshold_
+   * @return threshold_
+   */
+  double getThreshold() {return threshold_;}
+
+  /**
+   * @brief setter for threshold_
+   * @param weight Value to set threshold_ to
+   */
+  void setThreshold(const double &threshold) {threshold_ = threshold;}
 };
 
 } /* namespace constraints */
