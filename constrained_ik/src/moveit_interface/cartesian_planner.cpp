@@ -417,14 +417,22 @@ namespace constrained_ik
             break;
           }
         }
+        
+        
       }
       traj->addSuffixWayPoint(*mid_state, 0.0);
 
       if (terminate_)
         break;
+      
+      res.planning_time_ = (ros::WallTime::now() - start_time).toSec();
+      if (res.planning_time_ > request_.allowed_planning_time)
+      {
+        ROS_INFO("Cartesian planner was unable to find solution in allowed time. :(");
+        res.error_code_.val = moveit_msgs::MoveItErrorCodes::TIMED_OUT;
+        return false;
+      }
     }
-
-    res.planning_time_ = (ros::WallTime::now() - start_time).toSec();
 
     // Check if planner was terminated
     if (terminate_)
