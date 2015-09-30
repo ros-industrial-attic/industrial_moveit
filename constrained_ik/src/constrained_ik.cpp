@@ -267,10 +267,18 @@ SolverStatus Constrained_IK::checkStatus(const constrained_ik::SolverState &stat
     return Converged;
   }
   
-  if (state.iter > config_.solver_max_iterations)
+  if (state.iter > config_.solver_max_iterations || (config_.limit_primary_motion && state.primary_sum >= config_.primary_max_motion))
   {
     if (!primary.status)
     {
+      if (config_.limit_primary_motion && state.primary_sum >= config_.primary_max_motion)
+      {
+        ROS_WARN_STREAM("Primary reached max allowed motion, no solution returned.");
+      }
+      else
+      {
+        ROS_WARN_STREAM("Solver reached max allowed iteration, no solution returned.");
+      }
       return Failed;
     }
     else if (state.condition == initialization_state::PrimaryAndAuxiliary)

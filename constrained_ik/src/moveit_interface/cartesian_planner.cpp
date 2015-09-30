@@ -320,6 +320,8 @@ namespace constrained_ik
     std::vector<std::string> joint_names, link_names;
     Eigen::Affine3d start_pose, goal_pose;
     std::vector<double> pos(1);
+    unsigned int ik_attempts;
+    double ik_timeout; 
 
     // Initialize solver, if it has not been already done.
     if (!initialized_)
@@ -344,7 +346,9 @@ namespace constrained_ik
     start_pose = start_state.getFrameTransform(link_names.back());
 
     ROS_INFO_STREAM("Cartesian Planning for Group: " << request_.group_name);
-
+    ik_attempts = ik_attempts_.find(request_.group_name)->second;
+    ik_timeout = ik_timeout_.find(request_.group_name)->second; 
+    
     // if we have path constraints, we prefer interpolating in pose space
     if (!request_.goal_constraints[0].joint_constraints.empty())
     {
@@ -399,7 +403,7 @@ namespace constrained_ik
     {
       if (j!=0)
       {
-        found_ik = mid_state->setFromIK(jmg, poses[j], link_names.back());
+        found_ik = mid_state->setFromIK(jmg, poses[j], link_names.back(), ik_attempts, ik_timeout);
         if (!found_ik || planning_scene_->isStateColliding(*mid_state, request_.group_name))
         {
           if (!config_.debug_mode)
