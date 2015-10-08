@@ -360,10 +360,27 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   std::vector<Eigen::VectorXd> initial_trajectory(num_dimensions_,
                                                   Eigen::VectorXd::Zero(num_time_steps_all_));
 
+  // Create joint interpolated trajectory as the initial trajectory
+  double dt;
+  Eigen::VectorXd jv;
+  Eigen::MatrixXd joint_traj;
+  robot_state::RobotState mid_state(start_state);
+
+  dt = 1.0/(num_time_steps_ - 1);
+  joint_traj.resize(num_dimensions_, num_time_steps_all_);
+
+  for (int j=0; j<num_time_steps_; j++)
+  {
+      start_state.interpolate(goal_state, j*dt, mid_state);
+      mid_state.copyJointGroupPositions(planning_group_name_,jv);
+      joint_traj.col(stomp::TRAJECTORY_PADDING + j) = jv;
+  }
+
+
   for (int d=0; d<num_dimensions_; ++d)
   {
     derivative_costs[d].col(stomp::STOMP_ACCELERATION) = Eigen::VectorXd::Ones(num_time_steps_all_);
-    initial_trajectory[d] = Eigen::VectorXd::Zero(num_time_steps_all_);
+    initial_trajectory[d] = joint_traj.row(d);
     initial_trajectory[d].head(stomp::TRAJECTORY_PADDING) = Eigen::VectorXd::Ones(stomp::TRAJECTORY_PADDING) * start_joints_[d];
     initial_trajectory[d].tail(stomp::TRAJECTORY_PADDING) = Eigen::VectorXd::Ones(stomp::TRAJECTORY_PADDING) * goal_joints_[d];
   }
