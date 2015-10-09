@@ -74,11 +74,13 @@ protected:
   std::vector<std::string> link_names_;
   std::set<const robot_model::LinkModel *> link_models_;
 
-  bool getLinkData(std::string link_name, std::map<std::string, LinkAvoidance>::iterator &link)
+  bool getLinkData(std::string link_name, LinkAvoidance*& link)
   {
-    link = links_.find(link_name);
-    if(link != links_.end())
+    std::map<std::string, LinkAvoidance>::iterator it;
+    it = links_.find(link_name);
+    if(it != links_.end())
     {
+      link = &(it->second);
       return true;
     }
     else
@@ -146,9 +148,9 @@ public:
    */
   double getWeight(const std::string &link_name)
   {
-    std::map<std::string, LinkAvoidance>::iterator link;
+    LinkAvoidance *link;
     if(getLinkData(link_name, link))
-      return link->second.weight_;
+      return link->weight_;
     else
       return -1.0;
   }
@@ -160,9 +162,9 @@ public:
    */
   void setWeight(const std::string &link_name, const double &weight)
   {
-    std::map<std::string, LinkAvoidance>::iterator link;
+    LinkAvoidance *link;
     if(getLinkData(link_name, link))
-      link->second.weight_ = weight;
+      link->weight_ = weight;
   }
 
   /**
@@ -172,9 +174,9 @@ public:
    */
   double getMinDistance(const std::string &link_name)
   {
-    std::map<std::string, LinkAvoidance>::iterator link;
+    LinkAvoidance *link;
     if(getLinkData(link_name, link))
-      return link->second.min_distance_;
+      return link->min_distance_;
     else
       return -1.0;
   }
@@ -186,9 +188,9 @@ public:
    */
   void setMinDistance(const std::string &link_name, const double &min_distance)
   {
-    std::map<std::string, LinkAvoidance>::iterator link;
+    LinkAvoidance *link;
     if(getLinkData(link_name, link))
-      link->second.min_distance_ = min_distance;
+      link->min_distance_ = min_distance;
   }
 
   /**
@@ -198,9 +200,9 @@ public:
    */
   double getAmplitude(const std::string &link_name)
   {
-    std::map<std::string, LinkAvoidance>::iterator link;
+    LinkAvoidance *link;
     if(getLinkData(link_name, link))
-      return link->second.amplitude_;
+      return link->amplitude_;
     else
       return -1.0;
   }
@@ -212,9 +214,9 @@ public:
    */
   void setAmplitude(const std::string &link_name, const double &amplitude)
   {
-    std::map<std::string, LinkAvoidance>::iterator link;
+    LinkAvoidance *link;
     if(getLinkData(link_name, link))
-      link->second.amplitude_ = amplitude;
+      link->amplitude_ = amplitude;
   }
   
   /**
@@ -224,9 +226,9 @@ public:
    */
   double getAvoidanceDistance(const std::string &link_name)
   {
-    std::map<std::string, LinkAvoidance>::iterator link;
+    LinkAvoidance *link;
     if(getLinkData(link_name, link))
-      return link->second.avoidance_distance_;
+      return link->avoidance_distance_;
     else
       return -1.0;
   }
@@ -238,9 +240,9 @@ public:
    */
   void setAvoidanceDistance(const std::string &link_name, const double &avoidance_distance)
   {
-    std::map<std::string, LinkAvoidance>::iterator link;
+    LinkAvoidance *link;
     if(getLinkData(link_name, link))
-      link->second.avoidance_distance_ = avoidance_distance;
+      link->avoidance_distance_ = avoidance_distance;
   }
   
   /**
@@ -256,7 +258,7 @@ public:
    * @brief setter for obstacle avoidance links
    * @param link_name Name of link to set link_names_
    */
-  void setAvoidanceLinks(std::vector<std::string> &link_names)
+  void setAvoidanceLinks(const std::vector<std::string> &link_names)
   {
     link_names_ = link_names;
     links_.clear();
