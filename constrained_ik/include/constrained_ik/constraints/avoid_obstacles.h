@@ -74,21 +74,21 @@ protected:
   std::vector<std::string> link_names_;
   std::set<const robot_model::LinkModel *> link_models_;
 
-  bool getLinkData(std::string link_name, LinkAvoidance*& link)
+  LinkAvoidance* getLinkData(std::string link_name)
   {
     std::map<std::string, LinkAvoidance>::iterator it;
     it = links_.find(link_name);
     if(it != links_.end())
     {
-      link = &(it->second);
-      return true;
+      return &(it->second);
     }
     else
     {
       ROS_WARN_STREAM("Failed to retrieve avoidance data for link: " << link_name);
-      return false;
+      return NULL;
     }
   }
+
   void loadParameters(std::string group_name);
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -149,7 +149,7 @@ public:
   double getWeight(const std::string &link_name)
   {
     LinkAvoidance *link;
-    if(getLinkData(link_name, link))
+    if(getLinkData(link_name))
       return link->weight_;
     else
       return -1.0;
@@ -162,8 +162,8 @@ public:
    */
   void setWeight(const std::string &link_name, const double &weight)
   {
-    LinkAvoidance *link;
-    if(getLinkData(link_name, link))
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
       link->weight_ = weight;
   }
 
@@ -174,8 +174,8 @@ public:
    */
   double getMinDistance(const std::string &link_name)
   {
-    LinkAvoidance *link;
-    if(getLinkData(link_name, link))
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
       return link->min_distance_;
     else
       return -1.0;
@@ -188,8 +188,8 @@ public:
    */
   void setMinDistance(const std::string &link_name, const double &min_distance)
   {
-    LinkAvoidance *link;
-    if(getLinkData(link_name, link))
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
       link->min_distance_ = min_distance;
   }
 
@@ -200,8 +200,8 @@ public:
    */
   double getAmplitude(const std::string &link_name)
   {
-    LinkAvoidance *link;
-    if(getLinkData(link_name, link))
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
       return link->amplitude_;
     else
       return -1.0;
@@ -214,8 +214,8 @@ public:
    */
   void setAmplitude(const std::string &link_name, const double &amplitude)
   {
-    LinkAvoidance *link;
-    if(getLinkData(link_name, link))
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
       link->amplitude_ = amplitude;
   }
   
@@ -226,8 +226,8 @@ public:
    */
   double getAvoidanceDistance(const std::string &link_name)
   {
-    LinkAvoidance *link;
-    if(getLinkData(link_name, link))
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
       return link->avoidance_distance_;
     else
       return -1.0;
@@ -240,8 +240,8 @@ public:
    */
   void setAvoidanceDistance(const std::string &link_name, const double &avoidance_distance)
   {
-    LinkAvoidance *link;
-    if(getLinkData(link_name, link))
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
       link->avoidance_distance_ = avoidance_distance;
   }
   
