@@ -25,6 +25,8 @@
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_tool_pointing.h"
 #include "constrained_ik/constraints/goal_orientation.h"
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalToolPointing, constrained_ik::Constraint)
 
 namespace constrained_ik
 {

@@ -31,6 +31,7 @@
 #include "constrained_ik/constrained_ik.h"
 #include <constrained_ik/collision_robot_fcl_detailed.h>
 #include <vector>
+#include <algorithm>
 #include <kdl/chain.hpp>
 #include <kdl/chainjnttojacsolver.hpp>
 
@@ -89,7 +90,6 @@ protected:
     }
   }
 
-  void loadParameters(std::string group_name);
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   struct AvoidObstaclesData: public ConstraintData
@@ -140,6 +140,12 @@ public:
    * @param ik Pointer to Constrained_IK used for base-class init
    */
   virtual void init(const Constrained_IK * ik);
+
+  /**
+   * @brief Load constraint parameters from XmlRpc::XmlRpcValue
+   * @param constraint_xml XmlRpc::XmlRpcValue
+   */
+  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml);
 
   /**
    * @brief getter for link weight_
@@ -266,7 +272,23 @@ public:
     for (std::vector<std::string>::const_iterator it = link_names.begin(); it < link_names.end(); ++it)
       links_.insert(std::make_pair(*it, LinkAvoidance(*it)));
   }
-  
+
+  /**
+   * @brief Adds an obstacle avoidance link
+   * @param link_name Name of link to add to link_names_
+   */
+  void addAvoidanceLink(const std::string &link_name)
+  {
+    if (std::find(link_names_.begin(), link_names_.end(), link_name) == link_names_.end())
+    {
+      links_.insert(std::make_pair(link_name, LinkAvoidance(link_name)));
+    }
+    else
+    {
+      ROS_WARN("Tried to add an avoidance link that already exist.");
+    }
+  }
+
 };
 
 } /* namespace constraints */

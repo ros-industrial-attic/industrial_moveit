@@ -62,5 +62,11 @@ void ConstraintGroup::init(const Constrained_IK* ik)
     constraints_[i].init(ik);
 }
 
+void ConstraintGroup::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  for (size_t i=0; i<constraints_.size(); ++i)
+    constraints_[i].loadParameters(constraint_xml);
+}
+
 } // namespace constrained_ik
 
