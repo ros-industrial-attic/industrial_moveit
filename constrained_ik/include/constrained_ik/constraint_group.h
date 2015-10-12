@@ -48,7 +48,7 @@ public:
 
   virtual void init(const Constrained_IK* ik);
 
-  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml);
+  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) {}
 
   virtual void add(Constraint* constraint);
 

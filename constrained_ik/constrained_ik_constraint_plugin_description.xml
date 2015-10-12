@@ -9,4 +9,14 @@
       A implementation of GoalToolPointing as a plugin.
     </description>
   </class>
+  <class name="constrained_ik/GoalPosition" type="constrained_ik::constraints::GoalPosition" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of GoalPosition as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/GoalOrientation" type="constrained_ik::constraints::GoalOrientation" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of GoalOrientation as a plugin.
+    </description>
+  </class>
 </library>

@@ -28,6 +28,9 @@
 #include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalToolPointing, constrained_ik::Constraint)
 
+const double DEFAULT_POSITION_TOLERANCE = 0.001;
+const double DEFAULT_ORIENTATION_TOLERANCE = 0.009;
+
 namespace constrained_ik
 {
 namespace constraints
@@ -36,7 +39,7 @@ namespace constraints
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalToolPointing::GoalToolPointing() : Constraint(), pos_err_tol_(0.001), rot_err_tol_(0.009), weight_(VectorXd::Ones(5).asDiagonal())
+GoalToolPointing::GoalToolPointing() : Constraint(), pos_err_tol_(DEFAULT_POSITION_TOLERANCE), rot_err_tol_(DEFAULT_ORIENTATION_TOLERANCE), weight_(VectorXd::Ones(5).asDiagonal())
 {
 }
 
@@ -91,6 +94,72 @@ bool GoalToolPointing::checkStatus(const GoalToolPointing::GoalToolPointingData 
     return true;
 
   return false;
+}
+
+void GoalToolPointing::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (local_xml.hasMember("position_tolerance"))
+  {
+    if (local_xml["position_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeInt)
+      pos_err_tol_ = static_cast<int>(local_xml["position_tolerance"]);
+    else if (local_xml["position_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+      pos_err_tol_ = local_xml["position_tolerance"];
+    else
+      ROS_ERROR("Gool Tool Pointing: Unable to add position_tolerance member, value must be a double.");
+
+  }
+  else
+  {
+    ROS_WARN("Goal Tool Pointing: Missing position_tolerance member, default parameter will be used.");
+  }
+
+  if (local_xml.hasMember("orientation_tolerance"))
+  {
+    if (local_xml["orientation_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeInt)
+      rot_err_tol_ = static_cast<int>(local_xml["orientation_tolerance"]);
+    else if (local_xml["orientation_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+      rot_err_tol_ = local_xml["orientation_tolerance"];
+    else
+      ROS_ERROR("Gool Tool Pointing: Unable to add orientation_tolerance member, value must be a double.");
+
+  }
+  else
+  {
+    ROS_WARN("Goal Tool Pointing: Missing orientation_tolerance member, default parameter will be used.");
+  }
+
+  if (local_xml.hasMember("weights"))
+  {
+
+    if (local_xml["weights"].getType() == XmlRpc::XmlRpcValue::TypeArray)
+    {
+      XmlRpc::XmlRpcValue weights = local_xml["weights"];
+      if (weights.size() == 5)
+      {
+        Eigen::VectorXd w(5);
+        for (int i=0; i<weights.size(); ++i)
+        {
+          if (weights[i].getType() == XmlRpc::XmlRpcValue::TypeInt)
+            w[i] = static_cast<int>(weights[i]);
+          else if (weights[i].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+            w[i] = weights[i];
+          else
+            ROS_ERROR("Gool Tool Pointing: Unable to add weight member, values must be a double.");
+        }
+        weight_ = w.asDiagonal();
+      }
+      else
+        ROS_ERROR("Gool Tool Pointing: Unable to add weights member, value must be a array of size 5.");
+    }
+    else
+      ROS_ERROR("Gool Tool Pointing: Unable to add weights member, value must be a array.");
+
+  }
+  else
+  {
+    ROS_WARN("Goal Tool Pointing: Missing weights member, default parameter will be used.");
+  }
 }
 
 GoalToolPointing::GoalToolPointingData::GoalToolPointingData(const SolverState &state): ConstraintData(state)

@@ -25,6 +25,10 @@
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_orientation.h"
 #include <ros/ros.h>
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalOrientation, constrained_ik::Constraint)
+
+const double DEFAULT_ORIENTATION_TOLERANCE = 0.009;
 
 namespace constrained_ik
 {
@@ -34,7 +38,7 @@ namespace constraints
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalOrientation::GoalOrientation() : Constraint(), rot_err_tol_(0.009), weight_(Vector3d::Ones())
+GoalOrientation::GoalOrientation() : Constraint(), rot_err_tol_(DEFAULT_ORIENTATION_TOLERANCE), weight_(Vector3d::Ones())
 {
 }
 
@@ -94,6 +98,53 @@ bool GoalOrientation::checkStatus(const GoalOrientation::GoalOrientationData &cd
     return true;
 
   return false;
+}
+
+void GoalOrientation::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (local_xml.hasMember("orientation_tolerance"))
+  {
+    if (local_xml["orientation_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeInt)
+      rot_err_tol_ = static_cast<int>(local_xml["orientation_tolerance"]);
+    else if (local_xml["orientation_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+      rot_err_tol_ = local_xml["orientation_tolerance"];
+    else
+      ROS_ERROR("Gool Orientation: Unable to add position_tolerance member, value must be a double.");
+
+  }
+  else
+  {
+    ROS_WARN("Gool Orientation: Missing position_tolerance member, default parameter will be used.");
+  }
+
+  if (local_xml.hasMember("weights"))
+  {
+    if (local_xml["weights"].getType() == XmlRpc::XmlRpcValue::TypeArray)
+    {
+      XmlRpc::XmlRpcValue weights = local_xml["weights"];
+      if (weights.size() == 3)
+      {
+        for (int i=0; i<weights.size(); ++i)
+        {
+          if (weights[i].getType() == XmlRpc::XmlRpcValue::TypeInt)
+            weight_[i] = static_cast<int>(weights[i]);
+          else if (weights[i].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+            weight_[i] = weights[i];
+          else
+            ROS_ERROR("Gool Orientation: Unable to add weight member, values must be a double.");
+        }
+      }
+      else
+        ROS_ERROR("Gool Orientation: Unable to add weights member, value must be a array of size 3.");
+    }
+    else
+      ROS_ERROR("Gool Orientation: Unable to add weights member, value must be a array.");
+  }
+  else
+  {
+    ROS_WARN("Gool Orientation: Missing weights member, default parameter will be used.");
+  }
 }
 
 GoalOrientation::GoalOrientationData::GoalOrientationData(const SolverState &state): ConstraintData(state)

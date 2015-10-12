@@ -25,6 +25,10 @@
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_position.h"
 #include <ros/assert.h>
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalPosition, constrained_ik::Constraint)
+
+const double DEFAULT_POSITION_TOLERANCE = 0.001;
 
 namespace constrained_ik
 {
@@ -34,7 +38,7 @@ namespace constraints
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalPosition::GoalPosition() : Constraint(), pos_err_tol_(0.001), weight_(Vector3d::Ones())
+GoalPosition::GoalPosition() : Constraint(), pos_err_tol_(DEFAULT_POSITION_TOLERANCE), weight_(Vector3d::Ones())
 {
 }
 
@@ -88,6 +92,53 @@ bool GoalPosition::checkStatus(const GoalPosition::GoalPositionData &cdata) cons
     return true;
 
   return false;
+}
+
+void GoalPosition::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (local_xml.hasMember("position_tolerance"))
+  {
+    if (local_xml["position_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeInt)
+      pos_err_tol_ = static_cast<int>(local_xml["position_tolerance"]);
+    else if (local_xml["position_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+      pos_err_tol_ = local_xml["position_tolerance"];
+    else
+      ROS_ERROR("Gool Position: Unable to add position_tolerance member, value must be a double.");
+
+  }
+  else
+  {
+    ROS_WARN("Goal Position: Missing position_tolerance member, default parameter will be used.");
+  }
+
+  if (local_xml.hasMember("weights"))
+  {
+    if (local_xml["weights"].getType() == XmlRpc::XmlRpcValue::TypeArray)
+    {
+      XmlRpc::XmlRpcValue weights = local_xml["weights"];
+      if (weights.size() == 3)
+      {
+        for (int i=0; i<weights.size(); ++i)
+        {
+          if (weights[i].getType() == XmlRpc::XmlRpcValue::TypeInt)
+            weight_[i] = static_cast<int>(weights[i]);
+          else if (weights[i].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+            weight_[i] = weights[i];
+          else
+            ROS_ERROR("Gool Position: Unable to add weight member, values must be a double.");
+        }
+      }
+      else
+        ROS_ERROR("Gool Position: Unable to add weights member, value must be a array of size 3.");
+    }
+    else
+      ROS_ERROR("Gool Position: Unable to add weights member, value must be a array.");
+  }
+  else
+  {
+    ROS_WARN("Gool Position: Missing weights member, default parameter will be used.");
+  }
 }
 
 GoalPosition::GoalPositionData::GoalPositionData(const SolverState &state): ConstraintData(state)
