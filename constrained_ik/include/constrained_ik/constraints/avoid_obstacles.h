@@ -249,7 +249,7 @@ public:
    * @brief getter for obstacle avoidance links
    * @return link_names_
    */
-  std::vector<std::string> getAvoidanceLinks()
+  std::vector<std::string> getAvoidanceLinkNames()
   {
     return link_names_;
   }
