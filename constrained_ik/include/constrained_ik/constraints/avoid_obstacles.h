@@ -74,20 +74,22 @@ protected:
   std::vector<std::string> link_names_;
   std::set<const robot_model::LinkModel *> link_models_;
 
-  bool getLinkData(std::string link_name, LinkAvoidance &link) const
+  LinkAvoidance* getLinkData(std::string link_name)
   {
-    std::map<std::string, LinkAvoidance>::const_iterator it = links_.find(link_name);
+    std::map<std::string, LinkAvoidance>::iterator it;
+    it = links_.find(link_name);
     if(it != links_.end())
     {
-      link = it->second;
-      return true;
+      return &(it->second);
     }
     else
     {
       ROS_WARN_STREAM("Failed to retrieve avoidance data for link: " << link_name);
-      return false;
+      return NULL;
     }
   }
+
+  void loadParameters(std::string group_name);
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   struct AvoidObstaclesData: public ConstraintData
@@ -104,7 +106,7 @@ public:
    * @brief constructor
    * @param link_name name of link which should avoid obstacles
    */
-  AvoidObstacles(std::vector<std::string> &link_names);
+  AvoidObstacles() {}
   virtual ~AvoidObstacles() {}
 
   virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
@@ -146,9 +148,9 @@ public:
    */
   double getWeight(const std::string &link_name)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      return link.weight_;
+    LinkAvoidance *link;
+    if(getLinkData(link_name))
+      return link->weight_;
     else
       return -1.0;
   }
@@ -160,9 +162,9 @@ public:
    */
   void setWeight(const std::string &link_name, const double &weight)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      link.weight_ = weight;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      link->weight_ = weight;
   }
 
   /**
@@ -172,9 +174,9 @@ public:
    */
   double getMinDistance(const std::string &link_name)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      return link.min_distance_;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      return link->min_distance_;
     else
       return -1.0;
   }
@@ -186,9 +188,9 @@ public:
    */
   void setMinDistance(const std::string &link_name, const double &min_distance)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      link.min_distance_ = min_distance;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      link->min_distance_ = min_distance;
   }
 
   /**
@@ -198,9 +200,9 @@ public:
    */
   double getAmplitude(const std::string &link_name)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      return link.amplitude_;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      return link->amplitude_;
     else
       return -1.0;
   }
@@ -212,9 +214,9 @@ public:
    */
   void setAmplitude(const std::string &link_name, const double &amplitude)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      link.amplitude_ = amplitude;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      link->amplitude_ = amplitude;
   }
   
   /**
@@ -224,9 +226,9 @@ public:
    */
   double getAvoidanceDistance(const std::string &link_name)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      return link.avoidance_distance_;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      return link->avoidance_distance_;
     else
       return -1.0;
   }
@@ -238,10 +240,33 @@ public:
    */
   void setAvoidanceDistance(const std::string &link_name, const double &avoidance_distance)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      link.avoidance_distance_ = avoidance_distance;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      link->avoidance_distance_ = avoidance_distance;
   }
+  
+  /**
+   * @brief getter for obstacle avoidance links
+   * @return link_names_
+   */
+  std::vector<std::string> getAvoidanceLinkNames()
+  {
+    return link_names_;
+  }
+
+  /**
+   * @brief setter for obstacle avoidance links
+   * @param link_name Name of link to set link_names_
+   */
+  void setAvoidanceLinks(const std::vector<std::string> &link_names)
+  {
+    link_names_ = link_names;
+    links_.clear();
+    
+    for (std::vector<std::string>::const_iterator it = link_names.begin(); it < link_names.end(); ++it)
+      links_.insert(std::make_pair(*it, LinkAvoidance(*it)));
+  }
+  
 };
 
 } /* namespace constraints */

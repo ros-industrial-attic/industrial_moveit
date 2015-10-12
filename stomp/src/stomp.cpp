@@ -382,7 +382,7 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
     if(!getProceed())
     {
       ROS_DEBUG_STREAM("STOMP was interrupted");
-      success = false;
+      success = true;
       break;
     }
 

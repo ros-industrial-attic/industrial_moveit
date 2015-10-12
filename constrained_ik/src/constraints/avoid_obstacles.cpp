@@ -51,15 +51,17 @@ using std::vector;
 
 AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), avoidance_distance_(DEFAULT_AVOIDANCE_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL), link_name_(link_name) {}
 
-AvoidObstacles::AvoidObstacles(std::vector<std::string> &link_names):  Constraint(), link_names_(link_names)
-{
-  for (std::vector<std::string>::const_iterator it = link_names.begin(); it < link_names.end(); ++it)
-    links_.insert(std::make_pair(*it, LinkAvoidance(*it)));
-}
-
 void AvoidObstacles::init(const Constrained_IK * ik)
 {
   Constraint::init(ik);
+  loadParameters(ik_->getKin().getJointModelGroup()->getName());
+  if (link_names_.size() == 0)
+  {
+    ROS_ERROR("avoid obstacles constraint was added but no links were added.");
+    initialized_ = false;
+    return;
+  }
+  
   for (std::map<std::string, LinkAvoidance>::iterator it = links_.begin(); it != links_.end(); ++it)
   {
     it->second.num_robot_joints_ = ik_->getKin().numJoints();
@@ -81,6 +83,42 @@ void AvoidObstacles::init(const Constrained_IK * ik)
     std::vector<std::string>::iterator name_it = std::find(link_names_.begin(), link_names_.end(), (*it)->getName());
     if (name_it != link_names_.end())
       link_models_.insert(*it);
+  }
+}
+
+void AvoidObstacles::loadParameters(std::string group_name)
+{
+  ros::NodeHandle pnh("~");
+  if (pnh.getParam("constrained_ik_solver/" + group_name + "/avoid_obstacles/links", link_names_))
+  {
+    setAvoidanceLinks(link_names_);
+  }
+  
+  if (link_names_.size() > 0)
+  {
+    double amplitude, weight, min_distance, avoidance_distance;
+    for (std::vector<std::string>::iterator it = link_names_.begin(); it != link_names_.end(); ++it)
+    {
+      if (pnh.getParam("constrained_ik_solver/" + group_name + "/avoid_obstacles/" + (*it) + "/amplitude", amplitude))
+      {
+        setAmplitude((*it), amplitude);
+      }
+      
+      if (pnh.getParam("constrained_ik_solver/" + group_name + "/avoid_obstacles/" + (*it) + "/weight", weight))
+      {
+        setWeight((*it), weight);
+      }
+      
+      if (pnh.getParam("constrained_ik_solver/" + group_name + "/avoid_obstacles/" + (*it) + "/min_distance", min_distance))
+      {
+        setMinDistance((*it), min_distance);
+      }
+      
+      if (pnh.getParam("constrained_ik_solver/" + group_name + "/avoid_obstacles/" + (*it) + "/avoidance_distance", avoidance_distance))
+      {
+        setAvoidanceDistance((*it), avoidance_distance);
+      }
+    }
   }
 }
 
