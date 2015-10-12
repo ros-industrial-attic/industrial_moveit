@@ -56,13 +56,12 @@ AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): weight_(DEF
 void AvoidObstacles::init(const Constrained_IK * ik)
 {
   Constraint::init(ik);
-//  loadParameters(ik_->getKin().getJointModelGroup()->getName());
-//  if (link_names_.size() == 0)
-//  {
-//    ROS_ERROR("avoid obstacles constraint was added but no links were added.");
-//    initialized_ = false;
-//    return;
-//  }
+
+  if (link_names_.size() == 0)
+  {
+    ik_->getLinkNames(link_names_);
+    ROS_WARN("Avoid Obstacles: No links were specified therefore using all links in kinematic chain.");
+  }
   
   for (std::map<std::string, LinkAvoidance>::iterator it = links_.begin(); it != links_.end(); ++it)
   {
