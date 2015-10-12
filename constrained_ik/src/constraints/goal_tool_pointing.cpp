@@ -106,7 +106,7 @@ void GoalToolPointing::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
     else if (local_xml["position_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
       pos_err_tol_ = local_xml["position_tolerance"];
     else
-      ROS_ERROR("Gool Tool Pointing: Unable to add position_tolerance member, value must be a double.");
+      ROS_WARN("Gool Tool Pointing: Unable to add position_tolerance member, value must be a double.");
 
   }
   else
@@ -121,7 +121,7 @@ void GoalToolPointing::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
     else if (local_xml["orientation_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
       rot_err_tol_ = local_xml["orientation_tolerance"];
     else
-      ROS_ERROR("Gool Tool Pointing: Unable to add orientation_tolerance member, value must be a double.");
+      ROS_WARN("Gool Tool Pointing: Unable to add orientation_tolerance member, value must be a double.");
 
   }
   else
@@ -145,15 +145,15 @@ void GoalToolPointing::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
           else if (weights[i].getType() == XmlRpc::XmlRpcValue::TypeDouble)
             w[i] = weights[i];
           else
-            ROS_ERROR("Gool Tool Pointing: Unable to add weight member, values must be a double.");
+            ROS_WARN("Gool Tool Pointing: Unable to add weight member, values must be a double.");
         }
         weight_ = w.asDiagonal();
       }
       else
-        ROS_ERROR("Gool Tool Pointing: Unable to add weights member, value must be a array of size 5.");
+        ROS_WARN("Gool Tool Pointing: Unable to add weights member, value must be a array of size 5.");
     }
     else
-      ROS_ERROR("Gool Tool Pointing: Unable to add weights member, value must be a array.");
+      ROS_WARN("Gool Tool Pointing: Unable to add weights member, value must be a array.");
 
   }
   else

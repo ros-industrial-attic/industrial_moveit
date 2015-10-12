@@ -120,7 +120,7 @@ void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
             }
             else
             {
-              ROS_ERROR("Unable to add obstacle avoidance link: %s amplitude member, amplitude member must be a double.");
+              ROS_WARN("Unable to add obstacle avoidance link: %s amplitude member, amplitude member must be a double.");
             }
           }
           else
@@ -143,7 +143,7 @@ void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
             }
             else
             {
-              ROS_ERROR("Unable to add obstacle avoidance link: %s min_distance member, min_distance member must be a double.");
+              ROS_WARN("Unable to add obstacle avoidance link: %s min_distance member, min_distance member must be a double.");
             }
           }
           else
@@ -166,7 +166,7 @@ void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
             }
             else
             {
-              ROS_ERROR("Unable to add obstacle avoidance link: %s avoidance_distance member, avoidance_distance member must be a double.");
+              ROS_WARN("Unable to add obstacle avoidance link: %s avoidance_distance member, avoidance_distance member must be a double.");
             }
           }
           else
@@ -189,7 +189,7 @@ void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
             }
             else
             {
-              ROS_ERROR("Unable to add obstacle avoidance link: %s weight member, weight member must be a double.");
+              ROS_WARN("Unable to add obstacle avoidance link: %s weight member, weight member must be a double.");
             }
           }
           else
@@ -199,12 +199,12 @@ void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
         }
         else
         {
-          ROS_ERROR("Unable to add obstacle avoidance link, name member must be a string.");
+          ROS_WARN("Unable to add obstacle avoidance link, name member must be a string.");
         }
       }
       else
       {
-        ROS_ERROR("Unable to add obstacle avoidance link, name member missing.");
+        ROS_WARN("Unable to add obstacle avoidance link, name member missing.");
       }
     }
   }

@@ -110,7 +110,7 @@ void GoalOrientation::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
     else if (local_xml["orientation_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
       rot_err_tol_ = local_xml["orientation_tolerance"];
     else
-      ROS_ERROR("Gool Orientation: Unable to add position_tolerance member, value must be a double.");
+      ROS_WARN("Gool Orientation: Unable to add position_tolerance member, value must be a double.");
 
   }
   else
@@ -132,14 +132,14 @@ void GoalOrientation::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
           else if (weights[i].getType() == XmlRpc::XmlRpcValue::TypeDouble)
             weight_[i] = weights[i];
           else
-            ROS_ERROR("Gool Orientation: Unable to add weight member, values must be a double.");
+            ROS_WARN("Gool Orientation: Unable to add weight member, values must be a double.");
         }
       }
       else
-        ROS_ERROR("Gool Orientation: Unable to add weights member, value must be a array of size 3.");
+        ROS_WARN("Gool Orientation: Unable to add weights member, value must be a array of size 3.");
     }
     else
-      ROS_ERROR("Gool Orientation: Unable to add weights member, value must be a array.");
+      ROS_WARN("Gool Orientation: Unable to add weights member, value must be a array.");
   }
   else
   {

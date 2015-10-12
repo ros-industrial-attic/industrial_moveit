@@ -104,7 +104,7 @@ void GoalPosition::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
     else if (local_xml["position_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
       pos_err_tol_ = local_xml["position_tolerance"];
     else
-      ROS_ERROR("Gool Position: Unable to add position_tolerance member, value must be a double.");
+      ROS_WARN("Gool Position: Unable to add position_tolerance member, value must be a double.");
 
   }
   else
@@ -126,14 +126,14 @@ void GoalPosition::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
           else if (weights[i].getType() == XmlRpc::XmlRpcValue::TypeDouble)
             weight_[i] = weights[i];
           else
-            ROS_ERROR("Gool Position: Unable to add weight member, values must be a double.");
+            ROS_WARN("Gool Position: Unable to add weight member, values must be a double.");
         }
       }
       else
-        ROS_ERROR("Gool Position: Unable to add weights member, value must be a array of size 3.");
+        ROS_WARN("Gool Position: Unable to add weights member, value must be a array of size 3.");
     }
     else
-      ROS_ERROR("Gool Position: Unable to add weights member, value must be a array.");
+      ROS_WARN("Gool Position: Unable to add weights member, value must be a array.");
   }
   else
   {
