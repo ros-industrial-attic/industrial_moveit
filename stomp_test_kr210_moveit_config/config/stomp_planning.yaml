@@ -1,7 +1,7 @@
 # Optimization Task
 num_feature_basis_functions: 1
 trajectory_duration: 8.0
-num_time_steps: 80
+num_time_steps: 40
 publish_trajectory_markers: False
 publish_best_trajectory_marker: True
 publish_distance_field_marker: False
@@ -17,26 +17,26 @@ collision_space:
   origin_z: 1.5 
   resolution: 0.03    
   collision_tolerance: 0.0
-  max_propagation_distance: 4.0
+  max_propagation_distance: 0.1
 
 # STOMP 
-max_iterations: 120
+max_iterations: 220
 max_iterations_after_collision_free: 10
 max_rollouts: 100
-min_rollouts: 20
-num_rollouts_per_iteration: 40
+min_rollouts: 10
+num_rollouts_per_iteration: 20
 use_noise_adaptation: true
-#noise_stddev: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
-#noise_stddev: [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]
-#noise_min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
-#noise_stddev: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
-#noise_min_stddev: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
+cost_convergence: 0.01
+max_iteration_after_cost_convergence: 5
 
 noise_coefficients:
  - group_name: manipulator_rail
    stddev: [0.3, 0.4, 1.0, 0.4, 0.3, 0.3, 0.3]
    min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
    decay:  [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+   #stddev: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+   #min_stddev: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+   #decay:  [0.999, 0.999, 0.999, 0.999, 0.999, 0.999, 0.999]
  - group_name: manipulator
    stddev: [0.4, 1.0, 0.4, 0.3, 0.3, 0.3]
    min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
@@ -49,5 +49,5 @@ features:
 -
   class: stomp_moveit_interface/CollisionFeature
   report_validity: false # report state validity based on distance field
-  collision_clearance: 0.06
+  collision_clearance: 0.2
   debug_collisions: false

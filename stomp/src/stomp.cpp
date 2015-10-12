@@ -120,7 +120,9 @@ bool STOMP::readParameters()
       node_handle_.getParam("max_rollouts", max_rollouts_) &&
       node_handle_.getParam("num_rollouts_per_iteration", num_rollouts_per_iteration_) &&
       node_handle_.getParam("max_iterations",max_iterations_) &&
-      node_handle_.getParam("max_iterations_after_collision_free",max_iterations_after_collision_free_))
+      node_handle_.getParam("max_iterations_after_collision_free",max_iterations_after_collision_free_) &&
+      node_handle_.getParam("cost_convergence",cost_convergence_) &&
+      node_handle_.getParam("max_iteration_after_cost_convergence",max_iteration_after_cost_convergence_))
 
 
       )
@@ -306,15 +308,10 @@ bool STOMP::runSingleIteration(const int iteration_number)
     // load new policy if neccessary
     STOMP_VERIFY(readPolicy(iteration_number));
   }
-
-
-  //ROS_ASSERT(doRollouts(iteration_number));
   doRollouts(iteration_number);
 
-  //ROS_ASSERT(doUpdate(iteration_number));
   doUpdate(iteration_number);
 
-  //ROS_ASSERT(doNoiselessRollout(iteration_number));
   doNoiselessRollout(iteration_number);
 
   if (write_to_file_)
@@ -373,10 +370,15 @@ bool STOMP::runUntilValid()
 bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_free)
 {
   int collision_free_iterations = 0;
+  int cost_convergence_iterations = 0;
   unsigned int num_iterations = 0;
   bool success = false;
   proceed(true);
+
   best_noiseless_cost_ = std::numeric_limits<double>::max();
+  double previous_cost = best_noiseless_cost_;
+  double improvement_percentace = 0;
+
   for (int i=0; i<max_iterations_; ++i)
   {
     if(!getProceed())
@@ -401,12 +403,31 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
     }
 
 
+    // checking for best cost threshold
     if(best_noiseless_cost_ < BEST_COST_THRESHOLD)
     {
       success = true;
       ROS_DEBUG_STREAM("Best noiseless cost reached minimum required threshold of "<<BEST_COST_THRESHOLD <<
                        ", exiting");
       break;
+    }
+
+    // checking for cost improvement convergence
+    improvement_percentace = std::abs((previous_cost - best_noiseless_cost_)/(previous_cost));
+    if(improvement_percentace < cost_convergence_)
+    {
+      cost_convergence_iterations++;
+      if(cost_convergence_iterations > max_iteration_after_cost_convergence_)
+      {
+        ROS_DEBUG_STREAM("Cost converged at "<<best_noiseless_cost_<<", exiting");
+        success = true;
+        break;
+      }
+    }
+    else
+    {
+      previous_cost = best_noiseless_cost_;
+      cost_convergence_iterations = 0;
     }
 
     if (collision_free_iterations>=max_iterations_after_collision_free_)
