@@ -24,6 +24,8 @@
  */
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_minimize_change.h"
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalMinimizeChange, constrained_ik::Constraint)
 
 namespace constrained_ik
 {
@@ -61,6 +63,25 @@ Eigen::MatrixXd GoalMinimizeChange::calcJacobian(const GoalMinimizeChange::Const
     size_t n = numJoints();    // number of joints
     MatrixXd  J = MatrixXd::Identity(n,n) * weight_;
     return J;
+}
+
+void GoalMinimizeChange::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (local_xml.hasMember("weight"))
+  {
+    if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
+      weight_ = static_cast<int>(local_xml["weight"]);
+    else if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+      weight_ = local_xml["weight"];
+    else
+      ROS_WARN("Goal Minimize Change: Unable to add weight member, value must be a double.");
+
+  }
+  else
+  {
+    ROS_WARN("Goal Minimize Change: Missing weight member, default parameter will be used.");
+  }
 }
 
 } // namespace constraints

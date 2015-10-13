@@ -30,6 +30,8 @@
 #include "constrained_ik/constraints/avoid_joint_limits.h"
 #include "constrained_ik/constrained_ik.h"
 #include <ros/ros.h>
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::AvoidJointLimits, constrained_ik::Constraint)
 
 namespace constrained_ik
 {
@@ -121,6 +123,41 @@ void AvoidJointLimits::init(const Constrained_IK *ik)
   for (size_t ii=0; ii<numJoints(); ++ii)
     limits_.push_back( LimitsT(joint_limits(ii,0), joint_limits(ii,1), threshold_ ) );
 }
+
+void AvoidJointLimits::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (local_xml.hasMember("threshold"))
+  {
+    if (local_xml["threshold"].getType() == XmlRpc::XmlRpcValue::TypeInt)
+      threshold_ = static_cast<int>(local_xml["threshold"]);
+    else if (local_xml["threshold"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+      threshold_ = local_xml["threshold"];
+    else
+      ROS_WARN("Avoid Joint Limits: Unable to add threshold member, value must be a double.");
+
+  }
+  else
+  {
+    ROS_WARN("Avoid Joint Limits: Missing threshold member, default parameter will be used.");
+  }
+
+  if (local_xml.hasMember("weight"))
+  {
+    if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
+      weight_ = static_cast<int>(local_xml["weight"]);
+    else if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+      weight_ = local_xml["weight"];
+    else
+      ROS_WARN("Avoid Joint Limits: Unable to add threshold member, value must be a double.");
+
+  }
+  else
+  {
+    ROS_WARN("Avoid Joint Limits: Missing threshold member, default parameter will be used.");
+  }
+}
+
 
 // TODO: Move this to a common "utils" file
 template<class T>

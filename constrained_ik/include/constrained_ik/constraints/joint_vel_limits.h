@@ -92,7 +92,7 @@ public:
    * @brief Load constraint parameters from XmlRpc::XmlRpcValue
    * @param constraint_xml XmlRpc::XmlRpcValue
    */
-  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) {}
+  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml);
 
   /**
    * @brief getter for weight_

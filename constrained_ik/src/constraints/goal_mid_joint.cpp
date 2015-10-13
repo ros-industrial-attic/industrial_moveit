@@ -24,6 +24,8 @@
  */
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_mid_joint.h"
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalMidJoint, constrained_ik::Constraint)
 
 namespace constrained_ik
 {
@@ -70,6 +72,25 @@ void GoalMidJoint::init(const Constrained_IK *ik)
   // initialize joint/thresholding limits
   MatrixXd joint_limits = ik->getKin().getLimits();
   mid_range_ = joint_limits.col(1) - joint_limits.col(0);
+}
+
+void GoalMidJoint::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (local_xml.hasMember("weight"))
+  {
+    if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
+      weight_ = static_cast<int>(local_xml["weight"]);
+    else if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+      weight_ = local_xml["weight"];
+    else
+      ROS_WARN("Goal Mid Joint: Unable to add weight member, value must be a double.");
+
+  }
+  else
+  {
+    ROS_WARN("Goal Mid Joint: Missing threshold weight, default parameter will be used.");
+  }
 }
 
 } // namespace constraints

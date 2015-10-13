@@ -25,6 +25,8 @@
 #include "constrained_ik/constraints/joint_vel_limits.h"
 #include "constrained_ik/constrained_ik.h"
 #include <ros/ros.h>
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::JointVelLimits, constrained_ik::Constraint)
 
 namespace constrained_ik
 {
@@ -101,6 +103,25 @@ void JointVelLimits::init(const Constrained_IK *ik)
   vel_limits_.resize(numJoints());
   for (size_t ii=0; ii<numJoints(); ++ii)
       vel_limits_(ii) = 2*M_PI;  //TODO this should come from somewhere
+}
+
+void JointVelLimits::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (local_xml.hasMember("weight"))
+  {
+    if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
+      weight_ = static_cast<int>(local_xml["weight"]);
+    else if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+      weight_ = local_xml["weight"];
+    else
+      ROS_WARN("Avoid Joint Velocity Limits: Unable to add weight member, value must be a double.");
+
+  }
+  else
+  {
+    ROS_WARN("Avoid Joint Velocity Limits: Missing weight member, default parameter will be used.");
+  }
 }
 
 // TODO: Move this to a common "utils" file
