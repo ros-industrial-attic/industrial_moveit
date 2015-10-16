@@ -104,6 +104,8 @@ private:
     int num_dimensions_;
     int max_iterations_;
     int max_iterations_after_collision_free_;
+    double cost_convergence_; /**< percentage : 0 < c < 1 */
+    int max_iteration_after_cost_convergence_; /**< should be less than max_iterations */
 
     bool write_to_file_;
     bool use_noise_adaptation_;
