@@ -90,126 +90,87 @@ void AvoidObstacles::init(const Constrained_IK * ik)
 void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
 {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (local_xml.hasMember("links") &&
-            local_xml["links"].getType() == XmlRpc::XmlRpcValue::TypeArray)
-  {
-    XmlRpc::XmlRpcValue links_xml = local_xml["links"];
-
-    for (int i=0; i<links_xml.size(); ++i)
+  std::vector<std::string> link_names;
+  if (getParam(local_xml, "link_names", link_names))
+  {    
+    std::vector<double> amplitude, minimum_distance, avoidance_distance, weight;
+    if (getParam(local_xml, "amplitude", amplitude))
     {
-      XmlRpc::XmlRpcValue link_xml = links_xml[i];
-      if (link_xml.hasMember("name"))
+      if (link_names.size()!=amplitude.size())
       {
-        if (link_xml["name"].getType() == XmlRpc::XmlRpcValue::TypeString)
-        {
-          std::string link_name = link_xml["name"];
-          addAvoidanceLink(link_name);
-          if (link_xml.hasMember("amplitude"))
-          {
-            if (link_xml["amplitude"].getType() == XmlRpc::XmlRpcValue::TypeDouble ||
-                    link_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-            {
-              double link_amplitude;
-              if (link_xml["amplitude"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-                link_amplitude = static_cast<int>(link_xml["amplitude"]);
-              else
-                link_amplitude = link_xml["amplitude"];
-
-              setAmplitude(link_name, link_amplitude);
-            }
-            else
-            {
-              ROS_WARN("Unable to add obstacle avoidance link: %s amplitude member, amplitude member must be a double.");
-            }
-          }
-          else
-          {
-             ROS_WARN("Abstacle Avoidance link: %s missing amplitude member, default parameter will be used.", link_name.c_str());
-          }
-
-          if (link_xml.hasMember("min_distance"))
-          {
-            if (link_xml["min_distance"].getType() == XmlRpc::XmlRpcValue::TypeDouble ||
-                    link_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-            {
-              double link_min_distance;
-              if (link_xml["min_distance"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-                link_min_distance = static_cast<int>(link_xml["min_distance"]);
-              else
-                link_min_distance = link_xml["min_distance"];
-
-              setMinDistance(link_name, link_min_distance);
-            }
-            else
-            {
-              ROS_WARN("Unable to add obstacle avoidance link: %s min_distance member, min_distance member must be a double.");
-            }
-          }
-          else
-          {
-             ROS_WARN("Abstacle Avoidance link: %s missing min_distance member, default parameter will be used.", link_name.c_str());
-          }
-
-          if (link_xml.hasMember("avoidance_distance"))
-          {
-            if (link_xml["avoidance_distance"].getType() == XmlRpc::XmlRpcValue::TypeDouble ||
-                    link_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-            {
-              double link_avoidance_distance;
-              if (link_xml["avoidance_distance"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-                link_avoidance_distance = static_cast<int>(link_xml["avoidance_distance"]);
-              else
-                link_avoidance_distance = link_xml["avoidance_distance"];
-
-              setAvoidanceDistance(link_name, link_avoidance_distance);
-            }
-            else
-            {
-              ROS_WARN("Unable to add obstacle avoidance link: %s avoidance_distance member, avoidance_distance member must be a double.");
-            }
-          }
-          else
-          {
-             ROS_WARN("Abstacle Avoidance link: %s missing avoidance_distance member, default parameter will be used.", link_name.c_str());
-          }
-
-          if (link_xml.hasMember("weight"))
-          {
-            if (link_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeDouble ||
-                    link_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-            {
-              double link_weight;
-              if (link_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-                link_weight = static_cast<int>(link_xml["weight"]);
-              else
-                link_weight = link_xml["weight"];
-
-              setWeight(link_name, link_weight);
-            }
-            else
-            {
-              ROS_WARN("Unable to add obstacle avoidance link: %s weight member, weight member must be a double.");
-            }
-          }
-          else
-          {
-             ROS_WARN("Abstacle Avoidance link: %s missing weight member, default parameter will be used.", link_name.c_str());
-          }
-        }
-        else
-        {
-          ROS_WARN("Unable to add obstacle avoidance link, name member must be a string.");
-        }
+        ROS_WARN("Abstacle Avoidance: amplitude memebr must be same size array as link_names member, default parameters will be used.");
+        amplitude.clear();
       }
-      else
+    }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving amplitude member, default parameter will be used.");
+    }
+
+    if (getParam(local_xml, "minimum_distance", minimum_distance))
+    {
+      if (link_names.size()!=minimum_distance.size())
       {
-        ROS_WARN("Unable to add obstacle avoidance link, name member missing.");
+        ROS_WARN("Abstacle Avoidance: minimum_distance memebr must be same size array as link_names member, default parameters will be used.");
+        minimum_distance.clear();
+      }
+    }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving minimum_distance member, default parameter will be used.");
+    }
+
+    if (getParam(local_xml, "avoidance_distance", avoidance_distance))
+    {
+      if (link_names.size()!=avoidance_distance.size())
+      {
+        ROS_WARN("Abstacle Avoidance: avoidance_distance memebr must be same size array as link_names member, default parameters will be used.");
+        avoidance_distance.clear();
+      }
+    }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving avoidance_distance member, default parameter will be used.");
+    }
+
+    if (getParam(local_xml, "weight", weight))
+    {
+      if (link_names.size()!=weight.size())
+      {
+        ROS_WARN("Abstacle Avoidance: weight memebr must be same size array as link_names member, default parameters will be used.");
+        weight.clear();
+      }
+    }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving weight member, default parameter will be used.");
+    }
+
+
+    for (int i=0; i<link_names.size(); ++i)
+    {
+      addAvoidanceLink(link_names[i]);
+      if (!amplitude.empty())
+      {
+        setAmplitude(link_names[i], amplitude[i]);
+      }
+      if (!minimum_distance.empty())
+      {
+        setMinDistance(link_names[i], minimum_distance[i]);
+      }
+      if (!avoidance_distance.empty())
+      {
+        setAvoidanceDistance(link_names[i], avoidance_distance[i]);
+      }
+      if (!weight.empty())
+      {
+        setWeight(link_names[i], weight[i]);
       }
     }
   }
   else
   {
-    ROS_WARN("Abstacle Avoidance missing parameter links, default parameter will be used.");
+    ROS_WARN("Abstacle Avoidance: Unable to retrieving link_names member, default parameter will be used.");
   }
 }
 

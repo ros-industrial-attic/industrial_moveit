@@ -102,64 +102,19 @@ Eigen::MatrixXd AvoidSingularities::jacobianPartialDerivative(const AvoidSingula
 void AvoidSingularities::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
 {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (local_xml.hasMember("enable_threshold"))
+  if (!getParam(local_xml, "enable_threshold", enable_threshold_))
   {
-    if (local_xml["enable_threshold"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-      enable_threshold_ = static_cast<int>(local_xml["enable_threshold"]);
-    else if (local_xml["enable_threshold"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
-      enable_threshold_ = local_xml["enable_threshold"];
-    else
-      ROS_WARN("Avoid Singularities: Unable to add enable_threshold member, value must be a double.");
-
-  }
-  else
-  {
-    ROS_WARN("Avoid Singularities: Missing enable_threshold member, default parameter will be used.");
+    ROS_WARN("Avoid Singularities: Unable to retrieving weight member, default parameter will be used.");
   }
 
-  if (local_xml.hasMember("enable_threshold"))
+  if (!getParam(local_xml, "ignore_threshold", ignore_threshold_))
   {
-    if (local_xml["enable_threshold"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-      enable_threshold_ = static_cast<int>(local_xml["enable_threshold"]);
-    else if (local_xml["enable_threshold"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
-      enable_threshold_ = local_xml["enable_threshold"];
-    else
-      ROS_WARN("Avoid Singularities: Unable to add enable_threshold member, value must be a double.");
-
-  }
-  else
-  {
-    ROS_WARN("Avoid Singularities: Missing enable_threshold member, default parameter will be used.");
+    ROS_WARN("Avoid Singularities: Unable to retrieving weight member, default parameter will be used.");
   }
 
-  if (local_xml.hasMember("enable_threshold"))
+  if (!getParam(local_xml, "weight", weight_))
   {
-    if (local_xml["ignore_threshold"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-      ignore_threshold_ = static_cast<int>(local_xml["ignore_threshold"]);
-    else if (local_xml["ignore_threshold"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
-      ignore_threshold_ = local_xml["ignore_threshold"];
-    else
-      ROS_WARN("Avoid Singularities: Unable to add ignore_threshold member, value must be a double.");
-
-  }
-  else
-  {
-    ROS_WARN("Avoid Singularities: Missing ignore_threshold member, default parameter will be used.");
-  }
-
-  if (local_xml.hasMember("weight"))
-  {
-    if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-      weight_ = static_cast<int>(local_xml["weight"]);
-    else if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
-      weight_ = local_xml["weight"];
-    else
-      ROS_WARN("Avoid Singularities: Unable to add weight member, value must be a double.");
-
-  }
-  else
-  {
-    ROS_WARN("Avoid Singularities: Missing weight member, default parameter will be used.");
+    ROS_WARN("Avoid Singularities: Unable to retrieving weight member, default parameter will be used.");
   }
 }
 

@@ -102,6 +102,12 @@ protected:
   const Constrained_IK* ik_;
 
   int numJoints() const;
+  bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, double& value);
+  bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, std::vector<double>& double_array);
+  bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, Eigen::VectorXd& eigen_vector);
+  bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, bool& value);
+  bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, std::vector<std::string>& string_array);
+
 
 }; // class Constraint
 

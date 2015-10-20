@@ -127,34 +127,14 @@ void AvoidJointLimits::init(const Constrained_IK *ik)
 void AvoidJointLimits::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
 {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (local_xml.hasMember("threshold"))
+  if (!getParam(local_xml, "threshold", threshold_))
   {
-    if (local_xml["threshold"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-      threshold_ = static_cast<int>(local_xml["threshold"]);
-    else if (local_xml["threshold"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
-      threshold_ = local_xml["threshold"];
-    else
-      ROS_WARN("Avoid Joint Limits: Unable to add threshold member, value must be a double.");
-
-  }
-  else
-  {
-    ROS_WARN("Avoid Joint Limits: Missing threshold member, default parameter will be used.");
+    ROS_WARN("Avoid Joint Limits: Unable to retrieving threshold member, default parameter will be used.");
   }
 
-  if (local_xml.hasMember("weight"))
+  if (!getParam(local_xml, "weight", weight_))
   {
-    if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-      weight_ = static_cast<int>(local_xml["weight"]);
-    else if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
-      weight_ = local_xml["weight"];
-    else
-      ROS_WARN("Avoid Joint Limits: Unable to add threshold member, value must be a double.");
-
-  }
-  else
-  {
-    ROS_WARN("Avoid Joint Limits: Missing threshold member, default parameter will be used.");
+    ROS_WARN("Avoid Joint Limits: Unable to retrieving weight member, default parameter will be used.");
   }
 }
 

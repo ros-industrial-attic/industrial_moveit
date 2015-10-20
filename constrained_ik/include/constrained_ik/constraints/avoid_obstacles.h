@@ -282,6 +282,7 @@ public:
     if (std::find(link_names_.begin(), link_names_.end(), link_name) == link_names_.end())
     {
       links_.insert(std::make_pair(link_name, LinkAvoidance(link_name)));
+      link_names_.push_back(link_name);
     }
     else
     {

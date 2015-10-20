@@ -97,47 +97,26 @@ bool GoalPosition::checkStatus(const GoalPosition::GoalPositionData &cdata) cons
 void GoalPosition::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
 {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (local_xml.hasMember("position_tolerance"))
+  if (!getParam(local_xml, "position_tolerance", pos_err_tol_))
   {
-    if (local_xml["position_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-      pos_err_tol_ = static_cast<int>(local_xml["position_tolerance"]);
-    else if (local_xml["position_tolerance"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
-      pos_err_tol_ = local_xml["position_tolerance"];
-    else
-      ROS_WARN("Gool Position: Unable to add position_tolerance member, value must be a double.");
-
-  }
-  else
-  {
-    ROS_WARN("Goal Position: Missing position_tolerance member, default parameter will be used.");
+    ROS_WARN("Goal Position: Unable to retrieving position_tolerance member, default parameter will be used.");
   }
 
-  if (local_xml.hasMember("weights"))
+  Eigen::VectorXd weights;
+  if (getParam(local_xml, "weights", weights))
   {
-    if (local_xml["weights"].getType() == XmlRpc::XmlRpcValue::TypeArray)
+    if (weights.size() == 3)
     {
-      XmlRpc::XmlRpcValue weights = local_xml["weights"];
-      if (weights.size() == 3)
-      {
-        for (int i=0; i<weights.size(); ++i)
-        {
-          if (weights[i].getType() == XmlRpc::XmlRpcValue::TypeInt)
-            weight_[i] = static_cast<int>(weights[i]);
-          else if (weights[i].getType() == XmlRpc::XmlRpcValue::TypeDouble)
-            weight_[i] = weights[i];
-          else
-            ROS_WARN("Gool Position: Unable to add weight member, values must be a double.");
-        }
-      }
-      else
-        ROS_WARN("Gool Position: Unable to add weights member, value must be a array of size 3.");
+      weight_ = weights;
     }
     else
-      ROS_WARN("Gool Position: Unable to add weights member, value must be a array.");
+    {
+      ROS_WARN("Gool Position: Unable to add weights member, value must be a array of size 3.");
+    }
   }
   else
   {
-    ROS_WARN("Gool Position: Missing weights member, default parameter will be used.");
+    ROS_WARN("Gool Position: Unable to retrieving weights member, default parameter will be used.");
   }
 }
 

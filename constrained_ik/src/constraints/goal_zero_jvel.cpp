@@ -66,19 +66,9 @@ Eigen::MatrixXd GoalZeroJVel::calcJacobian(const GoalZeroJVel::ConstraintData &c
 void GoalZeroJVel::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
 {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (local_xml.hasMember("weight"))
+  if (!getParam(local_xml, "weight", weight_))
   {
-    if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-      weight_ = static_cast<int>(local_xml["weight"]);
-    else if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
-      weight_ = local_xml["weight"];
-    else
-      ROS_WARN("Goal Joint Zero Velocity: Unable to add weight member, value must be a double.");
-
-  }
-  else
-  {
-    ROS_WARN("Goal Joint Zero Velocity: Missing weight member, default parameter will be used.");
+    ROS_WARN("Goal Joint Zero Velocity: Unable to retrieving weight member, default parameter will be used.");
   }
 }
 

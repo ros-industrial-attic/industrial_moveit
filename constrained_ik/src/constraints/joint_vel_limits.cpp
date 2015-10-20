@@ -108,19 +108,9 @@ void JointVelLimits::init(const Constrained_IK *ik)
 void JointVelLimits::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
 {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (local_xml.hasMember("weight"))
+  if (!getParam(local_xml, "weight", weight_))
   {
-    if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeInt)
-      weight_ = static_cast<int>(local_xml["weight"]);
-    else if (local_xml["weight"].getType() == XmlRpc::XmlRpcValue::TypeDouble)
-      weight_ = local_xml["weight"];
-    else
-      ROS_WARN("Avoid Joint Velocity Limits: Unable to add weight member, value must be a double.");
-
-  }
-  else
-  {
-    ROS_WARN("Avoid Joint Velocity Limits: Missing weight member, default parameter will be used.");
+    ROS_WARN("Avoid Joint Velocity Limits: Unable to retrieving weight member, default parameter will be used.");
   }
 }
 
