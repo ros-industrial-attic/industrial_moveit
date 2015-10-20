@@ -87,7 +87,7 @@ public:
    * @brief Load constraint parameters from XmlRpc::XmlRpcValue
    * @param constraint_xml XmlRpc::XmlRpcValue
    */
-  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) = 0;
+  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) {}
 
   /**
    * @brief set debug mode
