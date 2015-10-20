@@ -29,7 +29,7 @@ public:
   StompCostFeature(){};
   virtual ~StompCostFeature(){};
 
-  bool initialize(XmlRpc::XmlRpcValue& config,
+  virtual bool initialize(XmlRpc::XmlRpcValue& config,
                   int num_threads,
                   const std::string& group_name,
                   moveit::core::RobotModelConstPtr kinematic_model,

@@ -65,10 +65,16 @@ bool CollisionFeature::initialize(XmlRpc::XmlRpcValue& config)
   report_validity_ = false;
   debug_collisions_ = false;
   clearance_ = 0.2;
-  stomp::getParam(config, "report_validity", report_validity_);
-  stomp::getParam(config, "collision_clearance", clearance_);
-  stomp::getParam(config, "debug_collisions", debug_collisions_);
-  return true;
+  bool success = stomp::getParam(config, "report_validity", report_validity_);
+  success = success && stomp::getParam(config, "collision_clearance", clearance_);
+  success = success && stomp::getParam(config, "debug_collisions", debug_collisions_);
+
+  if(!success)
+  {
+    ROS_ERROR_STREAM("Collision Feature failed to load one or more parameters");
+  }
+
+  return success;
 }
 
 int CollisionFeature::getNumValues() const

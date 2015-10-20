@@ -420,7 +420,7 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
       if(cost_convergence_iterations > max_iteration_after_cost_convergence_)
       {
         ROS_DEBUG_STREAM("Cost converged at "<<best_noiseless_cost_<<", exiting");
-        success = true;
+        //success = true;
         break;
       }
     }

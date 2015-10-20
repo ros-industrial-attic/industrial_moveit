@@ -19,6 +19,11 @@
       Mesh-model-based exact collision features
     </description>
   </class>
+  <class name="stomp_moveit_interface/ObstacleAvoidanceFeature" type="stomp_moveit_interface::ObstacleAvoidanceFeature" base_class_type="stomp_moveit_interface::StompCostFeature">
+    <description>
+      FCL Mesh-model-based exact collision 
+    </description>
+  </class>
   <!--<class name="stomp_moveit_interface/JointVelAccFeature" type="stomp_moveit_interface::JointVelAccFeature" base_class_type="stomp_moveit_interface::StompCostFeature">
     <description>
       Features measuring joint velocities and accelerations
