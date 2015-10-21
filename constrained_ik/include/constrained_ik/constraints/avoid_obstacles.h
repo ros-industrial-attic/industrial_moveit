@@ -96,7 +96,7 @@ public:
   {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     const constraints::AvoidObstacles* parent_;
-    CollisionRobotFCLDetailed::DistanceDetailedMap distance_map_;
+    CollisionRobotFCLDetailed::DistanceMap distance_map_;
     CollisionRobotFCLDetailed::DistanceInfoMap distance_info_map_;
 
     AvoidObstaclesData(const constrained_ik::SolverState &state, const constraints::AvoidObstacles* parent);
