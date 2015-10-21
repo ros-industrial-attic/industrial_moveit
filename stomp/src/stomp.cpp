@@ -395,6 +395,12 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
     {
       success = true;
       collision_free_iterations++;
+      ROS_DEBUG("Stomp Trajectory is collision free, iteration %i",collision_free_iterations);
+
+      if(collision_free_iterations >= max_iterations_after_collision_free_)
+      {
+        break;
+      }
     }
     else
     {
@@ -404,13 +410,13 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
 
 
     // checking for best cost threshold
-    if(best_noiseless_cost_ < BEST_COST_THRESHOLD)
+/*    if(best_noiseless_cost_ < BEST_COST_THRESHOLD)
     {
       success = true;
       ROS_DEBUG_STREAM("Best noiseless cost reached minimum required threshold of "<<BEST_COST_THRESHOLD <<
                        ", exiting");
       break;
-    }
+    }*/
 
     // checking for cost improvement convergence
     improvement_percentace = std::abs((previous_cost - best_noiseless_cost_)/(previous_cost));

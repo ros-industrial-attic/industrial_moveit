@@ -15,7 +15,7 @@
 namespace stomp_moveit_interface
 {
 
-const static double DEFAULT_CONTROL_COST_WEIGHT = 0.001;
+const static double DEFAULT_CONTROL_COST_WEIGHT = 1;
 const static double DEFAULT_SCALE = 1.0;
 const static double DEFAULT_PADDING = 0.01f;
 const static int OPTIMIZATION_TASK_THREADS = 1;

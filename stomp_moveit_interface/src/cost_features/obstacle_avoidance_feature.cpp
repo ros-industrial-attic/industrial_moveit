@@ -56,7 +56,7 @@ bool ObstacleAvoidanceFeature::initialize(XmlRpc::XmlRpcValue& config)
   collision_request_.distance = true;
   collision_request_.max_contacts = 1;
   collision_request_.max_contacts_per_pair = 1;
-  collision_request_.contacts = false;
+  collision_request_.contacts = true;
   collision_request_.verbose = false;
 
   if(config.hasMember("collision_clearance"))
@@ -93,10 +93,13 @@ void ObstacleAvoidanceFeature::computeValuesAndGradients(const boost::shared_ptr
                                        int start_timestep,                      // start timestep
                                        int num_time_steps) const
 {
+  typedef collision_detection::CollisionResult::ContactMap ContactMap;
+  typedef ContactMap::iterator ContactMapIterator;
+  typedef std::vector<collision_detection::Contact> ContactArray;
 
   // initializing result arrays (gradients are not used by stomp)
   feature_values = Eigen::MatrixXd::Zero(trajectory->num_time_steps_, getNumValues());
-  validities.resize(trajectory->num_time_steps_, 1);
+  validities.assign(trajectory->num_time_steps_, 1);
 
   std::vector<collision_detection::CollisionResult> results(2);
   moveit::core::RobotStatePtr state0(new moveit::core::RobotState(planning_scene_->getRobotModel()));
@@ -127,16 +130,33 @@ void ObstacleAvoidanceFeature::computeValuesAndGradients(const boost::shared_ptr
       double potential = 0.0;
       if(result.collision)
       {
+        double max_depth = 0;
+        for(ContactMapIterator c = result.contacts.begin(); c != result.contacts.end(); c++)
+        {
+          ContactArray& contacts = c->second;
+          for(ContactArray::iterator ci = contacts.begin(); ci != contacts.end() ; ci++)
+          {
+            collision_detection::Contact& contact = *ci;
+            max_depth = std::abs(contact.depth) > max_depth ? std::abs(contact.depth) : max_depth;
+
+          }
+        }
+
         //potential = -result.distance + 0.5 * clearance_;
-        potential = 0.5 * clearance_;
+        //potential = clearance_;
+        potential = 0.1;
         validities[t] = 0;
       }
       else
       {
-        if( (result.distance > 0) &&  (result.distance < clearance_))
+        if( (result.distance > 0) )
         {
-          potential = 0.5 * (result.distance - clearance_) * (result.distance - clearance_) / clearance_;
+          if(result.distance < clearance_)
+          {
+            potential = 0.1;//0.5 * (result.distance - clearance_) * (result.distance - clearance_) / clearance_;
+          }
         }
+
       }
 
       feature_values(t,0) += potential;
