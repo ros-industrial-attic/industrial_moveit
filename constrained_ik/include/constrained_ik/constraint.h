@@ -30,6 +30,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <Eigen/Core>
 #include <constrained_ik/constraint_results.h>
+#include <constrained_ik/constrained_ik_utils.h>
 #include <XmlRpc.h>
 
 namespace constrained_ik
@@ -102,12 +103,6 @@ protected:
   const Constrained_IK* ik_;
 
   int numJoints() const;
-  bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, double& value);
-  bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, std::vector<double>& double_array);
-  bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, Eigen::VectorXd& eigen_vector);
-  bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, bool& value);
-  bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, std::vector<std::string>& string_array);
-
 
 }; // class Constraint
 

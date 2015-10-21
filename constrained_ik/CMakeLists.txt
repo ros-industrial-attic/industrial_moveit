@@ -65,6 +65,20 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIRS})
 
 ## Declare a cpp library
+add_library(constrained_ik
+            src/basic_kin.cpp
+            src/constrained_ik.cpp
+            src/constraint.cpp
+            src/solver_state.cpp
+            src/enum_types.cpp
+            src/constrained_ik_utils.cpp
+            src/collision_robot_fcl_detailed.cpp
+            src/constraints/avoid_joint_limits.cpp
+            src/constraint_group.cpp
+)
+
+target_link_libraries(constrained_ik ${catkin_LIBRARIES})
+
 add_library(constrained_ik_constraints
             src/constraints/goal_orientation.cpp
             src/constraints/goal_position.cpp
@@ -78,20 +92,7 @@ add_library(constrained_ik_constraints
             src/constraints/avoid_obstacles.cpp
             src/constraints/goal_tool_pointing.cpp
 )
-target_link_libraries(constrained_ik_constraints ${catkin_LIBRARIES})
-
-add_library(constrained_ik
-            src/basic_kin.cpp
-            src/constrained_ik.cpp
-            src/constraint.cpp
-            src/solver_state.cpp
-            src/enum_types.cpp
-            src/collision_robot_fcl_detailed.cpp
-            src/constraints/avoid_joint_limits.cpp
-            src/constraint_group.cpp
-)
-
-target_link_libraries(constrained_ik constrained_ik_constraints ${catkin_LIBRARIES})
+target_link_libraries(constrained_ik_constraints constrained_ik ${catkin_LIBRARIES})
 
 add_dependencies(constrained_ik ${PROJECT_NAME}_gencfg)
 
