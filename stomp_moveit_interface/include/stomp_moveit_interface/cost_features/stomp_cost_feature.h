@@ -38,7 +38,7 @@ public:
                   boost::shared_ptr<const collision_detection::CollisionRobotDistanceField> collision_robot_df,
                   boost::shared_ptr<const collision_detection::CollisionWorldDistanceField> collision_world_df);
 
-  void setPlanningScene(planning_scene::PlanningSceneConstPtr planning_scene);
+  virtual void setPlanningScene(planning_scene::PlanningSceneConstPtr planning_scene);
 
   virtual int getNumValues() const = 0;
   virtual void computeValuesAndGradients(const boost::shared_ptr<StompTrajectory const>& trajectory,
