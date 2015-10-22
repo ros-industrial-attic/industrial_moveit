@@ -101,7 +101,9 @@ void ObstacleAvoidanceFeature::computeValuesAndGradients(const boost::shared_ptr
   feature_values = Eigen::MatrixXd::Zero(trajectory->num_time_steps_, getNumValues());
   validities.assign(trajectory->num_time_steps_, 1);
 
+  collision_detection::CollisionResult result_world_collision, result_robot_collision;
   std::vector<collision_detection::CollisionResult> results(2);
+
   moveit::core::RobotStatePtr state0(new moveit::core::RobotState(planning_scene_->getRobotModel()));
 
   for (int t=start_timestep; t<start_timestep + num_time_steps; ++t)
@@ -111,19 +113,36 @@ void ObstacleAvoidanceFeature::computeValuesAndGradients(const boost::shared_ptr
     *state0 = trajectory->kinematic_states_[t] ;
     state0->update();
 
-    results.resize(2);
+    // checking robot vs world (attached objects, octomap, not in urdf) collisions
+    result_world_collision.distance = std::numeric_limits<double>::max();
     planning_scene_->getCollisionWorld(DEFAULT_COLLISION_DETECTOR)->checkRobotCollision(collision_request_,
-                                                              results[0],
+                                                              result_world_collision,
                                                               *planning_scene_->getCollisionRobot(),
                                                               *state0,
                                                               planning_scene_->getAllowedCollisionMatrix());
 
+    if(!result_world_collision.collision && result_world_collision.distance < 0)
+    {
+      result_world_collision.distance = planning_scene_->getCollisionWorld(DEFAULT_COLLISION_DETECTOR)->distanceRobot(
+          *planning_scene_->getCollisionRobot(),*state0,planning_scene_->getAllowedCollisionMatrix());
+    }
+
+
     planning_scene_->getCollisionRobot(DEFAULT_COLLISION_DETECTOR)->checkSelfCollision(collision_request_,
-                                                             results[1],
+                                                             result_robot_collision,
                                                              *state0,
                                                              planning_scene_->getAllowedCollisionMatrix());
+    if(!result_robot_collision.collision && result_robot_collision.distance < 0)
+    {
+      result_robot_collision.distance = planning_scene_->getCollisionRobot(DEFAULT_COLLISION_DETECTOR)->distanceSelf(
+          *state0,
+          planning_scene_->getAllowedCollisionMatrix());
+    }
 
 
+
+    results[0]= result_world_collision;
+    results[1] = result_robot_collision;
     for(std::vector<collision_detection::CollisionResult>::iterator i = results.begin(); i != results.end(); i++)
     {
       collision_detection::CollisionResult& result = *i;
@@ -142,9 +161,8 @@ void ObstacleAvoidanceFeature::computeValuesAndGradients(const boost::shared_ptr
           }
         }
 
-        //potential = -result.distance + 0.5 * clearance_;
-        //potential = clearance_;
-        potential = 0.1;
+        potential = 0.5*(max_depth + clearance_)/clearance_;
+        potential = potential < 1 ? potential : 0.99;
         validities[t] = 0;
       }
       else
@@ -153,7 +171,7 @@ void ObstacleAvoidanceFeature::computeValuesAndGradients(const boost::shared_ptr
         {
           if(result.distance < clearance_)
           {
-            potential = 0.1;//0.5 * (result.distance - clearance_) * (result.distance - clearance_) / clearance_;
+            potential = 0.5*(clearance_- result.distance)/clearance_;
           }
         }
 

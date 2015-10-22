@@ -293,7 +293,7 @@ bool STOMP::doNoiselessRollout(int iteration_number)
     best_noiseless_parameters_ = parameters_;
     best_noiseless_cost_ = total_cost;
   }
-  last_noiseless_rollout_valid_ = validity;
+  last_noiseless_rollout_valid_ = last_noiseless_rollout_valid_ || validity;
   return true;
 }
 
@@ -376,6 +376,7 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
   proceed(true);
 
   best_noiseless_cost_ = std::numeric_limits<double>::max();
+  last_noiseless_rollout_valid_ = false;
   double previous_cost = best_noiseless_cost_;
   double improvement_percentace = 0;
 

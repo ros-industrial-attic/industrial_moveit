@@ -380,8 +380,8 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   for (int d=0; d<num_dimensions_; ++d)
   {
     derivative_costs[d].col(stomp::STOMP_ACCELERATION) = Eigen::VectorXd::Ones(num_time_steps_all_);
-    //initial_trajectory[d] = Eigen::VectorXd::Zero(num_time_steps_all_);
-    initial_trajectory[d] = joint_traj.row(d);
+    initial_trajectory[d] = Eigen::VectorXd::Zero(num_time_steps_all_);
+    //initial_trajectory[d] = joint_traj.row(d);
     initial_trajectory[d].head(stomp::TRAJECTORY_PADDING) = Eigen::VectorXd::Ones(stomp::TRAJECTORY_PADDING) * start_joints_[d];
     initial_trajectory[d].tail(stomp::TRAJECTORY_PADDING) = Eigen::VectorXd::Ones(stomp::TRAJECTORY_PADDING) * goal_joints_[d];
   }
