@@ -1,0 +1,67 @@
+<library path="lib/libconstrained_ik_constraints">
+  <class name="constrained_ik/AvoidObstacles" type="constrained_ik::constraints::AvoidObstacles" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of AvoidObstacles as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/GoalToolPointing" type="constrained_ik::constraints::GoalToolPointing" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of GoalToolPointing as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/GoalPosition" type="constrained_ik::constraints::GoalPosition" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of GoalPosition as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/GoalOrientation" type="constrained_ik::constraints::GoalOrientation" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of GoalOrientation as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/AvoidJointLimits" type="constrained_ik::constraints::AvoidJointLimits" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of AvoidJointLimits as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/AvoidSingularities" type="constrained_ik::constraints::AvoidSingularities" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of AvoidSingularities as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/GoalMidJoint" type="constrained_ik::constraints::GoalMidJoint" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of GoalMidJoint as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/GoalMinimizeChange" type="constrained_ik::constraints::GoalMinimizeChange" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of GoalMinimizeChange as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/GoalToolOrientation" type="constrained_ik::constraints::GoalToolOrientation" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of GoalToolOrientation as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/GoalToolPointing" type="constrained_ik::constraints::GoalToolPointing" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of GoalToolPointing as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/GoalZeroJVel" type="constrained_ik::constraints::GoalZeroJVel" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of GoalZeroJVel as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/JointVelLimits" type="constrained_ik::constraints::JointVelLimits" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of JointVelLimits as a plugin.
+    </description>
+  </class>
+  <class name="constrained_ik/ToolPosition" type="constrained_ik::constraints::ToolPosition" base_class_type="constrained_ik::Constraint">
+    <description>
+      A implementation of ToolPosition as a plugin.
+    </description>
+  </class>
+</library>

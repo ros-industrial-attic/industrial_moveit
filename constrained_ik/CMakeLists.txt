@@ -71,9 +71,15 @@ add_library(constrained_ik
             src/constraint.cpp
             src/solver_state.cpp
             src/enum_types.cpp
+            src/constrained_ik_utils.cpp
             src/collision_robot_fcl_detailed.cpp
             src/constraints/avoid_joint_limits.cpp
             src/constraint_group.cpp
+)
+
+target_link_libraries(constrained_ik ${catkin_LIBRARIES})
+
+add_library(constrained_ik_constraints
             src/constraints/goal_orientation.cpp
             src/constraints/goal_position.cpp
             src/constraints/tool_position.cpp
@@ -86,22 +92,21 @@ add_library(constrained_ik
             src/constraints/avoid_obstacles.cpp
             src/constraints/goal_tool_pointing.cpp
 )
-
-target_link_libraries(constrained_ik ${catkin_LIBRARIES})
+target_link_libraries(constrained_ik_constraints constrained_ik ${catkin_LIBRARIES})
 
 add_dependencies(constrained_ik ${PROJECT_NAME}_gencfg)
 
 add_library(constrained_ik_plugin
             src/moveit_interface/constrained_ik_plugin.cpp
 )
-target_link_libraries(constrained_ik_plugin constrained_ik ${catkin_LIBRARIES})
+target_link_libraries(constrained_ik_plugin constrained_ik constrained_ik_constraints ${catkin_LIBRARIES})
 
 add_library(moveit_clik_planner_plugin
             src/moveit_interface/constrained_ik_planner_plugin.cpp
             src/moveit_interface/joint_interpolation_planner.cpp
             src/moveit_interface/cartesian_planner.cpp)
 
-target_link_libraries(moveit_clik_planner_plugin constrained_ik ${catkin_LIBRARIES})
+target_link_libraries(moveit_clik_planner_plugin constrained_ik constrained_ik_constraints ${catkin_LIBRARIES})
 
 ## Declare a cpp executable
 # add_executable(constrained_ik_node src/constrained_ik_node.cpp)

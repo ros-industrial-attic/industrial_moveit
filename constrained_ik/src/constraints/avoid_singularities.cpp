@@ -29,6 +29,8 @@
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/avoid_singularities.h"
 #include "ros/ros.h"
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::AvoidSingularities, constrained_ik::Constraint)
 
 namespace constrained_ik
 {
@@ -95,6 +97,25 @@ Eigen::MatrixXd AvoidSingularities::jacobianPartialDerivative(const AvoidSingula
     if (!ik_->getKin().calcJacobian(joints, jacobian_increment))
         ROS_WARN("Could not calculate jacobian in AvoidSingularities");
     return (jacobian_increment-cdata.jacobian_orig_)/eps;
+}
+
+void AvoidSingularities::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (!getParam(local_xml, "enable_threshold", enable_threshold_))
+  {
+    ROS_WARN("Avoid Singularities: Unable to retrieving weight member, default parameter will be used.");
+  }
+
+  if (!getParam(local_xml, "ignore_threshold", ignore_threshold_))
+  {
+    ROS_WARN("Avoid Singularities: Unable to retrieving weight member, default parameter will be used.");
+  }
+
+  if (!getParam(local_xml, "weight", weight_))
+  {
+    ROS_WARN("Avoid Singularities: Unable to retrieving weight member, default parameter will be used.");
+  }
 }
 
 AvoidSingularities::AvoidSingularitiesData::AvoidSingularitiesData(const SolverState &state, const constraints::AvoidSingularities *parent): ConstraintData(state)

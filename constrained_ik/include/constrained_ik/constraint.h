@@ -30,6 +30,8 @@
 #include <boost/scoped_ptr.hpp>
 #include <Eigen/Core>
 #include <constrained_ik/constraint_results.h>
+#include <constrained_ik/constrained_ik_utils.h>
+#include <XmlRpc.h>
 
 namespace constrained_ik
 {
@@ -81,6 +83,12 @@ public:
    * @param ik, Pointer to Constrained_IK
    */
   virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik;}
+
+  /**
+   * @brief Load constraint parameters from XmlRpc::XmlRpcValue
+   * @param constraint_xml XmlRpc::XmlRpcValue
+   */
+  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) {}
 
   /**
    * @brief set debug mode

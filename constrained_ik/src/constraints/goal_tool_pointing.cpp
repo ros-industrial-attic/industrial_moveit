@@ -25,6 +25,11 @@
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_tool_pointing.h"
 #include "constrained_ik/constraints/goal_orientation.h"
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalToolPointing, constrained_ik::Constraint)
+
+const double DEFAULT_POSITION_TOLERANCE = 0.001;
+const double DEFAULT_ORIENTATION_TOLERANCE = 0.009;
 
 namespace constrained_ik
 {
@@ -34,7 +39,7 @@ namespace constraints
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalToolPointing::GoalToolPointing() : Constraint(), pos_err_tol_(0.001), rot_err_tol_(0.009), weight_(VectorXd::Ones(5).asDiagonal())
+GoalToolPointing::GoalToolPointing() : Constraint(), pos_err_tol_(DEFAULT_POSITION_TOLERANCE), rot_err_tol_(DEFAULT_ORIENTATION_TOLERANCE), weight_(VectorXd::Ones(5).asDiagonal())
 {
 }
 
@@ -89,6 +94,37 @@ bool GoalToolPointing::checkStatus(const GoalToolPointing::GoalToolPointingData 
     return true;
 
   return false;
+}
+
+void GoalToolPointing::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (!getParam(local_xml, "position_tolerance", pos_err_tol_))
+  {
+    ROS_WARN("Goal Tool Pointing: Unable to retrieving position_tolerance member, default parameter will be used.");
+  }
+
+  if (!getParam(local_xml, "orientation_tolerance", rot_err_tol_))
+  {
+    ROS_WARN("Goal Tool Pointing: Unable to retrieving orientation_tolerance member, default parameter will be used.");
+  }
+
+  Eigen::VectorXd weights;
+  if (getParam(local_xml, "weights", weights))
+  {
+    if (weights.size() == 5)
+    {
+      weight_ = weights.asDiagonal();
+    }
+    else
+    {
+      ROS_WARN("Gool Tool Pointing: Unable to add weights member, value must be a array of size 5.");
+    }
+  }
+  else
+  {
+    ROS_WARN("Gool Tool Pointing: Unable to retrieving weights member, default parameter will be used.");
+  }
 }
 
 GoalToolPointing::GoalToolPointingData::GoalToolPointingData(const SolverState &state): ConstraintData(state)

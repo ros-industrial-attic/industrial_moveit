@@ -30,6 +30,8 @@
 #include "constrained_ik/constraints/avoid_obstacles.h"
 #include <utility>
 #include <ros/ros.h>
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::AvoidObstacles, constrained_ik::Constraint)
 
 const double DEFAULT_WEIGHT = 1.0;
 const double DEFAULT_MIN_DISTANCE = 0.1;
@@ -54,12 +56,11 @@ AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): weight_(DEF
 void AvoidObstacles::init(const Constrained_IK * ik)
 {
   Constraint::init(ik);
-  loadParameters(ik_->getKin().getJointModelGroup()->getName());
+
   if (link_names_.size() == 0)
   {
-    ROS_ERROR("avoid obstacles constraint was added but no links were added.");
-    initialized_ = false;
-    return;
+    ik_->getLinkNames(link_names_);
+    ROS_WARN("Avoid Obstacles: No links were specified therefore using all links in kinematic chain.");
   }
   
   for (std::map<std::string, LinkAvoidance>::iterator it = links_.begin(); it != links_.end(); ++it)
@@ -86,39 +87,90 @@ void AvoidObstacles::init(const Constrained_IK * ik)
   }
 }
 
-void AvoidObstacles::loadParameters(std::string group_name)
+void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
 {
-  ros::NodeHandle pnh("~");
-  if (pnh.getParam("constrained_ik_solver/" + group_name + "/avoid_obstacles/links", link_names_))
-  {
-    setAvoidanceLinks(link_names_);
-  }
-  
-  if (link_names_.size() > 0)
-  {
-    double amplitude, weight, min_distance, avoidance_distance;
-    for (std::vector<std::string>::iterator it = link_names_.begin(); it != link_names_.end(); ++it)
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  std::vector<std::string> link_names;
+  if (getParam(local_xml, "link_names", link_names))
+  {    
+    std::vector<double> amplitude, minimum_distance, avoidance_distance, weight;
+    if (getParam(local_xml, "amplitude", amplitude))
     {
-      if (pnh.getParam("constrained_ik_solver/" + group_name + "/avoid_obstacles/" + (*it) + "/amplitude", amplitude))
+      if (link_names.size()!=amplitude.size())
       {
-        setAmplitude((*it), amplitude);
-      }
-      
-      if (pnh.getParam("constrained_ik_solver/" + group_name + "/avoid_obstacles/" + (*it) + "/weight", weight))
-      {
-        setWeight((*it), weight);
-      }
-      
-      if (pnh.getParam("constrained_ik_solver/" + group_name + "/avoid_obstacles/" + (*it) + "/min_distance", min_distance))
-      {
-        setMinDistance((*it), min_distance);
-      }
-      
-      if (pnh.getParam("constrained_ik_solver/" + group_name + "/avoid_obstacles/" + (*it) + "/avoidance_distance", avoidance_distance))
-      {
-        setAvoidanceDistance((*it), avoidance_distance);
+        ROS_WARN("Abstacle Avoidance: amplitude memebr must be same size array as link_names member, default parameters will be used.");
+        amplitude.clear();
       }
     }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving amplitude member, default parameter will be used.");
+    }
+
+    if (getParam(local_xml, "minimum_distance", minimum_distance))
+    {
+      if (link_names.size()!=minimum_distance.size())
+      {
+        ROS_WARN("Abstacle Avoidance: minimum_distance memebr must be same size array as link_names member, default parameters will be used.");
+        minimum_distance.clear();
+      }
+    }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving minimum_distance member, default parameter will be used.");
+    }
+
+    if (getParam(local_xml, "avoidance_distance", avoidance_distance))
+    {
+      if (link_names.size()!=avoidance_distance.size())
+      {
+        ROS_WARN("Abstacle Avoidance: avoidance_distance memebr must be same size array as link_names member, default parameters will be used.");
+        avoidance_distance.clear();
+      }
+    }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving avoidance_distance member, default parameter will be used.");
+    }
+
+    if (getParam(local_xml, "weight", weight))
+    {
+      if (link_names.size()!=weight.size())
+      {
+        ROS_WARN("Abstacle Avoidance: weight memebr must be same size array as link_names member, default parameters will be used.");
+        weight.clear();
+      }
+    }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving weight member, default parameter will be used.");
+    }
+
+
+    for (int i=0; i<link_names.size(); ++i)
+    {
+      addAvoidanceLink(link_names[i]);
+      if (!amplitude.empty())
+      {
+        setAmplitude(link_names[i], amplitude[i]);
+      }
+      if (!minimum_distance.empty())
+      {
+        setMinDistance(link_names[i], minimum_distance[i]);
+      }
+      if (!avoidance_distance.empty())
+      {
+        setAvoidanceDistance(link_names[i], avoidance_distance[i]);
+      }
+      if (!weight.empty())
+      {
+        setWeight(link_names[i], weight[i]);
+      }
+    }
+  }
+  else
+  {
+    ROS_WARN("Abstacle Avoidance: Unable to retrieving link_names member, default parameter will be used.");
   }
 }
 
