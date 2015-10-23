@@ -77,7 +77,7 @@ void ExactCollisionFeature::computeValuesAndGradients(const boost::shared_ptr<St
 
   for (int t=start_timestep; t<start_timestep + num_time_steps; ++t)
   {
-    collision_world_->checkCollision(collision_request_, result, *collision_robot_,
+    planning_scene_->getCollisionWorld()->checkCollision(collision_request_, result, *planning_scene_->getCollisionRobot(),
                                          trajectory->kinematic_states_[t], planning_scene_->getAllowedCollisionMatrix());
     if (result.collision)
     {

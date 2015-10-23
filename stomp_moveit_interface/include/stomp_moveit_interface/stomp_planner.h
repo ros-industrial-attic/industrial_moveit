@@ -9,12 +9,7 @@
 #define STOMP_PLANNER_H_
 
 #include <moveit/planning_interface/planning_interface.h>
-#include <moveit/collision_detection/collision_robot.h>
-#include <moveit/collision_detection/collision_world.h>
-#include <moveit/collision_detection_fcl/collision_robot_fcl.h>
-#include <moveit/collision_detection_fcl/collision_world_fcl.h>
-#include <moveit/collision_distance_field/collision_robot_distance_field.h>
-#include <moveit/collision_distance_field/collision_world_distance_field.h>
+#include <stomp_moveit_interface/stomp_optimization_task.h>
 #include <stomp/stomp.h>
 #include <boost/thread.hpp>
 #include <ros/ros.h>
@@ -58,6 +53,7 @@ protected:
   ros::NodeHandle node_handle_;
 
   boost::shared_ptr<stomp::STOMP> stomp_;
+  boost::shared_ptr<StompOptimizationTask> stomp_task_;
 
   bool solving_;
   boost::mutex solving_mutex_;
@@ -66,22 +62,9 @@ protected:
   ros::Publisher robot_body_viz_pub_;
   moveit::core::RobotModelConstPtr kinematic_model_;
 
-  // distance field params
-  Eigen::Vector3d df_size_;
-  Eigen::Vector3d df_origin_;
-  double df_resolution_;
-  double df_collision_tolerance_;
-  double df_max_propagation_distance_;
-
   // planning scene management
   planning_scene::PlanningScenePtr last_planning_scene_;
 
-  // collision models
-  boost::shared_ptr<collision_detection::CollisionWorldDistanceField> collision_world_df_;
-  boost::shared_ptr<collision_detection::CollisionRobotDistanceField> collision_robot_df_;
-
-  void copyObjects(const boost::shared_ptr<const collision_detection::CollisionWorld>& from_world,
-                   const boost::shared_ptr<collision_detection::CollisionWorld>& to_world) const;
 
 };
 

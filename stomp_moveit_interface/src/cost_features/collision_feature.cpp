@@ -11,10 +11,15 @@
 
 PLUGINLIB_EXPORT_CLASS(stomp_moveit_interface::CollisionFeature,stomp_moveit_interface::StompCostFeature);
 
+const static bool USE_SIGNED_DISTANCE_FIELD = true;
+static const std::string OCTOMAP_ID = "<octomap>";
+const static double DEFAULT_PADDING = 0.01f;
+
 namespace stomp_moveit_interface
 {
 
-CollisionFeature::CollisionFeature()
+CollisionFeature::CollisionFeature():
+    previous_planning_scene_()
 {
   sigmoid_centers_.push_back(-0.025);
   sigmoid_slopes_.push_back(200.0);
@@ -43,8 +48,16 @@ CollisionFeature::~CollisionFeature()
 {
 }
 
-bool CollisionFeature::initialize(XmlRpc::XmlRpcValue& config)
+bool CollisionFeature::initialize(XmlRpc::XmlRpcValue& config,
+                                  int num_threads,
+                                  const std::string& group_name,
+                                  planning_scene::PlanningSceneConstPtr planning_scene)
 {
+  if(!StompCostFeature::initialize(config,num_threads,group_name,planning_scene))
+  {
+    return false;
+  }
+
   // initialize collision request
   collision_request_.group_name = group_name_;
   collision_request_.cost = false;
@@ -53,11 +66,6 @@ bool CollisionFeature::initialize(XmlRpc::XmlRpcValue& config)
   collision_request_.max_contacts_per_pair = 1;
   collision_request_.contacts = false;
   collision_request_.verbose = false;
-  if (debug_collisions_)
-  {
-    collision_request_.contacts = true;
-    collision_request_.verbose = true;
-  }
 
   group_state_representations_.clear();
   group_state_representations_.resize(num_threads_);
@@ -65,9 +73,43 @@ bool CollisionFeature::initialize(XmlRpc::XmlRpcValue& config)
   report_validity_ = false;
   debug_collisions_ = false;
   clearance_ = 0.2;
+
+  if(!loadParameters(config))
+  {
+    return false;
+  }
+
+  // creating collision world representation
+  updateCollisionModels();
+
+  return true;
+}
+
+bool CollisionFeature::loadParameters(XmlRpc::XmlRpcValue& config)
+{
+
   bool success = stomp::getParam(config, "report_validity", report_validity_);
   success = success && stomp::getParam(config, "collision_clearance", clearance_);
   success = success && stomp::getParam(config, "debug_collisions", debug_collisions_);
+  if (debug_collisions_)
+  {
+    collision_request_.contacts = true;
+    collision_request_.verbose = true;
+  }
+
+  // read distance field params
+  double sx, sy ,sz, orig_x,orig_y,orig_z;
+  success = success && stomp::getParam(config, "collision_space/size_x", sx);
+  success = success && stomp::getParam(config, "collision_space/size_y", sy);
+  success = success && stomp::getParam(config, "collision_space/size_z", sz);
+  success = success && stomp::getParam(config, "collision_space/origin_x", orig_x);
+  success = success && stomp::getParam(config, "collision_space/origin_y", orig_y);
+  success = success && stomp::getParam(config, "collision_space/origin_z", orig_z);
+  success = success && stomp::getParam(config, "collision_space/resolution", df_resolution_);
+  success = success && stomp::getParam(config, "collision_space/collision_tolerance", df_collision_tolerance_);
+  success = success && stomp::getParam(config, "collision_space/max_propagation_distance", df_max_propagation_distance_);
+  df_size_ = Eigen::Vector3d(sx,sy,sz);
+  df_origin_ = Eigen::Vector3d(orig_x,orig_y,orig_z);
 
   if(!success)
   {
@@ -75,6 +117,12 @@ bool CollisionFeature::initialize(XmlRpc::XmlRpcValue& config)
   }
 
   return success;
+}
+
+void CollisionFeature::setPlanningScene(planning_scene::PlanningSceneConstPtr planning_scene)
+{
+  StompCostFeature::setPlanningScene(planning_scene);
+  updateCollisionModels();
 }
 
 int CollisionFeature::getNumValues() const
@@ -167,10 +215,90 @@ void CollisionFeature::computeValuesAndGradients(const boost::shared_ptr<StompTr
 
     }
 
+  }
+  // TODO gradients not computed yet!!!
+}
+
+void CollisionFeature::copyObjects(const boost::shared_ptr<const collision_detection::CollisionWorld>& from_world,
+                 const boost::shared_ptr<collision_detection::CollisionWorld>& to_world) const
+{
+  std::vector<std::string> object_ids = from_world->getWorld()->getObjectIds();
+  for (size_t i=0; i<object_ids.size(); ++i)
+  {
+    collision_detection::CollisionWorld::ObjectConstPtr obj = from_world->getWorld()->getObject(object_ids[i]);
+    to_world->getWorld()->addToObject(object_ids[i], obj->shapes_, obj->shape_poses_);
+  }
+}
+
+void CollisionFeature::updateCollisionModels()
+{
+  bool reset_collision_robot = false;
+  bool reset_collision_world = false;
+
+  if(previous_planning_scene_)
+  {
+      // checking for changes in collision world
+      std::vector<std::string> ids = planning_scene_->getWorld()->getObjectIds();
+
+      // check for objects added to the world
+      if(ids.empty())
+      {
+        // clean collision world
+        reset_collision_world = !previous_planning_scene_->getWorld()->getObjectIds().empty();
+      }
+      else
+      {
+        reset_collision_world = true;
+      }
+
+      // check if new objects were attached to the robot
+      std::vector<const robot_state::AttachedBody*> attached_bodies;
+      planning_scene_->getCurrentState().getAttachedBodies(attached_bodies);
+      reset_collision_robot = !attached_bodies.empty();
+  }
+  else
+  {
+    reset_collision_world = true;
+    reset_collision_robot = true;
+  }
+
+
+  if(reset_collision_world)
+  {
+    ros::Time start_time = ros::Time::now();
+    ROS_INFO_STREAM("Collision World Distance Field creation started");
+    collision_world_df_.reset(new collision_detection::CollisionWorldDistanceField(df_size_,
+                                                                                df_origin_,
+                                                                                USE_SIGNED_DISTANCE_FIELD,
+                                                                                df_resolution_, df_collision_tolerance_,
+                                                                                df_max_propagation_distance_));
+    copyObjects(planning_scene_->getCollisionWorld(), collision_world_df_);
+
+    ROS_INFO_STREAM("Collision World Distance Field creation completed after "
+        <<(ros::Time::now() - start_time).toSec()<<" seconds");
+  }
+
+  if(reset_collision_robot)
+  {
+    ros::Time start_time = ros::Time::now();
+    ROS_INFO_STREAM("Collision Robot Distance Field creation started");
+    collision_robot_df_.reset(
+        new collision_detection::CollisionRobotDistanceField(*planning_scene_->getCollisionRobot(),
+                                                            df_size_,
+                                                            df_origin_,
+                                                            USE_SIGNED_DISTANCE_FIELD,
+                                                            df_resolution_,
+                                                            df_collision_tolerance_,
+                                                            df_max_propagation_distance_,
+                                                            DEFAULT_PADDING));
+    ROS_INFO_STREAM("Collision Robot Distance Field creation completed after "
+        <<(ros::Time::now() - start_time).toSec()<<" seconds");
 
   }
 
-  // TODO gradients not computed yet!!!
+  // saving last scene
+  previous_planning_scene_ = planning_scene_->diff();
+
 }
 
 std::string CollisionFeature::getName() const

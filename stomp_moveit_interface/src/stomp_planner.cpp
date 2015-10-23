@@ -7,7 +7,6 @@
 
 #include <ros/ros.h>
 #include <moveit/robot_state/conversions.h>
-#include <stomp_moveit_interface/stomp_optimization_task.h>
 #include <stomp_moveit_interface/stomp_planner.h>
 #include <stomp/stomp_utils.h>
 #include <class_loader/class_loader.h>
@@ -17,12 +16,9 @@ namespace stomp_moveit_interface
 
 const static double DEFAULT_CONTROL_COST_WEIGHT = 1;
 const static double DEFAULT_SCALE = 1.0;
-const static double DEFAULT_PADDING = 0.01f;
 const static int OPTIMIZATION_TASK_THREADS = 1;
-const static bool USE_SIGNED_DISTANCE_FIELD = true;
 const static int TERMINATION_ATTEMPTS = 200;
 const double TERMINATION_DELAY = 0.1f;
-static const std::string OCTOMAP_ID = "<octomap>";
 
 StompPlanner::StompPlanner(const std::string& group,const moveit::core::RobotModelConstPtr& model):
     PlanningContext("STOMP",group),
@@ -31,7 +27,6 @@ StompPlanner::StompPlanner(const std::string& group,const moveit::core::RobotMod
     stomp_()
 {
   trajectory_viz_pub_ = node_handle_.advertise<visualization_msgs::Marker>("stomp_trajectory", 20);
-  robot_body_viz_pub_ = node_handle_.advertise<visualization_msgs::MarkerArray>("stomp_robot", 20);
   init(model);
 
 }
@@ -43,58 +38,35 @@ StompPlanner::~StompPlanner()
 void StompPlanner::init(const moveit::core::RobotModelConstPtr& model)
 {
   kinematic_model_ = model;
-
-  // read distance field params
-  double sx, sy ,sz, orig_x,orig_y,orig_z;
-  STOMP_VERIFY(node_handle_.getParam("collision_space/size_x", sx));
-  STOMP_VERIFY(node_handle_.getParam("collision_space/size_y", sy));
-  STOMP_VERIFY(node_handle_.getParam("collision_space/size_z", sz));
-  STOMP_VERIFY(node_handle_.getParam("collision_space/origin_x", orig_x));
-  STOMP_VERIFY(node_handle_.getParam("collision_space/origin_y", orig_y));
-  STOMP_VERIFY(node_handle_.getParam("collision_space/origin_z", orig_z));
-  STOMP_VERIFY(node_handle_.getParam("collision_space/resolution", df_resolution_));
-  STOMP_VERIFY(node_handle_.getParam("collision_space/collision_tolerance", df_collision_tolerance_));
-  STOMP_VERIFY(node_handle_.getParam("collision_space/max_propagation_distance", df_max_propagation_distance_));
-
-
-  df_size_ = Eigen::Vector3d(sx,sy,sz);
-  df_origin_ = Eigen::Vector3d(orig_x,orig_y,orig_z);
-
-  // initializing collision components
-  if(planning_scene_)
+  if(!getPlanningScene())
   {
-    last_planning_scene_ = planning_scene_->diff();
+    setPlanningScene(planning_scene::PlanningSceneConstPtr(new planning_scene::PlanningScene(model)));
+  }
+
+  // loading parameters
+  int max_rollouts;
+  int num_threads=OPTIMIZATION_TASK_THREADS;
+  XmlRpc::XmlRpcValue features_xml;
+
+  STOMP_VERIFY(node_handle_.getParam("features", features_xml));
+  STOMP_VERIFY(node_handle_.getParam("max_rollouts", max_rollouts));
+
+
+  // Stomp Optimization Task setup
+  stomp_task_.reset(new StompOptimizationTask(request_.group_name,
+                                              getPlanningScene()));
+
+  if(stomp_task_->initialize(num_threads, max_rollouts))
+  {
+    stomp_task_->setFeaturesFromXml(features_xml);
+    stomp_task_->setControlCostWeight(DEFAULT_CONTROL_COST_WEIGHT);
+    stomp_task_->setTrajectoryVizPublisher(const_cast<ros::Publisher&>(trajectory_viz_pub_));
   }
   else
   {
-    last_planning_scene_.reset(new planning_scene::PlanningScene(model));
+    ROS_ERROR_STREAM("Stomp Optimization Task failed to initialize");
   }
 
-  // creating collision world representation
-  ros::Time start_time =ros::Time::now();
-  ROS_INFO_STREAM("Collision World Distance Field creation started");
-  collision_world_df_.reset(new collision_detection::CollisionWorldDistanceField(df_size_,
-                                                                              df_origin_,
-                                                                              USE_SIGNED_DISTANCE_FIELD,
-                                                                              df_resolution_, df_collision_tolerance_,
-                                                                              df_max_propagation_distance_));
-  copyObjects(last_planning_scene_->getCollisionWorld(), collision_world_df_);
-  ROS_INFO_STREAM("Collision World Distance Field completed in "<< (ros::Time::now() - start_time).toSec()<<" seconds");
-
-
-  // creating collision robot representation
-  start_time = ros::Time::now();
-  ROS_INFO_STREAM("Collision Robot Distance Field creation started");
-  collision_robot_df_.reset(
-      new collision_detection::CollisionRobotDistanceField(*last_planning_scene_->getCollisionRobot(),
-                                                          df_size_,
-                                                          df_origin_,
-                                                          USE_SIGNED_DISTANCE_FIELD,
-                                                          df_resolution_,
-                                                          df_collision_tolerance_,
-                                                          df_max_propagation_distance_,
-                                                          DEFAULT_PADDING));
-  ROS_INFO_STREAM("Collision Robot Distance Field completed in "<< (ros::Time::now() - start_time).toSec()<<" seconds");
 }
 
 
@@ -113,113 +85,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanResponse &res)
   return success;
 }
 
-void StompPlanner::updateCollisionModels(planning_scene::PlanningSceneConstPtr& current_planning_scene)
-{
-  bool reset_collision_robot = false;
-  bool reset_collision_world = false;
-  planning_scene::PlanningScenePtr scene_diff;
-
-  // checking for changes in collision world
-  if(!last_planning_scene_)
-  {
-    ROS_DEBUG_STREAM("Last planning scene is empty, creating new one with the current planning scene as a parent");
-    last_planning_scene_ = current_planning_scene->diff();
-    reset_collision_world = true;
-  }
-  else
-  {
-    if((!last_planning_scene_->getParent()) ||
-        ( last_planning_scene_->getParent()->getName() != current_planning_scene->getName() ))
-    {
-      ROS_DEBUG_STREAM("Parent scene in last saved scene is invalid, creating new one with the current planning scene as a parent");
-      last_planning_scene_ = current_planning_scene->diff();
-      scene_diff = planning_scene::PlanningScene::clone(current_planning_scene);
-      reset_collision_world = true;
-    }
-    else
-    {
-      moveit_msgs::PlanningScene scene_diff_msg;
-      scene_diff = planning_scene::PlanningScene::clone(last_planning_scene_);
-      last_planning_scene_->getPlanningSceneDiffMsg(scene_diff_msg);
-      scene_diff->setPlanningSceneMsg(scene_diff_msg);
-      std::vector<std::string> ids = scene_diff->getWorld()->getObjectIds();
-      reset_collision_world = !(ids.empty());
-
-      // check for octomap
-      if(ids.empty())
-      {
-        ids = current_planning_scene->getWorld()->getObjectIds();
-        std::vector<std::string>::iterator pos = std::find(ids.begin(),ids.end(),OCTOMAP_ID);
-        reset_collision_world = (pos == ids.end()) ? false : true;
-
-        if(reset_collision_world)
-        {
-          ROS_DEBUG_STREAM("Octomap detected, resetting CollisionWorldDistanceField");
-        }
-      }
-
-    }
-  }
-
-  std::stringstream ss;
-  scene_diff->printKnownObjects(ss);
-  ROS_DEBUG_STREAM("Planning Scene Diff Objects\n"<<ss.str());
-
-
-
-  // check if objects were attached to the robot
-  std::vector<const robot_state::AttachedBody*> attached_bodies;
-  scene_diff->getCurrentState().getAttachedBodies(attached_bodies);
-  for(unsigned int i = 0 ; i < attached_bodies.size(); i++)
-  {
-    if(!last_planning_scene_->getCurrentState().hasAttachedBody(attached_bodies[i]->getName()))
-    {
-      reset_collision_robot = true;
-      break;
-    }
-  }
-
-  if(reset_collision_world)
-  {
-    ros::Time start_time = ros::Time::now();
-    ROS_INFO_STREAM("Collision World Distance Field creation started");
-    collision_world_df_.reset(new collision_detection::CollisionWorldDistanceField(df_size_,
-                                                                                df_origin_,
-                                                                                USE_SIGNED_DISTANCE_FIELD,
-                                                                                df_resolution_, df_collision_tolerance_,
-                                                                                df_max_propagation_distance_));
-    copyObjects(current_planning_scene->getCollisionWorld(), collision_world_df_);
-
-    ROS_INFO_STREAM("Collision World Distance Field creation completed after "
-        <<(ros::Time::now() - start_time).toSec()<<" seconds");
-  }
-
-  if(reset_collision_robot)
-  {
-    ros::Time start_time = ros::Time::now();
-    ROS_INFO_STREAM("Collision Robot Distance Field creation started");
-    collision_robot_df_.reset(
-        new collision_detection::CollisionRobotDistanceField(*current_planning_scene->getCollisionRobot(),
-                                                            df_size_,
-                                                            df_origin_,
-                                                            USE_SIGNED_DISTANCE_FIELD,
-                                                            df_resolution_,
-                                                            df_collision_tolerance_,
-                                                            df_max_propagation_distance_,
-                                                            DEFAULT_PADDING));
-    ROS_INFO_STREAM("Collision Robot Distance Field creation completed after "
-        <<(ros::Time::now() - start_time).toSec()<<" seconds");
-
-  }
-
-  // saving last scene
-  if(last_planning_scene_ != current_planning_scene->diff())
-  {
-    last_planning_scene_ = current_planning_scene->diff();
-  }
-
-}
-
 bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 {
   // initializing response
@@ -229,40 +94,10 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   res.trajectory_.resize(1);
 
   setSolving(true);
-  stomp_.reset(new stomp::STOMP());
   ros::WallTime start_time = ros::WallTime::now();
-  boost::shared_ptr<StompOptimizationTask> stomp_task;
 
-  // prepare the collision checkers
-  boost::shared_ptr<const collision_detection::CollisionRobot> collision_robot = planning_scene_->getCollisionRobot();
-  boost::shared_ptr<const collision_detection::CollisionWorld> collision_world = planning_scene_->getCollisionWorld();
 
-  if(planning_scene_)
-  {
-    updateCollisionModels(planning_scene_);
-  }
-  else
-  {
-    ROS_DEBUG_STREAM("Planning scene not set skipping update of collision models");
-  }
-
-  // optimization task setup
-  int max_rollouts;
-  int num_threads=OPTIMIZATION_TASK_THREADS;
-  STOMP_VERIFY(node_handle_.getParam("max_rollouts", max_rollouts));
-  stomp_task.reset(new StompOptimizationTask(node_handle_, request_.group_name,
-                                             kinematic_model_,
-                                             collision_robot, collision_world,
-                                             collision_robot_df_, collision_world_df_));
-  STOMP_VERIFY(stomp_task->initialize(num_threads, max_rollouts));
-  XmlRpc::XmlRpcValue features_xml;
-  STOMP_VERIFY(node_handle_.getParam("features", features_xml));
-  stomp_task->setFeaturesFromXml(features_xml);
-  stomp_task->setControlCostWeight(DEFAULT_CONTROL_COST_WEIGHT);
-  stomp_task->setTrajectoryVizPublisher(const_cast<ros::Publisher&>(trajectory_viz_pub_));
-  stomp_task->setCollisionRobotMarkerPublisher(robot_body_viz_pub_);
-  stomp_task->setDistanceFieldMarkerPublisher(trajectory_viz_pub_);
-  if(!stomp_task->setMotionPlanRequest(planning_scene_, request_, res.error_code_))
+  if(!stomp_task_->setMotionPlanRequest(planning_scene_, request_, res.error_code_))
   {
     ROS_ERROR("STOMP failed to set MotionPlanRequest ");
     return false;
@@ -270,12 +105,19 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 
 
   ros::Time start = ros::Time::now();
+
   bool success = false;
-  if(stomp_->initialize(node_handle_, stomp_task))
+  stomp_.reset(new stomp::STOMP());
+  if(!stomp_->initialize(node_handle_, stomp_task_))
   {
-    ROS_DEBUG_STREAM("STOMP planning started");
-    success = stomp_->runUntilValid();
+    ROS_ERROR_STREAM("STOMP Optimizer initialization failed");
+    res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    setSolving(false);
+    return success;
   }
+
+  ROS_DEBUG_STREAM("STOMP planning started");
+  success = stomp_->runUntilValid();
 
   if(success)
   {
@@ -284,9 +126,9 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     stomp_->getBestNoiselessParameters(best_params, best_cost);
     trajectory_msgs::JointTrajectory trajectory;
 
-    if(stomp_task->parametersToJointTrajectory(best_params, trajectory))
+    if(stomp_task_->parametersToJointTrajectory(best_params, trajectory))
     {
-      stomp_task->publishResultsMarkers(best_params);
+      stomp_task_->publishResultsMarkers(best_params);
 
       moveit::core::RobotState robot_state(planning_scene_->getRobotModel());
       moveit::core::robotStateMsgToRobotState(request_.start_state,robot_state);
@@ -410,18 +252,6 @@ void StompPlanner::clear()
 
 }
 
-
-
-void StompPlanner::copyObjects(const boost::shared_ptr<const collision_detection::CollisionWorld>& from_world,
-                 const boost::shared_ptr<collision_detection::CollisionWorld>& to_world) const
-{
-  std::vector<std::string> object_ids = from_world->getWorld()->getObjectIds();
-  for (size_t i=0; i<object_ids.size(); ++i)
-  {
-    collision_detection::CollisionWorld::ObjectConstPtr obj = from_world->getWorld()->getObject(object_ids[i]);
-    to_world->getWorld()->addToObject(object_ids[i], obj->shapes_, obj->shape_poses_);
-  }
-}
 
 } /* namespace stomp_moveit_interface */
 

@@ -15,30 +15,20 @@ using namespace stomp;
 namespace stomp_moveit_interface
 {
 
-StompOptimizationTask::StompOptimizationTask(ros::NodeHandle node_handle,
-                                             const std::string& planning_group,
-                                             moveit::core::RobotModelConstPtr kinematic_model,
-                                             boost::shared_ptr<const collision_detection::CollisionRobot> collision_robot,
-                                             boost::shared_ptr<const collision_detection::CollisionWorld> collision_world,
-                                             boost::shared_ptr<const collision_detection::CollisionRobotDistanceField> collision_robot_df,
-                                             boost::shared_ptr<const collision_detection::CollisionWorldDistanceField> collision_world_df):
+StompOptimizationTask::StompOptimizationTask(const std::string& planning_group,
+                                             planning_scene::PlanningSceneConstPtr planning_scene):
     Task(planning_group),
-    node_handle_(node_handle),
     planning_group_name_(planning_group),
     feature_loader_("stomp_moveit_interface", "stomp_moveit_interface::StompCostFeature"),
-    kinematic_model_(kinematic_model),
-    collision_robot_(collision_robot),
-    collision_world_(collision_world),
-    collision_robot_df_(collision_robot_df),
-    collision_world_df_(collision_world_df),
-    publish_distance_fields_(false),
+    kinematic_model_(planning_scene->getRobotModel()),
     publish_trajectory_markers_(false),
-    publish_collision_models_(false),
-    publish_best_trajectory_marker_(false)
+    publish_best_trajectory_marker_(false),
+    max_rollout_markers_published_(0),
+    planning_scene_(planning_scene),
+    node_handle_("~")
 
 {
-//  viz_pub_ = node_handle_.advertise<visualization_msgs::Marker>("stomp_trajectories", 20);
-  max_rollout_markers_published_ = 0;
+
 }
 
 StompOptimizationTask::~StompOptimizationTask()
@@ -52,14 +42,18 @@ bool StompOptimizationTask::initialize(int num_threads, int num_rollouts)
   num_rollouts_ = num_rollouts;
 
   // read some params
-  STOMP_VERIFY(node_handle_.getParam("num_feature_basis_functions", num_feature_basis_functions_));
-  STOMP_VERIFY(node_handle_.getParam("trajectory_duration", movement_duration_));
-  STOMP_VERIFY(node_handle_.getParam("num_time_steps", num_time_steps_));
-  STOMP_VERIFY(node_handle_.getParam("publish_trajectory_markers",publish_trajectory_markers_));
-  STOMP_VERIFY(node_handle_.getParam("publish_best_trajectory_marker",publish_best_trajectory_marker_));
-  STOMP_VERIFY(node_handle_.getParam("publish_distance_field_marker",publish_distance_fields_));
-  STOMP_VERIFY(node_handle_.getParam("publish_collision_model_markers",publish_collision_models_));
-
+  if(node_handle_.getParam("num_feature_basis_functions", num_feature_basis_functions_) &&
+    node_handle_.getParam("trajectory_duration", movement_duration_) &&
+    node_handle_.getParam("num_time_steps", num_time_steps_) &&
+    node_handle_.getParam("publish_trajectory_markers",publish_trajectory_markers_) &&
+    node_handle_.getParam("publish_best_trajectory_marker",publish_best_trajectory_marker_) )
+  {
+    ROS_DEBUG_STREAM("Stomp Optimization Task parameters loaded");
+  }
+  else
+  {
+    return false;
+  }
 
   return true;
 }
@@ -94,9 +88,7 @@ void StompOptimizationTask::setFeaturesFromXml(const XmlRpc::XmlRpcValue& featur
 
     STOMP_VERIFY(feature->initialize(feature_xml, num_rollouts_+1,
                                      planning_group_name_,
-                                     kinematic_model_,
-                                     collision_robot_, collision_world_,
-                                     collision_robot_df_, collision_world_df_));
+                                     planning_scene_));
     features.push_back(feature);
   }
 
@@ -442,20 +434,6 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   return true;
 }
 
-void StompOptimizationTask::publishDistanceFieldMarker(ros::Publisher& viz_pub)
-{
-  double max_distance = 1;
-  boost::shared_ptr<const distance_field::DistanceField> robot_df = collision_robot_df_->getLastDistanceFieldEntry()->distance_field_;
-  boost::shared_ptr<const distance_field::DistanceField> world_df = collision_world_df_->getDistanceField();
-  visualization_msgs::Marker robot_df_marker, world_df_marker;
-  robot_df->getIsoSurfaceMarkers(-max_distance, max_distance, reference_frame_, ros::Time::now(), robot_df_marker);
-  world_df->getIsoSurfaceMarkers(-max_distance, max_distance, reference_frame_, ros::Time::now(), world_df_marker);
-  robot_df_marker.ns="robot_distance_field";
-  world_df_marker.ns="world_distance_field";
-  viz_pub.publish(robot_df_marker);
-  viz_pub.publish(world_df_marker);
-}
-
 bool StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen::VectorXd>& parameters,
                                                         trajectory_msgs::JointTrajectory& trajectory)
 {
@@ -622,15 +600,6 @@ void StompOptimizationTask::getNoiselessRolloutData(boost::shared_ptr<const Stom
 
 void StompOptimizationTask::publishResultsMarkers(const std::vector<Eigen::VectorXd>& best_parameters)
 {
-  if(publish_collision_models_)
-  {
-    publishCollisionModelMarkers(viz_robot_body_pub_);
-  }
-
-  if(publish_distance_fields_)
-  {
-    publishDistanceFieldMarker(viz_distance_field_pub_);
-  }
 
   if(publish_best_trajectory_marker_ && !best_parameters.empty())
   {
@@ -639,14 +608,6 @@ void StompOptimizationTask::publishResultsMarkers(const std::vector<Eigen::Vecto
 
 }
 
-void StompOptimizationTask::publishCollisionModelMarkers(ros::Publisher& viz_robot_body_pub) const
-{
-
-  visualization_msgs::MarkerArray body_marker_array;
-  const moveit::core::RobotState& state = trajectories_[num_rollouts_]->kinematic_states_.back();
-  collision_robot_df_->createCollisionModelMarker(state,body_marker_array);
-  viz_robot_body_pub.publish(body_marker_array);
-}
 
 void StompOptimizationTask::publishTrajectoryMarkers(ros::Publisher& viz_pub, const std::vector<Eigen::VectorXd>& parameters)
 {
@@ -797,18 +758,6 @@ void StompOptimizationTask::setTrajectoryVizPublisher(ros::Publisher& viz_trajec
   publish_trajectory_markers_ = publish_trajectory_markers_ && true;
   publish_best_trajectory_marker_ = publish_best_trajectory_marker_ && true;
   viz_trajectory_pub_ = viz_trajectory_pub;
-}
-
-void StompOptimizationTask::setCollisionRobotMarkerPublisher(ros::Publisher& marker_array_pub)
-{
-  publish_collision_models_ = publish_collision_models_ && true;
-  viz_robot_body_pub_ = marker_array_pub;
-}
-
-void StompOptimizationTask::setDistanceFieldMarkerPublisher(ros::Publisher& marker_pub)
-{
-  publish_distance_fields_ = publish_distance_fields_ && true;
-  viz_distance_field_pub_ = marker_pub;
 }
 
 int StompOptimizationTask::getNumFeatures()
