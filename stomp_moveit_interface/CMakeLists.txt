@@ -18,7 +18,7 @@ include_directories(include
 # cost features
 add_library(stomp_cost_features
   src/cost_features/collision_feature.cpp
-  #src/cost_features/obstacle_avoidance_feature.cpp
+  src/cost_features/obstacle_avoidance_feature.cpp
   src/cost_features/exact_collision_feature.cpp
   src/cost_features/stomp_cost_feature.cpp)
 

@@ -121,8 +121,6 @@ bool STOMP::readParameters()
       node_handle_.getParam("num_rollouts_per_iteration", num_rollouts_per_iteration_) &&
       node_handle_.getParam("max_iterations",max_iterations_) &&
       node_handle_.getParam("max_iterations_after_collision_free",max_iterations_after_collision_free_))
-
-
       )
   {
     ROS_ERROR_STREAM("One or more STOMP required parameters were not found in the parameter server");
@@ -162,7 +160,7 @@ bool STOMP::readParameters()
     return false;
   }
 
-
+  // optional parameters
   node_handle_.param("write_to_file", write_to_file_, false);
   node_handle_.param("use_noise_adaptation", use_noise_adaptation_, true);
   node_handle_.param("use_openmp", use_openmp_, false);

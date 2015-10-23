@@ -29,26 +29,19 @@ ObstacleAvoidanceFeature::~ObstacleAvoidanceFeature()
 }
 
 bool ObstacleAvoidanceFeature::initialize(XmlRpc::XmlRpcValue& config,
-                int num_threads,
-                const std::string& group_name,
-                moveit::core::RobotModelConstPtr kinematic_model,
-                boost::shared_ptr<const collision_detection::CollisionRobot> collision_robot,
-                boost::shared_ptr<const collision_detection::CollisionWorld> collision_world,
-                boost::shared_ptr<const collision_detection::CollisionRobotDistanceField> collision_robot_df,
-                boost::shared_ptr<const collision_detection::CollisionWorldDistanceField> collision_world_df)
+                                          int num_threads,
+                                          const std::string& group_name,
+                                          planning_scene::PlanningSceneConstPtr planning_scene)
 {
 
   return StompCostFeature::initialize(config,
                                       num_threads,
                                       group_name,
-                                      kinematic_model,
-                                      collision_robot,
-                                      collision_world,
-                                      collision_robot_df,
-                                      collision_world_df);
+                                      planning_scene) && loadParameters(config);
+
 }
 
-bool ObstacleAvoidanceFeature::initialize(XmlRpc::XmlRpcValue& config)
+bool ObstacleAvoidanceFeature::loadParameters(XmlRpc::XmlRpcValue& config)
 {
   // initialize collision request
   collision_request_.group_name = group_name_;

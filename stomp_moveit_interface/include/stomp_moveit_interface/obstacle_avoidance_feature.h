@@ -22,13 +22,9 @@ public:
   virtual ~ObstacleAvoidanceFeature();
 
   virtual bool initialize(XmlRpc::XmlRpcValue& config,
-                  int num_threads,
-                  const std::string& group_name,
-                  moveit::core::RobotModelConstPtr kinematic_model,
-                  boost::shared_ptr<const collision_detection::CollisionRobot> collision_robot,
-                  boost::shared_ptr<const collision_detection::CollisionWorld> collision_world,
-                  boost::shared_ptr<const collision_detection::CollisionRobotDistanceField> collision_robot_df,
-                  boost::shared_ptr<const collision_detection::CollisionWorldDistanceField> collision_world_df);
+                          int num_threads,
+                          const std::string& group_name,
+                          planning_scene::PlanningSceneConstPtr planning_scene);
 
   virtual int getNumValues() const;
   virtual void computeValuesAndGradients(const boost::shared_ptr<StompTrajectory const>& trajectory,
@@ -44,7 +40,7 @@ public:
 
 protected:
 
-  virtual bool initialize(XmlRpc::XmlRpcValue& config);
+  bool loadParameters(XmlRpc::XmlRpcValue& config);
 
 protected:
 

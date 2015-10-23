@@ -4,20 +4,7 @@ trajectory_duration: 8.0
 num_time_steps: 40
 publish_trajectory_markers: False
 publish_best_trajectory_marker: True
-publish_distance_field_marker: False
-publish_collision_model_markers: False
 
-# Collision Space
-collision_space:
-  size_x: 8.5 # The X dimension in meters of the volume to represent
-  size_y: 6.0 # The Y dimension in meters of the volume to represent
-  size_z: 4.0 # The Z dimension in meters of the volume to represent
-  origin_x: 0.0 
-  origin_y: 0.0 
-  origin_z: 1.5 
-  resolution: 0.03    
-  collision_tolerance: 0.0
-  max_propagation_distance: 0.1
 
 # STOMP 
 max_iterations: 10
@@ -25,9 +12,11 @@ max_iterations_after_collision_free: 2
 max_rollouts: 100
 min_rollouts: 10
 num_rollouts_per_iteration: 20
+
+# STOMP (optional)
 use_noise_adaptation: true
-cost_convergence: 0.01
-max_iteration_after_cost_convergence: 40
+write_to_file: false
+use_openmp: false
 
 noise_coefficients:
  - group_name: manipulator_rail
@@ -39,9 +28,6 @@ noise_coefficients:
    min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
    decay:  [2.0, 1.5, 2.0, 2.0, 2.0, 2.0]
 
-write_to_file: false
-use_openmp: false
-
 features: 
 - class: stomp_moveit_interface/ObstacleAvoidanceFeature
   collision_clearance: 0.1
@@ -49,3 +35,13 @@ features:
 #  report_validity: false # report state validity based on distance field
 #  collision_clearance: 0.2
 #  debug_collisions: false
+#  collision_space:
+#      size_x: 8.5 # The X dimension in meters of the volume to represent
+#      size_y: 6.0 # The Y dimension in meters of the volume to represent
+#      size_z: 4.0 # The Z dimension in meters of the volume to represent
+#      origin_x: 0.0 
+#      origin_y: 0.0 
+#      origin_z: 1.5 
+#      resolution: 0.03    
+#      collision_tolerance: 0.0
+#      max_propagation_distance: 0.1

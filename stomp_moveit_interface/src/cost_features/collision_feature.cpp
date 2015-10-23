@@ -12,14 +12,14 @@
 PLUGINLIB_EXPORT_CLASS(stomp_moveit_interface::CollisionFeature,stomp_moveit_interface::StompCostFeature);
 
 const static bool USE_SIGNED_DISTANCE_FIELD = true;
-static const std::string OCTOMAP_ID = "<octomap>";
 const static double DEFAULT_PADDING = 0.01f;
 
 namespace stomp_moveit_interface
 {
 
 CollisionFeature::CollisionFeature():
-    previous_planning_scene_()
+    previous_planning_scene_(),
+    report_validity_(false)
 {
   sigmoid_centers_.push_back(-0.025);
   sigmoid_slopes_.push_back(200.0);
@@ -87,36 +87,39 @@ bool CollisionFeature::initialize(XmlRpc::XmlRpcValue& config,
 
 bool CollisionFeature::loadParameters(XmlRpc::XmlRpcValue& config)
 {
+  double sx, sy ,sz, orig_x,orig_y,orig_z;
 
-  bool success = stomp::getParam(config, "report_validity", report_validity_);
-  success = success && stomp::getParam(config, "collision_clearance", clearance_);
-  success = success && stomp::getParam(config, "debug_collisions", debug_collisions_);
+  if(stomp::getParam(config, "report_validity", report_validity_)
+    && stomp::getParam(config, "collision_clearance", clearance_)
+    && stomp::getParam(config, "debug_collisions", debug_collisions_)
+    && stomp::getParam(config, "collision_space/size_x", sx)
+    && stomp::getParam(config, "collision_space/size_y", sy)
+    && stomp::getParam(config, "collision_space/size_z", sz)
+    && stomp::getParam(config, "collision_space/origin_x", orig_x)
+    && stomp::getParam(config, "collision_space/origin_y", orig_y)
+    && stomp::getParam(config, "collision_space/origin_z", orig_z)
+    && stomp::getParam(config, "collision_space/resolution", df_resolution_)
+    && stomp::getParam(config, "collision_space/collision_tolerance", df_collision_tolerance_)
+    && stomp::getParam(config, "collision_space/max_propagation_distance", df_max_propagation_distance_))
+  {
+    ROS_DEBUG_STREAM("Collision Feature loaded parameters");
+  }
+  else
+  {
+    ROS_ERROR_STREAM("Collision Feature failed to load parameters");
+    return false;
+  }
+
   if (debug_collisions_)
   {
     collision_request_.contacts = true;
     collision_request_.verbose = true;
   }
 
-  // read distance field params
-  double sx, sy ,sz, orig_x,orig_y,orig_z;
-  success = success && stomp::getParam(config, "collision_space/size_x", sx);
-  success = success && stomp::getParam(config, "collision_space/size_y", sy);
-  success = success && stomp::getParam(config, "collision_space/size_z", sz);
-  success = success && stomp::getParam(config, "collision_space/origin_x", orig_x);
-  success = success && stomp::getParam(config, "collision_space/origin_y", orig_y);
-  success = success && stomp::getParam(config, "collision_space/origin_z", orig_z);
-  success = success && stomp::getParam(config, "collision_space/resolution", df_resolution_);
-  success = success && stomp::getParam(config, "collision_space/collision_tolerance", df_collision_tolerance_);
-  success = success && stomp::getParam(config, "collision_space/max_propagation_distance", df_max_propagation_distance_);
   df_size_ = Eigen::Vector3d(sx,sy,sz);
   df_origin_ = Eigen::Vector3d(orig_x,orig_y,orig_z);
 
-  if(!success)
-  {
-    ROS_ERROR_STREAM("Collision Feature failed to load one or more parameters");
-  }
-
-  return success;
+  return true;
 }
 
 void CollisionFeature::setPlanningScene(planning_scene::PlanningSceneConstPtr planning_scene)

@@ -287,6 +287,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   control_cost_weight_ = 0.0;
   last_executed_rollout_ = -1;
   reference_frame_ = kinematic_model_->getModelFrame();
+  planning_group_name_ = request.group_name;
 
   dt_ = movement_duration_ / (num_time_steps_-1.0);
   num_time_steps_all_ = num_time_steps_ + 2*stomp::TRAJECTORY_PADDING;
