@@ -18,7 +18,6 @@ namespace stomp_moveit_interface
 StompOptimizationTask::StompOptimizationTask(const std::string& planning_group,
                                              planning_scene::PlanningSceneConstPtr planning_scene):
     Task(planning_group),
-    planning_group_name_(planning_group),
     feature_loader_("stomp_moveit_interface", "stomp_moveit_interface::StompCostFeature"),
     kinematic_model_(planning_scene->getRobotModel()),
     publish_trajectory_markers_(false),
@@ -26,7 +25,6 @@ StompOptimizationTask::StompOptimizationTask(const std::string& planning_group,
     max_rollout_markers_published_(0),
     planning_scene_(planning_scene),
     node_handle_("~")
-
 {
 
 }
@@ -36,9 +34,8 @@ StompOptimizationTask::~StompOptimizationTask()
   feature_set_.reset(); // delete the features before their classloader
 }
 
-bool StompOptimizationTask::initialize(int num_threads, int num_rollouts)
+bool StompOptimizationTask::initialize(int num_rollouts)
 {
-  num_threads_ = num_threads;
   num_rollouts_ = num_rollouts;
 
   // read some params
@@ -58,7 +55,7 @@ bool StompOptimizationTask::initialize(int num_threads, int num_rollouts)
   return true;
 }
 
-void StompOptimizationTask::setFeaturesFromXml(const XmlRpc::XmlRpcValue& features_xml)
+bool StompOptimizationTask::setFeaturesFromXml(const XmlRpc::XmlRpcValue& features_xml)
 {
   ROS_ASSERT (features_xml.getType() == XmlRpc::XmlRpcValue::TypeArray);
 
@@ -67,12 +64,17 @@ void StompOptimizationTask::setFeaturesFromXml(const XmlRpc::XmlRpcValue& featur
   for (int i=0; i<features_xml.size(); ++i)
   {
     XmlRpc::XmlRpcValue feature_xml = features_xml[i];
+    std::string class_name;
 
-    ROS_ASSERT(feature_xml.hasMember("class") &&
-               feature_xml["class"].getType() == XmlRpc::XmlRpcValue::TypeString);
-
-    std::string class_name = feature_xml["class"];
-
+    if(feature_xml.hasMember("class") &&
+               (feature_xml["class"].getType() == XmlRpc::XmlRpcValue::TypeString))
+    {
+      class_name = static_cast<std::string>(feature_xml["class"]);
+    }
+    else
+    {
+      return false;
+    }
 
     boost::shared_ptr<StompCostFeature> feature;
     try
@@ -83,16 +85,18 @@ void StompOptimizationTask::setFeaturesFromXml(const XmlRpc::XmlRpcValue& featur
     {
       ROS_ERROR("Couldn't load feature named %s", class_name.c_str());
       ROS_ERROR("Error: %s", ex.what());
-      ROS_BREAK();
+      return false;
     }
 
     STOMP_VERIFY(feature->initialize(feature_xml, num_rollouts_+1,
-                                     planning_group_name_,
+                                     group_name_,
                                      planning_scene_));
     features.push_back(feature);
   }
 
   setFeatures(features);
+
+  return true;
 
 }
 
@@ -196,38 +200,7 @@ void StompOptimizationTask::computeFeatures(std::vector<Eigen::VectorXd>& parame
     if (!trajectories_[rollout_id]->validities_[t])
       validity = false;
 
-//    if (t <= 0.1*num_time_steps_)
-//    {
-//      if (validities[0] && !validities[t])
-//        validity = false;
-//    }
-//    else if (t >= 0.9*num_time_steps_)
-//    {
-//      if (validities[num_time_steps_-1] && !validities[t])
-//        validity = false;
-//    }
-//    else
-//    {
-//      if (!validities[t])
-//        validity = false;
-//    }
   }
-
-  // print validities
-//  if (rollout_id == num_rollouts_)
-//  {
-//    std::stringstream ss;
-//    ss << "[";
-//    for (int t=0; t<num_time_steps_all_; ++t)
-//    {
-//      if (trajectories_[rollout_id]->validities_[t])
-//        ss << "_";
-//      else
-//        ss << "X";
-//    }
-//    ss << "]";
-//    ROS_DEBUG("%s", ss.str().c_str());
-//  }
 
 }
 
@@ -273,7 +246,7 @@ void StompOptimizationTask::setControlCostWeight(double w)
 //      per_rollout_data_[i].collision_models_->revertPlanningScene(per_rollout_data_[i].kinematic_state_);
 //    planning_models::KinematicState* kin_state = per_rollout_data_[i].collision_models_->setPlanningScene(scene);
 //    per_rollout_data_[i].kinematic_state_ = kin_state;
-//    per_rollout_data_[i].joint_state_group_ = kin_state->getJointStateGroup(planning_group_name_);
+//    per_rollout_data_[i].joint_state_group_ = kin_state->getJointStateGroup(group_name_);
 //  }
 //}
 
@@ -287,14 +260,14 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   control_cost_weight_ = 0.0;
   last_executed_rollout_ = -1;
   reference_frame_ = kinematic_model_->getModelFrame();
-  planning_group_name_ = request.group_name;
+  group_name_ = request.group_name;
 
   dt_ = movement_duration_ / (num_time_steps_-1.0);
   num_time_steps_all_ = num_time_steps_ + 2*stomp::TRAJECTORY_PADDING;
 
-  if (!kinematic_model_->hasJointModelGroup(planning_group_name_))
+  if (!kinematic_model_->hasJointModelGroup(group_name_))
   {
-    ROS_ERROR("STOMP: Planning group %s doesn't exist!", planning_group_name_.c_str());
+    ROS_ERROR("STOMP: Planning group %s doesn't exist!", group_name_.c_str());
     error_code.val = error_code.INVALID_GROUP_NAME;
     return false;
   }
@@ -306,7 +279,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
     return false;
   }
 
-  joint_model_group_ = kinematic_model_->getJointModelGroup(planning_group_name_);
+  joint_model_group_ = kinematic_model_->getJointModelGroup(group_name_);
 
   num_dimensions_ = joint_model_group_->getVariableCount();
 
@@ -318,7 +291,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   const sensor_msgs::JointState &js = request.start_state.joint_state;
   start_state.setVariableValues(js);
   start_joints_.clear();
-  start_state.copyJointGroupPositions(planning_group_name_,start_joints_);
+  start_state.copyJointGroupPositions(group_name_,start_joints_);
 
   // storing goal position joint values
   std::map<std::string, double> goal_joint_map;
@@ -330,17 +303,17 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   goal_state.setVariableValues(js);
   goal_state.setVariablePositions(goal_joint_map);
   goal_joints_.clear();
-  goal_state.copyJointGroupPositions(planning_group_name_,goal_joints_);
+  goal_state.copyJointGroupPositions(group_name_,goal_joints_);
 
   // checking collision at start and end
-  if(planning_scene_->isStateColliding(start_state,planning_group_name_,true))
+  if(planning_scene_->isStateColliding(start_state,group_name_,true))
   {
     ROS_ERROR("Start state in collision!");
     error_code.val = error_code.START_STATE_IN_COLLISION;
     return false;
   }
 
-  if(planning_scene_->isStateColliding(goal_state,planning_group_name_,true))
+  if(planning_scene_->isStateColliding(goal_state,group_name_,true))
   {
     ROS_ERROR("Goal state in collision!");
     error_code.val = error_code.GOAL_IN_COLLISION;
@@ -365,7 +338,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   for (int j=0; j<num_time_steps_; j++)
   {
       start_state.interpolate(goal_state, j*dt, mid_state);
-      mid_state.copyJointGroupPositions(planning_group_name_,jv);
+      mid_state.copyJointGroupPositions(group_name_,jv);
       joint_traj.col(stomp::TRAJECTORY_PADDING + j) = jv;
   }
 
@@ -392,7 +365,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   trajectories_.resize(num_rollouts_+1);
   for (int i=0; i<num_rollouts_+1; ++i)
   {
-    trajectories_[i].reset(new StompTrajectory(num_time_steps_all_, kinematic_model_, planning_group_name_, policy_));
+    trajectories_[i].reset(new StompTrajectory(num_time_steps_all_, kinematic_model_, group_name_, policy_));
 
     trajectories_[i]->features_ = Eigen::MatrixXd(num_time_steps_all_, num_split_features_);
     trajectories_[i]->weighted_features_ = Eigen::MatrixXd(num_time_steps_all_, num_split_features_);
@@ -550,7 +523,7 @@ void StompOptimizationTask::setFeatureWeights(const Eigen::VectorXd& weights)
   {
     for (unsigned int j=0; j<joint_states[t].name.size(); ++j)
     {
-      for (unsigned int sj=0; sj<planning_group_name_->stomp_joints_.size(); ++sj)
+      for (unsigned int sj=0; sj<group_name_->stomp_joints_.size(); ++sj)
       {
         if (joint_states[t].name[j] == planning_group_->stomp_joints_[sj].joint_name_)
         {

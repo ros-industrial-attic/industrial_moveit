@@ -88,19 +88,11 @@ bool CollisionFeature::initialize(XmlRpc::XmlRpcValue& config,
 bool CollisionFeature::loadParameters(XmlRpc::XmlRpcValue& config)
 {
   double sx, sy ,sz, orig_x,orig_y,orig_z;
+  XmlRpc::XmlRpcValue collision_space_param;
 
   if(stomp::getParam(config, "report_validity", report_validity_)
     && stomp::getParam(config, "collision_clearance", clearance_)
-    && stomp::getParam(config, "debug_collisions", debug_collisions_)
-    && stomp::getParam(config, "collision_space/size_x", sx)
-    && stomp::getParam(config, "collision_space/size_y", sy)
-    && stomp::getParam(config, "collision_space/size_z", sz)
-    && stomp::getParam(config, "collision_space/origin_x", orig_x)
-    && stomp::getParam(config, "collision_space/origin_y", orig_y)
-    && stomp::getParam(config, "collision_space/origin_z", orig_z)
-    && stomp::getParam(config, "collision_space/resolution", df_resolution_)
-    && stomp::getParam(config, "collision_space/collision_tolerance", df_collision_tolerance_)
-    && stomp::getParam(config, "collision_space/max_propagation_distance", df_max_propagation_distance_))
+    && stomp::getParam(config, "debug_collisions", debug_collisions_))
   {
     ROS_DEBUG_STREAM("Collision Feature loaded parameters");
   }
@@ -109,6 +101,34 @@ bool CollisionFeature::loadParameters(XmlRpc::XmlRpcValue& config)
     ROS_ERROR_STREAM("Collision Feature failed to load parameters");
     return false;
   }
+
+  if(config.hasMember("collision_space"))
+  {
+    collision_space_param = config["collision_space"];
+  }
+  else
+  {
+    ROS_ERROR_STREAM("Collision Feature failed to load 'collision_space' structure parameter");
+  }
+
+  // loading collision space parameters
+  if( stomp::getParam(collision_space_param, "size_x", sx)
+        && stomp::getParam(collision_space_param, "size_y", sy)
+        && stomp::getParam(collision_space_param, "size_z", sz)
+        && stomp::getParam(collision_space_param, "origin_x", orig_x)
+        && stomp::getParam(collision_space_param, "origin_y", orig_y)
+        && stomp::getParam(collision_space_param, "origin_z", orig_z)
+        && stomp::getParam(collision_space_param, "resolution", df_resolution_)
+        && stomp::getParam(collision_space_param, "collision_tolerance", df_collision_tolerance_)
+        && stomp::getParam(collision_space_param, "max_propagation_distance", df_max_propagation_distance_))
+  {
+    ROS_DEBUG_STREAM("Collision Feature loaded all 'collision_space' parameters");
+  }
+  else
+  {
+    ROS_ERROR_STREAM("Collision Feature failed to load one or more 'collision_space' parameters.");
+  }
+
 
   if (debug_collisions_)
   {
@@ -156,12 +176,14 @@ void CollisionFeature::computeValuesAndGradients(const boost::shared_ptr<StompTr
 {
   initOutputs(trajectory, feature_values, compute_gradients, gradients, validities);
 
+  collision_detection::CollisionRequest request = collision_request_;
   collision_detection::CollisionResult result;
+  request.group_name = trajectory->group_name_;
   boost::shared_ptr<collision_detection::GroupStateRepresentation>& gsr = group_state_representations_[thread_id];
 
   for (int t=start_timestep; t<start_timestep + num_time_steps; ++t)
   {
-    collision_world_df_->getCollisionGradients(collision_request_, result, *collision_robot_df_,
+    collision_world_df_->getCollisionGradients(request, result, *collision_robot_df_,
                                          trajectory->kinematic_states_[t], &(planning_scene_->getAllowedCollisionMatrix()),
                                          gsr);
 

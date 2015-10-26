@@ -19,7 +19,6 @@ include_directories(include
 add_library(stomp_cost_features
   src/cost_features/collision_feature.cpp
   src/cost_features/obstacle_avoidance_feature.cpp
-  src/cost_features/exact_collision_feature.cpp
   src/cost_features/stomp_cost_feature.cpp)
 
 target_link_libraries(stomp_cost_features
@@ -33,7 +32,6 @@ add_library(stomp_moveit_interface
   src/stomp_optimization_task.cpp
   src/cost_features/stomp_cost_feature.cpp
 #  src/cost_features/collision_feature.cpp
-#  src/cost_features/exact_collision_feature.cpp
 #  src/cost_features/cartesian_orientation_feature.cpp
 #  src/cost_features/cartesian_vel_acc_feature.cpp
 #  src/cost_features/joint_vel_acc_feature.cpp

@@ -26,10 +26,10 @@ public:
   StompOptimizationTask(const std::string& planning_group, planning_scene::PlanningSceneConstPtr planning_scene);
   virtual ~StompOptimizationTask();
 
-  virtual bool initialize(int num_threads, int num_rollouts);
+  virtual bool initialize(int num_rollouts);
 
   void setFeatures(std::vector<boost::shared_ptr<StompCostFeature> >& features);
-  void setFeaturesFromXml(const XmlRpc::XmlRpcValue& config);
+  bool setFeaturesFromXml(const XmlRpc::XmlRpcValue& config);
 
   virtual bool execute(std::vector<Eigen::VectorXd>& parameters,
                        std::vector<Eigen::VectorXd>& projected_parameters,
@@ -99,7 +99,6 @@ private:
   Eigen::VectorXd feature_means_;
   Eigen::VectorXd feature_variances_;
 
-  int num_threads_;
   int num_rollouts_;
   int num_time_steps_;
   int num_time_steps_all_; // includes padding at the start and end
@@ -107,7 +106,6 @@ private:
   double movement_duration_;
   double dt_;
   std::string reference_frame_;
-  std::string planning_group_name_;
 
   std::vector<double> start_joints_;
   std::vector<double> goal_joints_;

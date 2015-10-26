@@ -15,8 +15,6 @@ namespace stomp_moveit_interface
 {
 
 const static double DEFAULT_CONTROL_COST_WEIGHT = 1;
-const static double DEFAULT_SCALE = 1.0;
-const static int OPTIMIZATION_TASK_THREADS = 1;
 const static int TERMINATION_ATTEMPTS = 200;
 const double TERMINATION_DELAY = 0.1f;
 
@@ -45,7 +43,6 @@ void StompPlanner::init(const moveit::core::RobotModelConstPtr& model)
 
   // loading parameters
   int max_rollouts;
-  int num_threads=OPTIMIZATION_TASK_THREADS;
   XmlRpc::XmlRpcValue features_xml;
 
   STOMP_VERIFY(node_handle_.getParam("features", features_xml));
@@ -56,9 +53,9 @@ void StompPlanner::init(const moveit::core::RobotModelConstPtr& model)
   stomp_task_.reset(new StompOptimizationTask(request_.group_name,
                                               getPlanningScene()));
 
-  if(stomp_task_->initialize(num_threads, max_rollouts))
+  if(stomp_task_->initialize(max_rollouts) &&
+      stomp_task_->setFeaturesFromXml(features_xml))
   {
-    stomp_task_->setFeaturesFromXml(features_xml);
     stomp_task_->setControlCostWeight(DEFAULT_CONTROL_COST_WEIGHT);
     stomp_task_->setTrajectoryVizPublisher(const_cast<ros::Publisher&>(trajectory_viz_pub_));
   }
@@ -103,7 +100,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     return false;
   }
 
-
   ros::Time start = ros::Time::now();
 
   bool success = false;
@@ -137,19 +133,10 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
           kinematic_model_,request_.group_name));
       res.trajectory_.back()->setRobotTrajectoryMsg( robot_state,trajectory);
 
-      if(planning_scene_ && !planning_scene_->isPathValid(*res.trajectory_.back(),group_,true))
-      {
-        res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
-        success = false;
-        ROS_ERROR_STREAM("STOMP generated an invalid path");
-      }
-      else
-      {
-        ros::WallDuration wd = ros::WallTime::now() - start_time;
-        res.processing_time_[0] = ros::Duration(wd.sec, wd.nsec).toSec();
-        res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
-        ROS_INFO_STREAM("STOMP found a valid path after "<<res.processing_time_[0]<<" seconds");
-      }
+      ros::WallDuration wd = ros::WallTime::now() - start_time;
+      res.processing_time_[0] = ros::Duration(wd.sec, wd.nsec).toSec();
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+      ROS_INFO_STREAM("STOMP found a valid path after "<<res.processing_time_[0]<<" seconds");
     }
     else
     {

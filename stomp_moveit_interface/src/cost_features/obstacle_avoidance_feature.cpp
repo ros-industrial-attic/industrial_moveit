@@ -94,21 +94,20 @@ void ObstacleAvoidanceFeature::computeValuesAndGradients(const boost::shared_ptr
   feature_values = Eigen::MatrixXd::Zero(trajectory->num_time_steps_, getNumValues());
   validities.assign(trajectory->num_time_steps_, 1);
 
+  collision_detection::CollisionRequest request = collision_request_;
+  request.group_name = trajectory->group_name_;
   collision_detection::CollisionResult result_world_collision, result_robot_collision;
   std::vector<collision_detection::CollisionResult> results(2);
-
   moveit::core::RobotStatePtr state0(new moveit::core::RobotState(planning_scene_->getRobotModel()));
 
   for (int t=start_timestep; t<start_timestep + num_time_steps; ++t)
   {
-
-
     *state0 = trajectory->kinematic_states_[t] ;
     state0->update();
 
     // checking robot vs world (attached objects, octomap, not in urdf) collisions
     result_world_collision.distance = std::numeric_limits<double>::max();
-    planning_scene_->getCollisionWorld(DEFAULT_COLLISION_DETECTOR)->checkRobotCollision(collision_request_,
+    planning_scene_->getCollisionWorld(DEFAULT_COLLISION_DETECTOR)->checkRobotCollision(request,
                                                               result_world_collision,
                                                               *planning_scene_->getCollisionRobot(),
                                                               *state0,
