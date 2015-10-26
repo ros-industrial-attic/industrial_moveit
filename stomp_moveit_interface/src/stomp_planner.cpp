@@ -133,10 +133,19 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
           kinematic_model_,request_.group_name));
       res.trajectory_.back()->setRobotTrajectoryMsg( robot_state,trajectory);
 
-      ros::WallDuration wd = ros::WallTime::now() - start_time;
-      res.processing_time_[0] = ros::Duration(wd.sec, wd.nsec).toSec();
-      res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
-      ROS_INFO_STREAM("STOMP found a valid path after "<<res.processing_time_[0]<<" seconds");
+      if(planning_scene_ && !planning_scene_->isPathValid(*res.trajectory_.back(),group_,true))
+      {
+        res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
+        success = false;
+        ROS_ERROR_STREAM("STOMP generated an invalid path");
+      }
+      else
+      {
+        ros::WallDuration wd = ros::WallTime::now() - start_time;
+        res.processing_time_[0] = ros::Duration(wd.sec, wd.nsec).toSec();
+        res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+        ROS_INFO_STREAM("STOMP found a valid path after "<<res.processing_time_[0]<<" seconds");
+      }
     }
     else
     {
