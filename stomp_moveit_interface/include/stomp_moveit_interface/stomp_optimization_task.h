@@ -23,19 +23,13 @@ class StompOptimizationTask: public stomp::Task
 {
 
 public:
-  StompOptimizationTask(ros::NodeHandle node_handle,
-                        const std::string& planning_group,
-                        moveit::core::RobotModelConstPtr kinematic_model,
-                        boost::shared_ptr<const collision_detection::CollisionRobot> collision_robot,
-                        boost::shared_ptr<const collision_detection::CollisionWorld> collision_world,
-                        boost::shared_ptr<const collision_detection::CollisionRobotDistanceField> collision_robot_df,
-                        boost::shared_ptr<const collision_detection::CollisionWorldDistanceField> collision_world_df);
+  StompOptimizationTask(const std::string& planning_group, planning_scene::PlanningSceneConstPtr planning_scene);
   virtual ~StompOptimizationTask();
 
-  virtual bool initialize(int num_threads, int num_rollouts);
+  virtual bool initialize(int num_rollouts);
 
   void setFeatures(std::vector<boost::shared_ptr<StompCostFeature> >& features);
-  void setFeaturesFromXml(const XmlRpc::XmlRpcValue& config);
+  bool setFeaturesFromXml(const XmlRpc::XmlRpcValue& config);
 
   virtual bool execute(std::vector<Eigen::VectorXd>& parameters,
                        std::vector<Eigen::VectorXd>& projected_parameters,
@@ -92,8 +86,6 @@ public:
   void publishResultsMarkers(const std::vector<Eigen::VectorXd>& best_parameters);
   void publishTrajectoryMarkers(ros::Publisher& viz_pub);
   void publishTrajectoryMarkers(ros::Publisher& viz_pub, const std::vector<Eigen::VectorXd>& parameters);  // this function overwrites the last noiseless rollout!
-  void publishCollisionModelMarkers(ros::Publisher& viz_robot_body_pub)const ;
-  void publishDistanceFieldMarker(ros::Publisher& viz_pub);
 
 
 private:
@@ -107,7 +99,6 @@ private:
   Eigen::VectorXd feature_means_;
   Eigen::VectorXd feature_variances_;
 
-  int num_threads_;
   int num_rollouts_;
   int num_time_steps_;
   int num_time_steps_all_; // includes padding at the start and end
@@ -115,7 +106,6 @@ private:
   double movement_duration_;
   double dt_;
   std::string reference_frame_;
-  std::string planning_group_name_;
 
   std::vector<double> start_joints_;
   std::vector<double> goal_joints_;
@@ -125,8 +115,6 @@ private:
   ros::Publisher viz_trajectory_pub_;
 
   bool publish_trajectory_markers_;
-  bool publish_distance_fields_;
-  bool publish_collision_models_;
   bool publish_best_trajectory_marker_;
 
   int max_rollout_markers_published_;
@@ -147,10 +135,6 @@ private:
   const moveit_msgs::MotionPlanRequest* motion_plan_request_;
   const moveit::core::JointModelGroup* joint_model_group_;
 
-  boost::shared_ptr<const collision_detection::CollisionRobot> collision_robot_; /**< standard robot collision checker */
-  boost::shared_ptr<const collision_detection::CollisionWorld> collision_world_; /**< standard robot -> world collision checker */
-  boost::shared_ptr<const collision_detection::CollisionRobotDistanceField> collision_robot_df_;    /**< distance field robot collision checker */
-  boost::shared_ptr<const collision_detection::CollisionWorldDistanceField> collision_world_df_;    /**< distance field robot -> world collision checker */
 
 };
 

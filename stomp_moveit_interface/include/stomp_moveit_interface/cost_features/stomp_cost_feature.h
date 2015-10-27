@@ -12,10 +12,6 @@
 #include <pluginlib/class_list_macros.h>
 #include <moveit/collision_detection/collision_robot.h>
 #include <moveit/collision_detection/collision_world.h>
-#include <moveit/collision_distance_field/collision_world_distance_field.h>
-#include <moveit/collision_distance_field/collision_robot_distance_field.h>
-//#include <moveit/collision_detection_fcl/collision_robot_fcl.h>
-//#include <moveit/collision_detection_fcl/collision_world_fcl.h>
 #include <stomp_moveit_interface/stomp_trajectory.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include <moveit_msgs/MotionPlanRequest.h>
@@ -29,16 +25,12 @@ public:
   StompCostFeature(){};
   virtual ~StompCostFeature(){};
 
-  bool initialize(XmlRpc::XmlRpcValue& config,
+  virtual bool initialize(XmlRpc::XmlRpcValue& config,
                   int num_threads,
                   const std::string& group_name,
-                  moveit::core::RobotModelConstPtr kinematic_model,
-                  boost::shared_ptr<const collision_detection::CollisionRobot> collision_robot,
-                  boost::shared_ptr<const collision_detection::CollisionWorld> collision_world,
-                  boost::shared_ptr<const collision_detection::CollisionRobotDistanceField> collision_robot_df,
-                  boost::shared_ptr<const collision_detection::CollisionWorldDistanceField> collision_world_df);
+                  planning_scene::PlanningSceneConstPtr planning_scene);
 
-  void setPlanningScene(planning_scene::PlanningSceneConstPtr planning_scene);
+  virtual void setPlanningScene(planning_scene::PlanningSceneConstPtr planning_scene);
 
   virtual int getNumValues() const = 0;
   virtual void computeValuesAndGradients(const boost::shared_ptr<StompTrajectory const>& trajectory,
@@ -55,7 +47,6 @@ public:
 
 
 protected:
-  virtual bool initialize(XmlRpc::XmlRpcValue& config)=0;
 
   void initOutputs(const boost::shared_ptr<StompTrajectory const>& trajectory,
                    Eigen::MatrixXd& feature_values,
@@ -65,13 +56,8 @@ protected:
 
   moveit::core::RobotModelConstPtr kinematic_model_;
   planning_scene::PlanningSceneConstPtr planning_scene_;
-  //const moveit_msgs::MotionPlanRequest* motion_plan_request_;
   std::string group_name_;
   int num_threads_;
-  boost::shared_ptr<const collision_detection::CollisionRobot> collision_robot_; /**< standard robot collision checker */
-  boost::shared_ptr<const collision_detection::CollisionWorld> collision_world_; /**< standard robot -> world collision checker */
-  boost::shared_ptr<const collision_detection::CollisionRobotDistanceField> collision_robot_df_;    /**< distance field robot collision checker */
-  boost::shared_ptr<const collision_detection::CollisionWorldDistanceField> collision_world_df_;    /**< distance field robot -> world collision checker */
 
 };
 

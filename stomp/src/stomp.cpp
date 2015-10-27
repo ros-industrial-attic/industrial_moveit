@@ -120,11 +120,7 @@ bool STOMP::readParameters()
       node_handle_.getParam("max_rollouts", max_rollouts_) &&
       node_handle_.getParam("num_rollouts_per_iteration", num_rollouts_per_iteration_) &&
       node_handle_.getParam("max_iterations",max_iterations_) &&
-      node_handle_.getParam("max_iterations_after_collision_free",max_iterations_after_collision_free_) &&
-      node_handle_.getParam("cost_convergence",cost_convergence_) &&
-      node_handle_.getParam("max_iteration_after_cost_convergence",max_iteration_after_cost_convergence_))
-
-
+      node_handle_.getParam("max_iterations_after_collision_free",max_iterations_after_collision_free_))
       )
   {
     ROS_ERROR_STREAM("One or more STOMP required parameters were not found in the parameter server");
@@ -164,7 +160,7 @@ bool STOMP::readParameters()
     return false;
   }
 
-
+  // optional parameters
   node_handle_.param("write_to_file", write_to_file_, false);
   node_handle_.param("use_noise_adaptation", use_noise_adaptation_, true);
   node_handle_.param("use_openmp", use_openmp_, false);
@@ -293,7 +289,7 @@ bool STOMP::doNoiselessRollout(int iteration_number)
     best_noiseless_parameters_ = parameters_;
     best_noiseless_cost_ = total_cost;
   }
-  last_noiseless_rollout_valid_ = validity;
+  last_noiseless_rollout_valid_ = last_noiseless_rollout_valid_ || validity;
   return true;
 }
 
@@ -370,12 +366,12 @@ bool STOMP::runUntilValid()
 bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_free)
 {
   int collision_free_iterations = 0;
-  int cost_convergence_iterations = 0;
   unsigned int num_iterations = 0;
   bool success = false;
   proceed(true);
 
   best_noiseless_cost_ = std::numeric_limits<double>::max();
+  last_noiseless_rollout_valid_ = false;
   double previous_cost = best_noiseless_cost_;
   double improvement_percentace = 0;
 
@@ -395,6 +391,12 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
     {
       success = true;
       collision_free_iterations++;
+      ROS_DEBUG("Stomp Trajectory is collision free, iteration %i",collision_free_iterations);
+
+      if(collision_free_iterations >= max_iterations_after_collision_free_)
+      {
+        break;
+      }
     }
     else
     {
@@ -402,42 +404,9 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
       collision_free_iterations = 0;
     }
 
-
-    // checking for best cost threshold
-    if(best_noiseless_cost_ < BEST_COST_THRESHOLD)
-    {
-      success = true;
-      ROS_DEBUG_STREAM("Best noiseless cost reached minimum required threshold of "<<BEST_COST_THRESHOLD <<
-                       ", exiting");
-      break;
-    }
-
-    // checking for cost improvement convergence
-    improvement_percentace = std::abs((previous_cost - best_noiseless_cost_)/(previous_cost));
-    if(improvement_percentace < cost_convergence_)
-    {
-      cost_convergence_iterations++;
-      if(cost_convergence_iterations > max_iteration_after_cost_convergence_)
-      {
-        ROS_DEBUG_STREAM("Cost converged at "<<best_noiseless_cost_<<", exiting");
-        success = true;
-        break;
-      }
-    }
-    else
-    {
-      previous_cost = best_noiseless_cost_;
-      cost_convergence_iterations = 0;
-    }
-
-    if (collision_free_iterations>=max_iterations_after_collision_free_)
-    {
-      break;
-    }
   }
 
-
-  ROS_DEBUG_STREAM(__PRETTY_FUNCTION__<< " completed with success = "<<success<<" after "<<num_iterations<<" iterations");
+  ROS_DEBUG_STREAM("STOMP " <<(success ? "succeeded" : "failed" ) <<" after "<<num_iterations<<" iterations");
 
   return success;
 }

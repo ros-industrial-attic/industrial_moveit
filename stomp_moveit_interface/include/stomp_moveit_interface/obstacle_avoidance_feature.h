@@ -1,24 +1,30 @@
 /*
- * exact_collision_feature.h
+ * obstacle_avoidance_feature.h
  *
- *  Created on: Jul 22, 2012
- *      Author: kalakris
+ *  Created on: Oct 19, 2015
+ *      Author: Jorge Nicho
  */
 
-#ifndef EXACT_COLLISION_FEATURE_H_
-#define EXACT_COLLISION_FEATURE_H_
+#ifndef STOMP_MOVEIT_INTERFACE_OBSTACLE_AVOIDANCE_FEATURE_H_
+#define STOMP_MOVEIT_INTERFACE_OBSTACLE_AVOIDANCE_FEATURE_H_
 
 #include <stomp_moveit_interface/cost_features/stomp_cost_feature.h>
-#include <std_msgs/ColorRGBA.h>
+#include <moveit/collision_detection_fcl/collision_robot_fcl.h>
+#include <moveit/collision_detection_fcl/collision_world_fcl.h>
 
 namespace stomp_moveit_interface
 {
 
-class ExactCollisionFeature: public StompCostFeature
+class ObstacleAvoidanceFeature : public StompCostFeature
 {
 public:
-  ExactCollisionFeature();
-  virtual ~ExactCollisionFeature();
+  ObstacleAvoidanceFeature();
+  virtual ~ObstacleAvoidanceFeature();
+
+  virtual bool initialize(XmlRpc::XmlRpcValue& config,
+                          int num_threads,
+                          const std::string& group_name,
+                          planning_scene::PlanningSceneConstPtr planning_scene);
 
   virtual int getNumValues() const;
   virtual void computeValuesAndGradients(const boost::shared_ptr<StompTrajectory const>& trajectory,
@@ -30,23 +36,22 @@ public:
                                          int start_timestep,                      // start timestep
                                          int num_time_steps) const;
   virtual std::string getName() const;
-  void getNames(std::vector<std::string>& names) const;
+  virtual void getNames(std::vector<std::string>& names) const;
 
 protected:
-  virtual bool initialize(XmlRpc::XmlRpcValue& config);
 
-private:
+  bool loadParameters(XmlRpc::XmlRpcValue& config);
+
+protected:
 
   collision_detection::CollisionRequest collision_request_;
 
-  bool debug_collisions_;
-  ros::Publisher collision_viz_pub_;
-  ros::Publisher collision_array_viz_pub_;
-  std_msgs::ColorRGBA collision_color;
-  ros::NodeHandle node_handle_;
+  // parameters
+  double clearance_;
 
 
 };
 
-} /* namespace stomp_ros_interface */
-#endif /* EXACT_COLLISION_FEATURE_H_ */
+} /* namespace stomp_moveit_interface */
+
+#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INTERFACE_INCLUDE_STOMP_MOVEIT_INTERFACE_OBSTACLE_AVOIDANCE_FEATURE_H_ */
