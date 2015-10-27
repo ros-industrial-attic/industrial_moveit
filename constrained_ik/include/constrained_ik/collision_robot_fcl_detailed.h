@@ -14,39 +14,72 @@ namespace constrained_ik
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     typedef boost::shared_ptr<CollisionRobotFCLDetailed> CollisionRobotFCLDetailedPtr;
-    typedef std::map<std::string, fcl::DistanceResult> DistanceDetailedMap;
+    typedef std::map<std::string, fcl::DistanceResult> DistanceMap;
 
-    struct DistanceResultDetailed
+    struct DistanceRequest
     {
-      EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+      DistanceRequest(): detailed(false),
+                         global(true),
+                         active_components_only(NULL),
+                         acm(NULL),
+                         verbose(false) {}
 
-      DistanceResultDetailed() : active_components_only_(NULL), acm_(NULL), verbose(false)
-      {
-      }
+      DistanceRequest(bool detailed,
+                      bool global,
+                      const std::set<const robot_model::LinkModel*> *active_components_only,
+                      const collision_detection::AllowedCollisionMatrix *acm): detailed(detailed),
+                                                                               global(global),
+                                                                               active_components_only(active_components_only),
+                                                                               acm(acm),
+                                                                               verbose(false) {}
+      DistanceRequest(bool detailed,
+                      bool global,
+                      const std::set<const robot_model::LinkModel*> &active_components_only,
+                      const collision_detection::AllowedCollisionMatrix &acm): detailed(detailed),
+                                                                               global(global),
+                                                                               active_components_only(&active_components_only),
+                                                                               acm(&acm),
+                                                                               verbose(false) {}
 
-      DistanceResultDetailed(const collision_detection::AllowedCollisionMatrix *acm, const std::set<const robot_model::LinkModel*> *active_components_only) : active_components_only_(active_components_only), acm_(acm), verbose(false)
-      {
-      }
-
-      ~DistanceResultDetailed()
-      {
-      }
+      virtual ~DistanceRequest() {}
 
       /// Compute \e active_components_only_ based on \e req_
-      void enableGroup(const robot_model::RobotModelConstPtr &kmodel);
+      void enableGroup(const std::string group_name, const robot_model::RobotModelConstPtr &kmodel);
 
-      /// If the collision request includes a group name, this set contains the pointers to the link models that are considered for collision;
-      /// If the pointer is NULL, all collisions are considered.
-      const std::set<const robot_model::LinkModel*> *active_components_only_;
+      bool detailed;
 
-      /// The user specified collision matrix (may be NULL)
-      const collision_detection::AllowedCollisionMatrix *acm_;
+      bool global;
+
+      const std::set<const robot_model::LinkModel*> *active_components_only;
+
+      const collision_detection::AllowedCollisionMatrix *acm;
 
       bool verbose;
 
-      std::string group_name;
+    };
 
-      DistanceDetailedMap distance_detailed_;
+    struct DistanceResult
+    {
+      DistanceResult(): collision(false) {}
+      virtual ~DistanceResult() {}
+
+      bool collision;
+
+      fcl::DistanceResult minimum_distance;
+
+      DistanceMap distance;
+    };
+
+    struct DistanceData
+    {
+      DistanceData(const DistanceRequest *req, DistanceResult *res): req(req), res(res), done(false) {}
+      virtual ~DistanceData() {}
+
+      const DistanceRequest *req;
+
+      DistanceResult *res;
+
+      bool done;
 
     };
 
@@ -54,15 +87,9 @@ namespace constrained_ik
 
     CollisionRobotFCLDetailed(const CollisionRobotFCLDetailed &other): CollisionRobotFCL(other) {}
 
-    virtual DistanceDetailedMap distanceSelfDetailed(const robot_state::RobotState &state) const;
+    virtual void distanceSelf(const DistanceRequest &req, DistanceResult &res, const robot_state::RobotState &state) const;
 
-    virtual DistanceDetailedMap distanceSelfDetailed(const robot_state::RobotState &state, const collision_detection::AllowedCollisionMatrix &acm) const;
-
-    virtual DistanceDetailedMap distanceSelfDetailed(const robot_state::RobotState &state, const std::set<const robot_model::LinkModel*> &active_components_only) const;
-
-    virtual DistanceDetailedMap distanceSelfDetailed(const robot_state::RobotState &state, const collision_detection::AllowedCollisionMatrix &acm, const std::set<const robot_model::LinkModel*> &active_components_only) const;
-
-    virtual DistanceDetailedMap distanceSelfDetailedHelper(const robot_state::RobotState &state, const collision_detection::AllowedCollisionMatrix *acm, const std::set<const robot_model::LinkModel *> *active_components_only) const;
+    virtual void distanceSelfDetailedHelper(const DistanceRequest &req, DistanceResult &res, const robot_state::RobotState &state) const;
 
     static bool distanceDetailedCallback(fcl::CollisionObject* o1, fcl::CollisionObject* o2, void *data, double& min_dist);
 
@@ -85,7 +112,7 @@ namespace constrained_ik
      * @param tf This allows for a transformation to be applied the distance data since it is always returned in the world frame from fcl.
      * @return bool, true if succesfully converted DistanceDetailedMap to DistanceInfoMap
      */
-    static bool getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map, const Eigen::Affine3d &tf);
+    static bool getDistanceInfo(const DistanceMap &distance_detailed, DistanceInfoMap &distance_info_map, const Eigen::Affine3d &tf);
 
     /**
      * @brief getDistanceInfo
@@ -93,7 +120,7 @@ namespace constrained_ik
      * @param distance_info_map Stores the distance information for each link in DistanceDetailedMap
      * @return bool, true if succesfully converted DistanceDetailedMap to DistanceInfoMap
      */
-    static bool getDistanceInfo(const DistanceDetailedMap &distance_detailed, DistanceInfoMap &distance_info_map);
+    static bool getDistanceInfo(const DistanceMap &distance_detailed, DistanceInfoMap &distance_info_map);
 
   };
 } //namespace constrained_ik
