@@ -2,7 +2,7 @@
  * obstacle_avoidance_feature.h
  *
  *  Created on: Oct 19, 2015
- *      Author: rosindustrial
+ *      Author: Jorge Nicho
  */
 
 #ifndef STOMP_MOVEIT_INTERFACE_OBSTACLE_AVOIDANCE_FEATURE_H_
