@@ -54,7 +54,7 @@ namespace constrained_ik
     return status;
   }
 
-  void DistanceRequest::enableGroup(const std::string group_name, const robot_model::RobotModelConstPtr &kmodel)
+  void DistanceRequest::enableGroup(const robot_model::RobotModelConstPtr &kmodel)
   {
     if (kmodel->hasJointModelGroup(group_name))
       active_components_only = &kmodel->getJointModelGroup(group_name)->getUpdatedLinkModelsWithGeometrySet();

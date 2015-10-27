@@ -23,6 +23,10 @@ namespace constrained_ik
     virtual void distanceRobot(const DistanceRequest &req, DistanceResult &res, const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state) const;
 
     virtual void distanceRobotDetailedHelper(const DistanceRequest &req, DistanceResult &res, const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state) const;
+
+    virtual void checkRobotCollision(const collision_detection::CollisionRequest &req, collision_detection::CollisionResult &res, const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state, const collision_detection::AllowedCollisionMatrix &acm) const;
+
+    virtual void checkRobotDetailedCollisionHelper(const collision_detection::CollisionRequest &req, collision_detection::CollisionResult &res, const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state, const collision_detection::AllowedCollisionMatrix *acm) const;
   };
 }
 

@@ -28,7 +28,9 @@ namespace constrained_ik
 
     virtual void distanceSelfDetailedHelper(const DistanceRequest &req, DistanceResult &res, const robot_state::RobotState &state) const;
 
+    virtual void checkSelfCollision(const collision_detection::CollisionRequest &req, collision_detection::CollisionResult &res, const robot_state::RobotState &state, const collision_detection::AllowedCollisionMatrix &acm) const;
 
+    virtual void checkSelfDetailedCollisionHelper(const collision_detection::CollisionRequest &req, collision_detection::CollisionResult &res, const robot_state::RobotState &state, const collision_detection::AllowedCollisionMatrix *acm) const;
 
   };
 } //namespace constrained_ik

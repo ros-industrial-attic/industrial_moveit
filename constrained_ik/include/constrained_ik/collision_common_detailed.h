@@ -15,6 +15,7 @@ namespace constrained_ik
   {
     DistanceRequest(): detailed(false),
                        global(true),
+                       group_name(NULL),
                        active_components_only(NULL),
                        acm(NULL),
                        verbose(false) {}
@@ -24,6 +25,7 @@ namespace constrained_ik
                     const std::set<const robot_model::LinkModel*> *active_components_only,
                     const collision_detection::AllowedCollisionMatrix *acm): detailed(detailed),
                                                                              global(global),
+                                                                             group_name(NULL),
                                                                              active_components_only(active_components_only),
                                                                              acm(acm),
                                                                              verbose(false) {}
@@ -32,24 +34,47 @@ namespace constrained_ik
                     const std::set<const robot_model::LinkModel*> &active_components_only,
                     const collision_detection::AllowedCollisionMatrix &acm): detailed(detailed),
                                                                              global(global),
+                                                                             group_name(NULL),
                                                                              active_components_only(&active_components_only),
+                                                                             acm(&acm),
+                                                                             verbose(false) {}
+    DistanceRequest(bool detailed,
+                    bool global,
+                    const std::string group_name,
+                    const collision_detection::AllowedCollisionMatrix *acm): detailed(detailed),
+                                                                             global(global),
+                                                                             group_name(group_name),
+                                                                             active_components_only(NULL),
+                                                                             acm(acm),
+                                                                             verbose(false) {}
+    DistanceRequest(bool detailed,
+                    bool global,
+                    const std::string group_name,
+                    const collision_detection::AllowedCollisionMatrix &acm): detailed(detailed),
+                                                                             global(global),
+                                                                             group_name(group_name),
+                                                                             active_components_only(NULL),
                                                                              acm(&acm),
                                                                              verbose(false) {}
 
     virtual ~DistanceRequest() {}
 
     /// Compute \e active_components_only_ based on \e req_
-    void enableGroup(const std::string group_name, const robot_model::RobotModelConstPtr &kmodel);
+    void enableGroup(const robot_model::RobotModelConstPtr &kmodel);
 
     bool detailed;
 
     bool global;
+
+    std::string group_name;
 
     const std::set<const robot_model::LinkModel*> *active_components_only;
 
     const collision_detection::AllowedCollisionMatrix *acm;
 
     bool verbose;
+
+
 
   };
 
