@@ -72,7 +72,9 @@ add_library(constrained_ik
             src/solver_state.cpp
             src/enum_types.cpp
             src/constrained_ik_utils.cpp
+            src/collision_common_detailed.cpp
             src/collision_robot_fcl_detailed.cpp
+            src/collision_world_fcl_detailed.cpp
             src/constraints/avoid_joint_limits.cpp
             src/constraint_group.cpp
 )

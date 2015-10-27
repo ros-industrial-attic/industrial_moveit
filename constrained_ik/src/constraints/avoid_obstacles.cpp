@@ -193,7 +193,7 @@ ConstraintResults AvoidObstacles::evalConstraint(const SolverState &state) const
 VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cdata, const LinkAvoidance &link) const
 {
   Eigen::VectorXd dist_err;
-  CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
+  DistanceInfoMap::const_iterator it;
 
   dist_err.resize(1,1);
   it = cdata.distance_info_map_.find(link.link_name_);
@@ -218,7 +218,7 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
 
   // use distance info to find reference point on link which is closest to a collision,
   // change the reference point of the link jacobian to that point
-  CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
+  DistanceInfoMap::const_iterator it;
   jacobian.setZero(1, link.num_robot_joints_);
   it = cdata.distance_info_map_.find(link.link_name_);
   if (it != cdata.distance_info_map_.end())
@@ -248,7 +248,7 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
 
 bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata, const LinkAvoidance &link) const
 {                               // returns true if its ok to stop with current ik conditions
-  CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
+  DistanceInfoMap::const_iterator it;
 
   it = cdata.distance_info_map_.find(link.link_name_);
   if (it != cdata.distance_info_map_.end())
@@ -265,12 +265,13 @@ bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata
 
 AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state, const AvoidObstacles *parent): ConstraintData(state), parent_(parent)
 {
-  CollisionRobotFCLDetailed::DistanceRequest req(true, false, parent_->link_models_, state_.planning_scene->getAllowedCollisionMatrix());
-  CollisionRobotFCLDetailed::DistanceResult res;
+  DistanceRequest req(true, false, parent_->link_models_, state_.planning_scene->getAllowedCollisionMatrix());
+  DistanceResult res;
 
   state.collision_robot->distanceSelf(req, res, *state_.robot_state);
+  state.collision_world->distanceRobot(req, res, *state.collision_robot, *state_.robot_state);
   Eigen::Affine3d tf = parent_->ik_->getKin().getRobotBaseInWorld().inverse();
-  CollisionRobotFCLDetailed::getDistanceInfo(res.distance, distance_info_map_, tf);
+  getDistanceInfo(res.distance, distance_info_map_, tf);
 }
 
 } // end namespace constraints
