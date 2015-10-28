@@ -25,7 +25,6 @@ namespace constrained_ik
                     const std::set<const robot_model::LinkModel*> *active_components_only,
                     const collision_detection::AllowedCollisionMatrix *acm): detailed(detailed),
                                                                              global(global),
-                                                                             group_name(NULL),
                                                                              active_components_only(active_components_only),
                                                                              acm(acm),
                                                                              verbose(false) {}
@@ -34,7 +33,6 @@ namespace constrained_ik
                     const std::set<const robot_model::LinkModel*> &active_components_only,
                     const collision_detection::AllowedCollisionMatrix &acm): detailed(detailed),
                                                                              global(global),
-                                                                             group_name(NULL),
                                                                              active_components_only(&active_components_only),
                                                                              acm(&acm),
                                                                              verbose(false) {}
