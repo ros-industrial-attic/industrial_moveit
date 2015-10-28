@@ -89,10 +89,10 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   res.description_[0] = getDescription();
   res.processing_time_.resize(1);
   res.trajectory_.resize(1);
-
-  setSolving(true);
   ros::WallTime start_time = ros::WallTime::now();
-
+  bool success = false;
+  stomp_.reset(new stomp::STOMP());
+  setSolving(true);
 
   if(!stomp_task_->setMotionPlanRequest(planning_scene_, request_, res.error_code_))
   {
@@ -100,10 +100,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     return false;
   }
 
-  ros::Time start = ros::Time::now();
-
-  bool success = false;
-  stomp_.reset(new stomp::STOMP());
   if(!stomp_->initialize(node_handle_, stomp_task_))
   {
     ROS_ERROR_STREAM("STOMP Optimizer initialization failed");
@@ -113,7 +109,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   }
 
   ROS_DEBUG_STREAM("STOMP planning started");
-  success = stomp_->runUntilValid();
+  success = getSolving() && stomp_->runUntilValid();
 
   if(success)
   {
@@ -200,20 +196,15 @@ bool StompPlanner::terminate()
   int num_attempts = TERMINATION_ATTEMPTS;
   bool success = false;
   ros::Duration delay(TERMINATION_DELAY);
-
-  if(stomp_)
+  if(getSolving())
   {
-    stomp_->proceed(false);
-    for(unsigned int i = 0 ; i < num_attempts ; i++)
+    setSolving(false);
+    if(stomp_)
     {
-      delay.sleep();
-      if(!getSolving())
-      {
-        success = true;
-        ROS_WARN("STOMP planner terminated");
-        break;
-      }
+      stomp_->proceed(false);
     }
+
+    ROS_WARN("STOMP planner terminated");
   }
   else
   {

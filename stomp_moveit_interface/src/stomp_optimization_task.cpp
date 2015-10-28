@@ -326,22 +326,6 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   std::vector<Eigen::VectorXd> initial_trajectory(num_dimensions_,
                                                   Eigen::VectorXd::Zero(num_time_steps_all_));
 
-  // Create joint interpolated trajectory as the initial trajectory
-  double dt;
-  Eigen::VectorXd jv;
-  Eigen::MatrixXd joint_traj;
-  robot_state::RobotState mid_state(start_state);
-
-  dt = 1.0/(num_time_steps_ - 1);
-  joint_traj.resize(num_dimensions_, num_time_steps_all_);
-
-  for (int j=0; j<num_time_steps_; j++)
-  {
-      start_state.interpolate(goal_state, j*dt, mid_state);
-      mid_state.copyJointGroupPositions(group_name_,jv);
-      joint_traj.col(stomp::TRAJECTORY_PADDING + j) = jv;
-  }
-
 
   for (int d=0; d<num_dimensions_; ++d)
   {

@@ -9,8 +9,8 @@
 #define STOMP_MOVEIT_INTERFACE_OBSTACLE_AVOIDANCE_FEATURE_H_
 
 #include <stomp_moveit_interface/cost_features/stomp_cost_feature.h>
-#include <moveit/collision_detection_fcl/collision_robot_fcl.h>
-#include <moveit/collision_detection_fcl/collision_world_fcl.h>
+#include <moveit/collision_fcl_detailed/collision_robot_fcl_detailed.h>
+#include <moveit/collision_fcl_detailed/collision_world_fcl_detailed.h>
 
 namespace stomp_moveit_interface
 {
@@ -25,6 +25,8 @@ public:
                           int num_threads,
                           const std::string& group_name,
                           planning_scene::PlanningSceneConstPtr planning_scene);
+
+  virtual void setPlanningScene(planning_scene::PlanningSceneConstPtr planning_scene);
 
   virtual int getNumValues() const;
   virtual void computeValuesAndGradients(const boost::shared_ptr<StompTrajectory const>& trajectory,
@@ -45,6 +47,8 @@ protected:
 protected:
 
   collision_detection::CollisionRequest collision_request_;
+  boost::shared_ptr< collision_detection::CollisionRobotFCLDetailed > collision_robot_;
+  boost::shared_ptr< collision_detection::CollisionWorldFCLDetailed > collision_world_;
 
   // parameters
   double clearance_;

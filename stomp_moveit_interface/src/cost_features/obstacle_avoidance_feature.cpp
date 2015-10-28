@@ -41,6 +41,15 @@ bool ObstacleAvoidanceFeature::initialize(XmlRpc::XmlRpcValue& config,
 
 }
 
+void ObstacleAvoidanceFeature::setPlanningScene(planning_scene::PlanningSceneConstPtr planning_scene)
+{
+  //collision_detection::WorldPtr world = boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld());
+  StompCostFeature::setPlanningScene(planning_scene);
+  collision_robot_.reset(new collision_detection::CollisionRobotFCLDetailed(planning_scene_->getRobotModel()));
+  collision_world_.reset(
+      new collision_detection::CollisionWorldFCLDetailed(boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld())));
+}
+
 bool ObstacleAvoidanceFeature::loadParameters(XmlRpc::XmlRpcValue& config)
 {
   // initialize collision request
@@ -107,30 +116,19 @@ void ObstacleAvoidanceFeature::computeValuesAndGradients(const boost::shared_ptr
 
     // checking robot vs world (attached objects, octomap, not in urdf) collisions
     result_world_collision.distance = std::numeric_limits<double>::max();
-    planning_scene_->getCollisionWorld(DEFAULT_COLLISION_DETECTOR)->checkRobotCollision(request,
-                                                              result_world_collision,
-                                                              *planning_scene_->getCollisionRobot(),
-                                                              *state0,
-                                                              planning_scene_->getAllowedCollisionMatrix());
 
-    if(!result_world_collision.collision && result_world_collision.distance < 0)
-    {
-      result_world_collision.distance = planning_scene_->getCollisionWorld(DEFAULT_COLLISION_DETECTOR)->distanceRobot(
-          *planning_scene_->getCollisionRobot(),*state0,planning_scene_->getAllowedCollisionMatrix());
-    }
+    collision_world_->checkRobotCollision(request,
+                                          result_world_collision,
+                                          *collision_robot_,
+                                          *state0,
+                                          planning_scene_->getAllowedCollisionMatrix());
 
 
-    planning_scene_->getCollisionRobot(DEFAULT_COLLISION_DETECTOR)->checkSelfCollision(collision_request_,
-                                                             result_robot_collision,
-                                                             *state0,
-                                                             planning_scene_->getAllowedCollisionMatrix());
-    if(!result_robot_collision.collision && result_robot_collision.distance < 0)
-    {
-      result_robot_collision.distance = planning_scene_->getCollisionRobot(DEFAULT_COLLISION_DETECTOR)->distanceSelf(
-          *state0,
-          planning_scene_->getAllowedCollisionMatrix());
-    }
 
+    collision_robot_->checkSelfCollision(request,
+                                         result_robot_collision,
+                                         *state0,
+                                         planning_scene_->getAllowedCollisionMatrix());
 
 
     results[0]= result_world_collision;
