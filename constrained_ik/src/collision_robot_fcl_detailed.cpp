@@ -36,7 +36,7 @@ namespace constrained_ik
     manager.manager_->collide(&cd, &collisionCallback);
     if (req.distance)
     {
-      DistanceRequest dreq(false, true, req.group_name, acm);
+      DistanceRequest dreq(false, true, req.group_name, acm, distance_threshold_);
       DistanceResult dres;
 
       dreq.enableGroup(getRobotModel());
