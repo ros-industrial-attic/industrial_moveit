@@ -1,5 +1,6 @@
 #include <constrained_ik/collision_world_fcl_detailed.h>
 #include <constrained_ik/collision_robot_fcl_detailed.h>
+#include <ros/ros.h>
 
 namespace constrained_ik
 {
@@ -29,23 +30,34 @@ namespace constrained_ik
 
   void CollisionWorldFCLDetailed::checkRobotDetailedCollisionHelper(const CollisionRequest &req, CollisionResult &res, const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix *acm) const
   {
-    const CollisionRobotFCLDetailed &robot_fcl = dynamic_cast<const CollisionRobotFCLDetailed&>(robot);
-    FCLObject fcl_obj;
-    robot_fcl.constructFCLObject(state, fcl_obj);
-
-    CollisionData cd(&req, &res, acm);
-    cd.enableGroup(robot.getRobotModel());
-    for (std::size_t i = 0 ; !cd.done_ && i < fcl_obj.collision_objects_.size() ; ++i)
-      manager_->collide(fcl_obj.collision_objects_[i].get(), &cd, &collisionCallback);
-
-    if (req.distance)
+    try
     {
-      DistanceRequest dreq(false, true, req.group_name, acm);
-      DistanceResult dres;
+      const CollisionRobotFCLDetailed &robot_fcl = dynamic_cast<const CollisionRobotFCLDetailed&>(robot);
+      FCLObject fcl_obj;
+      robot_fcl.constructFCLObject(state, fcl_obj);
 
-      dreq.enableGroup(robot.getRobotModel());
-      distanceRobotDetailedHelper(dreq, dres, robot, state);
-      res.distance = dres.minimum_distance.min_distance;
+      CollisionData cd(&req, &res, acm);
+      cd.enableGroup(robot.getRobotModel());
+      for (std::size_t i = 0 ; !cd.done_ && i < fcl_obj.collision_objects_.size() ; ++i)
+        manager_->collide(fcl_obj.collision_objects_[i].get(), &cd, &collisionCallback);
+
+      if (req.distance)
+      {
+        DistanceRequest dreq(false, true, req.group_name, acm, distance_threshold_);
+        DistanceResult dres;
+
+        dreq.enableGroup(robot.getRobotModel());
+        distanceRobotDetailedHelper(dreq, dres, robot, state);
+        res.distance = dres.minimum_distance.min_distance;
+      }
+    }
+    catch(std::bad_cast& e)
+    {
+      ROS_ERROR("Downcasting into 'const CollisionRobotFCLDetailed' reference failed: %s",e.what());
+    }
+    catch(...)
+    {
+      ROS_ERROR("Failed to process collision query");
     }
   }
 

@@ -74,6 +74,7 @@ protected:
   std::map<std::string, LinkAvoidance> links_;
   std::vector<std::string> link_names_;
   std::set<const robot_model::LinkModel *> link_models_;
+  double distance_threshold_;
 
   LinkAvoidance* getLinkData(std::string link_name)
   {
@@ -248,7 +249,10 @@ public:
   {
     LinkAvoidance* link = getLinkData(link_name);
     if(link)
+    {
       link->avoidance_distance_ = avoidance_distance;
+      updateDistanceThreshold();
+    }
   }
   
   /**
@@ -270,7 +274,10 @@ public:
     links_.clear();
     
     for (std::vector<std::string>::const_iterator it = link_names.begin(); it < link_names.end(); ++it)
+    {
       links_.insert(std::make_pair(*it, LinkAvoidance(*it)));
+      updateDistanceThreshold();
+    }
   }
 
   /**
@@ -283,10 +290,23 @@ public:
     {
       links_.insert(std::make_pair(link_name, LinkAvoidance(link_name)));
       link_names_.push_back(link_name);
+      updateDistanceThreshold();
     }
     else
     {
       ROS_WARN("Tried to add an avoidance link that already exist.");
+    }
+  }
+
+  void updateDistanceThreshold()
+  {
+    distance_threshold_ = 0;
+    for (std::map<std::string, LinkAvoidance>::const_iterator it = links_.begin(); it != links_.end(); it++)
+    {
+      if (it->second.avoidance_distance_ > distance_threshold_)
+      {
+        distance_threshold_ = it->second.avoidance_distance_;
+      }
     }
   }
 

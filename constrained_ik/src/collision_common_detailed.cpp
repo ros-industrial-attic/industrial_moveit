@@ -18,37 +18,34 @@ namespace constrained_ik
     bool status = true;
     for (DistanceMap::const_iterator it = distance_detailed.begin(); it != distance_detailed.end(); ++it)
     {
-      if (it->first != "GLOBAL_MINIMUM")
+      DistanceInfo dist_info;
+      fcl::DistanceResult dist = static_cast<const fcl::DistanceResult>(it->second);
+      const CollisionGeometryData* cd1 = static_cast<const CollisionGeometryData*>(dist.o1->getUserData());
+      const CollisionGeometryData* cd2 = static_cast<const CollisionGeometryData*>(dist.o2->getUserData());
+      if (cd1->ptr.link->getName() == it->first)
       {
-        DistanceInfo dist_info;
-        fcl::DistanceResult dist = static_cast<const fcl::DistanceResult>(it->second);
-        const CollisionGeometryData* cd1 = static_cast<const CollisionGeometryData*>(dist.o1->getUserData());
-        const CollisionGeometryData* cd2 = static_cast<const CollisionGeometryData*>(dist.o2->getUserData());
-        if (cd1->ptr.link->getName() == it->first)
-        {
-          dist_info.nearest_obsticle = cd2->ptr.link->getName();
-          dist_info.link_point = tf * Eigen::Vector3d(dist.nearest_points[0].data.vs);
-          dist_info.obsticle_point = tf * Eigen::Vector3d(dist.nearest_points[1].data.vs);
-          dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
-          dist_info.avoidance_vector.normalize();
-          dist_info.distance = dist.min_distance;
-        }
-        else if (cd2->ptr.link->getName() == it->first)
-        {
-          dist_info.nearest_obsticle = cd1->ptr.link->getName();
-          dist_info.link_point = tf * Eigen::Vector3d(dist.nearest_points[1].data.vs);
-          dist_info.obsticle_point = tf * Eigen::Vector3d(dist.nearest_points[0].data.vs);
-          dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
-          dist_info.avoidance_vector.normalize();
-          dist_info.distance = dist.min_distance;
-        }
-        else
-        {
-          ROS_ERROR("getDistanceInfo was unable to find link after match!");
-          status &= false;
-        }
-        distance_info_map.insert(std::make_pair<std::string, DistanceInfo>(it->first, dist_info));
+        dist_info.nearest_obsticle = cd2->ptr.link->getName();
+        dist_info.link_point = tf * Eigen::Vector3d(dist.nearest_points[0].data.vs);
+        dist_info.obsticle_point = tf * Eigen::Vector3d(dist.nearest_points[1].data.vs);
+        dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
+        dist_info.avoidance_vector.normalize();
+        dist_info.distance = dist.min_distance;
       }
+      else if (cd2->ptr.link->getName() == it->first)
+      {
+        dist_info.nearest_obsticle = cd1->ptr.link->getName();
+        dist_info.link_point = tf * Eigen::Vector3d(dist.nearest_points[1].data.vs);
+        dist_info.obsticle_point = tf * Eigen::Vector3d(dist.nearest_points[0].data.vs);
+        dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
+        dist_info.avoidance_vector.normalize();
+        dist_info.distance = dist.min_distance;
+      }
+      else
+      {
+        ROS_ERROR("getDistanceInfo was unable to find link after match!");
+        status &= false;
+      }
+      distance_info_map.insert(std::make_pair<std::string, DistanceInfo>(it->first, dist_info));
     }
 
     return status;
@@ -153,7 +150,7 @@ namespace constrained_ik
 
 
     fcl::DistanceResult dist_result;
-    double dist_threshold = std::numeric_limits<double>::max();
+    double dist_threshold = cdata->req->distance_threshold;
     std::map<std::string, fcl::DistanceResult>::iterator it1, it2;
 
     if (!cdata->req->global)
