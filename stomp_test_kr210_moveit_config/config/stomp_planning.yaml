@@ -21,7 +21,7 @@ use_openmp: false
 noise_coefficients:
  - group_name: manipulator_rail
    stddev: [0.3, 0.8, 1.0, 0.8, 0.3, 0.3, 0.3]
-   min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
+   min_stddev: [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
    decay:  [2.0, 2.0, 1.5, 2.0, 2.0, 2.0, 2.0]
  - group_name: manipulator
    stddev: [0.8, 1.0, 1.0, 0.3, 0.3, 0.3]

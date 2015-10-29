@@ -88,7 +88,7 @@ bool STOMP::initialize(const ros::NodeHandle& node_handle, boost::shared_ptr<sto
   }
 
   if(!policy_improvement_.initialize(num_time_steps_, min_rollouts_, max_rollouts_, num_rollouts_per_iteration_,
-                                 policy_, use_noise_adaptation_, noise_coeffs.min_stddev))
+                                 policy_, task->getControlCostWeight(),use_noise_adaptation_, noise_coeffs.min_stddev))
   {
     ROS_ERROR_STREAM("STOMP policy improvement initialization failed");
     return false;
