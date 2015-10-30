@@ -257,7 +257,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   planning_scene_ = scene;
   feature_set_->setPlanningScene(planning_scene_);
   motion_plan_request_ = &request;
-  control_cost_weight_ = 0.0;
+  //control_cost_weight_ = 0.0;
   last_executed_rollout_ = -1;
   reference_frame_ = kinematic_model_->getModelFrame();
   group_name_ = request.group_name;

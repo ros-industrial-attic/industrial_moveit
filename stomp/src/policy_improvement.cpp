@@ -68,6 +68,7 @@ bool PolicyImprovement::initialize(const int num_time_steps,
                                    const int max_rollouts,
                                    const int num_rollouts_per_iteration,
                                    boost::shared_ptr<CovariantMovementPrimitive> policy,
+                                   double control_cost_weight,
                                    bool use_noise_adaptation,
                                    const std::vector<double>& noise_min_stddev)
 {
@@ -76,6 +77,7 @@ bool PolicyImprovement::initialize(const int num_time_steps,
   policy_ = policy;
   use_covariance_matrix_adaptation_ = use_noise_adaptation;
   adapted_covariance_valid_ = false;
+  control_cost_weight_ = control_cost_weight;
 
   STOMP_VERIFY(policy_->setNumTimeSteps(num_time_steps_));
   STOMP_VERIFY(policy_->getControlCosts(control_costs_));
@@ -656,12 +658,7 @@ bool PolicyImprovement::computeParameterUpdates()
     			  double(rollouts_[r].noise_[d].transpose() * control_costs_[d] * rollouts_[r].noise_[d]);
       }
       frob_stddev = sqrt(numer/(denom*num_time_steps_));
-  //    ROS_INFO("Frobenius stddev = %f, KL Mproj stddev = %f", prev_frob_stddev, frob_stddev);
-
-
-
-//      double kl_stddev = sqrt((control_costs_[d]*adapted_covariances_[d]).trace() / num_parameters_[d]);
-//      ROS_INFO("frob = %lf, kl = %lf", frob_stddev, kl_stddev);
+      frob_stddev = std::isnan(frob_stddev) ? 1 : frob_stddev;
 
       double update_rate = 0.2;
       adapted_stddevs_[d] = (1.0 - update_rate) * adapted_stddevs_[d] + update_rate * frob_stddev;

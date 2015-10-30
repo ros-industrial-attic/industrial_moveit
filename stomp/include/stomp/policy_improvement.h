@@ -95,6 +95,7 @@ public:
                     const int max_rollouts,
                     const int num_rollouts_per_iteration,
                     boost::shared_ptr<stomp::CovariantMovementPrimitive> policy,
+                    double control_cost_weight,
                     bool use_noise_adaptation,
                     const std::vector<double>& noise_min_stddev);
 
