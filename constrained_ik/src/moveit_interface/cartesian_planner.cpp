@@ -41,12 +41,12 @@ namespace constrained_ik
 
   boost::shared_ptr<constrained_ik::MasterIK> CartesianPlanner::getSolver(std::string group_name)
   {
-
+    boost::shared_ptr<constrained_ik::MasterIK> solver;
     std::map<std::string, boost::shared_ptr<constrained_ik::MasterIK> >::iterator it;
     it = solvers_.find(group_name);
     if (it==solvers_.end())
     {
-      boost::shared_ptr<constrained_ik::MasterIK> solver(new constrained_ik::MasterIK(group_name));
+      solver.reset(new constrained_ik::MasterIK(group_name));
       basic_kin::BasicKin kin;
 
       //initialize kinematic solver with robot info
@@ -55,7 +55,6 @@ namespace constrained_ik
       {
         solver->init(kin);
         solvers_.insert(std::make_pair(group_name, solver));
-        return solver;
       }
       else
       {
@@ -64,8 +63,9 @@ namespace constrained_ik
     }
     else
     {
-      return it->second;
+      solver = it->second;
     }
+    return solver;
   }
 
   bool CartesianPlanner::solve(planning_interface::MotionPlanResponse &res)
