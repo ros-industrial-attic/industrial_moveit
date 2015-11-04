@@ -54,7 +54,7 @@ namespace constrained_ik
     robot_trajectory::RobotTrajectoryPtr traj(new robot_trajectory::RobotTrajectory(rob_model, request_.group_name));
 
 
-    ROS_INFO_STREAM("Joint Interpolation Planning for Group: " << request_.group_name);
+    ROS_INFO_STREAM("Joint Interpolation Planning for Group: " << request_.group_name <<" with tip link '"<<link_names.back() <<"'");
 
     // if we have path constraints, we prefer interpolating in pose space
     if (!request_.goal_constraints[0].joint_constraints.empty())
@@ -93,7 +93,11 @@ namespace constrained_ik
       }
 
       tf::poseMsgToEigen(pose, goal_pose);
-      goal_state.setFromIK(group_model, goal_pose, link_names.back());
+      if(!goal_state.setFromIK(group_model, goal_pose, link_names.back()))
+      {
+        ROS_ERROR("JointInterpolator goal pose is out of reach this pose");
+        return false;
+      }
     }
 
     // Calculate delta for for moveit interpolation function
