@@ -181,7 +181,7 @@ ConstraintResults AvoidObstacles::evalConstraint(const SolverState &state) const
   for (std::map<std::string, LinkAvoidance>::const_iterator it = links_.begin(); it != links_.end(); ++it)
   {
     DistanceInfoMap::const_iterator dit = cdata.distance_info_map_.find(it->second.link_name_);
-    if (dit != cdata.distance_info_map_.end())
+    if (dit != cdata.distance_info_map_.end() && dit->second.distance > 0)
     {
       constrained_ik::ConstraintResults tmp;
       tmp.error = calcError(cdata, it->second);
@@ -201,7 +201,7 @@ VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cda
 
   dist_err.resize(1,1);
   it = cdata.distance_info_map_.find(link.link_name_);
-  if (it != cdata.distance_info_map_.end())
+  if (it != cdata.distance_info_map_.end() && it->second.distance > 0)
   {
     double dist = it->second.distance;
     double scale_x = link.avoidance_distance_/(DEFAULT_ZERO_POINT + DEFAULT_SHIFT);
@@ -225,7 +225,7 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
   DistanceInfoMap::const_iterator it;
   jacobian.setZero(1, link.num_robot_joints_);
   it = cdata.distance_info_map_.find(link.link_name_);
-  if (it != cdata.distance_info_map_.end())
+  if (it != cdata.distance_info_map_.end() && it->second.distance > 0)
   {
     KDL::JntArray joint_array(link.num_inboard_joints_);
     for(int i=0; i<link.num_inboard_joints_; i++)   joint_array(i) = cdata.state_.joints(i);
@@ -269,12 +269,23 @@ bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata
 
 AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state, const AvoidObstacles *parent): ConstraintData(state), parent_(parent)
 {
-  DistanceRequest req(true, false, parent_->link_models_, state_.planning_scene->getAllowedCollisionMatrix(), parent_->distance_threshold_);
-  DistanceResult res;
-  state.collision_robot->distanceSelf(req, res, *state_.robot_state);
-  state.collision_world->distanceRobot(req, res, *state.collision_robot, *state_.robot_state);
-  Eigen::Affine3d tf = parent_->ik_->getKin().getRobotBaseInWorld().inverse();
-  getDistanceInfo(res.distance, distance_info_map_, tf);
+  DistanceRequest distance_req(true, false, parent_->link_models_, state_.planning_scene->getAllowedCollisionMatrix(), parent_->distance_threshold_);
+  DistanceResult distance_res;
+  collision_detection::CollisionRequest collision_req;
+  collision_detection::CollisionResult collision_res;
+
+  state.collision_robot->distanceSelf(distance_req, distance_res, *state_.robot_state);
+  state.collision_world->distanceRobot(distance_req, distance_res, *state_.collision_robot, *state_.robot_state);
+  if (distance_res.collision)
+  {
+    collision_req.distance = false;
+    collision_req.contacts = true;
+    collision_req.max_contacts = parent_->link_models_.size() * 2.0;
+    state.collision_robot->checkSelfCollision(collision_req, collision_res, *state_.robot_state, state_.planning_scene->getAllowedCollisionMatrix());
+    state.collision_world->checkRobotCollision(collision_req, collision_res, *state.collision_robot, *state_.robot_state, state_.planning_scene->getAllowedCollisionMatrix());
+  }
+  Eigen::Affine3d tf = state_.robot_state->getGlobalLinkTransform(parent_->ik_->getKin().getRobotBaseLinkName()).inverse();
+  getDistanceInfo(distance_res.distance, distance_info_map_, tf);
 }
 
 } // end namespace constraints
