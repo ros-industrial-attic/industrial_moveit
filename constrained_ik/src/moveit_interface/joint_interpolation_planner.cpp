@@ -132,16 +132,18 @@ namespace constrained_ik
       res.planning_time_ = (ros::WallTime::now() - start_time).toSec();
       if (res.planning_time_ > request_.allowed_planning_time)
       {
-        ROS_INFO("oint Interpolated planner was unable to find solution in allowed time. :(");
+        ROS_INFO("Joint Interpolated planner was unable to find solution in allowed time. :(");
         res.error_code_.val = moveit_msgs::MoveItErrorCodes::TIMED_OUT;
         return false;
       }
     }
 
+
+
     // Check if planner was terminated
     if (terminate_)
     {
-      ROS_INFO("Joint Interpolated Trajectory was terminated!");
+      ROS_INFO("Joint Interpolated Trajectory generated was terminated!");
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
       return false;
     }
@@ -149,7 +151,7 @@ namespace constrained_ik
     // Check if traj is a collision free path
     if (planning_scene_->isPathValid(*traj, request_.group_name))
     {
-      ROS_INFO("Joint Interpolated Trajectory is collision free! :)");
+      ROS_INFO("Joint Interpolated  generated a collision-free trajectory with %i points! :)",steps);
       res.trajectory_=traj;
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
       return true;
