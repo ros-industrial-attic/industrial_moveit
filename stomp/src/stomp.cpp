@@ -231,9 +231,14 @@ bool STOMP::doGenRollouts(int iteration_number)
 bool STOMP::doExecuteRollouts(int iteration_number)
 {
   std::vector<Eigen::VectorXd> gradients;
-#pragma omp parallel for num_threads(num_threads_)
+//#pragma omp parallel for num_threads(num_threads_)
   for (int r=0; r<int(rollouts_.size()); ++r)
   {
+    if(!getProceed())
+    {
+      return false;
+    }
+
     int thread_id = omp_get_thread_num();
     bool validity;
     STOMP_VERIFY(task_->execute(rollouts_[r], projected_rollouts_[r], tmp_rollout_cost_[r], tmp_rollout_weighted_features_[r],
@@ -249,9 +254,9 @@ bool STOMP::doExecuteRollouts(int iteration_number)
 
 bool STOMP::doRollouts(int iteration_number)
 {
-  doGenRollouts(iteration_number);
-  doExecuteRollouts(iteration_number);
-  return true;
+/*  doGenRollouts(iteration_number);
+  doExecuteRollouts(iteration_number);*/
+  return doGenRollouts(iteration_number) &&  doExecuteRollouts(iteration_number);
 }
 
 bool STOMP::doUpdate(int iteration_number)
@@ -304,7 +309,10 @@ bool STOMP::runSingleIteration(const int iteration_number)
     // load new policy if neccessary
     STOMP_VERIFY(readPolicy(iteration_number));
   }
-  doRollouts(iteration_number);
+  if(!doRollouts(iteration_number))
+  {
+    return false;
+  }
 
   doUpdate(iteration_number);
 
@@ -380,11 +388,17 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
     if(!getProceed())
     {
       ROS_DEBUG_STREAM("STOMP was interrupted");
-      success = true;
+      success = last_noiseless_rollout_valid_;
       break;
     }
 
-    runSingleIteration(i);
+    if(!runSingleIteration(i))
+    {
+      ROS_DEBUG_STREAM("STOMP was interrupted");
+      success = last_noiseless_rollout_valid_;
+      break;
+    }
+
     task_->onEveryIteration();
     num_iterations++;
     if (last_noiseless_rollout_valid_)
