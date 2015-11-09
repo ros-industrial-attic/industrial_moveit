@@ -231,7 +231,6 @@ bool STOMP::doGenRollouts(int iteration_number)
 bool STOMP::doExecuteRollouts(int iteration_number)
 {
   std::vector<Eigen::VectorXd> gradients;
-//#pragma omp parallel for num_threads(num_threads_)
   for (int r=0; r<int(rollouts_.size()); ++r)
   {
     if(!getProceed())
@@ -254,8 +253,6 @@ bool STOMP::doExecuteRollouts(int iteration_number)
 
 bool STOMP::doRollouts(int iteration_number)
 {
-/*  doGenRollouts(iteration_number);
-  doExecuteRollouts(iteration_number);*/
   return doGenRollouts(iteration_number) &&  doExecuteRollouts(iteration_number);
 }
 
