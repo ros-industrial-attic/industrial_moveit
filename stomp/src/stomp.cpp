@@ -105,7 +105,7 @@ bool STOMP::initialize(const ros::NodeHandle& node_handle, boost::shared_ptr<sto
     num_threads_ = 1;
     omp_set_num_threads(1);
   }
-  //ROS_INFO("STOMP: using %d threads", num_threads_);
+
   tmp_rollout_cost_.resize(max_rollouts_, Eigen::VectorXd::Zero(num_time_steps_));
   tmp_rollout_weighted_features_.resize(max_rollouts_, Eigen::MatrixXd::Zero(num_time_steps_, 1));
 
@@ -235,6 +235,7 @@ bool STOMP::doExecuteRollouts(int iteration_number)
   {
     if(!getProceed())
     {
+      ROS_DEBUG_STREAM("STOMP was interrupted");
       return false;
     }
 
@@ -382,16 +383,8 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
 
   for (int i=0; i<max_iterations_; ++i)
   {
-    if(!getProceed())
-    {
-      ROS_DEBUG_STREAM("STOMP was interrupted");
-      success = last_noiseless_rollout_valid_;
-      break;
-    }
-
     if(!runSingleIteration(i))
     {
-      ROS_DEBUG_STREAM("STOMP was interrupted");
       success = last_noiseless_rollout_valid_;
       break;
     }
