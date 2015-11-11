@@ -97,6 +97,7 @@ public:
   {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     const constraints::AvoidObstacles* parent_;
+    DistanceResult distance_res_;
     DistanceMap distance_map_;
     DistanceInfoMap distance_info_map_;
 
