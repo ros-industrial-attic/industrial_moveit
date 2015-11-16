@@ -199,22 +199,38 @@ namespace constrained_ik
 
       if (!cdata->req->global)
       {
-        if (d < 0 && !cdata->res->collision)
+        if (d <= 0 && !cdata->res->collision)
+        {
           cdata->res->collision = true;
+        }
 
-        if (it1 == cdata->res->distance.end())
-          cdata->res->distance.insert(std::make_pair<std::string, fcl::DistanceResult>(cd1->ptr.obj->id_, dist_result));
-        else
-          it1->second.update(dist_result);
+        if (active1)
+        {
+          if (it1 == cdata->res->distance.end())
+          {
+            cdata->res->distance.insert(std::make_pair<std::string, fcl::DistanceResult>(cd1->ptr.obj->id_, dist_result));
+          }
+          else
+          {
+            it1->second.update(dist_result);
+          }
+        }
 
-        if (it2 == cdata->res->distance.end())
-          cdata->res->distance.insert(std::make_pair<std::string, fcl::DistanceResult>(cd2->ptr.obj->id_, dist_result));
-        else
-          it2->second.update(dist_result);
+        if (active2)
+        {
+          if (it2 == cdata->res->distance.end())
+          {
+            cdata->res->distance.insert(std::make_pair<std::string, fcl::DistanceResult>(cd2->ptr.obj->id_, dist_result));
+          }
+          else
+          {
+            it2->second.update(dist_result);
+          }
+        }
       }
       else
       {
-        if (d < 0)
+        if (d <= 0)
         {
           cdata->res->collision = true;
           cdata->done = true;

@@ -190,12 +190,6 @@ public:
                       const std::vector<std::string> &link_names = std::vector<std::string>()) const;
 
   /**
-   * @brief Returns the location of the robot base in world coordinate frame.
-   * @return Eigen::Affine3d
-   */
-  Eigen::Affine3d getRobotBaseInWorld() const { return robot_base_pose_; }
-
-  /**
    * @brief getter for the robot base link name
    * @return std::string base_name_
    */
@@ -206,12 +200,6 @@ public:
    * @return std::string tip_name_
    */
   std::string getRobotTipLinkName() const { return tip_name_; }
-
-  /**
-   * @brief getter for the kdl tree root link name
-   * @return std::string root_name_
-   */
-  std::string getRootLinkName() const { return root_name_; }
 
   /**
    * @brief Assigns values from another BasicKin to this
@@ -268,7 +256,6 @@ private:
   KDL::Chain  robot_chain_;
   KDL::Tree   kdl_tree_;
   std::string base_name_,  tip_name_, root_name_;
-  Eigen::Affine3d robot_base_pose_;
   std::vector<std::string> joint_list_, link_list_;
   Eigen::Matrix<double, Eigen::Dynamic, 2> joint_limits_;
   boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_;

@@ -54,7 +54,7 @@ namespace constrained_ik
     robot_trajectory::RobotTrajectoryPtr traj(new robot_trajectory::RobotTrajectory(rob_model, request_.group_name));
 
 
-    ROS_INFO_STREAM("Joint Interpolation Planning for Group: " << request_.group_name);
+    ROS_INFO_STREAM("Joint Interpolated Planner will plan for group: " << request_.group_name <<" with tip link '"<<link_names.back() <<"'");
 
     // if we have path constraints, we prefer interpolating in pose space
     if (!request_.goal_constraints[0].joint_constraints.empty())
@@ -64,7 +64,7 @@ namespace constrained_ik
         pos[0]=request_.goal_constraints[0].joint_constraints[i].position;
         goal_state.setJointPositions(joint_names[i], pos);
 
-        ROS_DEBUG_NAMED("clik","Setting joint %s from %f to position %f", request_.goal_constraints[0].joint_constraints[i].joint_name.c_str(),
+        ROS_DEBUG("clik","Setting joint %s from %f to position %f", request_.goal_constraints[0].joint_constraints[i].joint_name.c_str(),
             *start_state.getJointPositions(joint_names[i]), request_.goal_constraints[0].joint_constraints[i].position);
       }
     }
@@ -93,7 +93,11 @@ namespace constrained_ik
       }
 
       tf::poseMsgToEigen(pose, goal_pose);
-      goal_state.setFromIK(group_model, goal_pose, link_names.back());
+      if(!goal_state.setFromIK(group_model, goal_pose, link_names.back()))
+      {
+        ROS_ERROR("Joint Interpolated Planner goal pose is out of reach");
+        return false;
+      }
     }
 
     // Calculate delta for for moveit interpolation function
@@ -128,7 +132,7 @@ namespace constrained_ik
       res.planning_time_ = (ros::WallTime::now() - start_time).toSec();
       if (res.planning_time_ > request_.allowed_planning_time)
       {
-        ROS_INFO("oint Interpolated planner was unable to find solution in allowed time. :(");
+        ROS_ERROR("Joint Interpolated Planner timed out. :(");
         res.error_code_.val = moveit_msgs::MoveItErrorCodes::TIMED_OUT;
         return false;
       }
@@ -137,7 +141,7 @@ namespace constrained_ik
     // Check if planner was terminated
     if (terminate_)
     {
-      ROS_INFO("Joint Interpolated Trajectory was terminated!");
+      ROS_INFO("Joint Interpolated Planner was terminated!");
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
       return false;
     }
@@ -145,14 +149,14 @@ namespace constrained_ik
     // Check if traj is a collision free path
     if (planning_scene_->isPathValid(*traj, request_.group_name))
     {
-      ROS_INFO("Joint Interpolated Trajectory is collision free! :)");
+      ROS_INFO("Joint Interpolated Planner generated a collision-free trajectory with %i points! :)",steps);
       res.trajectory_=traj;
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
       return true;
     }
     else
     {
-      ROS_INFO("Joint Interpolated Trajectory is not collision free. :(");
+      ROS_INFO("Joint interpolated trajectory is not collision free. :(");
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
       return false;
     }

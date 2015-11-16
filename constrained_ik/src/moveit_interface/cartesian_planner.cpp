@@ -88,18 +88,21 @@ namespace constrained_ik
     solver = getSolver(request_.group_name);
     joint_names = jmg->getActiveJointModelNames();
     link_names = jmg->getLinkModelNames();
-    start_pose = start_state.getFrameTransform(link_names.back());
+    start_pose = start_state.getGlobalLinkTransform(link_names.back());
 
     ROS_INFO_STREAM("Cartesian Planning for Group: " << request_.group_name);
     // if we have path constraints, we prefer interpolating in pose space
     if (!request_.goal_constraints[0].joint_constraints.empty())
     {
-      for(unsigned int i = 0; i < request_.goal_constraints[0].joint_constraints.size(); i++)
+      std::map<std::string, double> goal_joint_map;
+      for (size_t i=0; i<request_.goal_constraints[0].joint_constraints.size(); ++i)
       {
-        pos[0]=request_.goal_constraints[0].joint_constraints[i].position;
-        goal_state.setJointPositions(joint_names[i], pos);
+        goal_joint_map[request_.goal_constraints[0].joint_constraints[i].joint_name] =
+            request_.goal_constraints[0].joint_constraints[i].position;
       }
-      goal_pose = goal_state.getFrameTransform(link_names.back());
+      goal_state.setVariablePositions(goal_joint_map);
+      goal_state.update();
+      goal_pose = goal_state.getGlobalLinkTransform(link_names.back());
     }
     else
     {
@@ -111,12 +114,12 @@ namespace constrained_ik
       }
       else if (!request_.goal_constraints[0].position_constraints.empty() && request_.goal_constraints[0].orientation_constraints.empty())
       {
-        tf::poseEigenToMsg(start_state.getFrameTransform(link_names.back()), pose);
+        tf::poseEigenToMsg(start_state.getGlobalLinkTransform(link_names.back()), pose);
         pose.position = request_.goal_constraints[0].position_constraints[0].constraint_region.primitive_poses[0].position;
       }
       else if (request_.goal_constraints[0].position_constraints.empty() && !request_.goal_constraints[0].orientation_constraints.empty())
       {
-        tf::poseEigenToMsg(start_state.getFrameTransform(link_names.back()), pose);
+        tf::poseEigenToMsg(start_state.getGlobalLinkTransform(link_names.back()), pose);
         pose.orientation = request_.goal_constraints[0].orientation_constraints[0].orientation;
       }
       else
@@ -135,8 +138,8 @@ namespace constrained_ik
     ROS_DEBUG_NAMED("clik", "Setting Position roll  from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(2),goal_pose.rotation().eulerAngles(3,2,1)(2));
 
     // Generate Interpolated Cartesian Poses
-    std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > poses = interpolateCartesian(start_pose, goal_pose, config_.translational_discretization_step, config_.orientational_discretization_step);
-    Eigen::Affine3d world_to_base = solver->getKin().getRobotBaseInWorld().inverse();
+    Eigen::Affine3d world_to_base = start_state.getGlobalLinkTransform(solver->getKin().getRobotBaseLinkName()).inverse();
+    std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > poses = interpolateCartesian(world_to_base*start_pose, world_to_base*goal_pose, config_.translational_discretization_step, config_.orientational_discretization_step);
 
     // Generate Cartesian Trajectory
     int steps = poses.size();
@@ -152,7 +155,7 @@ namespace constrained_ik
         //Do IK and report results
         try
         {
-          found_ik = solver->calcInvKin(world_to_base*poses[j], start_joints, planning_scene_, joint_angles);
+          found_ik = solver->calcInvKin(poses[j], start_joints, planning_scene_, joint_angles);
           mid_state->setJointGroupPositions(request_.group_name, joint_angles);
           mid_state->update();
         }

@@ -213,23 +213,6 @@ bool BasicKin::init(const moveit::core::JointModelGroup* group)
 
   link_list_ = group->getLinkModelNames();
 
-  // Need to store the pose of the base frame in the world frame
-  // This will be used to convert collision data into the robot
-  // base frame.
-  KDL::Chain base_chain;
-  root_name_ = kdl_tree_.getRootSegment()->first;
-  if (!kdl_tree_.getChain(root_name_, base_name_, base_chain))
-  {
-    ROS_ERROR_STREAM("Failed to initialize KDL between URDF links: '" <<
-                     root_name_ << "' and '" << base_name_ <<"'");
-    return false;
-  }
-  KDL::ChainFkSolverPos_recursive base_chain_fk(base_chain);
-  KDL::JntArray base_chain_joints(base_chain.getNrOfJoints());
-  KDL::Frame base_pose;
-  base_chain_fk.JntToCart(base_chain_joints, base_pose);
-  KDLToEigen(base_pose, robot_base_pose_);
-
   for (int i=0, j=0; i<robot_chain_.getNrOfSegments(); ++i)
   {
     const KDL::Segment &seg = robot_chain_.getSegment(i);
@@ -339,10 +322,8 @@ BasicKin& BasicKin::operator=(const BasicKin& rhs)
   fk_solver_.reset(new KDL::ChainFkSolverPos_recursive(robot_chain_));
   jac_solver_.reset(new KDL::ChainJntToJacSolver(robot_chain_));
   group_ = rhs.group_;
-  robot_base_pose_ = rhs.robot_base_pose_;
   base_name_ = rhs.base_name_;
   tip_name_ = rhs.tip_name_;
-  root_name_ = rhs.root_name_;
 
   return *this;
 }

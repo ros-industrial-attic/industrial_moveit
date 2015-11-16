@@ -95,6 +95,13 @@ namespace constrained_ik
     fcl::DistanceResult minimum_distance;
 
     DistanceMap distance;
+    
+    void clear()
+    {
+      collision = false;
+      minimum_distance.clear();
+      distance.clear();
+    }
   };
 
   struct DistanceData
