@@ -25,6 +25,10 @@
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_position.h"
 #include <ros/assert.h>
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalPosition, constrained_ik::Constraint)
+
+const double DEFAULT_POSITION_TOLERANCE = 0.001;
 
 namespace constrained_ik
 {
@@ -34,7 +38,7 @@ namespace constraints
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalPosition::GoalPosition() : Constraint(), pos_err_tol_(0.001), weight_(Vector3d::Ones())
+GoalPosition::GoalPosition() : Constraint(), pos_err_tol_(DEFAULT_POSITION_TOLERANCE), weight_(Vector3d::Ones())
 {
 }
 
@@ -88,6 +92,32 @@ bool GoalPosition::checkStatus(const GoalPosition::GoalPositionData &cdata) cons
     return true;
 
   return false;
+}
+
+void GoalPosition::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (!getParam(local_xml, "position_tolerance", pos_err_tol_))
+  {
+    ROS_WARN("Goal Position: Unable to retrieving position_tolerance member, default parameter will be used.");
+  }
+
+  Eigen::VectorXd weights;
+  if (getParam(local_xml, "weights", weights))
+  {
+    if (weights.size() == 3)
+    {
+      weight_ = weights;
+    }
+    else
+    {
+      ROS_WARN("Gool Position: Unable to add weights member, value must be a array of size 3.");
+    }
+  }
+  else
+  {
+    ROS_WARN("Gool Position: Unable to retrieving weights member, default parameter will be used.");
+  }
 }
 
 GoalPosition::GoalPositionData::GoalPositionData(const SolverState &state): ConstraintData(state)

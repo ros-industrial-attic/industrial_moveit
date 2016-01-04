@@ -24,6 +24,8 @@
 */
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_zero_jvel.h"
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalZeroJVel, constrained_ik::Constraint)
 
 namespace constrained_ik
 {
@@ -59,6 +61,15 @@ Eigen::MatrixXd GoalZeroJVel::calcJacobian(const GoalZeroJVel::ConstraintData &c
     size_t n = numJoints();    // number of joints
     MatrixXd  J = MatrixXd::Identity(n,n) * weight_;
     return J;
+}
+
+void GoalZeroJVel::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (!getParam(local_xml, "weight", weight_))
+  {
+    ROS_WARN("Goal Joint Zero Velocity: Unable to retrieving weight member, default parameter will be used.");
+  }
 }
 
 } // namespace constraints

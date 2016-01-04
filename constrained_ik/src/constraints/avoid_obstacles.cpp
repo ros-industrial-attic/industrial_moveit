@@ -30,6 +30,8 @@
 #include "constrained_ik/constraints/avoid_obstacles.h"
 #include <utility>
 #include <ros/ros.h>
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::AvoidObstacles, constrained_ik::Constraint)
 
 const double DEFAULT_WEIGHT = 1.0;
 const double DEFAULT_MIN_DISTANCE = 0.1;
@@ -37,6 +39,7 @@ const double DEFAULT_AVOIDANCE_DISTANCE = 0.3;
 const double DEFAULT_AMPLITUDE = 0.3;
 const double DEFAULT_SHIFT = 5.0;
 const double DEFAULT_ZERO_POINT = 10;
+const double DYNAMIC_WEIGHT_FUNCTION_CONSTANT = -13.86;
 
 namespace constrained_ik
 {
@@ -51,15 +54,16 @@ using std::vector;
 
 AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), avoidance_distance_(DEFAULT_AVOIDANCE_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL), link_name_(link_name) {}
 
-AvoidObstacles::AvoidObstacles(std::vector<std::string> &link_names):  Constraint(), link_names_(link_names)
-{
-  for (std::vector<std::string>::const_iterator it = link_names.begin(); it < link_names.end(); ++it)
-    links_.insert(std::make_pair(*it, LinkAvoidance(*it)));
-}
-
 void AvoidObstacles::init(const Constrained_IK * ik)
 {
   Constraint::init(ik);
+
+  if (link_names_.size() == 0)
+  {
+    ik_->getLinkNames(link_names_);
+    ROS_WARN("Avoid Obstacles: No links were specified therefore using all links in kinematic chain.");
+  }
+  
   for (std::map<std::string, LinkAvoidance>::iterator it = links_.begin(); it != links_.end(); ++it)
   {
     it->second.num_robot_joints_ = ik_->getKin().numJoints();
@@ -84,17 +88,110 @@ void AvoidObstacles::init(const Constrained_IK * ik)
   }
 }
 
+void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  std::vector<std::string> link_names;
+  if (getParam(local_xml, "link_names", link_names))
+  {    
+    std::vector<double> amplitude, minimum_distance, avoidance_distance, weight;
+    if (getParam(local_xml, "amplitude", amplitude))
+    {
+      if (link_names.size()!=amplitude.size())
+      {
+        ROS_WARN("Abstacle Avoidance: amplitude memebr must be same size array as link_names member, default parameters will be used.");
+        amplitude.clear();
+      }
+    }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving amplitude member, default parameter will be used.");
+    }
+
+    if (getParam(local_xml, "minimum_distance", minimum_distance))
+    {
+      if (link_names.size()!=minimum_distance.size())
+      {
+        ROS_WARN("Abstacle Avoidance: minimum_distance memebr must be same size array as link_names member, default parameters will be used.");
+        minimum_distance.clear();
+      }
+    }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving minimum_distance member, default parameter will be used.");
+    }
+
+    if (getParam(local_xml, "avoidance_distance", avoidance_distance))
+    {
+      if (link_names.size()!=avoidance_distance.size())
+      {
+        ROS_WARN("Abstacle Avoidance: avoidance_distance memebr must be same size array as link_names member, default parameters will be used.");
+        avoidance_distance.clear();
+      }
+    }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving avoidance_distance member, default parameter will be used.");
+    }
+
+    if (getParam(local_xml, "weight", weight))
+    {
+      if (link_names.size()!=weight.size())
+      {
+        ROS_WARN("Abstacle Avoidance: weight memebr must be same size array as link_names member, default parameters will be used.");
+        weight.clear();
+      }
+    }
+    else
+    {
+      ROS_WARN("Abstacle Avoidance: Unable to retrieving weight member, default parameter will be used.");
+    }
+
+
+    for (int i=0; i<link_names.size(); ++i)
+    {
+      addAvoidanceLink(link_names[i]);
+      if (!amplitude.empty())
+      {
+        setAmplitude(link_names[i], amplitude[i]);
+      }
+      if (!minimum_distance.empty())
+      {
+        setMinDistance(link_names[i], minimum_distance[i]);
+      }
+      if (!avoidance_distance.empty())
+      {
+        setAvoidanceDistance(link_names[i], avoidance_distance[i]);
+      }
+      if (!weight.empty())
+      {
+        setWeight(link_names[i], weight[i]);
+      }
+    }
+  }
+  else
+  {
+    ROS_WARN("Abstacle Avoidance: Unable to retrieving link_names member, default parameter will be used.");
+  }
+}
+
 ConstraintResults AvoidObstacles::evalConstraint(const SolverState &state) const
 {
   ConstraintResults output;
   AvoidObstaclesData cdata(state, this);
+  double dynamic_weight;
   for (std::map<std::string, LinkAvoidance>::const_iterator it = links_.begin(); it != links_.end(); ++it)
   {
-    constrained_ik::ConstraintResults tmp;
-    tmp.error = calcError(cdata, it->second);
-    tmp.jacobian = calcJacobian(cdata, it->second);
-    tmp.status = checkStatus(cdata, it->second);
-    output.append(tmp);
+    DistanceInfoMap::const_iterator dit = cdata.distance_info_map_.find(it->second.link_name_);
+    if (dit != cdata.distance_info_map_.end() && dit->second.distance > 0)
+    {
+      dynamic_weight = std::exp(DYNAMIC_WEIGHT_FUNCTION_CONSTANT * (std::abs(dit->second.distance-cdata.distance_res_.minimum_distance.min_distance)/distance_threshold_));
+      constrained_ik::ConstraintResults tmp;
+      tmp.error = calcError(cdata, it->second) * it->second.weight_ * dynamic_weight;
+      tmp.jacobian = calcJacobian(cdata, it->second)  * it->second.weight_ * dynamic_weight;
+      tmp.status = checkStatus(cdata, it->second);
+      output.append(tmp);
+    }
   }
 
   return output;
@@ -103,11 +200,11 @@ ConstraintResults AvoidObstacles::evalConstraint(const SolverState &state) const
 VectorXd AvoidObstacles::calcError(const AvoidObstacles::AvoidObstaclesData &cdata, const LinkAvoidance &link) const
 {
   Eigen::VectorXd dist_err;
-  CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
+  DistanceInfoMap::const_iterator it;
 
   dist_err.resize(1,1);
   it = cdata.distance_info_map_.find(link.link_name_);
-  if (it != cdata.distance_info_map_.end())
+  if (it != cdata.distance_info_map_.end() && it->second.distance > 0)
   {
     double dist = it->second.distance;
     double scale_x = link.avoidance_distance_/(DEFAULT_ZERO_POINT + DEFAULT_SHIFT);
@@ -128,10 +225,10 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
 
   // use distance info to find reference point on link which is closest to a collision,
   // change the reference point of the link jacobian to that point
-  CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
+  DistanceInfoMap::const_iterator it;
   jacobian.setZero(1, link.num_robot_joints_);
   it = cdata.distance_info_map_.find(link.link_name_);
-  if (it != cdata.distance_info_map_.end())
+  if (it != cdata.distance_info_map_.end() && it->second.distance > 0)
   {
     KDL::JntArray joint_array(link.num_inboard_joints_);
     for(int i=0; i<link.num_inboard_joints_; i++)   joint_array(i) = cdata.state_.joints(i);
@@ -158,7 +255,7 @@ MatrixXd AvoidObstacles::calcJacobian(const AvoidObstacles::AvoidObstaclesData &
 
 bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata, const LinkAvoidance &link) const
 {                               // returns true if its ok to stop with current ik conditions
-  CollisionRobotFCLDetailed::DistanceInfoMap::const_iterator it;
+  DistanceInfoMap::const_iterator it;
 
   it = cdata.distance_info_map_.find(link.link_name_);
   if (it != cdata.distance_info_map_.end())
@@ -175,9 +272,24 @@ bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata
 
 AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state, const AvoidObstacles *parent): ConstraintData(state), parent_(parent)
 {
-  distance_map_ = state.collision_robot->distanceSelfDetailed(*state_.robot_state, state_.planning_scene->getAllowedCollisionMatrix(), parent_->link_models_);
-  Eigen::Affine3d tf = parent_->ik_->getKin().getRobotBaseInWorld().inverse();
-  CollisionRobotFCLDetailed::getDistanceInfo(distance_map_, distance_info_map_, tf);
+  DistanceRequest distance_req(true, false, parent_->link_models_, state_.planning_scene->getAllowedCollisionMatrix(), parent_->distance_threshold_);
+  distance_res_.clear();
+  
+  collision_detection::CollisionRequest collision_req;
+  collision_detection::CollisionResult collision_res;
+
+  state.collision_robot->distanceSelf(distance_req, distance_res_, *state_.robot_state);
+  state.collision_world->distanceRobot(distance_req, distance_res_, *state_.collision_robot, *state_.robot_state);
+  if (distance_res_.collision)
+  {
+    collision_req.distance = false;
+    collision_req.contacts = true;
+    collision_req.max_contacts = parent_->link_models_.size() * 2.0;
+    state.collision_robot->checkSelfCollision(collision_req, collision_res, *state_.robot_state, state_.planning_scene->getAllowedCollisionMatrix());
+    state.collision_world->checkRobotCollision(collision_req, collision_res, *state.collision_robot, *state_.robot_state, state_.planning_scene->getAllowedCollisionMatrix());
+  }
+  Eigen::Affine3d tf = state_.robot_state->getGlobalLinkTransform(parent_->ik_->getKin().getRobotBaseLinkName()).inverse();
+  getDistanceInfo(distance_res_.distance, distance_info_map_, tf);
 }
 
 } // end namespace constraints

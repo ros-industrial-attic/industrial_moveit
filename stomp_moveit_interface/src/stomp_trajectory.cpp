@@ -87,7 +87,10 @@ bool StompTrajectory::filterJoints(std::vector<Eigen::VectorXd>& joint_positions
       tmp_joint_filter_[0] = joint_positions[j](t);
       joint_models_[j]->enforcePositionBounds(tmp_joint_filter_.data());
       if (tmp_joint_filter_[0] != joint_positions[j](t))
+      {
+        joint_positions[j](t) = tmp_joint_filter_[0];
         filtered = true;
+      }
     }
   }
   return filtered;

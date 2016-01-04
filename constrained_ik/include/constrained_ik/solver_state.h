@@ -31,6 +31,7 @@
 #include <constrained_ik/enum_types.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include <constrained_ik/collision_robot_fcl_detailed.h>
+#include <constrained_ik/collision_world_fcl_detailed.h>
 
 namespace constrained_ik
 {
@@ -52,7 +53,8 @@ struct SolverState
   bool auxiliary_at_limit; /**< This is set if auxiliary reached motion or iteration limit. */
   initialization_state::InitializationState condition;
   planning_scene::PlanningSceneConstPtr planning_scene;
-  constrained_ik::CollisionRobotFCLDetailed::CollisionRobotFCLDetailedPtr collision_robot;
+  CollisionRobotFCLDetailed::CollisionRobotFCLDetailedPtr collision_robot;
+  CollisionWorldFCLDetailed::CollisionWorldFCLDetailedPtr collision_world;
   moveit::core::RobotStatePtr robot_state;
 
   SolverState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);

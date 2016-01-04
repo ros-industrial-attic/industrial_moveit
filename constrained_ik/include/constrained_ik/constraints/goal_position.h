@@ -86,6 +86,12 @@ public:
   virtual bool checkStatus(const GoalPositionData &cdata) const;
 
   /**
+   * @brief Load constraint parameters from XmlRpc::XmlRpcValue
+   * @param constraint_xml XmlRpc::XmlRpcValue
+   */
+  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml);
+
+  /**
    * @brief Getter for weight_
    * @return weight_
    */

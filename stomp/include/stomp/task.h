@@ -64,7 +64,7 @@ public:
      * @param num_threads Number of threads for multi-threading
      * @return
      */
-    virtual bool initialize(int num_threads, int num_rollouts) = 0;
+    virtual bool initialize(int num_rollouts) = 0;
 
     /**
      * Executes the task for the given policy parameters, and returns the costs per timestep

@@ -30,6 +30,8 @@
 #include "constrained_ik/constraints/avoid_joint_limits.h"
 #include "constrained_ik/constrained_ik.h"
 #include <ros/ros.h>
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::AvoidJointLimits, constrained_ik::Constraint)
 
 namespace constrained_ik
 {
@@ -121,6 +123,21 @@ void AvoidJointLimits::init(const Constrained_IK *ik)
   for (size_t ii=0; ii<numJoints(); ++ii)
     limits_.push_back( LimitsT(joint_limits(ii,0), joint_limits(ii,1), threshold_ ) );
 }
+
+void AvoidJointLimits::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (!getParam(local_xml, "threshold", threshold_))
+  {
+    ROS_WARN("Avoid Joint Limits: Unable to retrieving threshold member, default parameter will be used.");
+  }
+
+  if (!getParam(local_xml, "weight", weight_))
+  {
+    ROS_WARN("Avoid Joint Limits: Unable to retrieving weight member, default parameter will be used.");
+  }
+}
+
 
 // TODO: Move this to a common "utils" file
 template<class T>

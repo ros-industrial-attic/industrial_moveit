@@ -25,6 +25,10 @@
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_orientation.h"
 #include <ros/ros.h>
+#include <pluginlib/class_list_macros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalOrientation, constrained_ik::Constraint)
+
+const double DEFAULT_ORIENTATION_TOLERANCE = 0.009;
 
 namespace constrained_ik
 {
@@ -34,7 +38,7 @@ namespace constraints
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalOrientation::GoalOrientation() : Constraint(), rot_err_tol_(0.009), weight_(Vector3d::Ones())
+GoalOrientation::GoalOrientation() : Constraint(), rot_err_tol_(DEFAULT_ORIENTATION_TOLERANCE), weight_(Vector3d::Ones())
 {
 }
 
@@ -94,6 +98,32 @@ bool GoalOrientation::checkStatus(const GoalOrientation::GoalOrientationData &cd
     return true;
 
   return false;
+}
+
+void GoalOrientation::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
+{
+  XmlRpc::XmlRpcValue local_xml = constraint_xml;
+  if (!getParam(local_xml, "orientation_tolerance", rot_err_tol_))
+  {
+    ROS_WARN("Gool Orientation: Unable to retrieving orientation_tolerance member, default parameter will be used.");
+  }
+
+  Eigen::VectorXd weights;
+  if (getParam(local_xml, "weights", weights))
+  {
+    if (weights.size() == 3)
+    {
+      weight_ = weights;
+    }
+    else
+    {
+      ROS_WARN("Gool Orientation: Unable to add weights member, value must be a array of size 3.");
+    }
+  }
+  else
+  {
+    ROS_WARN("Gool Orientation: Unable to retrieving weights member, default parameter will be used.");
+  }
 }
 
 GoalOrientation::GoalOrientationData::GoalOrientationData(const SolverState &state): ConstraintData(state)

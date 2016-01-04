@@ -13,20 +13,17 @@ namespace stomp_moveit_interface
 bool StompCostFeature::initialize(XmlRpc::XmlRpcValue& config,
                                   int num_threads,
                                   const std::string& group_name,
-                                  moveit::core::RobotModelConstPtr kinematic_model,
-                                  boost::shared_ptr<const collision_detection::CollisionRobot> collision_robot,
-                                  boost::shared_ptr<const collision_detection::CollisionWorld> collision_world,
-                                  boost::shared_ptr<const collision_detection::CollisionRobotDistanceField> collision_robot_df,
-                                  boost::shared_ptr<const collision_detection::CollisionWorldDistanceField> collision_world_df)
+                                  planning_scene::PlanningSceneConstPtr planning_scene)
 {
+  if(!planning_scene)
+  {
+    return false;
+  }
   num_threads_ = num_threads;
   group_name_ = group_name;
-  collision_robot_ = collision_robot;
-  collision_world_ = collision_world;
-  collision_robot_df_ = collision_robot_df;
-  collision_world_df_ = collision_world_df;
-  kinematic_model_ = kinematic_model;
-  return this->initialize(config);
+  planning_scene_ = planning_scene;
+  kinematic_model_ = planning_scene->getRobotModel();
+  return true;
 }
 
 void StompCostFeature::setPlanningScene(planning_scene::PlanningSceneConstPtr planning_scene)

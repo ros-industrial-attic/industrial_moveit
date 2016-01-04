@@ -31,6 +31,7 @@
 #include "constrained_ik/constrained_ik.h"
 #include <constrained_ik/collision_robot_fcl_detailed.h>
 #include <vector>
+#include <algorithm>
 #include <kdl/chain.hpp>
 #include <kdl/chainjnttojacsolver.hpp>
 
@@ -73,29 +74,32 @@ protected:
   std::map<std::string, LinkAvoidance> links_;
   std::vector<std::string> link_names_;
   std::set<const robot_model::LinkModel *> link_models_;
+  double distance_threshold_;
 
-  bool getLinkData(std::string link_name, LinkAvoidance &link) const
+  LinkAvoidance* getLinkData(std::string link_name)
   {
-    std::map<std::string, LinkAvoidance>::const_iterator it = links_.find(link_name);
+    std::map<std::string, LinkAvoidance>::iterator it;
+    it = links_.find(link_name);
     if(it != links_.end())
     {
-      link = it->second;
-      return true;
+      return &(it->second);
     }
     else
     {
       ROS_WARN_STREAM("Failed to retrieve avoidance data for link: " << link_name);
-      return false;
+      return NULL;
     }
   }
+
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   struct AvoidObstaclesData: public ConstraintData
   {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     const constraints::AvoidObstacles* parent_;
-    CollisionRobotFCLDetailed::DistanceDetailedMap distance_map_;
-    CollisionRobotFCLDetailed::DistanceInfoMap distance_info_map_;
+    DistanceResult distance_res_;
+    DistanceMap distance_map_;
+    DistanceInfoMap distance_info_map_;
 
     AvoidObstaclesData(const constrained_ik::SolverState &state, const constraints::AvoidObstacles* parent);
   };
@@ -104,7 +108,7 @@ public:
    * @brief constructor
    * @param link_name name of link which should avoid obstacles
    */
-  AvoidObstacles(std::vector<std::string> &link_names);
+  AvoidObstacles() {}
   virtual ~AvoidObstacles() {}
 
   virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
@@ -140,15 +144,21 @@ public:
   virtual void init(const Constrained_IK * ik);
 
   /**
+   * @brief Load constraint parameters from XmlRpc::XmlRpcValue
+   * @param constraint_xml XmlRpc::XmlRpcValue
+   */
+  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml);
+
+  /**
    * @brief getter for link weight_
    * @param link_name Name of link to get weight_
    * @return weight_, On error -1.0 is returned
    */
   double getWeight(const std::string &link_name)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      return link.weight_;
+    LinkAvoidance *link;
+    if(getLinkData(link_name))
+      return link->weight_;
     else
       return -1.0;
   }
@@ -160,9 +170,9 @@ public:
    */
   void setWeight(const std::string &link_name, const double &weight)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      link.weight_ = weight;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      link->weight_ = weight;
   }
 
   /**
@@ -172,9 +182,9 @@ public:
    */
   double getMinDistance(const std::string &link_name)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      return link.min_distance_;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      return link->min_distance_;
     else
       return -1.0;
   }
@@ -186,9 +196,9 @@ public:
    */
   void setMinDistance(const std::string &link_name, const double &min_distance)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      link.min_distance_ = min_distance;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      link->min_distance_ = min_distance;
   }
 
   /**
@@ -198,9 +208,9 @@ public:
    */
   double getAmplitude(const std::string &link_name)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      return link.amplitude_;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      return link->amplitude_;
     else
       return -1.0;
   }
@@ -212,9 +222,9 @@ public:
    */
   void setAmplitude(const std::string &link_name, const double &amplitude)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      link.amplitude_ = amplitude;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      link->amplitude_ = amplitude;
   }
   
   /**
@@ -224,9 +234,9 @@ public:
    */
   double getAvoidanceDistance(const std::string &link_name)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      return link.avoidance_distance_;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+      return link->avoidance_distance_;
     else
       return -1.0;
   }
@@ -238,10 +248,69 @@ public:
    */
   void setAvoidanceDistance(const std::string &link_name, const double &avoidance_distance)
   {
-    LinkAvoidance link;
-    if(getLinkData(link_name, link))
-      link.avoidance_distance_ = avoidance_distance;
+    LinkAvoidance* link = getLinkData(link_name);
+    if(link)
+    {
+      link->avoidance_distance_ = avoidance_distance;
+      updateDistanceThreshold();
+    }
   }
+  
+  /**
+   * @brief getter for obstacle avoidance links
+   * @return link_names_
+   */
+  std::vector<std::string> getAvoidanceLinkNames()
+  {
+    return link_names_;
+  }
+
+  /**
+   * @brief setter for obstacle avoidance links
+   * @param link_name Name of link to set link_names_
+   */
+  void setAvoidanceLinks(const std::vector<std::string> &link_names)
+  {
+    link_names_ = link_names;
+    links_.clear();
+    
+    for (std::vector<std::string>::const_iterator it = link_names.begin(); it < link_names.end(); ++it)
+    {
+      links_.insert(std::make_pair(*it, LinkAvoidance(*it)));
+      updateDistanceThreshold();
+    }
+  }
+
+  /**
+   * @brief Adds an obstacle avoidance link
+   * @param link_name Name of link to add to link_names_
+   */
+  void addAvoidanceLink(const std::string &link_name)
+  {
+    if (std::find(link_names_.begin(), link_names_.end(), link_name) == link_names_.end())
+    {
+      links_.insert(std::make_pair(link_name, LinkAvoidance(link_name)));
+      link_names_.push_back(link_name);
+      updateDistanceThreshold();
+    }
+    else
+    {
+      ROS_WARN("Tried to add an avoidance link that already exist.");
+    }
+  }
+
+  void updateDistanceThreshold()
+  {
+    distance_threshold_ = 0;
+    for (std::map<std::string, LinkAvoidance>::const_iterator it = links_.begin(); it != links_.end(); it++)
+    {
+      if (it->second.avoidance_distance_ > distance_threshold_)
+      {
+        distance_threshold_ = it->second.avoidance_distance_;
+      }
+    }
+  }
+
 };
 
 } /* namespace constraints */

@@ -77,6 +77,12 @@ public:
    */
   void init(const Constrained_IK *ik);
 
+  /**
+   * @brief Load constraint parameters from XmlRpc::XmlRpcValue
+   * @param constraint_xml XmlRpc::XmlRpcValue
+   */
+  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml);
+
   /**@brief setter for weight_
    * @param weight Value to set weight_ to
    */

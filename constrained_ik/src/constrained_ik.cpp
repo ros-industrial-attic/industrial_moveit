@@ -29,6 +29,7 @@
 #include "constrained_ik/constraint_group.h"
 #include <boost/make_shared.hpp>
 #include <constrained_ik/collision_robot_fcl_detailed.h>
+#include <constrained_ik/collision_world_fcl_detailed.h>
 #include <constrained_ik/constraint_results.h>
 #include <ros/ros.h>
 
@@ -151,6 +152,7 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   {
     state.robot_state = robot_state::RobotStatePtr(new moveit::core::RobotState(planning_scene->getCurrentState()));
     state.collision_robot = CollisionRobotFCLDetailed::CollisionRobotFCLDetailedPtr(new CollisionRobotFCLDetailed(planning_scene->getRobotModel()));
+    state.collision_world = CollisionWorldFCLDetailed::CollisionWorldFCLDetailedPtr(new CollisionWorldFCLDetailed(boost::const_pointer_cast<collision_detection::World>(planning_scene->getWorld())));
   }
 
   if (state.condition == initialization_state::NothingInitialized || state.condition == initialization_state::AuxiliaryOnly)
@@ -267,10 +269,18 @@ SolverStatus Constrained_IK::checkStatus(const constrained_ik::SolverState &stat
     return Converged;
   }
   
-  if (state.iter > config_.solver_max_iterations)
+  if (state.iter > config_.solver_max_iterations || (config_.limit_primary_motion && state.primary_sum >= config_.primary_max_motion))
   {
     if (!primary.status)
     {
+      if (config_.limit_primary_motion && state.primary_sum >= config_.primary_max_motion)
+      {
+        ROS_WARN_STREAM("Primary reached max allowed motion, no solution returned.");
+      }
+      else
+      {
+        ROS_WARN_STREAM("Solver reached max allowed iteration, no solution returned.");
+      }
       return Failed;
     }
     else if (state.condition == initialization_state::PrimaryAndAuxiliary)

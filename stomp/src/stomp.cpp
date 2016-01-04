@@ -88,7 +88,7 @@ bool STOMP::initialize(const ros::NodeHandle& node_handle, boost::shared_ptr<sto
   }
 
   if(!policy_improvement_.initialize(num_time_steps_, min_rollouts_, max_rollouts_, num_rollouts_per_iteration_,
-                                 policy_, use_noise_adaptation_, noise_coeffs.min_stddev))
+                                 policy_, task->getControlCostWeight(),use_noise_adaptation_, noise_coeffs.min_stddev))
   {
     ROS_ERROR_STREAM("STOMP policy improvement initialization failed");
     return false;
@@ -105,7 +105,7 @@ bool STOMP::initialize(const ros::NodeHandle& node_handle, boost::shared_ptr<sto
     num_threads_ = 1;
     omp_set_num_threads(1);
   }
-  //ROS_INFO("STOMP: using %d threads", num_threads_);
+
   tmp_rollout_cost_.resize(max_rollouts_, Eigen::VectorXd::Zero(num_time_steps_));
   tmp_rollout_weighted_features_.resize(max_rollouts_, Eigen::MatrixXd::Zero(num_time_steps_, 1));
 
@@ -121,8 +121,6 @@ bool STOMP::readParameters()
       node_handle_.getParam("num_rollouts_per_iteration", num_rollouts_per_iteration_) &&
       node_handle_.getParam("max_iterations",max_iterations_) &&
       node_handle_.getParam("max_iterations_after_collision_free",max_iterations_after_collision_free_))
-
-
       )
   {
     ROS_ERROR_STREAM("One or more STOMP required parameters were not found in the parameter server");
@@ -162,7 +160,7 @@ bool STOMP::readParameters()
     return false;
   }
 
-
+  // optional parameters
   node_handle_.param("write_to_file", write_to_file_, false);
   node_handle_.param("use_noise_adaptation", use_noise_adaptation_, true);
   node_handle_.param("use_openmp", use_openmp_, false);
@@ -233,9 +231,14 @@ bool STOMP::doGenRollouts(int iteration_number)
 bool STOMP::doExecuteRollouts(int iteration_number)
 {
   std::vector<Eigen::VectorXd> gradients;
-#pragma omp parallel for num_threads(num_threads_)
   for (int r=0; r<int(rollouts_.size()); ++r)
   {
+    if(!getProceed())
+    {
+      ROS_DEBUG_STREAM("STOMP was interrupted");
+      return false;
+    }
+
     int thread_id = omp_get_thread_num();
     bool validity;
     STOMP_VERIFY(task_->execute(rollouts_[r], projected_rollouts_[r], tmp_rollout_cost_[r], tmp_rollout_weighted_features_[r],
@@ -251,9 +254,7 @@ bool STOMP::doExecuteRollouts(int iteration_number)
 
 bool STOMP::doRollouts(int iteration_number)
 {
-  doGenRollouts(iteration_number);
-  doExecuteRollouts(iteration_number);
-  return true;
+  return doGenRollouts(iteration_number) &&  doExecuteRollouts(iteration_number);
 }
 
 bool STOMP::doUpdate(int iteration_number)
@@ -291,7 +292,7 @@ bool STOMP::doNoiselessRollout(int iteration_number)
     best_noiseless_parameters_ = parameters_;
     best_noiseless_cost_ = total_cost;
   }
-  last_noiseless_rollout_valid_ = validity;
+  last_noiseless_rollout_valid_ = last_noiseless_rollout_valid_ || validity;
   return true;
 }
 
@@ -306,15 +307,13 @@ bool STOMP::runSingleIteration(const int iteration_number)
     // load new policy if neccessary
     STOMP_VERIFY(readPolicy(iteration_number));
   }
+  if(!doRollouts(iteration_number))
+  {
+    return false;
+  }
 
-
-  //ROS_ASSERT(doRollouts(iteration_number));
-  doRollouts(iteration_number);
-
-  //ROS_ASSERT(doUpdate(iteration_number));
   doUpdate(iteration_number);
 
-  //ROS_ASSERT(doNoiselessRollout(iteration_number));
   doNoiselessRollout(iteration_number);
 
   if (write_to_file_)
@@ -376,23 +375,32 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
   unsigned int num_iterations = 0;
   bool success = false;
   proceed(true);
+
   best_noiseless_cost_ = std::numeric_limits<double>::max();
+  last_noiseless_rollout_valid_ = false;
+  double previous_cost = best_noiseless_cost_;
+  double improvement_percentace = 0;
+
   for (int i=0; i<max_iterations_; ++i)
   {
-    if(!getProceed())
+    if(!runSingleIteration(i))
     {
-      ROS_DEBUG_STREAM("STOMP was interrupted");
-      success = false;
+      success = last_noiseless_rollout_valid_;
       break;
     }
 
-    runSingleIteration(i);
     task_->onEveryIteration();
     num_iterations++;
     if (last_noiseless_rollout_valid_)
     {
       success = true;
       collision_free_iterations++;
+      ROS_DEBUG("Stomp Trajectory is collision free, iteration %i",collision_free_iterations);
+
+      if(collision_free_iterations >= max_iterations_after_collision_free_)
+      {
+        break;
+      }
     }
     else
     {
@@ -400,23 +408,9 @@ bool STOMP::runUntilValid(int max_iterations, int iterations_after_collision_fre
       collision_free_iterations = 0;
     }
 
-
-    if(best_noiseless_cost_ < BEST_COST_THRESHOLD)
-    {
-      success = true;
-      ROS_DEBUG_STREAM("Best noiseless cost reached minimum required threshold of "<<BEST_COST_THRESHOLD <<
-                       ", exiting");
-      break;
-    }
-
-    if (collision_free_iterations>=max_iterations_after_collision_free_)
-    {
-      break;
-    }
   }
 
-
-  ROS_DEBUG_STREAM(__PRETTY_FUNCTION__<< " completed with success = "<<success<<" after "<<num_iterations<<" iterations");
+  ROS_DEBUG_STREAM("STOMP " <<(success ? "succeeded" : "failed" ) <<" after "<<num_iterations<<" iterations");
 
   return success;
 }
