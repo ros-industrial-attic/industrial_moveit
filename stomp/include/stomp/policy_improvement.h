@@ -203,7 +203,8 @@ private:
     std::vector<Eigen::MatrixXd> inv_control_costs_;                        /**< [num_dimensions] num_parameters x num_parameters */
     std::vector<Eigen::MatrixXd> projection_matrix_;                        /**< [num_dimensions] num_parameters x num_parameters */
     std::vector<Eigen::MatrixXd> inv_projection_matrix_;                    /**< [num_dimensions] num_parameters x num_parameters */
-    double control_cost_weight_;
+    double control_cost_weight_;											/**< Sensitivity of the exponential cost described in the
+    																			paper*/
 
     std::vector<Eigen::MatrixXd> basis_functions_;                          /**< [num_dimensions] num_time_steps x num_parameters */
 
