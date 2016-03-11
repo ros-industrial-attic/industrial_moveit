@@ -10,39 +10,60 @@
 
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
-#include "stomp_core/stomp_utils.h"
+#include "stomp_core/stomp_core_utils.h"
 #include "stomp_core/task.h"
 
 namespace stomp_core
 {
 
-struct StompParameters
+namespace TrajectoryInitializations
+{
+enum TrajectoryInitialization
+{
+  LINEAR_INTERPOLATION = 1,
+  CUBIC_POLYNOMIAL_INTERPOLATION,
+  MININUM_CONTROL_COST
+};
+}
+
+struct StompConfiguration
 {
   int max_iterations;
-  int timesteps;
-  int dimensions;     /** parameter dimensionality */
+  int iterations_after_valid;   /**< Stomp will stop optimizing this many iterations after finding a valid solution */
+  int num_timesteps;
+  int dimensions;               /** parameter dimensionality */
+  double delta_t;               /** time change between consecutive points */
+  TrajectoryInitializations initialization_method;
 
   // Noisy trajectory generation
   int num_rollouts; /**< Number of noisy trajectories*/
   int min_rollouts; /**< There be no less than min_rollouts computed on each iteration */
   int max_rollouts; /**< The combined number of new and old rollouts during each iteration shouldn't exceed this value */
-  NoiseGenerationParams noise_coeffs;
+  NoiseGenerationConfig noise_coeffs;
 };
 
 
 class Stomp
 {
 public:
-  Stomp();
+  Stomp(const StompConfiguration& config,TaskPtr task);
   virtual ~Stomp();
 
-  bool solve(const StompParameters& params,TaskPtr task,Eigen::MatrixXf& optimized_parameters);
+  bool solve(const std::vector<double>& first,const std::vector<double>& last,
+             std::vector<Eigen::VectorXf>& optimized_parameters);
+  bool solve(const std::vector<Eigen::VectorXf>& initial_parameters,
+             std::vector<Eigen::VectorXf>& optimized_parameters);
   bool cancel();
 
 
 protected:
 
   // optimization algorithm steps
+  bool initializeOptimizationMatrices();
+  bool computeInitialTrajectory(const std::vector<double>& first,const std::vector<double>& last);
+
+
+
   bool runOptimization();
   bool runSingleIteration();
   bool generateNoisyRollouts();
@@ -57,14 +78,29 @@ protected:
 
 protected:
 
+  // process control
   boost::mutex proceed_mutex_;
   bool proceed_;
   TaskPtr task_;
-  StompParameters optimization_params_;
+  StompConfiguration config_;
 
   // optimized parameters
-  bool optimized_parameters_valid_;
-  double optimized_parameters_costs_;
+  bool optimized_parameters_valid_;         /**< whether or not the optimized parameters are valid */
+  double optimized_parameters_total_cost_;  /**< Total cost of the optimized parameters */
+
+
+  // rollouts
+  std::vector<Rollout> noisy_rollouts_;
+  int num_active_rollouts_;
+
+  // finite difference and optimization matrices
+  Eigen::MatrixXf acc_diff_matrix_;         /**< [timesteps x timesteps], Referred to as 'A' in the literature */
+  Eigen::MatrixXf control_cost_matrix_;     /**< [timesteps x timesteps], Referred to as 'R = A x A_transpose' in the literature */
+  Eigen::MatrixXf smooth_update_matrix_;    /**< [timesteps x timesteps], Smoothing 'M = R^-1 ' matrix */
+
+  std::vector<Eigen::VectorXf> initial_control_cost_parameters_;    /**< [Dimensions][timesteps]*/
+  std::vector<Eigen::VectorXf> optimized_parameters_;               /**< [Dimensions][timesteps]*/
+
 
 };
 
