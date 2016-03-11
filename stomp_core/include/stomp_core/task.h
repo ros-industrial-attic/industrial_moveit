@@ -62,7 +62,7 @@ public:
 
     /**
      * Initialize the task for a given number of threads.
-     * @param num_threads Number of threads for multi-threading
+     * @param structure that contains configuration values
      * @return
      */
     virtual bool initialize(const XmlRpc::XmlRpcValue& params) = 0;
@@ -80,7 +80,7 @@ public:
                          Eigen::VectorXd& costs,
                          const int iteration_number,
                          const int rollout_number,
-                         bool& validity) = 0;
+                         bool& validity) const = 0 ;
 
     /**
      * Filters the given parameters - for eg, clipping of joint limits
@@ -88,9 +88,9 @@ public:
      * @param parameters
      * @return false if no filtering was done
      */
-    virtual bool filter(std::vector<Eigen::VectorXd>& parameters) {return false;};
+    virtual bool filter(std::vector<Eigen::VectorXd>& parameters) const {return false;};
 
-    const std::string& getGroupName()
+    const std::string& getGroupName() const
     {
       return group_name_;
     }

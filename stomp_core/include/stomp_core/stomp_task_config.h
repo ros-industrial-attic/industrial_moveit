@@ -28,7 +28,7 @@ struct StompTaskConfig
   int num_rollouts; /**< Number of noisy trajectories*/
   int min_rollouts; /**< There be no less than min_rollouts computed on each iteration */
   int max_rollouts; /**< The combined number of new and old rollouts during each iteration shouldn't exceed this value */
-  NoiseGenerationParams noise_coeffs;
+  NoiseGenerationConfig noise_coeffs;
 
   // Trajectory cost function
   std::vector<StompCostFunctionPtr> cost_functions;
