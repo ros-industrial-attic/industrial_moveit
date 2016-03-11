@@ -14,7 +14,7 @@
 namespace stomp_moveit_interface
 {
 
-const static double DEFAULT_CONTROL_COST_WEIGHT = 0.1; //0.0001;
+const static double DEFAULT_CONTROL_COST_WEIGHT = 0; //0.1;
 const static int TERMINATION_ATTEMPTS = 200;
 const double TERMINATION_DELAY = 0.1f;
 

@@ -333,6 +333,12 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
     initial_trajectory[d] = Eigen::VectorXd::Zero(num_time_steps_all_);
     initial_trajectory[d].head(stomp::TRAJECTORY_PADDING) = Eigen::VectorXd::Ones(stomp::TRAJECTORY_PADDING) * start_joints_[d];
     initial_trajectory[d].tail(stomp::TRAJECTORY_PADDING) = Eigen::VectorXd::Ones(stomp::TRAJECTORY_PADDING) * goal_joints_[d];
+
+    double dtheta = (goal_joints_[d] - start_joints_[d])/(num_time_steps_- 1);
+    for(int i =0; i < num_time_steps_; i++)
+    {
+      initial_trajectory[d](i+stomp::TRAJECTORY_PADDING ) = start_joints_[d] + i * dtheta;
+    }
   }
 
   policy_.reset(new stomp::CovariantMovementPrimitive());
