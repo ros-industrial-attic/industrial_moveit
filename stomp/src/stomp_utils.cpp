@@ -13,10 +13,17 @@ void getDifferentiationMatrix(int num_time_steps, CostComponents order, double d
     {
       int index = i+j;
       if (index < 0)
+      {
         index = 0;
+        continue;
+      }
+
       if (index >= num_time_steps)
+      {
         index = num_time_steps-1;
-      diff_matrix(i,index) += multiplier * DIFF_RULES[order][j+DIFF_RULE_LENGTH/2];
+        continue;
+      }
+      diff_matrix(i,index) = multiplier * DIFF_RULES[order][j+DIFF_RULE_LENGTH/2];
     }
   }
 }
