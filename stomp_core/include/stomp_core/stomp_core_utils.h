@@ -10,23 +10,25 @@
 
 #include <string>
 #include <vector>
+#include <Eigen/Core>
 
 namespace stomp_core
 {
 
-struct NoiseGenerationConfig
+struct NoiseGeneration
 {
-  enum NoiseGenerationMethod
+  enum NoiseUpdateMethod
   {
-    NONE = 0,
-    KL_DIVERGENCE_ADAPTATION = 1
+    CONSTANT = 0,
+    ADAPTIVE ,
+    EXPONENTIAL_DECAY
   };
 
   std::vector<double> stddev;
   std::vector<double> decay;
   std::vector<double> min_stddev;
   int method;                           /**< method used to update the standard deviation values.  */
-  double update_rate;                   /**< used when using  KL divergence adaptation should stay within values
+  double update_rate;                   /**< used when using  KL divergence adaptation, should stay within values
                                              of (0,1] */
 
   std::vector<double> updated_stddev;   /**< To be used for storing the updated stddev values during each iteration */
@@ -34,9 +36,9 @@ struct NoiseGenerationConfig
 
 struct Rollout
 {
-    std::vector<Eigen::VectorXd> parameters;            /**< [num_dimensions] num_time_steps */
     std::vector<Eigen::VectorXd> noise;                 /**< [num_dimensions] num_time_steps, random noise applied to the parameters*/
-    std::vector<Eigen::VectorXd> parameters_noise_;     /**< [num_dimensions] num_time_steps */
+    std::vector<Eigen::VectorXd> parameters_noise;     /**< [num_dimensions] num_time_steps, the sum of parameters + noise */
+
     Eigen::VectorXd state_costs;                        /**< num_time_steps */
     std::vector<Eigen::VectorXd> control_costs;         /**< [num_dimensions] num_time_steps */
     std::vector<Eigen::VectorXd> total_costs;           /**< [num_dimensions] num_time_steps
@@ -50,7 +52,6 @@ struct Rollout
                                                              full_costs_[d] = state_cost.sum() + control_cost[d].sum() */
 
     double importance_weight;                           /**< importance sampling weight */
-    double log_likelihood;                              /**< log likelihood of observing this rollout (constant terms ignored) */
     double total_cost;                                  /**< state + control cost over the entire trajectory */
 
 };
@@ -75,8 +76,8 @@ static const double FINITE_DIFF_COEFFS[FINITE_DIFF_RULE_LENGTH][FINITE_DIFF_RULE
     {0,  1/12.0, -17/12.0,  46/12.0, -46/12.0, 17/12.0, -1/12.0}        // jerk
 };
 
-static bool generateFiniteDifferenceMatrix(int num_time_steps,
-                                           DerivativeOrder order,
+bool generateFiniteDifferenceMatrix(int num_time_steps,
+                                           DerivativeOrders::DerivativeOrder order,
                                            double dt, Eigen::MatrixXd& diff_matrix);
 
 

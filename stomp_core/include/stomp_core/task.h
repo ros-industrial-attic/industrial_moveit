@@ -36,10 +36,9 @@
 #ifndef STOMP_TASK_H_
 #define STOMP_TASK_H_
 
+#include <XmlRpcValue.h>
 #include <boost/shared_ptr.hpp>
-#include <ros/node_handle.h>
 #include <Eigen/Core>
-#include <stomp/covariant_movement_primitive.h>
 
 namespace stomp_core
 {
@@ -83,12 +82,13 @@ public:
                          bool& validity) const = 0 ;
 
     /**
-     * Filters the given parameters - for eg, clipping of joint limits
-     * Must be thread-safe!
+     * Filters the given parameters which is applied after the update - it could be used for clipping of joint limits
+     * or projecting into the null space of the Jacobian.
+     *
      * @param parameters
      * @return false if no filtering was done
      */
-    virtual bool filter(std::vector<Eigen::VectorXd>& parameters) const {return false;};
+    virtual bool postUpdatefilter(std::vector<Eigen::VectorXd>& parameters) const {return false;};
 
     const std::string& getGroupName() const
     {

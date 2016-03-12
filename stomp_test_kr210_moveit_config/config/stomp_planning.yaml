@@ -8,8 +8,8 @@ publish_best_trajectory_marker: True
 
 # STOMP 
 max_iterations: 10
-max_iterations_after_collision_free: 4
-max_rollouts: 10
+max_iterations_after_collision_free: 2
+max_rollouts: 80
 min_rollouts: 4
 num_rollouts_per_iteration: 10  
 
@@ -20,9 +20,10 @@ use_openmp: false
 
 noise_coefficients:
  - group_name: manipulator_rail
-   stddev: [0.3, 0.8, 1.0, 0.8, 0.3, 0.3, 0.3]
+   stddev: [0.3, 0.6, 0.6, 0.6, 0.3, 0.3, 0.3]
    min_stddev: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-   decay:  [2.0, 2.0, 1.5, 2.0, 2.0, 2.0, 2.0]
+   decay:  [0.8, 0.6, 0.8, 0.8, 0.6, 0.5, 0.5]
+#   decay:  [2.0, 2.0, 1.5, 2.0, 2.0, 2.0, 2.0]
  - group_name: manipulator
    stddev: [0.8, 1.0, 1.0, 0.3, 0.3, 0.3]
    min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3]

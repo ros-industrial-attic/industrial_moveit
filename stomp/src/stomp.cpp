@@ -204,7 +204,7 @@ bool STOMP::doGenRollouts(int iteration_number)
   const NoiseCoefficients& noise_coeffs = noise_coefficients_[task_->getGroupName()];
   for (int i=0; i<num_dimensions_; ++i)
   {
-    noise[i] = noise_coeffs.stddev[i] * pow(noise_coeffs.decay[i], iteration_number-1);
+    noise[i] = noise_coeffs.stddev[i] * pow(noise_coeffs.decay[i], iteration_number); //(iteration_number - 1)
   }
 
   // get rollouts

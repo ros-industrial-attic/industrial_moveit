@@ -215,7 +215,9 @@ bool PolicyImprovement::generateRollouts(const std::vector<double>& noise_stddev
       double new_log_likelihood = 0.0;
       for (int d=0; d<num_dimensions_; ++d)
       {
-        // parameters_noise_projected remains the same, compute everything else from it.
+        /* parameters_noise_projected is equal to the noisy parameters after filtering.
+         * The idea here is to reaply the noise generated on the previous iteration
+         * to the trajectory also of the previous iteration after the update*/
         rollouts_[r].noise_projected_[d] = rollouts_[r].parameters_noise_projected_[d] - parameters_[d];
         rollouts_[r].noise_[d] = inv_projection_matrix_[d] * rollouts_[r].noise_projected_[d];
         // TODO FIXME BLAH
@@ -270,7 +272,6 @@ bool PolicyImprovement::generateRollouts(const std::vector<double>& noise_stddev
 
     double p1 = l1 / (l1 + l2);
     double p2 = l2 / (l1 + l2);
-    ROS_DEBUG("d = %d, l1 = %f, l2 = %f, p1 = %f, p2 = %f", d, l1, l2, p1, p2);
 
     for (int r=0; r<num_rollouts_gen_; ++r)
     {
@@ -305,8 +306,9 @@ bool PolicyImprovement::generateRollouts(const std::vector<double>& noise_stddev
   // add the noiseless rollout if it exists:
   if (noiseless_rollout_valid_)
   {
-    rollouts_[num_rollouts_] = noiseless_rollout_;
-    ++num_rollouts_;
+/*  Commenting out these lines appears to have no effect on performance
+ *   rollouts_[num_rollouts_] = noiseless_rollout_;
+    ++num_rollouts_;*/
   }
 
   return true;
@@ -434,7 +436,7 @@ bool PolicyImprovement::computeProjectedNoise(Rollout& rollout)
   //ros::WallTime start_time = ros::WallTime::now();
   for (int d=0; d<num_dimensions_; ++d)
   {
-    rollout.noise_projected_[d] = projection_matrix_[d] * rollout.noise_[d];
+    rollout.noise_projected_[d] = projection_matrix_[d] * rollout.noise_[d]; // projection matrix is I
     rollout.parameters_noise_projected_[d] = rollout.parameters_[d] + rollout.noise_projected_[d];
   }
   //ROS_INFO("Noise projection took %f seconds", (ros::WallTime::now() - start_time).toSec());
