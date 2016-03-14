@@ -88,7 +88,16 @@ public:
      * @param parameters
      * @return false if no filtering was done
      */
-    virtual bool postUpdatefilter(std::vector<Eigen::VectorXd>& parameters) const {return false;};
+    virtual bool applyPostNoiseGenerationFilter(std::vector<Eigen::VectorXd>& parameters) const {return false;};
+
+    /**
+     * Filters the given parameters which is applied after the update - it could be used for clipping of joint limits
+     * or projecting into the null space of the Jacobian.
+     *
+     * @param parameters
+     * @return false if no filtering was done
+     */
+    virtual bool applyPosUpdateFilter(std::vector<Eigen::VectorXd>& parameters) const {return false;};
 
     const std::string& getGroupName() const
     {

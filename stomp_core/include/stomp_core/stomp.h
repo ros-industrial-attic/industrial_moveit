@@ -32,7 +32,7 @@ struct StompConfiguration
   int num_iterations;
   int num_iterations_after_valid;   /**< Stomp will stop optimizing this many iterations after finding a valid solution */
   int num_timesteps;
-  int dimensions;               /** parameter dimensionality */
+  int num_dimensions;               /** parameter dimensionality */
   double delta_t;               /** time change between consecutive points */
   TrajectoryInitializations::TrajectoryInitialization initialization_method;
 
@@ -94,6 +94,7 @@ protected:
   // noise generation
   std::vector<double> noise_stddevs_;
   boost::shared_ptr<MultivariateGaussian> mv_gaussian_;
+  Eigen::VectorXd temp_noise_array_;
 
 
   // rollouts
