@@ -14,7 +14,7 @@ min_rollouts: 4
 num_rollouts_per_iteration: 10  
 
 # STOMP (optional)
-use_noise_adaptation: true
+use_noise_adaptation: false
 write_to_file: false
 use_openmp: false
 

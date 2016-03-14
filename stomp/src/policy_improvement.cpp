@@ -55,8 +55,8 @@ PolicyImprovement::PolicyImprovement():
     initialized_(false)
 {
   cost_scaling_h_ = 10.0;
-  use_cumulative_costs_ = true;
-  use_projection_ = false;
+  use_cumulative_costs_ = true; // default is true
+  use_projection_ = true; // default is false
 }
 
 PolicyImprovement::~PolicyImprovement()
