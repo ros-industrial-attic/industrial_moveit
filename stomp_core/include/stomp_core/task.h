@@ -82,22 +82,22 @@ public:
                          bool& validity) const = 0 ;
 
     /**
-     * Filters the given parameters which is applied after the update - it could be used for clipping of joint limits
-     * or projecting into the null space of the Jacobian.
+     * Filters the given noisy parameters which is applied after noisy trajectory generation. It could be used for clipping
+     * of joint limits or projecting into the null space of the Jacobian.
      *
      * @param parameters
      * @return false if no filtering was done
      */
-    virtual bool applyPostNoiseGenerationFilter(std::vector<Eigen::VectorXd>& parameters) const {return false;};
+    virtual bool filterNoisyParameters(std::vector<Eigen::VectorXd>& parameters) const {return false;};
 
     /**
-     * Filters the given parameters which is applied after the update - it could be used for clipping of joint limits
+     * Filters the given parameters which is applied after the update. It could be used for clipping of joint limits
      * or projecting into the null space of the Jacobian.
      *
      * @param parameters
      * @return false if no filtering was done
      */
-    virtual bool applyPosUpdateFilter(std::vector<Eigen::VectorXd>& parameters) const {return false;};
+    virtual bool filterParameters(std::vector<Eigen::VectorXd>& parameters) const {return false;};
 
     const std::string& getGroupName() const
     {
