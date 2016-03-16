@@ -145,7 +145,11 @@ bool PolicyImprovement::setNumRollouts(const int min_rollouts,
   }
   rollout.state_costs_ = VectorXd::Zero(num_time_steps_);
 
-  // duplicate this rollout:
+  // repeat this rollout:
+  rollouts_.reserve(max_rollouts_);
+  reused_rollouts_.reserve(max_rollouts_);
+  rollouts_.clear();
+  reused_rollouts_.clear();
   for (int r=0; r<max_rollouts_+1; ++r)
   {
     rollouts_.push_back(rollout);
@@ -217,7 +221,7 @@ bool PolicyImprovement::generateRollouts(const std::vector<double>& noise_stddev
       {
         /* parameters_noise_projected is equal to the noisy parameters after filtering.
          * The idea here is to reaply the noise generated on the previous iteration
-         * to the trajectory also of the previous iteration after the update*/
+         * to the trajectory also from the previous iteration after the update*/
         rollouts_[r].noise_projected_[d] = rollouts_[r].parameters_noise_projected_[d] - parameters_[d];
         rollouts_[r].noise_[d] = inv_projection_matrix_[d] * rollouts_[r].noise_projected_[d];
         // TODO FIXME BLAH
@@ -436,7 +440,7 @@ bool PolicyImprovement::computeProjectedNoise(Rollout& rollout)
   //ros::WallTime start_time = ros::WallTime::now();
   for (int d=0; d<num_dimensions_; ++d)
   {
-    rollout.noise_projected_[d] = projection_matrix_[d] * rollout.noise_[d]; // projection matrix is I
+    rollout.noise_projected_[d] = projection_matrix_[d] * rollout.noise_[d]; // projection matrix is M from the literature
     rollout.parameters_noise_projected_[d] = rollout.parameters_[d] + rollout.noise_projected_[d];
   }
   //ROS_INFO("Noise projection took %f seconds", (ros::WallTime::now() - start_time).toSec());
@@ -449,6 +453,13 @@ bool PolicyImprovement::computeRolloutControlCosts()
     {
         computeRolloutControlCosts(rollouts_[r]);
     }
+    return true;
+}
+
+bool PolicyImprovement::computeRolloutControlCosts(Rollout& rollout)
+{
+    policy_->computeControlCosts(rollout.parameters_, rollout.noise_projected_,
+                                 control_cost_weight_, rollout.control_costs_);
     return true;
 }
 
@@ -799,13 +810,6 @@ bool PolicyImprovement::computeNoise(Rollout& rollout)
     {
         rollout.noise_[d] =  rollout.parameters_noise_[d] - rollout.parameters_[d];
     }
-    return true;
-}
-
-bool PolicyImprovement::computeRolloutControlCosts(Rollout& rollout)
-{
-    policy_->computeControlCosts(rollout.parameters_, rollout.noise_projected_,
-                                 control_cost_weight_, rollout.control_costs_);
     return true;
 }
 
