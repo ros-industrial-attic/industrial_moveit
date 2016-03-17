@@ -219,9 +219,9 @@ bool PolicyImprovement::generateRollouts(const std::vector<double>& noise_stddev
       double new_log_likelihood = 0.0;
       for (int d=0; d<num_dimensions_; ++d)
       {
-        /* parameters_noise_projected is equal to the noisy parameters after filtering.
-         * The idea here is to reaply the noise generated on the previous iteration
-         * to the trajectory also from the previous iteration after the update*/
+        /* parameters_noise_projected is equal to the filtered parameters plus the noisy updates.
+         * The idea here is to apply the noisy updates generated on the previous iteration
+         * onto the updated parameters from the previous iteration*/
         rollouts_[r].noise_projected_[d] = rollouts_[r].parameters_noise_projected_[d] - parameters_[d];
         rollouts_[r].noise_[d] = inv_projection_matrix_[d] * rollouts_[r].noise_projected_[d];
         // TODO FIXME BLAH
@@ -257,10 +257,6 @@ bool PolicyImprovement::generateRollouts(const std::vector<double>& noise_stddev
     for (int r=0; r<num_rollouts_reused; ++r)
     {
       rollouts_[num_rollouts_gen_+r] = reused_rollouts_[r];
-
-//      ROS_INFO("Reuse %d, cost = %lf, weight=%lf",
-//               r, rollouts_[num_rollouts_gen_+r].total_cost_,
-//               rollouts_[num_rollouts_gen_+r].importance_weight_);
     }
   }
 
@@ -310,7 +306,7 @@ bool PolicyImprovement::generateRollouts(const std::vector<double>& noise_stddev
   // add the noiseless rollout if it exists:
   if (noiseless_rollout_valid_)
   {
-/*  Commenting out these lines appears to have no effect on performance
+/*  Commenting the lines below appears to have no effect on performance
  *   rollouts_[num_rollouts_] = noiseless_rollout_;
     ++num_rollouts_;*/
   }

@@ -333,12 +333,6 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
     initial_trajectory[d] = Eigen::VectorXd::Zero(num_time_steps_all_);
     initial_trajectory[d].head(stomp::TRAJECTORY_PADDING) = Eigen::VectorXd::Ones(stomp::TRAJECTORY_PADDING) * start_joints_[d];
     initial_trajectory[d].tail(stomp::TRAJECTORY_PADDING) = Eigen::VectorXd::Ones(stomp::TRAJECTORY_PADDING) * goal_joints_[d];
-
-    double dtheta = (goal_joints_[d] - start_joints_[d])/(num_time_steps_- 1);
-    for(int i =0; i < num_time_steps_; i++)
-    {
-      initial_trajectory[d](i+stomp::TRAJECTORY_PADDING ) = start_joints_[d] + i * dtheta;
-    }
   }
 
   policy_.reset(new stomp::CovariantMovementPrimitive());
@@ -427,28 +421,34 @@ bool StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen:
   trajectory.points.resize(num_time_steps_ + 2);
   trajectory.points[0].positions = start_joints_;
   trajectory.points[num_time_steps_+1].positions = goal_joints_;
+  trajectory.points[0].velocities = trajectory.points[0].accelerations = std::vector<double>(num_dimensions_,0);
+  trajectory.points[num_time_steps_+1].velocities = trajectory.points[num_time_steps_+1].accelerations = std::vector<double>(num_dimensions_,0);
 
-//  std::vector<Eigen::VectorXd> vels, accs;
-//  vels.resize(num_dimensions_);
-//  accs.resize(num_dimensions_);
-//  for (int d=0; d<num_dimensions_; ++d)
-//  {
-//    stomp::differentiate(parameters[d], stomp::STOMP_VELOCITY, vels[d], dt_);
-//    stomp::differentiate(parameters[d], stomp::STOMP_ACCELERATION, accs[d], dt_);
-//  }
+  Eigen::VectorXd full_parameters = Eigen::VectorXd::Zero(num_time_steps_+2);
+  std::vector<Eigen::VectorXd> vels, accs;
+  vels.resize(num_dimensions_+2);
+  accs.resize(num_dimensions_+2);
+  for (int d=0; d<num_dimensions_; ++d)
+  {
+    full_parameters.segment(1,num_time_steps_) = parameters[d];
+    full_parameters.head(1).setConstant(start_joints_[d]);
+    full_parameters.tail(1).setConstant(goal_joints_[d]);
+    stomp::differentiate(full_parameters, stomp::STOMP_VELOCITY,  dt_,vels[d]);
+    stomp::differentiate(full_parameters, stomp::STOMP_ACCELERATION, dt_,accs[d]);
+  }
 
 
   for (int i=0; i<num_time_steps_; ++i)
   {
     int j=i+1;
     trajectory.points[j].positions.resize(num_dimensions_);
-//    trajectory.points[j].velocities.resize(num_dimensions_);
-//    trajectory.points[j].accelerations.resize(num_dimensions_);
+    trajectory.points[j].velocities.resize(num_dimensions_);
+    trajectory.points[j].accelerations.resize(num_dimensions_);
     for (int d=0; d<num_dimensions_; ++d)
     {
       trajectory.points[j].positions[d] = parameters[d](i);
-//      trajectory.points[j].velocities[d] = vels[d](i);
-//      trajectory.points[j].accelerations[d] = accs[d](i);
+      trajectory.points[j].velocities[d] = vels[d](j);
+      trajectory.points[j].accelerations[d] = accs[d](j);
     }
   }
 
@@ -591,7 +591,7 @@ void StompOptimizationTask::publishTrajectoryMarkers(ros::Publisher& viz_pub, co
     visualization_msgs::Marker marker;
     trajectories_[num_rollouts_]->setJointPositions(parameters, stomp::TRAJECTORY_PADDING);
     trajectories_[num_rollouts_]->getVisualizationMarker(marker, good_color, bad_color);
-    marker.scale.x = 0.02;
+    marker.scale.x = 0.05;
     marker.ns="noiseless";
     marker.id = 0;
     viz_pub.publish(marker);
