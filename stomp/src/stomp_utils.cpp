@@ -28,6 +28,14 @@ void getDifferentiationMatrix(int num_time_steps, CostComponents order, double d
   }
 }
 
+void differentiate(const Eigen::VectorXd& parameters, CostComponents derivative_order,
+                          double dt, Eigen::VectorXd& derivatives )
+{
+  Eigen::MatrixXd diff_matrix;
+  getDifferentiationMatrix(parameters.size(),derivative_order,dt,diff_matrix);
+  derivatives = diff_matrix*parameters;
+}
+
 bool readDoubleArray(ros::NodeHandle& node_handle, const std::string& parameter_name, std::vector<double>& array, const bool verbose)
 {
   XmlRpc::XmlRpcValue d_array_xml;
