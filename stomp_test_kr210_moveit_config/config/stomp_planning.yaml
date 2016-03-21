@@ -11,7 +11,7 @@ max_iterations: 10
 max_iterations_after_collision_free: 1
 max_rollouts: 100
 min_rollouts: 30
-num_rollouts_per_iteration: 20
+num_rollouts_per_iteration: 10
 
 # STOMP (optional)
 use_noise_adaptation: true
@@ -24,9 +24,9 @@ noise_coefficients:
    min_stddev: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
    decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
  - group_name: manipulator
-   stddev: [0.8, 1.0, 1.0, 0.3, 0.3, 0.3]
-   min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
-   decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
+   stddev: [1.2, 1.0, 1.0, 0.8, 0.3, 0.3]
+   min_stddev: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+   decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
 
 features: 
 - class: stomp_moveit_interface/ObstacleAvoidanceFeature

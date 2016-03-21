@@ -20,19 +20,19 @@
     </group>
     <!--GROUP STATES: Purpose: Define a named state for a particular group, in terms of joint values. This is useful to define states like 'folded arms'-->
     <group_state name="start_pose" group="manipulator">
-        <joint name="joint_1" value="1.1609" />
-        <joint name="joint_2" value="-0.0333" />
-        <joint name="joint_3" value="0.2716" />
-        <joint name="joint_4" value="0" />
-        <joint name="joint_5" value="0" />
+        <joint name="joint_1" value="0.9795" />
+        <joint name="joint_2" value="-0.148" />
+        <joint name="joint_3" value="0.8108" />
+        <joint name="joint_4" value="-0.1373" />
+        <joint name="joint_5" value="0.5393" />
         <joint name="joint_6" value="0" />
     </group_state>
     <group_state name="end_pose" group="manipulator">
-        <joint name="joint_1" value="1.8865" />
-        <joint name="joint_2" value="-0.0078" />
-        <joint name="joint_3" value="0.3794" />
-        <joint name="joint_4" value="-1.0295" />
-        <joint name="joint_5" value="0" />
+        <joint name="joint_1" value="2.3218" />
+        <joint name="joint_2" value="-0.5686" />
+        <joint name="joint_3" value="0.3255" />
+        <joint name="joint_4" value="-1.6473" />
+        <joint name="joint_5" value="0.4412" />
         <joint name="joint_6" value="0" />
     </group_state>
     <group_state name="rails_start_pose" group="manipulator_rail">
@@ -45,10 +45,10 @@
         <joint name="rail_to_base" value="1.3933" />
     </group_state>
     <group_state name="rail_end_pose" group="manipulator_rail">
-        <joint name="joint_1" value="1.4874" />
-        <joint name="joint_2" value="0.0942" />
-        <joint name="joint_3" value="-0.1329" />
-        <joint name="joint_4" value="-1.0295" />
+        <joint name="joint_1" value="1.306" />
+        <joint name="joint_2" value="-0.2627" />
+        <joint name="joint_3" value="0.2985" />
+        <joint name="joint_4" value="-0.8236" />
         <joint name="joint_5" value="0" />
         <joint name="joint_6" value="0" />
         <joint name="rail_to_base" value="-1.2584" />
