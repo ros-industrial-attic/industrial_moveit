@@ -31,9 +31,23 @@ void getDifferentiationMatrix(int num_time_steps, CostComponents order, double d
 void differentiate(const Eigen::VectorXd& parameters, CostComponents derivative_order,
                           double dt, Eigen::VectorXd& derivatives )
 {
+
+  unsigned int padding = DIFF_RULE_LENGTH/2;
+  unsigned int padded_size = parameters.size()+DIFF_RULE_LENGTH-1;
   Eigen::MatrixXd diff_matrix;
-  getDifferentiationMatrix(parameters.size(),derivative_order,dt,diff_matrix);
-  derivatives = diff_matrix*parameters;
+  Eigen::VectorXd padded_parameters = Eigen::VectorXd::Zero(padded_size);
+  derivatives = Eigen::VectorXd::Zero(parameters.size());
+
+  // initializing padded parameters
+  padded_parameters.segment(DIFF_RULE_LENGTH/2,parameters.size()) = parameters;
+  padded_parameters.head(DIFF_RULE_LENGTH/2).setConstant(parameters.head(1)(0));
+  padded_parameters.tail(DIFF_RULE_LENGTH/2).setConstant(parameters.tail(1)(0));
+
+  // computing derivatives
+  getDifferentiationMatrix(padded_size,derivative_order,dt,diff_matrix);
+  derivatives = (diff_matrix*padded_parameters).col(0).segment(DIFF_RULE_LENGTH/2,parameters.size());
+  derivatives.head(1).setConstant(0.0);
+  derivatives.tail(1).setConstant(0.0);
 }
 
 bool readDoubleArray(ros::NodeHandle& node_handle, const std::string& parameter_name, std::vector<double>& array, const bool verbose)

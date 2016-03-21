@@ -424,13 +424,17 @@ bool StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen:
   trajectory.points[0].velocities = trajectory.points[0].accelerations = std::vector<double>(num_dimensions_,0);
   trajectory.points[num_time_steps_+1].velocities = trajectory.points[num_time_steps_+1].accelerations = std::vector<double>(num_dimensions_,0);
 
+  Eigen::VectorXd full_parameters = Eigen::VectorXd::Zero(num_time_steps_+2);
   std::vector<Eigen::VectorXd> vels, accs;
-  vels.resize(num_dimensions_);
-  accs.resize(num_dimensions_);
+  vels.resize(num_dimensions_+2);
+  accs.resize(num_dimensions_+2);
   for (int d=0; d<num_dimensions_; ++d)
   {
-    stomp::differentiate(parameters[d], stomp::STOMP_VELOCITY,  dt_,vels[d]);
-    stomp::differentiate(parameters[d], stomp::STOMP_ACCELERATION, dt_,accs[d]);
+    full_parameters.segment(1,num_time_steps_) = parameters[d];
+    full_parameters.head(1).setConstant(start_joints_[d]);
+    full_parameters.tail(1).setConstant(goal_joints_[d]);
+    stomp::differentiate(full_parameters, stomp::STOMP_VELOCITY,  dt_,vels[d]);
+    stomp::differentiate(full_parameters, stomp::STOMP_ACCELERATION, dt_,accs[d]);
   }
 
 
@@ -443,8 +447,8 @@ bool StompOptimizationTask::parametersToJointTrajectory(const std::vector<Eigen:
     for (int d=0; d<num_dimensions_; ++d)
     {
       trajectory.points[j].positions[d] = parameters[d](i);
-      trajectory.points[j].velocities[d] = vels[d](i);
-      trajectory.points[j].accelerations[d] = accs[d](i);
+      trajectory.points[j].velocities[d] = vels[d](j);
+      trajectory.points[j].accelerations[d] = accs[d](j);
     }
   }
 
@@ -587,7 +591,7 @@ void StompOptimizationTask::publishTrajectoryMarkers(ros::Publisher& viz_pub, co
     visualization_msgs::Marker marker;
     trajectories_[num_rollouts_]->setJointPositions(parameters, stomp::TRAJECTORY_PADDING);
     trajectories_[num_rollouts_]->getVisualizationMarker(marker, good_color, bad_color);
-    marker.scale.x = 0.02;
+    marker.scale.x = 0.05;
     marker.ns="noiseless";
     marker.id = 0;
     viz_pub.publish(marker);
