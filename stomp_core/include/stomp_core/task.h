@@ -48,21 +48,15 @@ public:
 
     virtual ~Task(){};
 
-    /**
-     * Initialize the task for a given number of threads.
-     * @param structure that contains configuration values
-     * @return
-     */
-    virtual bool initialize(const XmlRpc::XmlRpcValue& params) = 0;
-
 
     /**
-     * Executes the task for the given policy parameters, and returns the costs per timestep
-     * Must be thread-safe!
+     * @brief computes the state costs as a function of the parameters for each time step.
      * @param parameters [num_dimensions] num_parameters - policy parameters to execute
-     * @param costs Vector of num_time_steps, state space cost per timestep (do not include control costs)
-     * @param weighted_feature_values num_time_steps x num_features matrix of weighted feature values per time step
-     * @return
+     * @param costs vector containing the state costs per timestep.
+     * @param iteration_number
+     * @param rollout_number index of the noisy trajectory whose cost is being evaluated.
+     * @param validity whether or not the trajectory is valid
+     * @return true if cost were properly computed
      */
     virtual bool computeCosts(std::vector<Eigen::VectorXd>& parameters,
                          Eigen::VectorXd& costs,
