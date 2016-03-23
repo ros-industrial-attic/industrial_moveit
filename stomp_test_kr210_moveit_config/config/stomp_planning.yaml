@@ -1,17 +1,17 @@
 # Optimization Task
 num_feature_basis_functions: 1
 trajectory_duration: 8.0
-num_time_steps: 40
+num_time_steps: 30
 publish_trajectory_markers: False
 publish_best_trajectory_marker: True
 
 
 # STOMP 
 max_iterations: 10
-max_iterations_after_collision_free: 2
+max_iterations_after_collision_free: 1
 max_rollouts: 100
-min_rollouts: 10
-num_rollouts_per_iteration: 20
+min_rollouts: 30
+num_rollouts_per_iteration: 10
 
 # STOMP (optional)
 use_noise_adaptation: true
@@ -20,13 +20,13 @@ use_openmp: false
 
 noise_coefficients:
  - group_name: manipulator_rail
-   stddev: [0.3, 0.8, 1.0, 0.8, 0.3, 0.3, 0.3]
+   stddev: [0.3, 1.0, 1.0, 0.8, 0.3, 0.3, 0.3]
    min_stddev: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-   decay:  [2.0, 2.0, 1.5, 2.0, 2.0, 2.0, 2.0]
+   decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
  - group_name: manipulator
-   stddev: [0.8, 1.0, 1.0, 0.3, 0.3, 0.3]
-   min_stddev: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
-   decay:  [2.0, 1.5, 2.0, 2.0, 2.0, 2.0]
+   stddev: [1.2, 1.0, 1.0, 0.8, 0.3, 0.3]
+   min_stddev: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+   decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
 
 features: 
 - class: stomp_moveit_interface/ObstacleAvoidanceFeature

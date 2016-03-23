@@ -95,8 +95,11 @@ bool CovariantMovementPrimitive::computeLinearControlCosts()
     linear_control_costs_[d] *= 2.0; // because the cost matrix is symmetric
 
     // the next term is from the (x - x_desired)^2 part:
-    linear_control_costs_[d] += - movement_dt_ * 2.0*(parameters_all_[d].segment(free_vars_start_index_, num_vars_free_).array()*
-        derivative_costs_[d].block(free_vars_start_index_, 0, num_vars_free_, 1).array()).matrix();
+    // NOTE: This calculation below returns zero
+    int position_cost_index = STOMP_POSITION;
+    Eigen::MatrixXd position_derivative_cost = derivative_costs_[d].block(free_vars_start_index_, position_cost_index, num_vars_free_, 1);
+    Eigen::MatrixXd position_variables = parameters_all_[d].segment(free_vars_start_index_, num_vars_free_);
+    linear_control_costs_[d] += - movement_dt_ * 2.0*(position_variables.array()*position_derivative_cost.array()).matrix();
 
 
     // get the constant parts

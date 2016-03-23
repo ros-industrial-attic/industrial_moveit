@@ -80,7 +80,6 @@ MultivariateGaussian::MultivariateGaussian(const Eigen::MatrixBase<Derived1>& me
   covariance_cholesky_(covariance_.llt().matrixL()),
   normal_dist_(0.0,1.0)
 {
-
   rng_.seed(rand());
   size_ = mean.rows();
   gaussian_.reset(new boost::variate_generator<boost::mt19937, boost::normal_distribution<> >(rng_, normal_dist_));
