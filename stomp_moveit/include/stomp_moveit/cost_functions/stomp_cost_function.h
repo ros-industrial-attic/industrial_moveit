@@ -29,7 +29,9 @@ public:
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,XmlRpc::XmlRpcValue& config) = 0;
 
-  virtual bool updatePlanningScene(planning_scene::PlanningSceneConstPtr planning_scene_ptr) = 0;
+  virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
+                   const moveit_msgs::MotionPlanRequest &req,
+                   moveit_msgs::MoveItErrorCodes& error_code) = 0;
 
 
   /**
@@ -45,11 +47,17 @@ public:
                        Eigen::VectorXd& costs,
                        const int iteration_number,
                        const int rollout_number,
-                       bool& validity) const = 0 ;
+                       bool& validity) ;
 
-  std::string getGroupName() = 0;
+  virtual std::string getGroupName()
+  {
+    return "";
+  }
 
-  int getNumFeatures() = 0;
+  virtual double getWeight()
+  {
+    return 1.0;
+  }
 };
 
 typedef boost::shared_ptr<StompCostFunction> StompCostFunctionPtr;

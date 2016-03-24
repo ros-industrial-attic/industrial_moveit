@@ -5,20 +5,224 @@
  *      Author: ros-ubuntu
  */
 
+#include <stdexcept>
 #include "stomp_moveit/stomp_optimization_task.h"
+
+bool parsePluginArray(XmlRpc::XmlRpcValue config,
+                      std::string param_name,
+                      std::map<std::string,XmlRpc::XmlRpcValue>& plugins_map)
+{
+  if(config.hasMember(param_name) && (config[param_name].getType() == XmlRpc::XmlRpcValue::TypeString))
+  {
+    XmlRpc::XmlRpcValue& plugin_list = config[param_name];
+    std::string class_name;
+
+    // look for the 'class' entry
+    for(auto i = 0u ; i < plugin_list.size(); i++)
+    {
+      XmlRpc::XmlRpcValue& plugin_config = plugin_list[i];
+      if(plugin_config.hasMember("class") && (plugin_config["class"].getType() == XmlRpc::XmlRpcValue::TypeString))
+      {
+        class_name = static_cast<std::string>(plugin_config["class"]);
+        plugins_map.insert(std::make_pair(class_name,plugin_config));
+      }
+      else
+      {
+        ROS_ERROR("Element in the '%s' array parameter did not contain a 'class' entry",param_name.c_str());
+        return false;
+      }
+    }
+  }
+  else
+  {
+    return false;
+  }
+
+  return true;
+}
 
 namespace stomp_moveit
 {
 
-StompOptimizationTask::StompOptimizationTask()
+StompOptimizationTask::StompOptimizationTask(
+    moveit::core::RobotModelConstPtr robot_model_ptr,
+    std::string group_name,
+    const XmlRpc::XmlRpcValue& config):
+        robot_model_ptr_(robot_model_ptr),
+        group_name_(group_name)
 {
-  // TODO Auto-generated constructor stub
+  // initializing plugin loaders
+  cost_function_loader_.reset(new CostFunctionLoader("stomp_moveit", "stomp_moveit::cost_functions::StompCostFunction"));
 
+  // loading cost function plugins
+  if(!initializeCostFunctionPlugins(config))
+  {
+    throw std::logic_error("StompOptimizationTask failed to load 'cost_functions' plugins from yaml");
+  }
+
+  // loading noisy filter plugins
+  if(!initializeFilterPlugins(config,"noisy_filters",noisy_filters_))
+  {
+    ROS_WARN("StompOptimizationTask failed to load 'noisy_filters' plugins from yaml");
+  }
+
+  // loading filter plugins
+  if(!initializeFilterPlugins(config,"filters",filters_))
+  {
+    ROS_WARN("StompOptimizationTask failed to load 'filters' plugins from yaml");
+  }
 }
 
 StompOptimizationTask::~StompOptimizationTask()
 {
   // TODO Auto-generated destructor stub
+}
+
+bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcValue& config)
+{
+  std::map<std::string,XmlRpc::XmlRpcValue> plugins_map;
+  if(parsePluginArray(config,"cost_functions",plugins_map))
+  {
+    for(auto& entry: plugins_map)
+    {
+      // instantiating
+      cost_functions::StompCostFunctionPtr plugin;
+      try
+      {
+        plugin = cost_function_loader_->createInstance(entry.first);
+      }
+      catch(pluginlib::PluginlibException& ex)
+      {
+        ROS_ERROR("%s plugin could not be created",entry.first.c_str());
+        return false;
+      }
+
+      // initializing
+      if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
+      {
+        cost_functions_.push_back(plugin);
+      }
+      else
+      {
+        ROS_ERROR("%s plugin failed to initialize",entry.first.c_str());
+        return false;
+      }
+    }
+  }
+  else
+  {
+    return false;
+  }
+
+  return true;
+}
+
+bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& config,std::string param_name,
+                                                    std::vector<filters::StompFilterPtr>& filters)
+{
+  std::map<std::string,XmlRpc::XmlRpcValue> plugins_map;
+  if(parsePluginArray(config,param_name,plugins_map))
+  {
+    for(auto& entry: plugins_map)
+    {
+      // instantiating
+      filters::StompFilterPtr plugin;
+      try
+      {
+        plugin = filter_loader_->createInstance(entry.first);
+      }
+      catch(pluginlib::PluginlibException& ex)
+      {
+        ROS_ERROR("%s plugin could not be created",entry.first.c_str());
+        return false;
+      }
+
+      // initializing
+      if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
+      {
+        filters.push_back(plugin);
+      }
+      else
+      {
+        ROS_ERROR("%s plugin failed to initialize",entry.first.c_str());
+        return false;
+      }
+    }
+  }
+  else
+  {
+    return false;
+  }
+
+  return true;
+}
+
+bool StompOptimizationTask::computeCosts(std::vector<Eigen::VectorXd>& parameters,
+                     Eigen::VectorXd& costs,
+                     const int iteration_number,
+                     const int rollout_number,
+                     bool& validity)
+{
+  int num_timesteps = parameters.front().size();
+  Eigen::MatrixXd cost_matrix = Eigen::MatrixXd::Zero(num_timesteps,cost_functions_.size());
+  Eigen::VectorXd state_costs = Eigen::VectorXd::Zero(num_timesteps);
+  validity = true;
+  for(auto i = 0u; i < cost_functions_.size(); i++ )
+  {
+    bool valid;
+    auto cf = cost_functions_[i];
+    if(!cf->computeCosts(parameters,state_costs,iteration_number,rollout_number,valid))
+    {
+      return false;
+    }
+
+    validity &= valid;
+
+    cost_matrix.col(i) = state_costs * cf->getWeight();
+  }
+  costs = cost_matrix.rowwise().sum();
+  return true;
+}
+
+bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
+                                        const moveit_msgs::MotionPlanRequest &req,
+                                        moveit_msgs::MoveItErrorCodes& error_code)
+{
+  bool succeeded = true;
+  for(auto p : cost_functions_)
+  {
+    succeeded &= p->setMotionPlanRequest(planning_scene,req,error_code);
+  }
+
+  std::vector<filters::StompFilterPtr> all_filters;
+  all_filters.insert(all_filters.end(),noisy_filters_.begin(),noisy_filters_.end());
+  all_filters.insert(all_filters.end(),filters_.begin(),filters_.end());
+  for(auto p: all_filters)
+  {
+    succeeded &= p->setMotionPlanRequest(planning_scene,req,error_code);
+  }
+
+  return succeeded;
+}
+
+bool StompOptimizationTask::filterNoisyParameters(std::vector<Eigen::VectorXd>& parameters)
+{
+  bool filtered = false;
+  for(auto& f: noisy_filters_)
+  {
+    filtered || f->filter(parameters);
+  }
+  return filtered;
+}
+
+bool StompOptimizationTask::filterParameters(std::vector<Eigen::VectorXd>& parameters)
+{
+  bool filtered = false;
+  for(auto& f: filters_)
+  {
+    filtered || f->filter(parameters);
+  }
+  return filtered;
 }
 
 } /* namespace stomp_moveit */

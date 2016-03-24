@@ -40,11 +40,7 @@ class Task
 
 public:
 
-    Task(const std::string& group_name):
-      group_name_(group_name)
-    {
-
-    };
+    Task(){}
 
     virtual ~Task(){};
 
@@ -81,14 +77,6 @@ public:
      * @return false if no filtering was done
      */
     virtual bool filterParameters(std::vector<Eigen::VectorXd>& parameters) const {return false;};
-
-    const std::string& getGroupName() const
-    {
-      return group_name_;
-    }
-
-protected:
-    std::string group_name_;
 
 };
 
