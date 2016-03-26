@@ -43,8 +43,7 @@ struct NoiseGeneration
   std::vector<double> decay;
   std::vector<double> min_stddev;
   int method; /**< method used to update the standard deviation values.  */
-  double update_rate; /**< used when using  KL divergence adaptation, should stay within values
-                           of (0,1] */
+  double update_rate; /**< used when using  KL divergence adaptation, should stay within values of (0,1] */
 
   std::vector<double> updated_stddev; /**< To be used for storing the updated standard deviation values during each iteration */
 };

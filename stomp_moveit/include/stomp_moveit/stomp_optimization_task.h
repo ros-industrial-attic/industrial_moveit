@@ -54,11 +54,13 @@ public:
    * @param validity whether or not the trajectory is valid
    * @return true if cost were properly computed
    */
-  virtual bool computeCosts(std::vector<Eigen::VectorXd>& parameters,
-                       Eigen::VectorXd& costs,
-                       const int iteration_number,
-                       const int rollout_number,
-                       bool& validity) ;
+  virtual bool computeCosts(const std::vector<Eigen::VectorXd>& parameters,
+                            std::size_t start_timestep,
+                            std::size_t num_timesteps,
+                            int iteration_number,
+                            int rollout_number,
+                            Eigen::VectorXd& costs,
+                            bool& validity) ;
 
   /**
    * Filters the given noisy parameters which is applied after noisy trajectory generation. It could be used for clipping

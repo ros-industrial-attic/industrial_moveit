@@ -157,13 +157,14 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
   return true;
 }
 
-bool StompOptimizationTask::computeCosts(std::vector<Eigen::VectorXd>& parameters,
-                     Eigen::VectorXd& costs,
-                     const int iteration_number,
-                     const int rollout_number,
-                     bool& validity)
+bool StompOptimizationTask::computeCosts(const std::vector<Eigen::VectorXd>& parameters,
+                                         std::size_t start_timestep,
+                                         std::size_t num_timesteps,
+                                         int iteration_number,
+                                         int rollout_number,
+                                         Eigen::VectorXd& costs,
+                                         bool& validity)
 {
-  int num_timesteps = parameters.front().size();
   Eigen::MatrixXd cost_matrix = Eigen::MatrixXd::Zero(num_timesteps,cost_functions_.size());
   Eigen::VectorXd state_costs = Eigen::VectorXd::Zero(num_timesteps);
   validity = true;
@@ -171,7 +172,7 @@ bool StompOptimizationTask::computeCosts(std::vector<Eigen::VectorXd>& parameter
   {
     bool valid;
     auto cf = cost_functions_[i];
-    if(!cf->computeCosts(parameters,state_costs,iteration_number,rollout_number,valid))
+    if(!cf->computeCosts(parameters,start_timestep,num_timesteps,iteration_number,rollout_number,state_costs,valid))
     {
       return false;
     }

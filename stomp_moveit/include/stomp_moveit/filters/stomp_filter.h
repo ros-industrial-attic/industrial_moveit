@@ -44,7 +44,7 @@ public:
    * @param parameters [num_dimensions] x [num_timesteps]
    * @return false if no filtering was applied
    */
-  virtual bool filter(std::vector<Eigen::VectorXd>& parameters) = 0 ;
+  virtual bool filter(std::vector<Eigen::VectorXd>& parameters) const = 0 ;
 
 
 };
