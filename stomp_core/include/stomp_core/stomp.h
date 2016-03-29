@@ -64,7 +64,7 @@ struct StompConfiguration
   double control_cost_weight;  /**< Percentage of the trajectory accelerations cost to be applied in the total cost calculation >*/
 };
 
-
+using MultivariateGaussianPtr = boost::shared_ptr<MultivariateGaussian>;
 class Stomp
 {
 public:
@@ -88,6 +88,7 @@ protected:
   bool runSingleIteration();
   bool generateNoisyRollouts();
   bool filterNoisyRollouts();
+  bool computeProjectedNoisyRollouts();
   bool computeNoisyRolloutsCosts();
   bool computeRolloutsStateCosts();
   bool computeRolloutsControlCosts();
@@ -123,7 +124,7 @@ protected:
 
   // noise generation
   std::vector<double> noise_stddevs_;
-  boost::shared_ptr<MultivariateGaussian> mv_gaussian_;
+  std::vector<MultivariateGaussianPtr > random_dist_generators_;
   Eigen::VectorXd temp_noise_array_;
 
 

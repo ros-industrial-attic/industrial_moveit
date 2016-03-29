@@ -32,11 +32,11 @@
 using Trajectory = std::vector<Eigen::VectorXd>;
 
 const std::size_t NUM_DIMENSIONS = 3;
-const std::size_t NUM_TIMESTEPS = 15;
-const double DELTA_T = 0.2;
+const std::size_t NUM_TIMESTEPS = 40;
+const double DELTA_T = 0.1;
 const std::vector<double> START_POS = {1.4, 1.4, 0.5};
 const std::vector<double> END_POS = {-1.25, 1.3, -0.26};
-const std::vector<double> BIAS_THRESHOLD = {0.1,0.10,0.10};
+const std::vector<double> BIAS_THRESHOLD = {0.10,0.10,0.10};
 
 using namespace stomp_core;
 
@@ -85,7 +85,7 @@ public:
 
 
     // scaling costs to the maximum
-    double max = costs.maxCoeff();
+    double max = 1;//costs.maxCoeff();
     costs /= (max < 1e-8 ? 1:max);
     return true;
   }
@@ -96,6 +96,24 @@ protected:
   std::vector<double> bias_thresholds_;
 };
 
+bool compareDiff(const Trajectory& optimized, const Trajectory& desired,
+                 const std::vector<double>& thresholds)
+{
+  auto num_dimensions = optimized.size();
+  Trajectory diff(num_dimensions);
+  for(auto d = 0u;d < num_dimensions ; d++)
+  {
+    diff[d] = optimized[d] - desired[d];
+    diff[d].cwiseAbs();
+    if((diff[d].array() > thresholds[d] ).any() )
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 StompConfiguration create3DOFConfiguration()
 {
   StompConfiguration c;
@@ -103,16 +121,16 @@ StompConfiguration create3DOFConfiguration()
   c.num_iterations = 10;
   c.num_dimensions = NUM_DIMENSIONS;
   c.delta_t = DELTA_T;
-  c.control_cost_weight = 0;
+  c.control_cost_weight = 0.0;
   c.initialization_method = TrajectoryInitializations::MININUM_CONTROL_COST;
   c.num_iterations_after_valid = 1;
-  c.num_rollouts_per_iteration = 10;
-  c.max_rollouts = 10;
+  c.num_rollouts_per_iteration = 20;
+  c.max_rollouts = 20;
   c.min_rollouts = 10;
 
   NoiseGeneration n;
   n.stddev = {0.5, 0.5, 0.5};
-  n.decay = {1.0, 1.0, 1.0};
+  n.decay = {0.9, 0.9, 0.9};
   n.min_stddev = {0.05, 0.05, 0.05};
   n.method = NoiseGeneration::ADAPTIVE;
   n.update_rate = 0.2;
@@ -171,6 +189,8 @@ TEST(Stomp3DOF,solve_default)
     diff[d] = trajectory_bias[d] - optimized[d];
   }
 
+  EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));
+
   std::string line_separator = "\n------------------------------------------------------\n";
   std::cout<<line_separator;
   std::cout<<stomp_core::toString(trajectory_bias);
@@ -197,6 +217,8 @@ TEST(Stomp3DOF,solve_interpolated_initial)
   {
     EXPECT_EQ(optimized[d].size(),NUM_TIMESTEPS);
   }
+
+  EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));
 
   // calculate difference
   Trajectory diff(config.num_dimensions,Eigen::VectorXd::Zero(config.num_timesteps));
