@@ -23,6 +23,8 @@
  */
 
 #include <cmath>
+#include <iostream>
+#include <Eigen/Dense>
 #include "stomp_core/stomp_core_utils.h"
 
 namespace stomp_core
@@ -56,6 +58,37 @@ bool generateFiniteDifferenceMatrix(int num_time_steps,
     }
   }
 }
+
+std::string toString(const std::vector<Eigen::VectorXd>& data)
+{
+  Eigen::IOFormat clean_format(4, 0, ", ", "\n", "[", "]");
+  Eigen::MatrixXd m = Eigen::MatrixXd::Zero(data.size(),data.front().size());
+  std::stringstream ss;
+  for(auto d = 0u; d < data.size(); d++)
+  {
+    m.row(d) = data[d].transpose();
+  }
+
+  ss<<m.format(clean_format);
+  return ss.str();
+}
+
+std::string toString(const Eigen::MatrixXd& data)
+{
+  Eigen::IOFormat clean_format(4, 0, ", ", "\n", "[", "]");
+  std::stringstream ss;
+  ss<<data.format(clean_format);
+  return ss.str();
+}
+
+std::string toString(const Eigen::VectorXd& data)
+{
+  Eigen::IOFormat clean_format(4, 0, ", ", "\n", "[", "]");
+  std::stringstream ss;
+  ss<<data.transpose().format(clean_format);
+  return ss.str();
+}
+
 }
 
 

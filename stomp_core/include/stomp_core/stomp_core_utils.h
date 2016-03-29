@@ -89,6 +89,11 @@ static const double FINITE_DIFF_COEFFS[FINITE_DIFF_RULE_LENGTH][FINITE_DIFF_RULE
 bool generateFiniteDifferenceMatrix(int num_time_steps, DerivativeOrders::DerivativeOrder order, double dt,
                                     Eigen::MatrixXd& diff_matrix);
 
+std::string toString(const std::vector<Eigen::VectorXd>& data);
+std::string toString(const Eigen::VectorXd& data);
+std::string toString(const Eigen::MatrixXd& data);
+
+
 } /* namespace stomp */
 
 #endif /* INDUSTRIAL_MOVEIT_STOMP_CORE_INCLUDE_STOMP_CORE_STOMP_UTILS_H_ */
