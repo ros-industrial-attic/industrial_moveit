@@ -32,11 +32,11 @@
 using Trajectory = std::vector<Eigen::VectorXd>;
 
 const std::size_t NUM_DIMENSIONS = 3;
-const std::size_t NUM_TIMESTEPS = 10;
+const std::size_t NUM_TIMESTEPS = 15;
 const double DELTA_T = 0.2;
-const std::vector<double> START_POS = {1.0, 0.0, -0.1};
-const std::vector<double> END_POS = {0.5, 1.2, 0.8};
-const std::vector<double> BIAS_THRESHOLD = {0.1,0.1,0.1};
+const std::vector<double> START_POS = {1.4, 1.4, 0.5};
+const std::vector<double> END_POS = {-1.25, 1.3, -0.26};
+const std::vector<double> BIAS_THRESHOLD = {0.1,0.10,0.10};
 
 using namespace stomp_core;
 
@@ -96,22 +96,6 @@ protected:
   std::vector<double> bias_thresholds_;
 };
 
-void printTrajectory(const Trajectory& traj)
-{
-  Eigen::IOFormat clean_format(4, 0, ", ", "\n", "[", "]");
-  Eigen::MatrixXd m = Eigen::MatrixXd::Zero(traj.size(),traj.front().size());
-
-  for(auto d = 0u; d < traj.size(); d++)
-  {
-    for(auto t = 0u; t < traj[d].size(); t++)
-    {
-      m(d,t) = traj[d](t);
-    }
-  }
-
-  std::cout<<m.format(clean_format)<<std::endl;
-}
-
 StompConfiguration create3DOFConfiguration()
 {
   StompConfiguration c;
@@ -123,13 +107,13 @@ StompConfiguration create3DOFConfiguration()
   c.initialization_method = TrajectoryInitializations::MININUM_CONTROL_COST;
   c.num_iterations_after_valid = 1;
   c.num_rollouts_per_iteration = 10;
-  c.max_rollouts = 20;
+  c.max_rollouts = 10;
   c.min_rollouts = 10;
 
   NoiseGeneration n;
   n.stddev = {0.5, 0.5, 0.5};
   n.decay = {1.0, 1.0, 1.0};
-  n.min_stddev = {0.1, 0.1, 0.1};
+  n.min_stddev = {0.05, 0.05, 0.05};
   n.method = NoiseGeneration::ADAPTIVE;
   n.update_rate = 0.2;
   c.noise_generation = n;
@@ -168,7 +152,8 @@ TEST(Stomp3DOF,solve_default)
   interpolate(START_POS,END_POS,NUM_TIMESTEPS,trajectory_bias);
   TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD));
 
-  Stomp stomp(create3DOFConfiguration(),task);
+  StompConfiguration config = create3DOFConfiguration();
+  Stomp stomp(config,task);
 
   Trajectory optimized;
   stomp.solve(START_POS,END_POS,optimized);
@@ -179,11 +164,19 @@ TEST(Stomp3DOF,solve_default)
     EXPECT_EQ(optimized[d].size(),NUM_TIMESTEPS);
   }
 
-  std::string line_separator = "------------------------------------------------------";
-  std::cout<<line_separator<<std::endl;
-  printTrajectory(trajectory_bias);
-  std::cout<<line_separator<<std::endl;
-  printTrajectory(optimized);
+  // calculate difference
+  Trajectory diff(config.num_dimensions,Eigen::VectorXd::Zero(config.num_timesteps));
+  for(auto d = 0u; d < config.num_dimensions ; d++)
+  {
+    diff[d] = trajectory_bias[d] - optimized[d];
+  }
+
+  std::string line_separator = "\n------------------------------------------------------\n";
+  std::cout<<line_separator;
+  std::cout<<stomp_core::toString(trajectory_bias);
+  std::cout<<line_separator;
+  std::cout<<toString(optimized)<<"\n";
+  std::cout<<"Differences"<<"\n"<<toString(diff)<<line_separator;
 }
 
 TEST(Stomp3DOF,solve_interpolated_initial)
@@ -205,10 +198,18 @@ TEST(Stomp3DOF,solve_interpolated_initial)
     EXPECT_EQ(optimized[d].size(),NUM_TIMESTEPS);
   }
 
-  std::string line_separator = "------------------------------------------------------";
-  std::cout<<line_separator<<std::endl;
-  printTrajectory(trajectory_bias);
-  std::cout<<line_separator<<std::endl;
-  printTrajectory(optimized);
+  // calculate difference
+  Trajectory diff(config.num_dimensions,Eigen::VectorXd::Zero(config.num_timesteps));
+  for(auto d = 0u; d < config.num_dimensions ; d++)
+  {
+    diff[d] = trajectory_bias[d] - optimized[d];
+  }
+
+  std::string line_separator = "\n------------------------------------------------------\n";
+  std::cout<<line_separator;
+  std::cout<<stomp_core::toString(trajectory_bias);
+  std::cout<<line_separator;
+  std::cout<<toString(optimized)<<"\n";
+  std::cout<<"Differences"<<"\n"<<toString(diff)<<line_separator;
 }
 
