@@ -133,6 +133,10 @@ protected:
   int num_active_rollouts_;
 
   // finite difference and optimization matrices
+  int num_timesteps_padded_;                        /**< timesteps + 2*(FINITE_DIFF_RULE_LENGTH - 1) */
+  int start_index_padded_;                          /** index corresponding to the start of the non-paded section in the padded arrays */
+  Eigen::MatrixXd finite_diff_matrix_A_padded_;
+  Eigen::MatrixXd control_cost_matrix_R_padded_;
   Eigen::MatrixXd finite_diff_matrix_A_;            /**< [timesteps x timesteps], Referred to as 'A' in the literature */
   Eigen::MatrixXd control_cost_matrix_R_;           /**< [timesteps x timesteps], Referred to as 'R = A x A_transpose' in the literature */
   Eigen::MatrixXd inv_control_cost_matrix_R_;       /**< [timesteps x timesteps], R^-1 ' matrix */
