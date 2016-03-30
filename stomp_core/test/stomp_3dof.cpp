@@ -83,10 +83,6 @@ public:
       costs(t) = cost;
     }
 
-
-    // scaling costs to the maximum
-    double max = 1;//costs.maxCoeff();
-    costs /= (max < 1e-8 ? 1:max);
     return true;
   }
 
@@ -123,10 +119,10 @@ StompConfiguration create3DOFConfiguration()
   c.delta_t = DELTA_T;
   c.control_cost_weight = 0.0;
   c.initialization_method = TrajectoryInitializations::MININUM_CONTROL_COST;
-  c.num_iterations_after_valid = 1;
+  c.num_iterations_after_valid = 0;
   c.num_rollouts_per_iteration = 20;
   c.max_rollouts = 20;
-  c.min_rollouts = 10;
+  c.min_rollouts = 5;
 
   NoiseGeneration n;
   n.stddev = {0.5, 0.5, 0.5};
@@ -216,6 +212,88 @@ TEST(Stomp3DOF,solve_interpolated_initial)
   for(auto d = 0u; d < NUM_DIMENSIONS;d++)
   {
     EXPECT_EQ(optimized[d].size(),NUM_TIMESTEPS);
+  }
+
+  EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));
+
+  // calculate difference
+  Trajectory diff(config.num_dimensions,Eigen::VectorXd::Zero(config.num_timesteps));
+  for(auto d = 0u; d < config.num_dimensions ; d++)
+  {
+    diff[d] = trajectory_bias[d] - optimized[d];
+  }
+
+  std::string line_separator = "\n------------------------------------------------------\n";
+  std::cout<<line_separator;
+  std::cout<<stomp_core::toString(trajectory_bias);
+  std::cout<<line_separator;
+  std::cout<<toString(optimized)<<"\n";
+  std::cout<<"Differences"<<"\n"<<toString(diff)<<line_separator;
+}
+
+TEST(Stomp3DOF,solve_stdev_exponential_decay)
+{
+  Trajectory trajectory_bias;
+  int num_timesteps = 40;
+  interpolate(START_POS,END_POS,num_timesteps,trajectory_bias);
+  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD));
+
+  StompConfiguration config = create3DOFConfiguration();
+  config.initialization_method = TrajectoryInitializations::MININUM_CONTROL_COST;
+  config.noise_generation.method = NoiseGeneration::EXPONENTIAL_DECAY;
+  config.num_iterations = 20;
+  config.num_timesteps = num_timesteps;
+  config.delta_t = 0.5;
+  Stomp stomp(config,task);
+
+  Trajectory optimized;
+  stomp.solve(START_POS,END_POS,optimized);
+
+  EXPECT_EQ(optimized.size(),NUM_DIMENSIONS);
+  for(auto d = 0u; d < NUM_DIMENSIONS;d++)
+  {
+    EXPECT_EQ(optimized[d].size(),num_timesteps);
+  }
+
+  EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));
+
+  // calculate difference
+  Trajectory diff(config.num_dimensions,Eigen::VectorXd::Zero(config.num_timesteps));
+  for(auto d = 0u; d < config.num_dimensions ; d++)
+  {
+    diff[d] = trajectory_bias[d] - optimized[d];
+  }
+
+  std::string line_separator = "\n------------------------------------------------------\n";
+  std::cout<<line_separator;
+  std::cout<<stomp_core::toString(trajectory_bias);
+  std::cout<<line_separator;
+  std::cout<<toString(optimized)<<"\n";
+  std::cout<<"Differences"<<"\n"<<toString(diff)<<line_separator;
+}
+
+TEST(Stomp3DOF,solve_stdev_constant)
+{
+  Trajectory trajectory_bias;
+  int num_timesteps = 60;
+  interpolate(START_POS,END_POS,num_timesteps,trajectory_bias);
+  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD));
+
+  StompConfiguration config = create3DOFConfiguration();
+  config.initialization_method = TrajectoryInitializations::MININUM_CONTROL_COST;
+  config.noise_generation.method = NoiseGeneration::CONSTANT;
+  config.num_iterations = 20;
+  config.num_timesteps = num_timesteps;
+  config.delta_t = 0.1;
+  Stomp stomp(config,task);
+
+  Trajectory optimized;
+  stomp.solve(START_POS,END_POS,optimized);
+
+  EXPECT_EQ(optimized.size(),NUM_DIMENSIONS);
+  for(auto d = 0u; d < NUM_DIMENSIONS;d++)
+  {
+    EXPECT_EQ(optimized[d].size(),num_timesteps);
   }
 
   EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));

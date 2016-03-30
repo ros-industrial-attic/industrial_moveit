@@ -119,14 +119,10 @@ void computeParametersControlCosts(const std::vector<Eigen::VectorXd>& parameter
                                           const Eigen::MatrixXd& control_cost_matrix_R,
                                           std::vector<Eigen::VectorXd>& control_costs)
 {
-//  Eigen::ArrayXXd Ax;
   std::size_t num_timesteps = parameters.front().size();
   double cost = 0;
   for(auto d = 0u; d < parameters.size(); d++)
   {
-//    Ax = (finite_diff_matrix * (parameters[d])).array();
-//    control_costs[d] = dt*control_cost_weight*(Ax*Ax).matrix();
-
     cost = parameters[d].transpose()*control_cost_matrix_R*parameters[d];
     control_costs[d].setZero(num_timesteps);
     control_costs[d].setConstant( 0.5*control_cost_weight*(1/dt)*cost );
