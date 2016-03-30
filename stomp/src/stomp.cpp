@@ -204,7 +204,7 @@ bool STOMP::doGenRollouts(int iteration_number)
   const NoiseCoefficients& noise_coeffs = noise_coefficients_[task_->getGroupName()];
   for (int i=0; i<num_dimensions_; ++i)
   {
-    noise[i] = noise_coeffs.stddev[i] * pow(noise_coeffs.decay[i], iteration_number-1);
+    noise[i] = noise_coeffs.stddev[i] * pow(noise_coeffs.decay[i], iteration_number);
   }
 
   // get rollouts
@@ -230,6 +230,11 @@ bool STOMP::doGenRollouts(int iteration_number)
 
 bool STOMP::doExecuteRollouts(int iteration_number)
 {
+  /* Algorithm Step 2.a
+   * Calls each cost function stored in the Task implementation in order to get the state cost
+   * for each time step in every noisy trajectory.
+   */
+
   std::vector<Eigen::VectorXd> gradients;
   for (int r=0; r<int(rollouts_.size()); ++r)
   {
@@ -307,6 +312,8 @@ bool STOMP::runSingleIteration(const int iteration_number)
     // load new policy if neccessary
     STOMP_VERIFY(readPolicy(iteration_number));
   }
+
+  // Generate new noisy trajectories (rollouts) and compute their associated costs
   if(!doRollouts(iteration_number))
   {
     return false;

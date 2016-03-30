@@ -89,6 +89,8 @@ enum CostComponents
 };
 
 void getDifferentiationMatrix(int num_time_steps, CostComponents order, double dt, Eigen::MatrixXd& diff_matrix);
+void differentiate(const Eigen::VectorXd& parameters, CostComponents derivative_order,
+                          double dt, Eigen::VectorXd& derivatives );
 bool readDoubleArray(ros::NodeHandle& node_handle, const std::string& parameter_name, std::vector<double>& array, const bool verbose=true);
 bool readStringArray(ros::NodeHandle& node_handle, const std::string& parameter_name, std::vector<std::string>& str_array, const bool verbose=true);
 bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, double& value);
