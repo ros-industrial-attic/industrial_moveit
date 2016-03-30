@@ -192,11 +192,27 @@ bool Stomp::solve(const std::vector<Eigen::VectorXd>& initial_parameters,
 
   setProceed(true);
 
-  current_iteration_ = 0;
+  current_iteration_ = 1;
   unsigned int valid_iterations = 0;
   double lowest_cost = std::numeric_limits<double>::max();
-  while(current_iteration_ < config_.num_iterations && runSingleIteration())
+  while(current_iteration_ <= config_.num_iterations && runSingleIteration())
   {
+    if(parameters_total_cost_ < lowest_cost)
+    {
+      lowest_cost = parameters_total_cost_;
+    }
+    else
+    {
+      // do not reuse old noisy rollouts since cost did not improve
+      if(config_.max_rollouts > config_.num_rollouts_per_iteration)
+      {
+        num_active_rollouts_ = 0;
+        ROS_DEBUG("No cost improvement, discarding noisy rollouts");
+      }
+    }
+
+    ROS_DEBUG("STOMP completed iteration %i with cost %f",current_iteration_,lowest_cost);
+
 
     if(parameters_valid_)
     {
@@ -209,13 +225,6 @@ bool Stomp::solve(const std::vector<Eigen::VectorXd>& initial_parameters,
     {
       valid_iterations = 0;
     }
-
-    if(parameters_total_cost_ < lowest_cost)
-    {
-      lowest_cost = parameters_total_cost_;
-    }
-
-    ROS_DEBUG("STOMP completed iteration %i with cost %f",current_iteration_,lowest_cost);
 
     if(valid_iterations > config_.num_iterations_after_valid)
     {
@@ -242,6 +251,19 @@ bool Stomp::solve(const std::vector<Eigen::VectorXd>& initial_parameters,
 
 bool Stomp::resetVariables()
 {
+  // verifying configuration
+  if(config_.max_rollouts < config_.num_rollouts_per_iteration)
+  {
+    ROS_WARN_STREAM("'max_rollouts' must be greater than 'num_rollouts_per_iteration'.");
+    config_.max_rollouts = config_.num_rollouts_per_iteration;
+  }
+
+  if(config_.min_rollouts > config_.num_rollouts_per_iteration)
+  {
+    ROS_WARN_STREAM("'min_rollouts' must be less than 'num_rollouts_per_iteration'");
+    config_.min_rollouts = config_.num_rollouts_per_iteration;
+  }
+
   // generate finite difference matrix
   start_index_padded_ = FINITE_DIFF_RULE_LENGTH-1;
   num_timesteps_padded_ = config_.num_timesteps + 2*(FINITE_DIFF_RULE_LENGTH-1);
@@ -631,33 +653,34 @@ bool Stomp::computeRolloutsControlCosts()
 bool Stomp::computeProbabilities()
 {
 
+  double cost;
   double min_cost;
   double max_cost;
-
   double denom;
   double numerator;
   double probl_sum = 0.0; // total probability sum of all rollouts for each joint
   const double h = EXPONENTIATED_COST_SENSITIVITY;
+  double exponent = 0;
 
   for (auto d = 0u; d<config_.num_dimensions; ++d)
   {
-    // find min and max cost over all rollouts for joint d:
-    min_cost = noisy_rollouts_[0].cumulative_costs[d].minCoeff();
-    max_cost = noisy_rollouts_[0].cumulative_costs[d].maxCoeff();
-    for (auto r = 0u; r<num_active_rollouts_; ++r)
-    {
-      double min_r = noisy_rollouts_[r].cumulative_costs[d].minCoeff();
-      double max_r = noisy_rollouts_[r].cumulative_costs[d].maxCoeff();
-      if (min_cost > min_r)
-        min_cost = min_r;
-      if (max_cost < max_r)
-        max_cost = max_r;
-    }
 
-    denom = max_cost - min_cost; //
-    double exponent = 0;
     for (auto t = 0u; t<config_.num_timesteps; t++)
     {
+
+      // find min and max cost over all rollouts at timestep 't':
+      min_cost = noisy_rollouts_[0].cumulative_costs[d](t);
+      max_cost = min_cost;
+      for (auto r=0u; r<num_active_rollouts_; ++r)
+      {
+          cost = noisy_rollouts_[r].cumulative_costs[d](t);
+          if (cost < min_cost)
+              min_cost = cost;
+          if (cost > max_cost)
+              max_cost = cost;
+      }
+
+      denom = max_cost - min_cost;
 
       // prevent division by zero:
       if (denom < MIN_COST_DIFFERENCE)
@@ -729,7 +752,7 @@ bool Stomp::updateParameters()
       temp_parameter_updates_ += (rollout.noise[d].array() * rollout.probabilities[d].array()).matrix();
     }
 
-    parameters_optimized_[d] += temp_parameter_updates_;
+    parameters_optimized_[d] += projection_matrix_M_*temp_parameter_updates_;
   }
 
   return true;
