@@ -54,7 +54,7 @@ public:
      * @param validity whether or not the trajectory is valid
      * @return true if cost were properly computed
      */
-    virtual bool computeCosts(const std::vector<Eigen::VectorXd>& parameters,
+    virtual bool computeCosts(const Eigen::MatrixXd& parameters,
                          std::size_t start_timestep,
                          std::size_t num_timesteps,
                          int iteration_number,
@@ -69,7 +69,11 @@ public:
      * @param parameters
      * @return false if no filtering was done
      */
-    virtual bool filterNoisyParameters(std::vector<Eigen::VectorXd>& parameters) const {return false;};
+    virtual bool filterNoisyParameters(Eigen::MatrixXd& parameters,bool& filtered) const
+    {
+      filtered = false;
+      return true;
+    };
 
     /**
      * Filters the given parameters which is applied after the update. It could be used for clipping of joint limits
@@ -78,7 +82,11 @@ public:
      * @param parameters
      * @return false if no filtering was done
      */
-    virtual bool filterParameters(std::vector<Eigen::VectorXd>& parameters) const {return false;};
+    virtual bool filterParameters(Eigen::MatrixXd& parameters,bool& filtered) const
+    {
+      filtered = false;
+      return true;
+    };
 
 };
 

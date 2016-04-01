@@ -29,10 +29,10 @@
 #include "stomp_core/stomp.h"
 #include "stomp_core/task.h"
 
-using Trajectory = std::vector<Eigen::VectorXd>;
+using Trajectory = Eigen::MatrixXd;
 
 const std::size_t NUM_DIMENSIONS = 3;
-const std::size_t NUM_TIMESTEPS = 40;
+const std::size_t NUM_TIMESTEPS = 60;
 const double DELTA_T = 0.1;
 const std::vector<double> START_POS = {1.4, 1.4, 0.5};
 const std::vector<double> END_POS = {-1.25, 1.3, -0.26};
@@ -43,7 +43,7 @@ using namespace stomp_core;
 class DummyTask: public Task
 {
 public:
-  DummyTask(const std::vector<Eigen::VectorXd>& parameters_bias,
+  DummyTask(const Trajectory& parameters_bias,
             const std::vector<double>& bias_thresholds):
               parameters_bias_(parameters_bias),
               bias_thresholds_(bias_thresholds)
@@ -53,7 +53,7 @@ public:
 
   virtual ~DummyTask(){}
 
-  virtual bool computeCosts(const std::vector<Eigen::VectorXd>& parameters,
+  virtual bool computeCosts(const Trajectory& parameters,
                                         std::size_t start_timestep,
                                         std::size_t num_timesteps,
                                         int iteration_number,
@@ -69,10 +69,10 @@ public:
     for(std::size_t t = 0u; t < num_timesteps; t++)
     {
       cost = 0;
-      for(std::size_t d = 0u; d < parameters.size() ; d++)
+      for(std::size_t d = 0u; d < parameters.rows() ; d++)
       {
 
-        diff = std::abs(parameters[d](t) - parameters_bias_[d](t));
+        diff = std::abs(parameters(d,t) - parameters_bias_(d,t));
         if( diff > std::abs(bias_thresholds_[d]))
         {
           cost += diff;
@@ -88,20 +88,20 @@ public:
 
 protected:
 
-  std::vector<Eigen::VectorXd> parameters_bias_;
+  Trajectory parameters_bias_;
   std::vector<double> bias_thresholds_;
 };
 
 bool compareDiff(const Trajectory& optimized, const Trajectory& desired,
                  const std::vector<double>& thresholds)
 {
-  auto num_dimensions = optimized.size();
-  Trajectory diff(num_dimensions);
+  auto num_dimensions = optimized.rows();
+  Trajectory diff = Trajectory::Zero(num_dimensions,optimized.cols());
   for(auto d = 0u;d < num_dimensions ; d++)
   {
-    diff[d] = optimized[d] - desired[d];
-    diff[d].cwiseAbs();
-    if((diff[d].array() > thresholds[d] ).any() )
+    diff.row(d) = optimized.row(d)- desired.row(d);
+    diff.row(d).cwiseAbs();
+    if((diff.row(d).array() > thresholds[d] ).any() )
     {
       return false;
     }
@@ -139,13 +139,13 @@ void interpolate(const std::vector<double>& start, const std::vector<double>& en
                  std::size_t num_timesteps, Trajectory& traj)
 {
   auto dimensions = start.size();
-  traj.resize(dimensions,Eigen::VectorXd::Zero(num_timesteps));
+  traj = Eigen::MatrixXd::Zero(dimensions,num_timesteps);
   for(auto d = 0u; d < dimensions; d++)
   {
     double delta = (end[d] - start[d])/(num_timesteps - 1);
     for(auto t = 0u; t < num_timesteps; t++)
     {
-      traj[d](t) = start[d] + t*delta;
+      traj(d,t) = start[d] + t*delta;
     }
   }
 }
@@ -172,20 +172,13 @@ TEST(Stomp3DOF,solve_default)
   Trajectory optimized;
   stomp.solve(START_POS,END_POS,optimized);
 
-  EXPECT_EQ(optimized.size(),NUM_DIMENSIONS);
-  for(auto d = 0u; d < NUM_DIMENSIONS;d++)
-  {
-    EXPECT_EQ(optimized[d].size(),NUM_TIMESTEPS);
-  }
+  EXPECT_EQ(optimized.rows(),NUM_DIMENSIONS);
+  EXPECT_EQ(optimized.cols(),NUM_TIMESTEPS);
+  EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));
 
   // calculate difference
-  Trajectory diff(config.num_dimensions,Eigen::VectorXd::Zero(config.num_timesteps));
-  for(auto d = 0u; d < config.num_dimensions ; d++)
-  {
-    diff[d] = trajectory_bias[d] - optimized[d];
-  }
-
-  EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));
+  Trajectory diff;
+  diff = trajectory_bias - optimized;
 
   std::string line_separator = "\n------------------------------------------------------\n";
   std::cout<<line_separator;
@@ -208,20 +201,13 @@ TEST(Stomp3DOF,solve_interpolated_initial)
   Trajectory optimized;
   stomp.solve(trajectory_bias,optimized);
 
-  EXPECT_EQ(optimized.size(),NUM_DIMENSIONS);
-  for(auto d = 0u; d < NUM_DIMENSIONS;d++)
-  {
-    EXPECT_EQ(optimized[d].size(),NUM_TIMESTEPS);
-  }
-
+  EXPECT_EQ(optimized.rows(),NUM_DIMENSIONS);
+  EXPECT_EQ(optimized.cols(),NUM_TIMESTEPS);
   EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));
 
   // calculate difference
-  Trajectory diff(config.num_dimensions,Eigen::VectorXd::Zero(config.num_timesteps));
-  for(auto d = 0u; d < config.num_dimensions ; d++)
-  {
-    diff[d] = trajectory_bias[d] - optimized[d];
-  }
+  Trajectory diff;
+  diff = trajectory_bias - optimized;
 
   std::string line_separator = "\n------------------------------------------------------\n";
   std::cout<<line_separator;
@@ -249,20 +235,13 @@ TEST(Stomp3DOF,solve_stdev_exponential_decay)
   Trajectory optimized;
   stomp.solve(START_POS,END_POS,optimized);
 
-  EXPECT_EQ(optimized.size(),NUM_DIMENSIONS);
-  for(auto d = 0u; d < NUM_DIMENSIONS;d++)
-  {
-    EXPECT_EQ(optimized[d].size(),num_timesteps);
-  }
-
+  EXPECT_EQ(optimized.rows(),NUM_DIMENSIONS);
+  EXPECT_EQ(optimized.cols(),num_timesteps);
   EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));
 
   // calculate difference
-  Trajectory diff(config.num_dimensions,Eigen::VectorXd::Zero(config.num_timesteps));
-  for(auto d = 0u; d < config.num_dimensions ; d++)
-  {
-    diff[d] = trajectory_bias[d] - optimized[d];
-  }
+  Trajectory diff;
+  diff = trajectory_bias - optimized;
 
   std::string line_separator = "\n------------------------------------------------------\n";
   std::cout<<line_separator;
@@ -290,20 +269,13 @@ TEST(Stomp3DOF,solve_stdev_constant)
   Trajectory optimized;
   stomp.solve(START_POS,END_POS,optimized);
 
-  EXPECT_EQ(optimized.size(),NUM_DIMENSIONS);
-  for(auto d = 0u; d < NUM_DIMENSIONS;d++)
-  {
-    EXPECT_EQ(optimized[d].size(),num_timesteps);
-  }
-
+  EXPECT_EQ(optimized.rows(),NUM_DIMENSIONS);
+  EXPECT_EQ(optimized.cols(),num_timesteps);
   EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));
 
   // calculate difference
-  Trajectory diff(config.num_dimensions,Eigen::VectorXd::Zero(config.num_timesteps));
-  for(auto d = 0u; d < config.num_dimensions ; d++)
-  {
-    diff[d] = trajectory_bias[d] - optimized[d];
-  }
+  Trajectory diff;
+  diff = trajectory_bias - optimized;
 
   std::string line_separator = "\n------------------------------------------------------\n";
   std::cout<<line_separator;

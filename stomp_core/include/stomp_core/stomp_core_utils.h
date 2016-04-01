@@ -50,16 +50,16 @@ struct NoiseGeneration
 
 struct Rollout
 {
-  std::vector<Eigen::VectorXd> noise;                       /**< [num_dimensions] x num_time_steps, random noise applied to the parameters*/
-  std::vector<Eigen::VectorXd> parameters_noise;            /**< [num_dimensions] x num_time_steps, the sum of parameters + noise */
-  std::vector<Eigen::VectorXd> parameters_noise_projected;  /**< [num_dimensions] x num_time_steps, the sum of the parameters plus
+  Eigen::MatrixXd noise;                       /**< [num_dimensions] x num_time_steps, random noise applied to the parameters*/
+  Eigen::MatrixXd parameters_noise;            /**< [num_dimensions] x num_time_steps, the sum of parameters + noise */
+  Eigen::MatrixXd parameters_noise_projected;  /**< [num_dimensions] x num_time_steps, the sum of the parameters plus
                                                                  the noised values times the projection matrix M >*/
 
   Eigen::VectorXd state_costs; /**< num_time_steps */
-  std::vector<Eigen::VectorXd> control_costs; /**< [num_dimensions] x num_time_steps */
-  std::vector<Eigen::VectorXd> total_costs; /**< [num_dimensions] x num_time_steps total_cost[d] = state_costs_ + control_costs_[d]*/
-  std::vector<Eigen::VectorXd> cumulative_costs; /**< [num_dimensions] x num_time_steps cumulative_costs[d] = Ones(num_time_steps) * total_costs_[d].sum();*/
-  std::vector<Eigen::VectorXd> probabilities; /**< [num_dimensions] x num_time_steps */
+  Eigen::MatrixXd control_costs; /**< [num_dimensions] x num_time_steps */
+  Eigen::MatrixXd total_costs; /**< [num_dimensions] x num_time_steps total_cost[d] = state_costs_ + control_costs_[d]*/
+  Eigen::MatrixXd cumulative_costs; /**< [num_dimensions] x num_time_steps cumulative_costs[d] = Ones(num_time_steps) * total_costs_[d].sum();*/
+  Eigen::MatrixXd probabilities; /**< [num_dimensions] x num_time_steps */
 
   std::vector<double> full_probabilities; /**< [num_dimensions] probabilities of full trajectory */
   std::vector<double> full_costs; /**< [num_dimensions] state_cost + control_cost for each joint over the entire trajectory

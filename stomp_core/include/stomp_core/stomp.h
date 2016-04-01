@@ -72,9 +72,9 @@ public:
   virtual ~Stomp();
 
   bool solve(const std::vector<double>& first,const std::vector<double>& last,
-             std::vector<Eigen::VectorXd>& parameters_optimized);
-  bool solve(const std::vector<Eigen::VectorXd>& initial_parameters,
-             std::vector<Eigen::VectorXd>& parameters_optimized);
+             Eigen::MatrixXd& parameters_optimized);
+  bool solve(const Eigen::MatrixXd& initial_parameters,
+             Eigen::MatrixXd& parameters_optimized);
   bool cancel();
 
 
@@ -116,10 +116,10 @@ protected:
   // optimized parameters
   bool parameters_valid_;         /**< whether or not the optimized parameters are valid */
   double parameters_total_cost_;  /**< Total cost of the optimized parameters */
-  std::vector<Eigen::VectorXd> initial_control_cost_parameters_;    /**< [Dimensions][timesteps]*/
-  std::vector<Eigen::VectorXd> parameters_optimized_;               /**< [Dimensions][timesteps]*/
+  Eigen::MatrixXd initial_control_cost_parameters_;    /**< [Dimensions][timesteps]*/
+  Eigen::MatrixXd parameters_optimized_;               /**< [Dimensions][timesteps]*/
   Eigen::VectorXd parameters_state_costs_;                          /**< [timesteps]*/
-  std::vector<Eigen::VectorXd> parameters_control_costs_;           /**< [Dimensions][timesteps]*/
+  Eigen::MatrixXd parameters_control_costs_;           /**< [Dimensions][timesteps]*/
   Eigen::VectorXd temp_parameter_updates_;                          /**< [timesteps]*/
 
   // noise generation
