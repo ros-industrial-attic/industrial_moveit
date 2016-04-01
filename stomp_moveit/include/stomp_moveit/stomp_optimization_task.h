@@ -44,23 +44,25 @@ public:
                    moveit_msgs::MoveItErrorCodes& error_code);
 
   /**
-   * @brief calls each cost function class in order to compute total the state costs
+   * @brief calls each loaded cost function class in order to compute the state costs
    * as a function of the parameters for each time step.
    *
    * @param parameters [num_dimensions] num_parameters - policy parameters to execute
-   * @param costs vector containing the state costs per timestep.
-   * @param iteration_numberpluginlib::ClassLoader<filters::StompFilter>
-   * @param rollout_number index of the noisy trajectory whose cost is being evaluated.
-   * @param validity whether or not the trajectory is valid
+   * @param start_timestep    start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'   *
+   * @param iteration_number  The current iteration count in the optimization loop
+   * @param rollout_number    index of the noisy trajectory whose cost is being evaluated.   *
+   * @param costs             vector containing the state costs per timestep.
+   * @param validity          whether or not the trajectory is valid
    * @return true if cost were properly computed
    */
-  virtual bool computeCosts(const std::vector<Eigen::VectorXd>& parameters,
+  virtual bool computeCosts(const Eigen::MatrixXd& parameters,
                             std::size_t start_timestep,
                             std::size_t num_timesteps,
                             int iteration_number,
                             int rollout_number,
                             Eigen::VectorXd& costs,
-                            bool& validity) ;
+                            bool& validity) const override;
 
   /**
    * Filters the given noisy parameters which is applied after noisy trajectory generation. It could be used for clipping
@@ -69,7 +71,7 @@ public:
    * @param parameters
    * @return false if no filtering was done
    */
-  virtual bool filterNoisyParameters(std::vector<Eigen::VectorXd>& parameters);
+  virtual bool filterNoisyParameters(Eigen::MatrixXd& parameters,bool& filtered) const override;
 
   /**
    * Filters the given parameters which is applied after the update. It could be used for clipping of joint limits
@@ -78,7 +80,7 @@ public:
    * @param parameters
    * @return false if no filtering was done
    */
-  virtual bool filterParameters(std::vector<Eigen::VectorXd>& parameters);
+  virtual bool filterParameters(Eigen::MatrixXd& parameters,bool& filtered) const override;
 
 protected:
 

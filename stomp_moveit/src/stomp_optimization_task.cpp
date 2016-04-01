@@ -157,13 +157,13 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
   return true;
 }
 
-bool StompOptimizationTask::computeCosts(const std::vector<Eigen::VectorXd>& parameters,
+bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
                                          std::size_t start_timestep,
                                          std::size_t num_timesteps,
                                          int iteration_number,
                                          int rollout_number,
                                          Eigen::VectorXd& costs,
-                                         bool& validity)
+                                         bool& validity) const
 {
   Eigen::MatrixXd cost_matrix = Eigen::MatrixXd::Zero(num_timesteps,cost_functions_.size());
   Eigen::VectorXd state_costs = Eigen::VectorXd::Zero(num_timesteps);
@@ -206,24 +206,40 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   return succeeded;
 }
 
-bool StompOptimizationTask::filterNoisyParameters(std::vector<Eigen::VectorXd>& parameters)
+bool StompOptimizationTask::filterNoisyParameters(Eigen::MatrixXd& parameters,bool& filtered) const
 {
-  bool filtered = false;
+  filtered = false;
+  bool temp;
   for(auto& f: noisy_filters_)
   {
-    filtered || f->filter(parameters);
+    if(f->filter(parameters,temp))
+    {
+      filtered |= temp;
+    }
+    else
+    {
+      return false;
+    }
   }
-  return filtered;
+  return true;
 }
 
-bool StompOptimizationTask::filterParameters(std::vector<Eigen::VectorXd>& parameters)
+bool StompOptimizationTask::filterParameters(Eigen::MatrixXd& parameters,bool& filtered) const
 {
-  bool filtered = false;
+  filtered = false;
+  bool temp;
   for(auto& f: filters_)
   {
-    filtered || f->filter(parameters);
+    if(f->filter(parameters,temp))
+    {
+      filtered |= temp;
+    }
+    else
+    {
+      return false;
+    }
   }
-  return filtered;
+  return true;
 }
 
 } /* namespace stomp_moveit */

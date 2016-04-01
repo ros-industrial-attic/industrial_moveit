@@ -27,7 +27,7 @@ public:
   virtual ~StompFilter();
 
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
-                          const std::string& group_name,XmlRpc::XmlRpcValue& config) = 0;
+                          const std::string& group_name,const XmlRpc::XmlRpcValue& config) = 0;
 
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
@@ -44,7 +44,7 @@ public:
    * @param parameters [num_dimensions] x [num_timesteps]
    * @return false if no filtering was applied
    */
-  virtual bool filter(std::vector<Eigen::VectorXd>& parameters) const = 0 ;
+  virtual bool filter(Eigen::MatrixXd& parameters,bool& filtered) const = 0 ;
 
 
 };

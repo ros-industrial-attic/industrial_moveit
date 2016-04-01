@@ -10,6 +10,7 @@
 
 #include <string>
 #include <XmlRpc.h>
+#include <moveit_msgs/GetMotionPlan.h>
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/robot_trajectory/robot_trajectory.h>
 #include <moveit/planning_scene/planning_scene.h>
@@ -37,13 +38,15 @@ public:
   /**
    * @brief computes the state costs as a function of the parameters for each time step.
    * @param parameters [num_dimensions] num_parameters - policy parameters to execute
-   * @param costs vector containing the state costs per timestep.
-   * @param iteration_number
-   * @param rollout_number index of the noisy trajectory whose cost is being evaluated.
-   * @param validity whether or not the trajectory is valid
+   * @param start_timestep    start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'   *
+   * @param iteration_number  The current iteration count in the optimization loop
+   * @param rollout_number    index of the noisy trajectory whose cost is being evaluated.   *
+   * @param costs             vector containing the state costs per timestep.
+   * @param validity          whether or not the trajectory is valid
    * @return true if cost were properly computed
    */
-  virtual bool computeCosts(const std::vector<Eigen::VectorXd>& parameters,
+  virtual bool computeCosts(const Eigen::MatrixXd& parameters,
                             std::size_t start_timestep,
                             std::size_t num_timesteps,
                             int iteration_number,

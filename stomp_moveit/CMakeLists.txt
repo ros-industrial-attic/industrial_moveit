@@ -34,12 +34,24 @@ include_directories(include
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
-   src/stomp_optimization_task.cpp
+  src/stomp_optimization_task.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
-    ${catkin_LIBRARIES}
+  ${catkin_LIBRARIES}
 )
+
+# cost function plugin(s)
+add_library(${PROJECT_NAME}_cost_functions
+  src/cost_functions/obstacle_avoidance.cpp
+ )
+target_link_libraries(${PROJECT_NAME}_cost_functions ${PROJECT_NAME} ${catkin_LIBRARIES})
+
+# filter plugin(s)
+add_library(${PROJECT_NAME}_filters
+  src/filters/joint_limits.cpp
+)
+target_link_libraries(${PROJECT_NAME}_filters ${PROJECT_NAME} ${catkin_LIBRARIES})
 
 #############
 ## Install ##
