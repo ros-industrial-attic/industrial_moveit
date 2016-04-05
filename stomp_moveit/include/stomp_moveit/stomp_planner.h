@@ -25,17 +25,29 @@ public:
   StompPlanner(const std::string& group,const moveit::core::RobotModelConstPtr& model);
   virtual ~StompPlanner();
 
-  /// Subclass must implement methods below
+  /**
+   * @brief Solve the motion planning problem and store the result in \e res
+   */
   virtual bool solve(planning_interface::MotionPlanResponse &res) override;
 
+  /**
+   * @brief Solve the motion planning problem and store the detailed result in \e res
+   */
   virtual bool solve(planning_interface::MotionPlanDetailedResponse &res) override;
 
-  /// Request termination, if a solve() function is currently computing plans
+  /**
+   * @brief Request termination, if a solve() function is currently computing plans
+   */
   virtual bool terminate() override;
 
+  /**
+   * @brief Clears results from previous plan
+   */
   virtual void clear() override;
 
-  /// Determine whether this plugin instance is able to represent this planning request
+  /**
+   * @brief Determine whether this plugin instance is able to represent this planning request
+   */
   bool canServiceRequest(const moveit_msgs::MotionPlanRequest &req)  const;
 
 protected:

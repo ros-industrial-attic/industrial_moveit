@@ -38,7 +38,7 @@ void StompPlanner::setup()
   }
 
   // loading parameters
-  ROS_ASSERT_MSG(node_handle_.getParam("stomp/" + group_, config_),
+  ROS_ASSERT_MSG(node_handle_.getParam("stomp/" + group_, config_),"%s",
                  std::string("Stomp parameter 'stomp/" + group_ + "' was not found").c_str());
 
   try
@@ -78,8 +78,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   using namespace stomp_core;
 
   // initializing response
-  res.description_.resize(1);
-  res.description_[0] = "";
+  res.description_.resize(1,"");
   res.processing_time_.resize(1);
   res.trajectory_.resize(1);
   res.error_code_.val = moveit_msgs::MoveItErrorCodes::SUCCESS;

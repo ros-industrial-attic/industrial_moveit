@@ -24,6 +24,9 @@
 
 
 	<!-- The export tag contains other, unspecified, tags -->
-	<export>
-	</export>
+  <export>
+    <!--<moveit_core plugin="${prefix}/stomp_moveit_plugin.xml"/>-->
+    <stomp_moveit plugin="${prefix}/cost_function_plugins.xml"/>
+    <stomp_moveit plugin="${prefix}/trajectory_filter_plugins.xml"/>
+  </export>
 </package>

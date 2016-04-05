@@ -1,0 +1,7 @@
+<library path="libstomp_moveit__cost_functions">
+  <class name="stomp_moveit/ObstacleAvoidance" type="stomp_moveit::cost_functions::ObstacleAvoidance" base_class_type="stomp_moveit::cost_functions::StompCostFunction">
+    <description>
+      FCL Mesh-model-based exact collision 
+    </description>
+  </class>
+</library>
