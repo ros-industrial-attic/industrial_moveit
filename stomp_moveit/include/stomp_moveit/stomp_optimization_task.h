@@ -90,7 +90,7 @@ protected:
 
 protected:
 
-  // environment
+  // robot environment
   std::string group_name_;
   moveit::core::RobotModelConstPtr robot_model_ptr_;
   planning_scene::PlanningSceneConstPtr planning_scene_ptr_;

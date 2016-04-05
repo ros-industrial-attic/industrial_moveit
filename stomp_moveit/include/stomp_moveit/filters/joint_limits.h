@@ -26,6 +26,8 @@ public:
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,const XmlRpc::XmlRpcValue& config) override;
 
+  virtual bool configure(const XmlRpc::XmlRpcValue& config) override;
+
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    moveit_msgs::MoveItErrorCodes& error_code) override;

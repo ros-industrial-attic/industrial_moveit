@@ -35,7 +35,7 @@ bool ObstacleAvoidance::initialize(moveit::core::RobotModelConstPtr robot_model_
 {
   robot_model_ptr_ = robot_model_ptr;
   group_name_ = group_name;
-  return parseConfig(config);
+  return configure(config);
 }
 
 bool ObstacleAvoidance::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
@@ -135,11 +135,12 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
   return true;
 }
 
-bool ObstacleAvoidance::parseConfig(XmlRpc::XmlRpcValue config)
+bool ObstacleAvoidance::configure(const XmlRpc::XmlRpcValue& config)
 {
   try
   {
-    collision_clearance_ = static_cast<double>(config["collision_clearance"]);
+    XmlRpc::XmlRpcValue c = config;
+    collision_clearance_ = static_cast<double>(c["collision_clearance"]);
   }
   catch(XmlRpc::XmlRpcException& e)
   {

@@ -35,6 +35,7 @@ include_directories(include
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
   src/stomp_optimization_task.cpp
+  src/stomp_planner.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}

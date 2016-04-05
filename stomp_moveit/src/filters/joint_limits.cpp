@@ -38,6 +38,15 @@ bool JointLimits::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
   robot_model_ = robot_model_ptr;
   group_name_ = group_name;
 
+  // creating states
+  start_state_.reset(new RobotState(robot_model_));
+  goal_state_.reset(new RobotState(robot_model_));
+
+  return configure(config);
+}
+
+bool JointLimits::configure(const XmlRpc::XmlRpcValue& config)
+{
   try
   {
     XmlRpc::XmlRpcValue c = config;
@@ -49,10 +58,6 @@ bool JointLimits::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
     ROS_ERROR("JointLimits plugin failed to load parameters %s",e.getMessage().c_str());
     return false;
   }
-
-  // creating states
-  start_state_.reset(new RobotState(robot_model_));
-  goal_state_.reset(new RobotState(robot_model_));
 
   return true;
 }
@@ -74,27 +79,30 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
 
 
   // saving goal state
-  bool goal_state_saved = false;
-  for(auto& gc: req.goal_constraints)
+  if(lock_goal_)
   {
-    if(gc.name != group_name_)
+    bool goal_state_saved = false;
+    for(auto& gc: req.goal_constraints)
     {
-      continue;
+      if(gc.name != group_name_)
+      {
+        continue;
+      }
+
+      for(auto& jc : gc.joint_constraints)
+      {
+        goal_state_->setVariablePosition(jc.joint_name,jc.position);
+        goal_state_saved = true;
+      }
+
+      break;
     }
 
-    for(auto& jc : gc.joint_constraints)
+    if(!goal_state_saved)
     {
-      goal_state_->setVariablePosition(jc.joint_name,jc.position);
-      goal_state_saved = true;
+      ROS_ERROR_STREAM("Failed to save goal state");
+      return false;
     }
-
-    break;
-  }
-
-  if(!goal_state_saved)
-  {
-    ROS_ERROR_STREAM("Failed to save goal state");
-    return false;
   }
 
   return true;
@@ -114,10 +122,27 @@ bool JointLimits::filter(Eigen::MatrixXd& parameters,bool& filtered) const
     return false;
   }
 
-  double val;
-  for (int j = 0; j < num_joints; ++j)
+  if(lock_start_)
   {
-    for (int t=0; t< parameters.cols(); ++t)
+    for(auto j = 0u; j < num_joints; j++)
+    {
+      parameters(j,0) =  *start_state_->getJointPositions(joint_models[j]);
+    }
+  }
+
+  if(lock_goal_)
+  {
+    auto last_index = parameters.cols()-1;
+    for(auto j = 0u; j < num_joints; j++)
+    {
+      parameters(j,last_index) =  *goal_state_->getJointPositions(joint_models[j]);
+    }
+  }
+
+  double val;
+  for (auto j = 0u; j < num_joints; ++j)
+  {
+    for (auto t=0u; t< parameters.cols(); ++t)
     {
       val = parameters(j,t);
       if(joint_models[j]->enforcePositionBounds(&val))
@@ -127,6 +152,7 @@ bool JointLimits::filter(Eigen::MatrixXd& parameters,bool& filtered) const
       }
     }
   }
+
   return true;
 }
 
