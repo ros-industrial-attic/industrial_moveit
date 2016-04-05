@@ -132,6 +132,69 @@ void computeParametersControlCosts(const Eigen::MatrixXd& parameters,
 
 namespace stomp_core {
 
+bool Stomp::parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_config)
+{
+  using namespace XmlRpc;
+
+  try
+  {
+
+    stomp_config.control_cost_weight = static_cast<double>(config["control_cost_weight"]);
+    stomp_config.delta_t = static_cast<double>(config["delta_t"]);
+    stomp_config.initialization_method = static_cast<int>(config["initialization_method"]);
+    stomp_config.max_rollouts = static_cast<int>(config["max_rollouts"]);
+    stomp_config.min_rollouts = static_cast<int>(config["min_rollouts"]);
+    stomp_config.num_dimensions = static_cast<int>(config["num_dimensions"]);
+    stomp_config.num_iterations = static_cast<int>(config["num_iterations"]);
+    stomp_config.num_iterations_after_valid = static_cast<int>(config["num_iterations_after_valid"]);
+    stomp_config.num_rollouts_per_iteration = static_cast<int>(config["num_rollouts_per_iteration"]);
+    stomp_config.num_timesteps = static_cast<int>(config["num_timesteps"]);
+  }
+  catch(XmlRpc::XmlRpcException& e)
+  {
+    ROS_ERROR("Failed to parse Stomp configuration ");
+    return false;
+  }
+
+  try
+  {
+
+    // noise parameters
+    XmlRpc::XmlRpcValue noisegen, array;
+    noisegen = config["noise_generation"];
+
+    // stddev
+    std::vector<double> vals;
+    std::map<std::string,std::vector<double> > array_entries = {{"stddev", vals},{"decay", vals},{"min_stddev",vals}};
+    for(auto& entry: array_entries)
+    {
+      array = noisegen[entry.first];
+      vals.clear();
+      for(auto i = 0u; i < array.size(); i++)
+      {
+        vals.push_back(static_cast<double>(array[i]));
+      }
+      array_entries[entry.first] = vals;
+    }
+
+    stomp_config.noise_generation.stddev = array_entries["stddev"];
+    stomp_config.noise_generation.decay = array_entries["decay"];
+    stomp_config.noise_generation.min_stddev = array_entries["min_stddev"];
+
+    stomp_config.noise_generation.method = static_cast<int>(noisegen["method"]);
+    stomp_config.noise_generation.update_rate = static_cast<int>(noisegen["update_rate"]);
+
+  }
+  catch(XmlRpc::XmlRpcException& e)
+  {
+    ROS_ERROR("Failed to parse Stomp 'noise_generation' configuration");
+    return false;
+  }
+
+  return true;
+}
+
+
 Stomp::Stomp(const StompConfiguration& config,TaskPtr task):
     config_(config),
     task_(task),
@@ -277,6 +340,10 @@ bool Stomp::resetVariables()
   control_cost_matrix_R_ = control_cost_matrix_R_padded_.block(
       start_index_padded_,start_index_padded_,config_.num_timesteps,config_.num_timesteps);
   inv_control_cost_matrix_R_ = control_cost_matrix_R_.fullPivLu().inverse();
+
+  ROS_DEBUG_STREAM("R padded max value: "<<control_cost_matrix_R_padded_.maxCoeff()<<", with timesteps "<<config_.num_timesteps);
+  ROS_DEBUG_STREAM("R max value: "<<control_cost_matrix_R_.maxCoeff()<<", with timesteps "<<config_.num_timesteps);
+  ROS_DEBUG_STREAM("R^-1 padded max value: "<<inv_control_cost_matrix_R_.maxCoeff()<<", with timesteps "<<config_.num_timesteps);
 
   // projection matrix
   projection_matrix_M_ = inv_control_cost_matrix_R_;

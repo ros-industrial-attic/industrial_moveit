@@ -27,6 +27,7 @@
 
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
+#include <XmlRpc.h>
 #include "stomp_core/stomp_core_utils.h"
 #include "stomp_core/task.h"
 #include "stomp_core/multivariate_gaussian.h"
@@ -52,7 +53,7 @@ struct StompConfiguration
   int num_timesteps;
   int num_dimensions;               /** parameter dimensionality */
   double delta_t;               /** time change between consecutive points */
-  TrajectoryInitializations::TrajectoryInitialization initialization_method;
+  int initialization_method; /** TrajectoryInitializations::TrajectoryInitialization */
 
   // Noisy trajectory generation
   int num_rollouts_per_iteration; /**< Number of noisy trajectories*/
@@ -77,6 +78,7 @@ public:
              Eigen::MatrixXd& parameters_optimized);
   bool cancel();
 
+  static bool parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_config);
 
 protected:
 
