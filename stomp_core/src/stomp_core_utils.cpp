@@ -59,6 +59,28 @@ bool generateFiniteDifferenceMatrix(int num_time_steps,
   }
 }
 
+void differentiate(const Eigen::VectorXd& parameters, DerivativeOrders::DerivativeOrder order,
+                          double dt, Eigen::VectorXd& derivatives )
+{
+
+  unsigned int padding = FINITE_DIFF_RULE_LENGTH/2;
+  unsigned int padded_size = parameters.size()+FINITE_DIFF_RULE_LENGTH-1;
+  Eigen::MatrixXd diff_matrix;
+  Eigen::VectorXd padded_parameters = Eigen::VectorXd::Zero(padded_size);
+  derivatives = Eigen::VectorXd::Zero(parameters.size());
+
+  // initializing padded parameters
+  padded_parameters.segment(FINITE_DIFF_RULE_LENGTH/2,parameters.size()) = parameters;
+  padded_parameters.head(FINITE_DIFF_RULE_LENGTH/2).setConstant(parameters.head(1)(0));
+  padded_parameters.tail(FINITE_DIFF_RULE_LENGTH/2).setConstant(parameters.tail(1)(0));
+
+  // computing derivatives
+  generateFiniteDifferenceMatrix(padded_size,order,dt,diff_matrix);
+  derivatives = (diff_matrix*padded_parameters).col(0).segment(FINITE_DIFF_RULE_LENGTH/2,parameters.size());
+  derivatives.head(1).setConstant(0.0);
+  derivatives.tail(1).setConstant(0.0);
+}
+
 std::string toString(const std::vector<Eigen::VectorXd>& data)
 {
   Eigen::IOFormat clean_format(4, 0, ", ", "\n", "[", "]");

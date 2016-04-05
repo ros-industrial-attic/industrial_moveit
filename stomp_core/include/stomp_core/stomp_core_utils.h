@@ -44,8 +44,6 @@ struct NoiseGeneration
   std::vector<double> min_stddev;
   int method; /**< method used to update the standard deviation values.  */
   double update_rate; /**< used when using  KL divergence adaptation, should stay within values of (0,1] */
-
-  std::vector<double> updated_stddev; /**< To be used for storing the updated standard deviation values during each iteration */
 };
 
 struct Rollout
@@ -89,9 +87,13 @@ static const double FINITE_DIFF_COEFFS[FINITE_DIFF_RULE_LENGTH][FINITE_DIFF_RULE
 bool generateFiniteDifferenceMatrix(int num_time_steps, DerivativeOrders::DerivativeOrder order, double dt,
                                     Eigen::MatrixXd& diff_matrix);
 
+void differentiate(const Eigen::VectorXd& parameters, DerivativeOrders::DerivativeOrder order,
+                          double dt, Eigen::VectorXd& derivatives );
+
 std::string toString(const std::vector<Eigen::VectorXd>& data);
 std::string toString(const Eigen::VectorXd& data);
 std::string toString(const Eigen::MatrixXd& data);
+
 
 
 } /* namespace stomp */
