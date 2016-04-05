@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(stomp_moveit)
 find_package(catkin REQUIRED COMPONENTS
+  roscpp
   moveit_core
   moveit_ros_planning
   stomp_core
@@ -19,7 +20,7 @@ add_definitions("-std=c++11")
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core cmake_modules pluginlib
+  CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core cmake_modules pluginlib roscpp
   DEPENDS Eigen
 )
 
@@ -42,17 +43,22 @@ target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
 )
 
+# planner manager plugin
+add_library(${PROJECT_NAME}_planner_manager
+  src/stomp_planner_manager.cpp)
+target_link_libraries(${PROJECT_NAME}_planner_manager ${catkin_LIBRARIES})
+
 # cost function plugin(s)
 add_library(${PROJECT_NAME}_cost_functions
   src/cost_functions/obstacle_avoidance.cpp
  )
-target_link_libraries(${PROJECT_NAME}_cost_functions ${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_cost_functions ${catkin_LIBRARIES})
 
 # filter plugin(s)
 add_library(${PROJECT_NAME}_filters
   src/filters/joint_limits.cpp
 )
-target_link_libraries(${PROJECT_NAME}_filters ${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_filters ${catkin_LIBRARIES})
 
 #############
 ## Install ##

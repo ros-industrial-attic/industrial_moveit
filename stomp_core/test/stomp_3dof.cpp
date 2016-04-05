@@ -120,7 +120,7 @@ StompConfiguration create3DOFConfiguration()
   c.control_cost_weight = 0.0;
   c.initialization_method = TrajectoryInitializations::MININUM_CONTROL_COST;
   c.num_iterations_after_valid = 0;
-  c.num_rollouts_per_iteration = 20;
+  c.num_rollouts = 20;
   c.max_rollouts = 20;
   c.min_rollouts = 5;
 

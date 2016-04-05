@@ -56,7 +56,7 @@ struct StompConfiguration
   int initialization_method; /** TrajectoryInitializations::TrajectoryInitialization */
 
   // Noisy trajectory generation
-  int num_rollouts_per_iteration; /**< Number of noisy trajectories*/
+  int num_rollouts; /**< Number of noisy trajectories*/
   int min_rollouts; /**< There be no less than min_rollouts computed on each iteration */
   int max_rollouts; /**< The combined number of new and old rollouts during each iteration shouldn't exceed this value */
   NoiseGeneration noise_generation;

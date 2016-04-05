@@ -148,7 +148,7 @@ bool Stomp::parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_con
     stomp_config.num_dimensions = static_cast<int>(config["num_dimensions"]);
     stomp_config.num_iterations = static_cast<int>(config["num_iterations"]);
     stomp_config.num_iterations_after_valid = static_cast<int>(config["num_iterations_after_valid"]);
-    stomp_config.num_rollouts_per_iteration = static_cast<int>(config["num_rollouts_per_iteration"]);
+    stomp_config.num_rollouts = static_cast<int>(config["num_rollouts"]);
     stomp_config.num_timesteps = static_cast<int>(config["num_timesteps"]);
   }
   catch(XmlRpc::XmlRpcException& e)
@@ -264,7 +264,7 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
     else
     {
       // do not reuse old noisy rollouts since cost did not improve
-      if(config_.max_rollouts > config_.num_rollouts_per_iteration)
+      if(config_.max_rollouts > config_.num_rollouts)
       {
         num_active_rollouts_ = 0;
         ROS_DEBUG("No cost improvement, discarding noisy rollouts");
@@ -312,16 +312,16 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
 bool Stomp::resetVariables()
 {
   // verifying configuration
-  if(config_.max_rollouts < config_.num_rollouts_per_iteration)
+  if(config_.max_rollouts < config_.num_rollouts)
   {
     ROS_WARN_STREAM("'max_rollouts' must be greater than 'num_rollouts_per_iteration'.");
-    config_.max_rollouts = config_.num_rollouts_per_iteration;
+    config_.max_rollouts = config_.num_rollouts;
   }
 
-  if(config_.min_rollouts > config_.num_rollouts_per_iteration)
+  if(config_.min_rollouts > config_.num_rollouts)
   {
     ROS_WARN_STREAM("'min_rollouts' must be less than 'num_rollouts_per_iteration'");
-    config_.min_rollouts = config_.num_rollouts_per_iteration;
+    config_.min_rollouts = config_.num_rollouts;
   }
 
   // generate finite difference matrix
@@ -484,7 +484,9 @@ bool Stomp::computeInitialTrajectory(const std::vector<double>& first,const std:
       break;
   }
 
-  return valid;
+  // filtering and returning
+  bool filtered;
+  return task_->filterParameters(parameters_optimized_,filtered);
 }
 
 bool Stomp::cancel()
@@ -522,7 +524,7 @@ bool Stomp::generateNoisyRollouts()
   std::vector< std::pair<double,int> > rollout_cost_sorter; // Used to sort noisy trajectories in ascending order wrt their total cost
   double h = EXPONENTIATED_COST_SENSITIVITY;
   int rollouts_stored = num_active_rollouts_;
-  int rollouts_generate = config_.num_rollouts_per_iteration;
+  int rollouts_generate = config_.num_rollouts;
   int rollouts_total = rollouts_generate + rollouts_stored;
   int rollouts_reuse =  rollouts_total < config_.max_rollouts  ? rollouts_stored:  config_.max_rollouts - rollouts_generate ;
 
@@ -677,7 +679,7 @@ bool Stomp::computeRolloutsStateCosts()
 
   bool all_valid = true;
   bool proceed = true;
-  for(auto r = 0u ; r < config_.num_rollouts_per_iteration && getProceed(); r++)
+  for(auto r = 0u ; r < config_.num_rollouts && getProceed(); r++)
   {
     if(!getProceed())
     {

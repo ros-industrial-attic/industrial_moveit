@@ -80,7 +80,8 @@ public:
      * or projecting into the null space of the Jacobian.
      *
      * @param parameters
-     * @return false if no filtering was done
+     * @param filtered false if no filtering was done
+     * @return false if there was a failure
      */
     virtual bool filterParameters(Eigen::MatrixXd& parameters,bool& filtered) const
     {

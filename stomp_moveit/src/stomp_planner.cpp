@@ -1,8 +1,8 @@
 /*
  * stomp_planner.cpp
  *
- *  Created on: Jan 22, 2013
- *      Author: kalakris
+ *  Created on: April 4, 2016
+ *      Author: Jorge Nicho
  */
 
 #include <ros/ros.h>
@@ -17,8 +17,10 @@ const std::string DESCRIPTION = "STOMP";
 namespace stomp_moveit
 {
 
-StompPlanner::StompPlanner(const std::string& group,const moveit::core::RobotModelConstPtr& model):
+StompPlanner::StompPlanner(const std::string& group,const XmlRpc::XmlRpcValue& config,
+                           const moveit::core::RobotModelConstPtr& model):
     PlanningContext("Stomp",group),
+    config_(config),
     node_handle_("~"),
     robot_model_(model),
     stomp_()
@@ -38,9 +40,6 @@ void StompPlanner::setup()
   }
 
   // loading parameters
-  ROS_ASSERT_MSG(node_handle_.getParam("stomp/" + group_, config_),"%s",
-                 std::string("Stomp parameter 'stomp/" + group_ + "' was not found").c_str());
-
   try
   {
     // creating tasks
@@ -93,9 +92,10 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   }
 
   // initializing stomp
-  if(!Stomp::parseConfig(config_,stomp_config_))
+  if(!config_.hasMember("optimization") || !Stomp::parseConfig(config_,stomp_config_))
   {
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    ROS_ERROR("Stomp 'optimization' parameter for group '%s' was not found",group_.c_str());
     return false;
   }
 
@@ -224,6 +224,12 @@ bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<doubl
       if(gc.name != group_)
       {
         continue;
+      }
+
+      if(gc.joint_constraints.empty())
+      {
+        ROS_ERROR_STREAM("No joint values for the goal were found");
+        return false;
       }
 
       // copying goal values into state

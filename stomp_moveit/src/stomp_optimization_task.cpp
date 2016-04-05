@@ -67,9 +67,9 @@ StompOptimizationTask::StompOptimizationTask(
   }
 
   // loading filter plugins
-  if(!initializeFilterPlugins(config,"filters",filters_))
+  if(!initializeFilterPlugins(config,"optimized_filters",filters_))
   {
-    ROS_WARN("StompOptimizationTask failed to load 'filters' plugins from yaml");
+    ROS_WARN("StompOptimizationTask failed to load 'optimized_filters' plugins from yaml");
   }
 }
 

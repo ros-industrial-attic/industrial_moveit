@@ -1,12 +1,12 @@
 /*
  * stomp_planner.h
  *
- *  Created on: Jan 22, 2013
- *      Author: kalakris
+ *  Created on: April 4, 2016
+ *      Author: Jorge Nicho
  */
 
-#ifndef STOMP_PLANNER_H_
-#define STOMP_PLANNER_H_
+#ifndef STOMP_MOVEIT_STOMP_PLANNER_H_
+#define STOMP_MOVEIT_STOMP_PLANNER_H_
 
 #include <moveit/planning_interface/planning_interface.h>
 #include <stomp_core/stomp.h>
@@ -22,7 +22,7 @@ using StompOptimizationTaskPtr = boost::shared_ptr<StompOptimizationTask>;
 class StompPlanner: public planning_interface::PlanningContext
 {
 public:
-  StompPlanner(const std::string& group,const moveit::core::RobotModelConstPtr& model);
+  StompPlanner(const std::string& group,const XmlRpc::XmlRpcValue& config,const moveit::core::RobotModelConstPtr& model);
   virtual ~StompPlanner();
 
   /**
@@ -74,4 +74,4 @@ protected:
 };
 
 } /* namespace stomp_moveit */
-#endif /* STOMP_PLANNER_H_ */
+#endif /* STOMP_MOVEIT_STOMP_PLANNER_H_ */
