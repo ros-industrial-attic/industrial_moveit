@@ -191,6 +191,8 @@ bool StompPlanner::parametersToJointTrajectory(Eigen::MatrixXd& parameters, traj
 
     Eigen::VectorXd::Map(&vals[0],vals.size()) = accs.col(t);
     trajectory.points[t].accelerations = vals;
+
+    trajectory.points[t].time_from_start = ros::Duration(t*stomp_config_.delta_t);
   }
 
   return true;

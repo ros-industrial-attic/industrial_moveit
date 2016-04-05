@@ -35,6 +35,7 @@ static const double DEFAULT_NOISY_COST_IMPORTANCE_WEIGHT = 1.0;
 static const double EXPONENTIATED_COST_SENSITIVITY = 10;
 static const double MIN_COST_DIFFERENCE = 1e-8;
 static const double MIN_CONTROL_COST_WEIGHT = 1e-8;
+static const double OPTIMIZATION_TIMESTEP = 1;
 
 static void computeLinearInterpolation(const std::vector<double>& first,const std::vector<double>& last,
                          int num_timesteps,
@@ -327,7 +328,7 @@ bool Stomp::resetVariables()
   start_index_padded_ = FINITE_DIFF_RULE_LENGTH-1;
   num_timesteps_padded_ = config_.num_timesteps + 2*(FINITE_DIFF_RULE_LENGTH-1);
   generateFiniteDifferenceMatrix(num_timesteps_padded_,DerivativeOrders::STOMP_ACCELERATION,
-                                 config_.delta_t,finite_diff_matrix_A_padded_);
+                                 OPTIMIZATION_TIMESTEP,finite_diff_matrix_A_padded_);
 
   finite_diff_matrix_A_ = finite_diff_matrix_A_padded_.block(
       start_index_padded_,start_index_padded_,config_.num_timesteps,config_.num_timesteps);
@@ -336,14 +337,18 @@ bool Stomp::resetVariables()
    * Note: Original code multiplies the A product by the time interval.  However this is not
    * what was described in the literature
    */
-  control_cost_matrix_R_padded_ = config_.delta_t*finite_diff_matrix_A_padded_.transpose() * finite_diff_matrix_A_padded_;
+  control_cost_matrix_R_padded_ = OPTIMIZATION_TIMESTEP*finite_diff_matrix_A_padded_.transpose() * finite_diff_matrix_A_padded_;
   control_cost_matrix_R_ = control_cost_matrix_R_padded_.block(
       start_index_padded_,start_index_padded_,config_.num_timesteps,config_.num_timesteps);
   inv_control_cost_matrix_R_ = control_cost_matrix_R_.fullPivLu().inverse();
 
-  ROS_DEBUG_STREAM("R padded max value: "<<control_cost_matrix_R_padded_.maxCoeff()<<", with timesteps "<<config_.num_timesteps);
-  ROS_DEBUG_STREAM("R max value: "<<control_cost_matrix_R_.maxCoeff()<<", with timesteps "<<config_.num_timesteps);
-  ROS_DEBUG_STREAM("R^-1 padded max value: "<<inv_control_cost_matrix_R_.maxCoeff()<<", with timesteps "<<config_.num_timesteps);
+  /*
+   * Applying scale factor to ensure that max(R^-1)==1
+   */
+  double maxVal = std::abs(inv_control_cost_matrix_R_.maxCoeff());
+  control_cost_matrix_R_padded_ *= maxVal;
+  control_cost_matrix_R_ *= maxVal;
+  inv_control_cost_matrix_R_ /= maxVal;
 
   // projection matrix
   projection_matrix_M_ = inv_control_cost_matrix_R_;
@@ -711,7 +716,7 @@ bool Stomp::computeRolloutsControlCosts()
     else
     {
       computeParametersControlCosts(rollout.parameters_noise,
-                                    config_.delta_t,
+                                    OPTIMIZATION_TIMESTEP,
                                     config_.control_cost_weight,
                                     control_cost_matrix_R_,rollout.control_costs);
     }
@@ -843,7 +848,7 @@ bool Stomp::computeOptimizedCost()
   if(config_.control_cost_weight > MIN_CONTROL_COST_WEIGHT)
   {
     computeParametersControlCosts(parameters_optimized_,
-                                  config_.delta_t,
+                                  OPTIMIZATION_TIMESTEP,
                                   config_.control_cost_weight,
                                   control_cost_matrix_R_,
                                   parameters_control_costs_);
