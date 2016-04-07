@@ -17,18 +17,18 @@ stomp/manipulator:
       decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
       method: 1 # [0 : CONSTANT, 1 : ADAPTIVE, 2 : EXPONENTIAL_DECAY]
       update_rate: 0.2 # Used by EXPONENTIAL_DECAY method only
-    task:
-      cost_functions:
-        - class: stomp_moveit/ObstacleAvoidance
-          collision_clearance: 0.01
-      noisy_filters:
-        - class: stomp_moveit/JointLimits
-          lock_start: True
-          lock_goal: True
-      optimized_filters:
-        - class: stomp_moveit/JointLimits
-          lock_start: True
-          lock_goal: True
+  task:
+    cost_functions:
+      - class: stomp_moveit/ObstacleAvoidance
+        collision_clearance: 0.01
+    noisy_filters:
+      - class: stomp_moveit/JointLimits
+        lock_start: True
+        lock_goal: True
+    optimized_filters:
+      - class: stomp_moveit/JointLimits
+        lock_start: True
+        lock_goal: True
 stomp/manipulator_rail:
   group_name: manipulator_rail
   optimization:
@@ -48,17 +48,17 @@ stomp/manipulator_rail:
       decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
       method: 1 # [0 : CONSTANT, 1 : ADAPTIVE, 2 : EXPONENTIAL_DECAY]
       update_rate: 0.2 # Used by EXPONENTIAL_DECAY method only
-    task:
-      cost_functions:
-        - class: stomp_moveit/ObstacleAvoidance
-          collision_clearance: 0.01
-      noisy_filters:
-        - class: stomp_moveit/JointLimits
-          lock_start: True
-          lock_goal: True
-      optimized_filters:
-        - class: stomp_moveit/JointLimits
-          lock_start: True
-          lock_goal: True
+  task:
+    cost_functions:
+      - class: stomp_moveit/ObstacleAvoidance
+        collision_clearance: 0.01
+    noisy_filters:
+      - class: stomp_moveit/JointLimits
+        lock_start: True
+        lock_goal: True
+    optimized_filters:
+      - class: stomp_moveit/JointLimits
+        lock_start: True
+        lock_goal: True
     
     

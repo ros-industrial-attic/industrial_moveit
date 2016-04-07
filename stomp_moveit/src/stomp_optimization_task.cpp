@@ -12,7 +12,7 @@ bool parsePluginArray(XmlRpc::XmlRpcValue config,
                       std::string param_name,
                       std::map<std::string,XmlRpc::XmlRpcValue>& plugins_map)
 {
-  if(config.hasMember(param_name) && (config[param_name].getType() == XmlRpc::XmlRpcValue::TypeString))
+  if(config.hasMember(param_name) && (config[param_name].getType() == XmlRpc::XmlRpcValue::TypeArray))
   {
     XmlRpc::XmlRpcValue& plugin_list = config[param_name];
     std::string class_name;
@@ -35,6 +35,7 @@ bool parsePluginArray(XmlRpc::XmlRpcValue config,
   }
   else
   {
+    ROS_ERROR("Failed to find plugin under entry '%s' in parameter %s",param_name.c_str(),config.toXml().c_str());
     return false;
   }
 
@@ -53,6 +54,7 @@ StompOptimizationTask::StompOptimizationTask(
 {
   // initializing plugin loaders
   cost_function_loader_.reset(new CostFunctionLoader("stomp_moveit", "stomp_moveit::cost_functions::StompCostFunction"));
+  filter_loader_.reset(new FilterLoader("stomp_moveit", "stomp_moveit::filters::StompFilter"));
 
   // loading cost function plugins
   if(!initializeCostFunctionPlugins(config))
@@ -108,6 +110,18 @@ bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcVa
         return false;
       }
     }
+
+    std::stringstream ss;
+    ss<<"[";
+    auto arrayToString = [&ss](std::map<std::string,XmlRpc::XmlRpcValue>::value_type& p)
+    {
+      ss<<p.first<<" ";
+    };
+
+    std::for_each(plugins_map.begin(),plugins_map.end(),arrayToString);
+    ss<<"]";
+
+    ROS_DEBUG("Loaded cost function plugins: %s",ss.str().c_str());
   }
   else
   {

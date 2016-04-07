@@ -20,11 +20,14 @@ namespace stomp_moveit
 namespace filters
 {
 
+class StompFilter;
+typedef boost::shared_ptr<StompFilter> StompFilterPtr;
+
 class StompFilter
 {
 public:
-  StompFilter();
-  virtual ~StompFilter();
+  StompFilter(){}
+  virtual ~StompFilter(){}
 
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,const XmlRpc::XmlRpcValue& config) = 0;
@@ -51,7 +54,6 @@ public:
 
 };
 
-typedef boost::shared_ptr<StompFilter> StompFilterPtr;
 
 } /* namespace filters */
 

@@ -44,9 +44,9 @@ bool StompPlannerManager::initialize(const robot_model::RobotModelConstPtr &mode
   std::string group_name;
   try
   {
-    for(auto e = 0u; e < config.size(); e++)
+    for(XmlRpc::XmlRpcValue::iterator v = config.begin(); v != config.end(); v++)
     {
-      group_config = config[e];
+      group_config = v->second;
       group_name = static_cast<std::string>(group_config["group_name"]);
 
       if(!model->hasJointModelGroup(group_name))
@@ -62,7 +62,7 @@ bool StompPlannerManager::initialize(const robot_model::RobotModelConstPtr &mode
   }
   catch(XmlRpc::XmlRpcException& e )
   {
-    ROS_ERROR("The group_name parameter was not found, %s",config.toXml().c_str());
+    ROS_ERROR("The group_name parameter was not found, %s",group_config.toXml().c_str());
     return false;
   }
 

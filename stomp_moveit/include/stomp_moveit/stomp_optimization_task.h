@@ -21,9 +21,9 @@
 namespace stomp_moveit
 {
 
-typedef pluginlib::ClassLoader<cost_functions::StompCostFunction> CostFunctionLoader;
+typedef pluginlib::ClassLoader<stomp_moveit::cost_functions::StompCostFunction> CostFunctionLoader;
 typedef std::shared_ptr<CostFunctionLoader> CostFuctionLoaderPtr;
-typedef pluginlib::ClassLoader<filters::StompFilter> FilterLoader;
+typedef pluginlib::ClassLoader<stomp_moveit::filters::StompFilter> FilterLoader;
 typedef std::shared_ptr<FilterLoader> FilterLoaderPtr;
 
 class StompOptimizationTask: public stomp_core::Task

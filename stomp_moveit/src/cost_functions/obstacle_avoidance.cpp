@@ -103,6 +103,7 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
   for (auto t=start_timestep; t<start_timestep + num_timesteps; ++t)
   {
     robot_state_ptr->setJointGroupPositions(joint_group,parameters.col(t));
+    robot_state_ptr->updateLinkTransforms();
 
     // checking robot vs world (attached objects, octomap, not in urdf) collisions
     result_world_collision.distance = std::numeric_limits<double>::max();

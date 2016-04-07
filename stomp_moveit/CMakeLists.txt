@@ -46,7 +46,7 @@ target_link_libraries(${PROJECT_NAME}
 # planner manager plugin
 add_library(${PROJECT_NAME}_planner_manager
   src/stomp_planner_manager.cpp)
-target_link_libraries(${PROJECT_NAME}_planner_manager ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_planner_manager ${PROJECT_NAME} ${catkin_LIBRARIES})
 
 # cost function plugin(s)
 add_library(${PROJECT_NAME}_cost_functions

@@ -183,12 +183,14 @@ bool Stomp::parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_con
     stomp_config.noise_generation.min_stddev = array_entries["min_stddev"];
 
     stomp_config.noise_generation.method = static_cast<int>(noisegen["method"]);
-    stomp_config.noise_generation.update_rate = static_cast<int>(noisegen["update_rate"]);
+    stomp_config.noise_generation.update_rate = static_cast<double>(noisegen["update_rate"]);
 
   }
   catch(XmlRpc::XmlRpcException& e)
   {
-    ROS_ERROR("Failed to parse Stomp 'noise_generation' configuration");
+    std::stringstream ss;
+    config.write(ss);
+    ROS_ERROR("Failed to parse Stomp 'noise_generation' entry from parameter %s",ss.str().c_str());
     return false;
   }
 

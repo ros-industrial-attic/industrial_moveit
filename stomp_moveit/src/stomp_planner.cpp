@@ -92,7 +92,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   }
 
   // initializing stomp
-  if(!config_.hasMember("optimization") || !Stomp::parseConfig(config_,stomp_config_))
+  if(!config_.hasMember("optimization") || !Stomp::parseConfig(config_["optimization" ],stomp_config_))
   {
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
     ROS_ERROR("Stomp 'optimization' parameter for group '%s' was not found",group_.c_str());
@@ -205,7 +205,7 @@ bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<doubl
   try
   {
     // copying start state
-    if(robotStateMsgToRobotState(request_.start_state,*state))
+    if(!robotStateMsgToRobotState(request_.start_state,*state))
     {
       ROS_ERROR_STREAM("Failed to extract start state from MotionPlanRequest");
       return false;
@@ -213,6 +213,8 @@ bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<doubl
 
     // copying start joint values
     const std::vector<std::string> joint_names= state->getJointModelGroup(group_)->getActiveJointModelNames();
+    start.resize(joint_names.size());
+    goal.resize(joint_names.size());
     for(auto j = 0u; j < joint_names.size(); j++)
     {
       start[j] = state->getVariablePosition(joint_names[j]);
