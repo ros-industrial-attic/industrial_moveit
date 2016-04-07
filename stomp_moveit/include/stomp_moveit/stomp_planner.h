@@ -58,10 +58,6 @@ protected:
 
 protected:
 
-  // ros comm
-  ros::NodeHandle node_handle_;
-  ros::Publisher trajectory_viz_pub_;
-
   // stomp optimization
   boost::shared_ptr< stomp_core::Stomp> stomp_;
   StompOptimizationTaskPtr task_;

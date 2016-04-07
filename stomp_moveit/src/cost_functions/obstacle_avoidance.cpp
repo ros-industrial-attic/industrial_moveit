@@ -86,6 +86,7 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
   collision_detection::CollisionRequest request = collision_request_;
   collision_detection::CollisionResult result_world_collision, result_robot_collision;
   std::vector<collision_detection::CollisionResult> results(2);
+  validity = true;
   double max_depth = 0;
 
   // robot state
@@ -103,7 +104,7 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
   for (auto t=start_timestep; t<start_timestep + num_timesteps; ++t)
   {
     robot_state_ptr->setJointGroupPositions(joint_group,parameters.col(t));
-    robot_state_ptr->updateLinkTransforms();
+    robot_state_ptr->update();
 
     // checking robot vs world (attached objects, octomap, not in urdf) collisions
     result_world_collision.distance = std::numeric_limits<double>::max();
@@ -126,9 +127,8 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
       collision_detection::CollisionResult& result = *i;
       if(result.collision)
       {
-        costs(t) = 1;
+        costs(t) += 1.0;
         validity = false;
-        break;
       }
     }
   }

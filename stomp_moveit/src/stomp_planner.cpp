@@ -21,7 +21,6 @@ StompPlanner::StompPlanner(const std::string& group,const XmlRpc::XmlRpcValue& c
                            const moveit::core::RobotModelConstPtr& model):
     PlanningContext("Stomp",group),
     config_(config),
-    node_handle_("~"),
     robot_model_(model),
     stomp_()
 {
@@ -53,8 +52,6 @@ void StompPlanner::setup()
     throw std::logic_error("Stomp Planner failed to load configuration for group '" + group_+"'; " + e.getMessage());
   }
 
-  // visualization publisher
-  trajectory_viz_pub_ = node_handle_.advertise<visualization_msgs::Marker>("stomp_trajectory" , 20);
 }
 
 bool StompPlanner::solve(planning_interface::MotionPlanResponse &res)
@@ -85,7 +82,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   ros::WallTime start_time = ros::WallTime::now();
   bool success = false;
 
-  if(task_->setMotionPlanRequest(planning_scene_,request_,res.error_code_))
+  if(!task_->setMotionPlanRequest(planning_scene_,request_,res.error_code_))
   {
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
     return false;
@@ -99,14 +96,23 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     return false;
   }
 
-  // solve
+
+  // extracting start and goal
   std::vector<double> start, goal;
+  if(!getStartAndGoal(start,goal))
+  {
+    res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
+    ROS_ERROR("Stomp failed to get the start and goal positions");
+    return false;
+  }
+
+
+  // solve
+  ROS_DEBUG_STREAM("Stomp planning started");
   trajectory_msgs::JointTrajectory trajectory;
   Eigen::MatrixXd parameters;
   stomp_.reset(new stomp_core::Stomp(stomp_config_,task_));
-
-  ROS_DEBUG_STREAM("Stomp planning started");
-  if(getStartAndGoal(start,goal) && stomp_->solve(start,goal,parameters))
+  if(stomp_->solve(start,goal,parameters))
   {
     if(!parametersToJointTrajectory(parameters,trajectory))
     {
@@ -223,11 +229,6 @@ bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<doubl
     // extracting goal joint values
     for(auto& gc: request_.goal_constraints)
     {
-      if(gc.name != group_)
-      {
-        continue;
-      }
-
       if(gc.joint_constraints.empty())
       {
         ROS_ERROR_STREAM("No joint values for the goal were found");

@@ -59,7 +59,7 @@ public:
                             Eigen::VectorXd& costs,
                             bool& validity) const = 0 ;
 
-  virtual std::string getGroupName()
+  virtual std::string getGroupName() const
   {
     return "";
   }
@@ -68,6 +68,9 @@ public:
   {
     return 1.0;
   }
+
+  virtual std::string getName() const = 0;
+
 };
 
 

@@ -53,9 +53,15 @@ public:
                             Eigen::VectorXd& costs,
                             bool& validity) const override;
 
-  virtual std::string getGroupName()
+  virtual std::string getGroupName() const override
   {
     return group_name_;
+  }
+
+
+  virtual std::string getName() const override
+  {
+    return "ObstacleAvoidance/" + group_name_;
   }
 
 protected:

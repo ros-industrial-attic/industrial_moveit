@@ -33,9 +33,14 @@ public:
                    moveit_msgs::MoveItErrorCodes& error_code) override;
 
 
-  virtual std::string getGroupName()
+  virtual std::string getGroupName() const override
   {
     return group_name_;
+  }
+
+  virtual std::string getName() const override
+  {
+    return "JointLimits/" + group_name_;
   }
 
   /**

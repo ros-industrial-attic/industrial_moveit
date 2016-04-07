@@ -59,7 +59,8 @@ StompOptimizationTask::StompOptimizationTask(
   // loading cost function plugins
   if(!initializeCostFunctionPlugins(config))
   {
-    throw std::logic_error("StompOptimizationTask failed to load 'cost_functions' plugins from yaml");
+    ROS_ERROR("StompOptimizationTask failed to load 'cost_functions' plugins from yaml");
+    throw std::logic_error("plugin not found");
   }
 
   // loading noisy filter plugins
@@ -135,6 +136,7 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
                                                     std::vector<filters::StompFilterPtr>& filters)
 {
   std::map<std::string,XmlRpc::XmlRpcValue> plugins_map;
+  bool success = true;
   if(parsePluginArray(config,param_name,plugins_map))
   {
     for(auto& entry: plugins_map)
@@ -147,8 +149,9 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
       }
       catch(pluginlib::PluginlibException& ex)
       {
-        ROS_ERROR("%s plugin could not be created",entry.first.c_str());
-        return false;
+        ROS_WARN("%s plugin could not be created",entry.first.c_str());
+        success = false;
+        continue;
       }
 
       // initializing
@@ -158,8 +161,9 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
       }
       else
       {
-        ROS_ERROR("%s plugin failed to initialize",entry.first.c_str());
-        return false;
+        ROS_WARN("%s plugin failed to initialize",entry.first.c_str());
+        success = false;
+        continue;
       }
     }
   }
@@ -168,7 +172,7 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
     return false;
   }
 
-  return true;
+  return success;
 }
 
 bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
@@ -203,10 +207,13 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
                                         const moveit_msgs::MotionPlanRequest &req,
                                         moveit_msgs::MoveItErrorCodes& error_code)
 {
-  bool succeeded = true;
   for(auto p : cost_functions_)
   {
-    succeeded &= p->setMotionPlanRequest(planning_scene,req,error_code);
+    if(!p->setMotionPlanRequest(planning_scene,req,error_code))
+    {
+      ROS_ERROR("Failed to set Plan Request on cost function %s",p->getName().c_str());
+      return false;
+    }
   }
 
   std::vector<filters::StompFilterPtr> all_filters;
@@ -214,10 +221,14 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   all_filters.insert(all_filters.end(),filters_.begin(),filters_.end());
   for(auto p: all_filters)
   {
-    succeeded &= p->setMotionPlanRequest(planning_scene,req,error_code);
+    if(!p->setMotionPlanRequest(planning_scene,req,error_code))
+    {
+      ROS_ERROR("Failed to set Plan Request on filter %s",p->getName().c_str());
+      return false;
+    }
   }
 
-  return succeeded;
+  return true;
 }
 
 bool StompOptimizationTask::filterNoisyParameters(Eigen::MatrixXd& parameters,bool& filtered) const

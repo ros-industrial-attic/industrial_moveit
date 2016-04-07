@@ -71,7 +71,7 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
   error_code.val = error_code.val | moveit_msgs::MoveItErrorCodes::SUCCESS;
 
   // saving start state
-  if(robotStateMsgToRobotState(req.start_state,*start_state_))
+  if(!robotStateMsgToRobotState(req.start_state,*start_state_))
   {
     ROS_ERROR_STREAM("Failed to save start state");
     return false;
@@ -84,11 +84,6 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
     bool goal_state_saved = false;
     for(auto& gc: req.goal_constraints)
     {
-      if(gc.name != group_name_)
-      {
-        continue;
-      }
-
       for(auto& jc : gc.joint_constraints)
       {
         goal_state_->setVariablePosition(jc.joint_name,jc.position);

@@ -39,7 +39,7 @@ public:
                    moveit_msgs::MoveItErrorCodes& error_code) = 0;
 
 
-  virtual std::string getGroupName()
+  virtual std::string getGroupName() const
   {
     return "";
   }
@@ -51,9 +51,9 @@ public:
    */
   virtual bool filter(Eigen::MatrixXd& parameters,bool& filtered) const = 0 ;
 
+  virtual std::string getName() const = 0;
 
 };
-
 
 } /* namespace filters */
 
