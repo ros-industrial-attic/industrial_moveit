@@ -27,7 +27,12 @@ typedef boost::shared_ptr<StompCostFunction> StompCostFunctionPtr;
 class StompCostFunction
 {
 public:
-  StompCostFunction(){}
+  StompCostFunction():
+    cost_weight_(1.0)
+  {
+
+  }
+
   virtual ~StompCostFunction(){}
 
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
@@ -66,10 +71,14 @@ public:
 
   virtual double getWeight()
   {
-    return 1.0;
+    return cost_weight_;
   }
 
   virtual std::string getName() const = 0;
+
+protected:
+
+  double cost_weight_;
 
 };
 

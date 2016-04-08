@@ -87,7 +87,6 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
   collision_detection::CollisionResult result_world_collision, result_robot_collision;
   std::vector<collision_detection::CollisionResult> results(2);
   validity = true;
-  double max_depth = 0;
 
   // robot state
   const JointModelGroup* joint_group = robot_model_ptr_->getJointModelGroup(group_name_);
@@ -127,8 +126,9 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
       collision_detection::CollisionResult& result = *i;
       if(result.collision)
       {
-        costs(t) += 1.0;
+        costs(t) = collision_penalty_;
         validity = false;
+        break;
       }
     }
   }
@@ -141,7 +141,8 @@ bool CollisionCheck::configure(const XmlRpc::XmlRpcValue& config)
   try
   {
     XmlRpc::XmlRpcValue c = config;
-    collision_clearance_ = static_cast<double>(c["collision_clearance"]);
+    cost_weight_ = static_cast<double>(c["cost_weight"]);
+    collision_penalty_ = static_cast<double>(c["collision_penalty"]);
   }
   catch(XmlRpc::XmlRpcException& e)
   {

@@ -207,6 +207,7 @@ bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<doubl
 {
   using namespace moveit::core;
   RobotStatePtr state(new RobotState(robot_model_));
+  const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_);
 
   try
   {
@@ -221,6 +222,7 @@ bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<doubl
     const std::vector<std::string> joint_names= state->getJointModelGroup(group_)->getActiveJointModelNames();
     start.resize(joint_names.size());
     goal.resize(joint_names.size());
+    state->enforceBounds(joint_group);
     for(auto j = 0u; j < joint_names.size(); j++)
     {
       start[j] = state->getVariablePosition(joint_names[j]);
@@ -243,6 +245,7 @@ bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<doubl
       }
 
       // copying values into goal array
+      state->enforceBounds(joint_group);
       for(auto j = 0u; j < joint_names.size(); j++)
       {
         goal[j] = state->getVariablePosition(joint_names[j]);

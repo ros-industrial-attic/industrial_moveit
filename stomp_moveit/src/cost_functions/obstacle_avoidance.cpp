@@ -50,16 +50,10 @@ bool ObstacleAvoidance::setMotionPlanRequest(const planning_scene::PlanningScene
   collision_request_.group_name = group_name_;
   collision_request_.cost = false;
   collision_request_.distance = true;
-  collision_request_.max_contacts = 1;
-  collision_request_.max_contacts_per_pair = 1;
-  collision_request_.contacts = true;
+  collision_request_.max_contacts = 0;
+  collision_request_.max_contacts_per_pair = 0;
+  collision_request_.contacts = false;
   collision_request_.verbose = false;
-
-//  collision_robot_.reset(new collision_detection::CollisionRobotFCL(
-//      planning_scene_->getRobotModel(), DEFAULT_PADDING, DEFAULT_SCALE));
-//
-//  collision_detection::WorldPtr world = boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld());
-//  collision_world_.reset(new collision_detection::CollisionWorldFCL(world));
 
   collision_robot_.reset(new collision_detection::CollisionRobotFCLDetailed(
       planning_scene_->getRobotModel(), DEFAULT_PADDING, DEFAULT_SCALE, collision_clearance_));
@@ -134,30 +128,14 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
     {
       collision_detection::CollisionResult& result = *i;
 
-
-      if(result.collision)
-      {
-        // get shortest distance
-        distance = distance < result.distance ? result.distance : distance;
-
-        for(ContactMapIterator c = result.contacts.begin(); c != result.contacts.end(); c++)
-        {
-          ContactArray& contacts = c->second;
-          for(ContactArray::iterator ci = contacts.begin(); ci != contacts.end() ; ci++)
-          {
-            collision_detection::Contact& contact = *ci;
-            penalty += 10 * std::abs(contact.depth) ;
-          }
-        }
-
-        collision = true;
-
-      }
+      // get shortest distance
+      distance = distance > result.distance ? result.distance : distance;
+      collision |= result.collision;
     }
 
     if(collision)
     {
-      costs(t) = collision_clearance_+ penalty;
+      costs(t) = collision_penalty_;
       validity = false;
     }
     else
@@ -179,6 +157,8 @@ bool ObstacleAvoidance::configure(const XmlRpc::XmlRpcValue& config)
   {
     XmlRpc::XmlRpcValue c = config;
     collision_clearance_ = static_cast<double>(c["collision_clearance"]);
+    collision_penalty_ = static_cast<double>(c["collision_penalty"]);
+    cost_weight_ = static_cast<double>(c["cost_weight"]);
   }
   catch(XmlRpc::XmlRpcException& e)
   {

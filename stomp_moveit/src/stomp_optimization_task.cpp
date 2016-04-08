@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include "stomp_moveit/stomp_optimization_task.h"
 
-bool parsePluginArray(XmlRpc::XmlRpcValue config,
+bool parsePlugins(XmlRpc::XmlRpcValue config,
                       std::string param_name,
                       std::map<std::string,XmlRpc::XmlRpcValue>& plugins_map)
 {
@@ -39,7 +39,7 @@ bool parsePluginArray(XmlRpc::XmlRpcValue config,
     return false;
   }
 
-  return true;
+  return !plugins_map.empty();
 }
 
 namespace stomp_moveit
@@ -84,7 +84,7 @@ StompOptimizationTask::~StompOptimizationTask()
 bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcValue& config)
 {
   std::map<std::string,XmlRpc::XmlRpcValue> plugins_map;
-  if(parsePluginArray(config,"cost_functions",plugins_map))
+  if(parsePlugins(config,"cost_functions",plugins_map))
   {
     for(auto& entry: plugins_map)
     {
@@ -136,8 +136,8 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
                                                     std::vector<filters::StompFilterPtr>& filters)
 {
   std::map<std::string,XmlRpc::XmlRpcValue> plugins_map;
-  bool success = true;
-  if(parsePluginArray(config,param_name,plugins_map))
+  bool success = false;
+  if(parsePlugins(config,param_name,plugins_map))
   {
     for(auto& entry: plugins_map)
     {
@@ -150,7 +150,6 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
       catch(pluginlib::PluginlibException& ex)
       {
         ROS_WARN("%s plugin could not be created",entry.first.c_str());
-        success = false;
         continue;
       }
 
@@ -158,11 +157,11 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
       if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
       {
         filters.push_back(plugin);
+        success = true;
       }
       else
       {
         ROS_WARN("%s plugin failed to initialize",entry.first.c_str());
-        success = false;
         continue;
       }
     }
