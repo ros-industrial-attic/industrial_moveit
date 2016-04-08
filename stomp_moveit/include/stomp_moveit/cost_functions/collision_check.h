@@ -1,16 +1,16 @@
 /*
- * obstacle_avoidance.h
+ * collision_check.h
  *
  *  Created on: Mar 30, 2016
  *      Author: ros-ubuntu
  */
 
-#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_OBSTACLE_AVOIDANCE_H_
-#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_OBSTACLE_AVOIDANCE_H_
+#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_COLLISION_CHECK_H_
+#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_COLLISION_CHECK_H_
 
 #include <moveit/robot_model/robot_model.h>
-#include <moveit/collision_fcl_detailed/collision_robot_fcl_detailed.h>
-#include <moveit/collision_fcl_detailed/collision_world_fcl_detailed.h>
+#include <moveit/collision_detection_fcl/collision_world_fcl.h>
+#include <moveit/collision_detection_fcl/collision_robot_fcl.h>
 #include "stomp_moveit/cost_functions/stomp_cost_function.h"
 
 namespace stomp_moveit
@@ -18,11 +18,11 @@ namespace stomp_moveit
 namespace cost_functions
 {
 
-class ObstacleAvoidance : public StompCostFunction
+class CollisionCheck : public StompCostFunction
 {
 public:
-  ObstacleAvoidance();
-  virtual ~ObstacleAvoidance();
+  CollisionCheck();
+  virtual ~CollisionCheck();
 
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,XmlRpc::XmlRpcValue& config) override;
@@ -61,7 +61,7 @@ public:
 
   virtual std::string getName() const override
   {
-    return name_ + "/" + group_name_;
+    return "CollisionCheck/" + group_name_;
   }
 
 protected:
@@ -90,4 +90,4 @@ protected:
 } /* namespace cost_functions */
 } /* namespace stomp_moveit */
 
-#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_OBSTACLE_AVOIDANCE_H_ */
+#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_COLLISION_CHECK_H_ */

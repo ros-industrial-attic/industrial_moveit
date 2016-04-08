@@ -2,7 +2,7 @@
  * stomp_optimization_task.cpp
  *
  *  Created on: Mar 23, 2016
- *      Author: ros-ubuntu
+ *      Author: Jorge Nicho
  */
 
 #include <stdexcept>

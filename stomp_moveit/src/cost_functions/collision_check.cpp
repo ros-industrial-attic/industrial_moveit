@@ -1,14 +1,14 @@
 /*
- * obstacle_avoidance.cpp
+ * collision_check.cpp
  *
- *  Created on: Mar 30, 2016
- *      Author: ros-ubuntu
+ *  Created on: April 7, 2016
+ *      Author: Jorge Nicho
  */
 #include <ros/console.h>
 #include <pluginlib/class_list_macros.h>
-#include "stomp_moveit/cost_functions/obstacle_avoidance.h"
+#include "stomp_moveit/cost_functions/collision_check.h"
 
-PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::ObstacleAvoidance,stomp_moveit::cost_functions::StompCostFunction);
+PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::CollisionCheck,stomp_moveit::cost_functions::StompCostFunction);
 
 const double DEFAULT_PADDING = 0.0;
 const double DEFAULT_SCALE = 1.0;
@@ -18,19 +18,19 @@ namespace stomp_moveit
 namespace cost_functions
 {
 
-ObstacleAvoidance::ObstacleAvoidance():
-    name_("ObstacleAvoidancePlugin")
+CollisionCheck::CollisionCheck():
+    name_("CollisionCheckPlugin")
 {
   // TODO Auto-generated constructor stub
 
 }
 
-ObstacleAvoidance::~ObstacleAvoidance()
+CollisionCheck::~CollisionCheck()
 {
   // TODO Auto-generated destructor stub
 }
 
-bool ObstacleAvoidance::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
+bool CollisionCheck::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                         const std::string& group_name,XmlRpc::XmlRpcValue& config)
 {
   robot_model_ptr_ = robot_model_ptr;
@@ -38,7 +38,7 @@ bool ObstacleAvoidance::initialize(moveit::core::RobotModelConstPtr robot_model_
   return configure(config);
 }
 
-bool ObstacleAvoidance::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
+bool CollisionCheck::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                  const moveit_msgs::MotionPlanRequest &req,
                  moveit_msgs::MoveItErrorCodes& error_code)
 {
@@ -49,27 +49,22 @@ bool ObstacleAvoidance::setMotionPlanRequest(const planning_scene::PlanningScene
   // initialize collision request
   collision_request_.group_name = group_name_;
   collision_request_.cost = false;
-  collision_request_.distance = true;
+  collision_request_.distance = false;
   collision_request_.max_contacts = 1;
   collision_request_.max_contacts_per_pair = 1;
   collision_request_.contacts = true;
   collision_request_.verbose = false;
 
-//  collision_robot_.reset(new collision_detection::CollisionRobotFCL(
-//      planning_scene_->getRobotModel(), DEFAULT_PADDING, DEFAULT_SCALE));
-//
-//  collision_detection::WorldPtr world = boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld());
-//  collision_world_.reset(new collision_detection::CollisionWorldFCL(world));
+  collision_robot_.reset(new collision_detection::CollisionRobotFCL(
+      planning_scene_->getRobotModel(), DEFAULT_PADDING, DEFAULT_SCALE));
 
-  collision_robot_.reset(new collision_detection::CollisionRobotFCLDetailed(
-      planning_scene_->getRobotModel(), DEFAULT_PADDING, DEFAULT_SCALE, collision_clearance_));
-  collision_world_.reset(new collision_detection::CollisionWorldFCLDetailed(
-      boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld()), collision_clearance_));
+  collision_detection::WorldPtr world = boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld());
+  collision_world_.reset(new collision_detection::CollisionWorldFCL(world));
 
   return true;
 }
 
-bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
+bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
                           std::size_t start_timestep,
                           std::size_t num_timesteps,
                           int iteration_number,
@@ -92,6 +87,7 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
   collision_detection::CollisionResult result_world_collision, result_robot_collision;
   std::vector<collision_detection::CollisionResult> results(2);
   validity = true;
+  double max_depth = 0;
 
   // robot state
   const JointModelGroup* joint_group = robot_model_ptr_->getJointModelGroup(group_name_);
@@ -126,54 +122,21 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
 
     results[0]= result_world_collision;
     results[1] = result_robot_collision;
-
-    double penalty = 0;
-    double distance = collision_clearance_;
-    bool collision = false;
     for(std::vector<collision_detection::CollisionResult>::iterator i = results.begin(); i != results.end(); i++)
     {
       collision_detection::CollisionResult& result = *i;
-
-
       if(result.collision)
       {
-        // get shortest distance
-        distance = distance < result.distance ? result.distance : distance;
-
-        for(ContactMapIterator c = result.contacts.begin(); c != result.contacts.end(); c++)
-        {
-          ContactArray& contacts = c->second;
-          for(ContactArray::iterator ci = contacts.begin(); ci != contacts.end() ; ci++)
-          {
-            collision_detection::Contact& contact = *ci;
-            penalty += 10 * std::abs(contact.depth) ;
-          }
-        }
-
-        collision = true;
-
+        costs(t) += 1.0;
+        validity = false;
       }
     }
-
-    if(collision)
-    {
-      costs(t) = collision_clearance_+ penalty;
-      validity = false;
-    }
-    else
-    {
-      costs(t) = distance > collision_clearance_  ? 0 : (collision_clearance_ - distance);
-    }
   }
-
-  // scaling cost
-  double max = costs.maxCoeff();
-  costs /= (max > 1e-8) ? max : 1;
 
   return true;
 }
 
-bool ObstacleAvoidance::configure(const XmlRpc::XmlRpcValue& config)
+bool CollisionCheck::configure(const XmlRpc::XmlRpcValue& config)
 {
   try
   {
