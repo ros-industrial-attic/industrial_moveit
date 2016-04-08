@@ -50,8 +50,6 @@ struct Rollout
 {
   Eigen::MatrixXd noise;                       /**< [num_dimensions] x num_time_steps, random noise applied to the parameters*/
   Eigen::MatrixXd parameters_noise;            /**< [num_dimensions] x num_time_steps, the sum of parameters + noise */
-  Eigen::MatrixXd parameters_noise_projected;  /**< [num_dimensions] x num_time_steps, the sum of the parameters plus
-                                                                 the noised values times the projection matrix M >*/
 
   Eigen::VectorXd state_costs; /**< num_time_steps */
   Eigen::MatrixXd control_costs; /**< [num_dimensions] x num_time_steps */
@@ -90,6 +88,7 @@ bool generateFiniteDifferenceMatrix(int num_time_steps, DerivativeOrders::Deriva
 void differentiate(const Eigen::VectorXd& parameters, DerivativeOrders::DerivativeOrder order,
                           double dt, Eigen::VectorXd& derivatives );
 
+void toVector(const Eigen::MatrixXd& m,std::vector<Eigen::VectorXd>& v);
 std::string toString(const std::vector<Eigen::VectorXd>& data);
 std::string toString(const Eigen::VectorXd& data);
 std::string toString(const Eigen::MatrixXd& data);

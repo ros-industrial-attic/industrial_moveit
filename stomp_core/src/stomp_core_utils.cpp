@@ -81,6 +81,15 @@ void differentiate(const Eigen::VectorXd& parameters, DerivativeOrders::Derivati
   derivatives.tail(1).setConstant(0.0);
 }
 
+void toVector(const Eigen::MatrixXd& m,std::vector<Eigen::VectorXd>& v)
+{
+  v.resize(m.rows(),Eigen::VectorXd::Zero(m.cols()));
+  for(auto d = 0u; d < m.rows();d++)
+  {
+    v[d] = m.row(d);
+  }
+}
+
 std::string toString(const std::vector<Eigen::VectorXd>& data)
 {
   Eigen::IOFormat clean_format(4, 0, ", ", "\n", "[", "]");

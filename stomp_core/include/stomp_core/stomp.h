@@ -90,7 +90,6 @@ protected:
   bool runSingleIteration();
   bool generateNoisyRollouts();
   bool filterNoisyRollouts();
-  bool computeProjectedNoisyRollouts();
   bool computeNoisyRolloutsCosts();
   bool computeRolloutsStateCosts();
   bool computeRolloutsControlCosts();

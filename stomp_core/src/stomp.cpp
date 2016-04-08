@@ -259,19 +259,8 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
   double lowest_cost = std::numeric_limits<double>::max();
   while(current_iteration_ <= config_.num_iterations && runSingleIteration())
   {
-    if(parameters_total_cost_ < lowest_cost)
-    {
-      lowest_cost = parameters_total_cost_;
-    }
-    else
-    {
-      // do not reuse old noisy rollouts since cost did not improve
-      if(config_.max_rollouts > config_.num_rollouts)
-      {
-        num_active_rollouts_ = 0;
-        ROS_DEBUG("No cost improvement, discarding noisy rollouts");
-      }
-    }
+
+    lowest_cost = parameters_total_cost_ < lowest_cost ? parameters_total_cost_ : lowest_cost;
 
     ROS_DEBUG("STOMP completed iteration %i with cost %f",current_iteration_,lowest_cost);
 
@@ -383,7 +372,6 @@ bool Stomp::resetVariables()
   Rollout rollout;
   rollout.noise = Eigen::MatrixXd::Zero(d, config_.num_timesteps);
   rollout.parameters_noise = Eigen::MatrixXd::Zero(d, config_.num_timesteps);
-  rollout.parameters_noise_projected = Eigen::MatrixXd::Zero(d, config_.num_timesteps);
 
   rollout.probabilities= Eigen::MatrixXd::Zero(d, config_.num_timesteps);
   rollout.full_probabilities.resize(d);
@@ -511,7 +499,6 @@ bool Stomp::runSingleIteration()
   bool proceed = generateNoisyRollouts() &&
       computeNoisyRolloutsCosts() &&
       filterNoisyRollouts() &&
-      computeProjectedNoisyRollouts() &&
       computeProbabilities() &&
       updateParameters() &&
       filterUpdatedParameters() &&
@@ -550,21 +537,20 @@ bool Stomp::generateNoisyRollouts()
       cost_denom = 1e-8;
 
     // compute weighted cost on all rollouts
+    double cost_prob;
+    double weighted_prob;
     for (auto r = 0u; r<rollouts_stored; ++r)
     {
 
       // Apply noise generated on the previous iteration onto the current trajectory
-      for (auto d = 0u; d<config_.num_dimensions; ++d)
-      {
-        noisy_rollouts_[r].noise.row(d).transpose() = inv_projection_matrix_M_ * (
-            noisy_rollouts_[r].parameters_noise_projected.row(d).transpose() - parameters_optimized_.row(d).transpose());
+      noisy_rollouts_[r].noise = noisy_rollouts_[r].parameters_noise
+          - parameters_optimized_;
 
-      }
-
-      double cost_prob = exp(-h*(noisy_rollouts_[r].total_cost - min_cost)/cost_denom);
-      double weighted_cost = cost_prob * noisy_rollouts_[r].importance_weight;
-      rollout_cost_sorter.push_back(std::make_pair(-weighted_cost,r));
+      cost_prob = exp(-h*(noisy_rollouts_[r].total_cost - min_cost)/cost_denom);
+      weighted_prob = cost_prob * noisy_rollouts_[r].importance_weight;
+      rollout_cost_sorter.push_back(std::make_pair(-weighted_prob,r));
     }
+
 
     std::sort(rollout_cost_sorter.begin(), rollout_cost_sorter.end());
 
@@ -583,9 +569,9 @@ bool Stomp::generateNoisyRollouts()
   }
 
   // generate new noisy rollouts
-  for (auto d = 0u; d<config_.num_dimensions; ++d)
+  for(auto r = 0u; r < rollouts_generate; r++)
   {
-    for(auto r = 0u; r < rollouts_generate; r++)
+    for (auto d = 0u; d<config_.num_dimensions; ++d)
     {
       random_dist_generators_[d]->sample(temp_noise_array_);
       noisy_rollouts_[r].noise.row(d).transpose()  = noise_stddevs_[d] * temp_noise_array_;
@@ -615,21 +601,6 @@ bool Stomp::filterNoisyRollouts()
     if(filtered)
     {
       noisy_rollouts_[r].noise = noisy_rollouts_[r].parameters_noise - parameters_optimized_;
-    }
-  }
-
-  return true;
-}
-
-bool Stomp::computeProjectedNoisyRollouts()
-{
-  for(auto d = 0u; d < config_.num_dimensions;d++)
-  {
-    for(auto r = 0u; r < num_active_rollouts_; r++)
-    {
-      auto& rollout = noisy_rollouts_[r];
-      rollout.parameters_noise_projected.row(d).transpose() = parameters_optimized_.row(d).transpose() +
-          projection_matrix_M_*rollout.noise.row(d).transpose();
     }
   }
 
@@ -681,7 +652,7 @@ bool Stomp::computeRolloutsStateCosts()
 
   bool all_valid = true;
   bool proceed = true;
-  for(auto r = 0u ; r < config_.num_rollouts && getProceed(); r++)
+  for(auto r = 0u ; r < config_.num_rollouts; r++)
   {
     if(!getProceed())
     {
@@ -819,7 +790,6 @@ bool Stomp::computeProbabilities()
 
 bool Stomp::updateParameters()
 {
-
   for(auto d = 0u; d < config_.num_dimensions ; d++)
   {
 
@@ -831,6 +801,7 @@ bool Stomp::updateParameters()
     }
 
     parameters_optimized_.row(d) += (projection_matrix_M_*temp_parameter_updates_).transpose();
+
   }
 
   return true;
