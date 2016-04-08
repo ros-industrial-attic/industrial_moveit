@@ -5,6 +5,7 @@
 
   <!-- By default, we are not in debug mode -->
   <arg name="debug" default="false" />
+  <arg name="rviz" default="true"/>
 
   <!-- Planning pipeline -->
   <arg name="pipeline" default="stomp_moveit"/>
@@ -36,7 +37,7 @@
   </include>
 
   <!-- Run Rviz and load the default config to see the state of the move_group node -->
-  <include file="$(find stomp_test_kr210_moveit_config)/launch/moveit_rviz.launch">
+  <include if="$(arg rviz)" file="$(find stomp_test_kr210_moveit_config)/launch/moveit_rviz.launch">
     <arg name="config" value="true"/>
     <arg name="debug" value="$(arg debug)"/>
   </include>
