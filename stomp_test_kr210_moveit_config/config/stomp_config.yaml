@@ -1,0 +1,69 @@
+stomp/manipulator:
+  group_name: manipulator
+  optimization:
+    num_timesteps: 20
+    num_dimensions: 6
+    num_iterations: 50
+    num_iterations_after_valid: 0
+    delta_t: 0.1
+    num_rollouts: 10
+    min_rollouts: 5
+    max_rollouts: 10
+    initialization_method: 1 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
+    control_cost_weight: 0.0
+    noise_generation:
+      stddev: [0.3, 1.0, 0.5, 0.4, 0.3, 0.3]
+      min_stddev: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+      decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
+      method: 1 # [0 : CONSTANT, 1 : ADAPTIVE, 2 : EXPONENTIAL_DECAY]
+      update_rate: 0.2 # Used by EXPONENTIAL_DECAY method only
+  task:
+    cost_functions:
+      - class: stomp_moveit/ObstacleAvoidance
+        collision_clearance: 0.01
+    noisy_filters:
+      - class: stomp_moveit/JointLimits
+        lock_start: True
+        lock_goal: True
+    optimized_filters:
+      - class: stomp_moveit/JointLimits
+        lock_start: True
+        lock_goal: True
+stomp/manipulator_rail:
+  group_name: manipulator_rail
+  optimization:
+    num_timesteps: 30
+    num_dimensions: 7
+    num_iterations: 40
+    num_iterations_after_valid: 0
+    delta_t: 0.1
+    num_rollouts: 10
+    min_rollouts: 5
+    max_rollouts: 40 
+    initialization_method: 3 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
+    control_cost_weight: 0.0
+    noise_generation:
+      stddev: [0.05, 0.3, 1.2, 0.4, 0.4, 0.1, 0.1]
+      min_stddev: [0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]
+      decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8] # Used by EXPONENTIAL_DECAY method only
+      method: 1 # [0 : CONSTANT, 1 : ADAPTIVE, 2 : EXPONENTIAL_DECAY]
+      update_rate: 0.5 # Used by ADAPTIVE method only
+  task:
+    cost_functions:
+      - class: stomp_moveit/CollisionCheck 
+        collision_penalty: 5.0
+        cost_weight: 1.0
+#      - class: stomp_moveit/ObstacleAvoidance 
+#        collision_clearance: 0.2
+#        collision_penalty: 1.0
+#        cost_weight: 1.0
+    noisy_filters:
+      - class: stomp_moveit/JointLimits
+        lock_start: True
+        lock_goal: True
+    optimized_filters:
+      - class: stomp_moveit/JointLimits
+        lock_start: True
+        lock_goal: True
+    
+    

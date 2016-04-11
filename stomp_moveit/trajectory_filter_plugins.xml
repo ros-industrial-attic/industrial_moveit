@@ -1,0 +1,7 @@
+<library path="libstomp_moveit_filters">
+  <class name="stomp_moveit/JointLimits" type="stomp_moveit::filters::JointLimits" base_class_type="stomp_moveit::filters::StompFilter">
+    <description>
+      FCL Mesh-model-based exact collision 
+    </description>
+  </class>
+</library>
