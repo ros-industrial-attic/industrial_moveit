@@ -4,4 +4,9 @@
       Applies the Control Cost Projection matrix "M" in order to smooth out the noisy parameter updates. 
     </description>
   </class>
+  <class name="stomp_moveit/UpdateLogger" type="stomp_moveit::smoothers::UpdateLogger" base_class_type="stomp_moveit::smoothers::SmootherInterface">
+    <description>
+      Applies the Control Cost Projection matrix "M" in order to smooth out the noisy parameter updates. 
+    </description>
+  </class>
 </library>

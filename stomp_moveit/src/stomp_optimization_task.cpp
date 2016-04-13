@@ -8,9 +8,11 @@
 #include <stdexcept>
 #include "stomp_moveit/stomp_optimization_task.h"
 
+using PluginArray = std::vector< std::pair<std::string,XmlRpc::XmlRpcValue> >;
+
 bool parsePlugins(XmlRpc::XmlRpcValue config,
                       std::string param_name,
-                      std::map<std::string,XmlRpc::XmlRpcValue>& plugins_map)
+                      PluginArray& plugins)
 {
   if(config.hasMember(param_name) && (config[param_name].getType() == XmlRpc::XmlRpcValue::TypeArray))
   {
@@ -24,7 +26,7 @@ bool parsePlugins(XmlRpc::XmlRpcValue config,
       if(plugin_config.hasMember("class") && (plugin_config["class"].getType() == XmlRpc::XmlRpcValue::TypeString))
       {
         class_name = static_cast<std::string>(plugin_config["class"]);
-        plugins_map.insert(std::make_pair(class_name,plugin_config));
+        plugins.push_back(std::make_pair(class_name,plugin_config));
       }
       else
       {
@@ -40,7 +42,7 @@ bool parsePlugins(XmlRpc::XmlRpcValue config,
     return false;
   }
 
-  return !plugins_map.empty();
+  return !plugins.empty();
 }
 
 namespace stomp_moveit
@@ -91,10 +93,10 @@ StompOptimizationTask::~StompOptimizationTask()
 
 bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcValue& config)
 {
-  std::map<std::string,XmlRpc::XmlRpcValue> plugins_map;
-  if(parsePlugins(config,"cost_functions",plugins_map))
+  PluginArray plugins;
+  if(parsePlugins(config,"cost_functions",plugins))
   {
-    for(auto& entry: plugins_map)
+    for(auto& entry: plugins)
     {
       // instantiating
       cost_functions::StompCostFunctionPtr plugin;
@@ -123,12 +125,12 @@ bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcVa
 
     std::stringstream ss;
     ss<<"[";
-    auto arrayToString = [&ss](std::map<std::string,XmlRpc::XmlRpcValue>::value_type& p)
+    auto arrayToString = [&ss](PluginArray::value_type& p)
     {
       ss<<p.first<<" ";
     };
 
-    std::for_each(plugins_map.begin(),plugins_map.end(),arrayToString);
+    std::for_each(plugins.begin(),plugins.end(),arrayToString);
     ss<<"]";
 
     ROS_DEBUG("Loaded cost function plugins: %s",ss.str().c_str());
@@ -144,11 +146,11 @@ bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcVa
 bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& config,std::string param_name,
                                                     std::vector<filters::StompFilterPtr>& filters)
 {
-  std::map<std::string,XmlRpc::XmlRpcValue> plugins_map;
+  PluginArray plugins;
   bool success = false;
-  if(parsePlugins(config,param_name,plugins_map))
+  if(parsePlugins(config,param_name,plugins))
   {
-    for(auto& entry: plugins_map)
+    for(auto& entry: plugins)
     {
       // instantiating
       filters::StompFilterPtr plugin;
@@ -186,11 +188,11 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
 
 bool StompOptimizationTask::initializeSmootherPlugins(const XmlRpc::XmlRpcValue& config)
 {
-  std::map<std::string,XmlRpc::XmlRpcValue> plugins_map;
+  PluginArray plugins;
   bool success = false;
-  if(parsePlugins(config,"update_smoothers",plugins_map))
+  if(parsePlugins(config,"update_smoothers",plugins))
   {
-    for(auto& entry: plugins_map)
+    for(auto& entry: plugins)
     {
       // instantiating
       smoothers::SmootherInterfacePtr plugin;

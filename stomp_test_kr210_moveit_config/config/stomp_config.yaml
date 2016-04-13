@@ -66,6 +66,14 @@ stomp/manipulator_rail:
         lock_start: True
         lock_goal: True
     update_smoothers:
+      - class: stomp_moveit/UpdateLogger
+        package: stomp_moveit
+        directory: log
+        filename: noisy_update.txt
       - class: stomp_moveit/ControlCostProjectionMatrix
+      - class: stomp_moveit/UpdateLogger
+        package: stomp_moveit
+        directory: log
+        filename: smoothed_update.txt
     
     
