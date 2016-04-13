@@ -2,7 +2,7 @@
  * collision_check.h
  *
  *  Created on: Mar 30, 2016
- *      Author: ros-ubuntu
+ *      Author: Jorge Nicho
  */
 
 #ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_COLLISION_CHECK_H_

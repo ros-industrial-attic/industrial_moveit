@@ -123,6 +123,15 @@ public:
       return true;
     }
 
+    /**
+     * @brief Called by Stomp at the end of the optimization process
+     *
+     * @param success           Whether the optimization succeeded
+     * @param total_iterations  Number of iterations used
+     * @param final_cost        The cost value after optimizing.
+     */
+    virtual void done(bool success,int total_iterations,double final_cost){}
+
 };
 
 }

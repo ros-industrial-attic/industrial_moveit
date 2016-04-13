@@ -2,7 +2,7 @@
  * joint_limits.h
  *
  *  Created on: Apr 1, 2016
- *      Author: ros-ubuntu
+ *      Author: Jorge Nicho
  */
 
 #ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_FILTERS_JOINT_LIMITS_H_

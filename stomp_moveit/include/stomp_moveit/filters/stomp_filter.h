@@ -2,7 +2,7 @@
  * stomp_filter.h
  *
  *  Created on: Mar 23, 2016
- *      Author: ros-ubuntu
+ *      Author: Jorge Nicho
  */
 
 #ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_FILTER_H_

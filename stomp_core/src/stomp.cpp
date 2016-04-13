@@ -297,6 +297,9 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
 
   parameters_optimized = parameters_optimized_;
 
+  // notifying task
+  task_->done(parameters_valid_,current_iteration_,lowest_cost);
+
   return parameters_valid_;
 }
 

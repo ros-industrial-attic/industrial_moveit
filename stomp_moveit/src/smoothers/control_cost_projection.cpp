@@ -2,7 +2,7 @@
  * control_cost_projection.cpp
  *
  *  Created on: Apr 12, 2016
- *      Author: ros-ubuntu
+ *      Author: Jorge Nicho
  */
 
 #include <stomp_moveit/smoothers/control_cost_projection.h>

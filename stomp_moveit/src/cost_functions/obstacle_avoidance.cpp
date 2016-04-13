@@ -2,7 +2,7 @@
  * obstacle_avoidance.cpp
  *
  *  Created on: Mar 30, 2016
- *      Author: ros-ubuntu
+ *      Author: Jorge Nicho
  */
 #include <ros/console.h>
 #include <pluginlib/class_list_macros.h>

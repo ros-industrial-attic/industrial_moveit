@@ -2,7 +2,7 @@
  * joint_limits.cpp
  *
  *  Created on: Apr 1, 2016
- *      Author: ros-ubuntu
+ *      Author: Jorge Nicho
  */
 
 #include <ros/console.h>

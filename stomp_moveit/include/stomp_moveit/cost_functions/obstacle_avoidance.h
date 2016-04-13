@@ -2,7 +2,7 @@
  * obstacle_avoidance.h
  *
  *  Created on: Mar 30, 2016
- *      Author: ros-ubuntu
+ *      Author: Jorge Nicho
  */
 
 #ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_OBSTACLE_AVOIDANCE_H_
