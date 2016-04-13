@@ -38,13 +38,17 @@ public:
 
   /**
    * @brief calls the updatePlanningScene method of each cost function and filter class it contains
-   * @param planning_scene_ptr a smart pointer to the planning scene
-   * @param req The motion planning request
-   * @param error_code
+   * @param planning_scene_ptr  A smart pointer to the planning scene
+   * @param req                 The motion planning request
+   * @param num_timesteps       The number of time steps in the trajectory
+   * @param dt                  Time interval between consecutive points
+   * @param error_code          Moveit error code
+   * @return                    True if succeeded
    */
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    int num_timesteps,
+                   double dt,
                    moveit_msgs::MoveItErrorCodes& error_code);
 
   /**
@@ -69,37 +73,51 @@ public:
                             bool& validity) const override;
 
   /**
-   * Filters the given noisy parameters which is applied after noisy trajectory generation. It could be used for clipping
+   * @brief Filters the given noisy parameters which is applied after noisy trajectory generation. It could be used for clipping
    * of joint limits or projecting into the null space of the Jacobian.
    *
-   * @param parameters
+   * @param start_timestep    start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+   * @param iteration_number  The current iteration count in the optimization loop
+   * @param rollout_number    The rollout index for this noisy parameter set
+   * @param parameters        The noisy parameters
    * @return false if no filtering was done
    */
-  virtual bool filterNoisyParameters(Eigen::MatrixXd& parameters,bool& filtered) const override;
+  virtual bool filterNoisyParameters(std::size_t start_timestep,
+                                     std::size_t num_timesteps,
+                                     int iteration_number,
+                                     int rollout_number,
+                                     Eigen::MatrixXd& parameters,
+                                     bool& filtered) const override;
 
   /**
-   * Filters the given parameters which is applied after the update. It could be used for clipping of joint limits
+   * @brief Filters the given parameters which is applied after the update. It could be used for clipping of joint limits
    * or projecting into the null space of the Jacobian.
    *
-   * @param parameters
-   * @param filtered false if no filtering was done
-   * @return false if there was a failure
+   * @param start_timestep    start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+   * @param iteration_number  The current iteration count in the optimization loop
+   * @param parameters        The optimized parameters
+   * @param filtered          False if no filtering was done
+   * @return                  False if there was a failure
    */
-  virtual bool filterParameters(Eigen::MatrixXd& parameters,bool& filtered) const override;
+  virtual bool filterParameters(std::size_t start_timestep,
+                                std::size_t num_timesteps,
+                                int iteration_number,
+                                Eigen::MatrixXd& parameters,
+                                bool& filtered) const override;
 
   /**
-   * Applies a smoothing scheme to the parameter updates
+   * @brief Applies a smoothing scheme to the parameter updates
    *
-   * @param start_timestep      column index in at which to start the smoothing.
-   * @param num_timestep        number of elements column-wise to which smoothing will be applied.
-   * @param dt                  time step.
+   * @param start_timestep      start column index in the 'updates' matrix.
+   * @param num_timestep        number of column-wise elements to use from the 'updates' matrix.
    * @param iteration_number    the current iteration count.
    * @param updates             the parameter updates.
-   * @return false if there was a failure, true otherwise.
+   * @return                    False if there was a failure, true otherwise.
    */
   virtual bool smoothParameterUpdates(std::size_t start_timestep,
                                       std::size_t num_timesteps,
-                                      double dt,
                                       int iteration_number,
                                       Eigen::MatrixXd& updates) const override;
 

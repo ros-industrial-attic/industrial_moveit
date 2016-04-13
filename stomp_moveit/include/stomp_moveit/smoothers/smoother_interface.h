@@ -37,23 +37,22 @@ public:
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    int num_timesteps,
+                   double dt,
                    moveit_msgs::MoveItErrorCodes& error_code) = 0;
 
   /**
    * Applies a smoothing scheme to the parameter updates
    *
-   * @param start_timestep      column index in at which to start the smoothing.
-   * @param num_timestep        number of elements column-wise to which smoothing will be applied.
-   * @param dt                  time step.
+   * @param start_timestep      start column index in the 'updates' matrix.
+   * @param num_timestep        number of column-wise elements to use from the 'updates' matrix.
    * @param iteration_number    the current iteration count.
    * @param updates             the parameter updates.
-   * @return false if there was a failure, true otherwise.
+   * @return                    False if there was a failure, true otherwise.
    */
   virtual bool smooth(std::size_t start_timestep,
-                                      std::size_t num_timesteps,
-                                      double dt,
-                                      int iteration_number,
-                                      Eigen::MatrixXd& updates) = 0;
+                      std::size_t num_timesteps,
+                      int iteration_number,
+                      Eigen::MatrixXd& updates) = 0;
 
   virtual std::string getGroupName() const
   {

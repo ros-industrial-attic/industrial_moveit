@@ -91,7 +91,8 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   }
 
   // setting up up optimization task
-  if(!task_->setMotionPlanRequest(planning_scene_,request_, stomp_config_.num_timesteps, res.error_code_))
+  if(!task_->setMotionPlanRequest(planning_scene_,request_, stomp_config_.num_timesteps,
+                                  stomp_config_.delta_t,res.error_code_))
   {
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
     return false;

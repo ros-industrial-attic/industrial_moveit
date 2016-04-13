@@ -56,6 +56,7 @@ bool ControlCostProjection::configure(const XmlRpc::XmlRpcValue& config)
 bool ControlCostProjection::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                  const moveit_msgs::MotionPlanRequest &req,
                  int num_timesteps,
+                 double dt,
                  moveit_msgs::MoveItErrorCodes& error_code)
 {
 
@@ -68,7 +69,6 @@ bool ControlCostProjection::setMotionPlanRequest(const planning_scene::PlanningS
 
 bool ControlCostProjection::smooth(std::size_t start_timestep,
                                     std::size_t num_timesteps,
-                                    double dt,
                                     int iteration_number,
                                     Eigen::MatrixXd& updates)
 {

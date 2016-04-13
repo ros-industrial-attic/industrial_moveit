@@ -258,11 +258,12 @@ bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
 bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                                         const moveit_msgs::MotionPlanRequest &req,
                                         int num_timesteps,
+                                        double dt,
                                         moveit_msgs::MoveItErrorCodes& error_code)
 {
   for(auto p : cost_functions_)
   {
-    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,error_code))
+    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,dt,error_code))
     {
       ROS_ERROR("Failed to set Plan Request on cost function %s",p->getName().c_str());
       return false;
@@ -274,7 +275,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   all_filters.insert(all_filters.end(),filters_.begin(),filters_.end());
   for(auto p: all_filters)
   {
-    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,error_code))
+    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,dt,error_code))
     {
       ROS_ERROR("Failed to set Plan Request on filter %s",p->getName().c_str());
       return false;
@@ -283,7 +284,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
 
   for(auto p: smoothers_)
   {
-    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,error_code))
+    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,dt,error_code))
     {
       ROS_ERROR("Failed to set Plan Request on smoother %s",p->getName().c_str());
       return false;
@@ -295,13 +296,12 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
 
 bool StompOptimizationTask::smoothParameterUpdates(std::size_t start_timestep,
                                     std::size_t num_timesteps,
-                                    double dt,
                                     int iteration_number,
                                     Eigen::MatrixXd& updates) const
 {
   for(auto& s : smoothers_)
   {
-    if(!s->smooth(start_timestep,num_timesteps,dt,iteration_number,updates))
+    if(!s->smooth(start_timestep,num_timesteps,iteration_number,updates))
     {
       return false;
     }
@@ -310,13 +310,17 @@ bool StompOptimizationTask::smoothParameterUpdates(std::size_t start_timestep,
   return true;
 }
 
-bool StompOptimizationTask::filterNoisyParameters(Eigen::MatrixXd& parameters,bool& filtered) const
+bool StompOptimizationTask::filterNoisyParameters(std::size_t start_timestep,
+                                                  std::size_t num_timesteps,
+                                                  int iteration_number,
+                                                  int rollout_number,
+                                                  Eigen::MatrixXd& parameters,bool& filtered) const
 {
   filtered = false;
   bool temp;
   for(auto& f: noisy_filters_)
   {
-    if(f->filter(parameters,temp))
+    if(f->filter(start_timestep,num_timesteps,iteration_number,rollout_number,parameters,temp))
     {
       filtered |= temp;
     }
@@ -328,13 +332,16 @@ bool StompOptimizationTask::filterNoisyParameters(Eigen::MatrixXd& parameters,bo
   return true;
 }
 
-bool StompOptimizationTask::filterParameters(Eigen::MatrixXd& parameters,bool& filtered) const
+bool StompOptimizationTask::filterParameters(std::size_t start_timestep,
+                                             std::size_t num_timesteps,
+                                             int iteration_number,
+                                             Eigen::MatrixXd& parameters,bool& filtered) const
 {
   filtered = false;
   bool temp;
   for(auto& f: filters_)
   {
-    if(f->filter(parameters,temp))
+    if(f->filter(start_timestep,num_timesteps,iteration_number,-1,parameters,temp))
     {
       filtered |= temp;
     }

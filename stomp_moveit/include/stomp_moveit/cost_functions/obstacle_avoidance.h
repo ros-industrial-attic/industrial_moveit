@@ -32,6 +32,7 @@ public:
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    int num_timesteps,
+                   double dt,
                    moveit_msgs::MoveItErrorCodes& error_code) override;
 
 

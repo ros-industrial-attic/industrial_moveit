@@ -475,7 +475,7 @@ bool Stomp::computeInitialTrajectory(const std::vector<double>& first,const std:
 
   // filtering and returning
   bool filtered;
-  return task_->filterParameters(parameters_optimized_,filtered);
+  return task_->filterParameters(0,config_.num_timesteps,current_iteration_,parameters_optimized_,filtered);
 }
 
 bool Stomp::cancel()
@@ -591,7 +591,7 @@ bool Stomp::filterNoisyRollouts()
   bool filtered = false;
   for(auto r = 0u ; r < num_active_rollouts_; r++)
   {
-    if(!task_->filterNoisyParameters(noisy_rollouts_[r].parameters_noise,filtered))
+    if(!task_->filterNoisyParameters(0,config_.num_timesteps,current_iteration_,r,noisy_rollouts_[r].parameters_noise,filtered))
     {
       ROS_ERROR_STREAM("Failed to filter noisy parameters");
       return filtered;
@@ -803,7 +803,7 @@ bool Stomp::updateParameters()
   }
 
   // applying smoothing
-  if(!task_->smoothParameterUpdates(0,config_.num_timesteps,config_.delta_t,current_iteration_,parameters_updates_))
+  if(!task_->smoothParameterUpdates(0,config_.num_timesteps,current_iteration_,parameters_updates_))
   {
     ROS_ERROR("Update smoothing step failed");
     return false;
@@ -818,7 +818,7 @@ bool Stomp::updateParameters()
 bool Stomp::filterUpdatedParameters()
 {
   bool filtered = false;
-  return task_->filterParameters(parameters_optimized_,filtered);
+  return task_->filterParameters(0,config_.num_timesteps,current_iteration_,parameters_optimized_,filtered);
 }
 
 bool Stomp::computeOptimizedCost()

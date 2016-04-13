@@ -37,6 +37,7 @@ public:
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    int num_timesteps,
+                   double dt,
                    moveit_msgs::MoveItErrorCodes& error_code) = 0;
 
 
@@ -47,10 +48,20 @@ public:
 
   /**
    * @brief filters the parameters and modifies the original values
+   *
+   * @param start_timestep    start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+   * @param iteration_number  The current iteration count in the optimization loop
+   * @param rollout_number    index of the noisy trajectory whose cost is being evaluated.
    * @param parameters [num_dimensions] x [num_timesteps]
    * @return false if no filtering was applied
    */
-  virtual bool filter(Eigen::MatrixXd& parameters,bool& filtered) const = 0 ;
+  virtual bool filter(std::size_t start_timestep,
+                      std::size_t num_timesteps,
+                      int iteration_number,
+                      int rollout_number,
+                      Eigen::MatrixXd& parameters,
+                      bool& filtered) const = 0 ;
 
   virtual std::string getName() const = 0;
 

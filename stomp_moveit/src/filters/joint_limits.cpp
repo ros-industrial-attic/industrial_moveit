@@ -65,6 +65,7 @@ bool JointLimits::configure(const XmlRpc::XmlRpcValue& config)
 bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                  const moveit_msgs::MotionPlanRequest &req,
                  int num_timesteps,
+                 double dt,
                  moveit_msgs::MoveItErrorCodes& error_code)
 {
   using namespace moveit::core;
@@ -105,7 +106,8 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
   return true;
 }
 
-bool JointLimits::filter(Eigen::MatrixXd& parameters,bool& filtered) const
+bool JointLimits::filter(std::size_t start_timestep,std::size_t num_timesteps,
+                         int iteration_number,int rollout_number,Eigen::MatrixXd& parameters,bool& filtered) const
 {
   using namespace moveit::core;
 
