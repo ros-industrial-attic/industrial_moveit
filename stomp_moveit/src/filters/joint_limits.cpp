@@ -64,8 +64,7 @@ bool JointLimits::configure(const XmlRpc::XmlRpcValue& config)
 
 bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                  const moveit_msgs::MotionPlanRequest &req,
-                 int num_timesteps,
-                 double dt,
+                 const stomp_core::StompConfiguration &config,
                  moveit_msgs::MoveItErrorCodes& error_code)
 {
   using namespace moveit::core;

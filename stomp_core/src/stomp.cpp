@@ -27,9 +27,9 @@
 #include <Eigen/LU>
 #include <Eigen/Cholesky>
 #include <math.h>
+#include <stomp_core/utils.h>
 #include <numeric>
 #include "stomp_core/stomp.h"
-#include "stomp_core/stomp_core_utils.h"
 
 static const double DEFAULT_NOISY_COST_IMPORTANCE_WEIGHT = 1.0;
 static const double EXPONENTIATED_COST_SENSITIVITY = 10;

@@ -257,13 +257,12 @@ bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
 
 bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                                         const moveit_msgs::MotionPlanRequest &req,
-                                        int num_timesteps,
-                                        double dt,
+                                        const stomp_core::StompConfiguration &config,
                                         moveit_msgs::MoveItErrorCodes& error_code)
 {
   for(auto p : cost_functions_)
   {
-    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,dt,error_code))
+    if(!p->setMotionPlanRequest(planning_scene,req,config,error_code))
     {
       ROS_ERROR("Failed to set Plan Request on cost function %s",p->getName().c_str());
       return false;
@@ -275,7 +274,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   all_filters.insert(all_filters.end(),filters_.begin(),filters_.end());
   for(auto p: all_filters)
   {
-    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,dt,error_code))
+    if(!p->setMotionPlanRequest(planning_scene,req,config,error_code))
     {
       ROS_ERROR("Failed to set Plan Request on filter %s",p->getName().c_str());
       return false;
@@ -284,7 +283,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
 
   for(auto p: smoothers_)
   {
-    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,dt,error_code))
+    if(!p->setMotionPlanRequest(planning_scene,req,config,error_code))
     {
       ROS_ERROR("Failed to set Plan Request on smoother %s",p->getName().c_str());
       return false;
@@ -351,6 +350,27 @@ bool StompOptimizationTask::filterParameters(std::size_t start_timestep,
     }
   }
   return true;
+}
+
+void StompOptimizationTask::done(bool success,int total_iterations,double final_cost)
+{
+  for(auto p : cost_functions_)
+  {
+    p->done(success,total_iterations,final_cost);
+  }
+
+  std::vector<filters::StompFilterPtr> all_filters;
+  all_filters.insert(all_filters.end(),noisy_filters_.begin(),noisy_filters_.end());
+  all_filters.insert(all_filters.end(),filters_.begin(),filters_.end());
+  for(auto p: all_filters)
+  {
+    p->done(success,total_iterations,final_cost);
+  }
+
+  for(auto p: smoothers_)
+  {
+    p->done(success,total_iterations,final_cost);
+  }
 }
 
 } /* namespace stomp_moveit */

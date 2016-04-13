@@ -6,9 +6,9 @@
  */
 
 #include <stomp_moveit/smoothers/control_cost_projection.h>
-#include <stomp_core/stomp_core_utils.h>
 #include <ros/console.h>
 #include <pluginlib/class_list_macros.h>
+#include <stomp_core/utils.h>
 
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::smoothers::ControlCostProjection,stomp_moveit::smoothers::SmootherInterface);
 
@@ -55,12 +55,11 @@ bool ControlCostProjection::configure(const XmlRpc::XmlRpcValue& config)
 
 bool ControlCostProjection::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                  const moveit_msgs::MotionPlanRequest &req,
-                 int num_timesteps,
-                 double dt,
+                 const stomp_core::StompConfiguration &config,
                  moveit_msgs::MoveItErrorCodes& error_code)
 {
 
-  num_timesteps_ = num_timesteps;
+  num_timesteps_ = config.num_timesteps;
   stomp_core::generateSmoothingMatrix(num_timesteps_,DEFAULT_TIME_STEP,projection_matrix_M_);
 
   error_code.val = error_code.SUCCESS;

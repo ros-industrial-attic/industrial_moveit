@@ -10,6 +10,7 @@
 
 #include <Eigen/Core>
 #include <XmlRpc.h>
+#include <stomp_core/utils.h>
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/robot_trajectory/robot_trajectory.h>
 #include <moveit/planning_scene/planning_scene.h>
@@ -36,15 +37,8 @@ public:
 
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
-                   int num_timesteps,
-                   double dt,
+                   const stomp_core::StompConfiguration &config,
                    moveit_msgs::MoveItErrorCodes& error_code) = 0;
-
-
-  virtual std::string getGroupName() const
-  {
-    return "";
-  }
 
   /**
    * @brief filters the parameters and modifies the original values
@@ -63,7 +57,26 @@ public:
                       Eigen::MatrixXd& parameters,
                       bool& filtered) const = 0 ;
 
-  virtual std::string getName() const = 0;
+  /**
+   * @brief Called by the Stomp at the end of the optimization process
+   *
+   * @param success           Whether the optimization succeeded
+   * @param total_iterations  Number of iterations used
+   * @param final_cost        The cost value after optimizing.
+   */
+  virtual void done(bool success,int total_iterations,double final_cost){}
+
+
+  virtual std::string getName() const
+  {
+    return "Not implemented";
+  }
+
+
+  virtual std::string getGroupName() const
+  {
+    return "Not implemented";
+  }
 
 };
 

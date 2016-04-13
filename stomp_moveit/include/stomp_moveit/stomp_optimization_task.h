@@ -47,8 +47,7 @@ public:
    */
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
-                   int num_timesteps,
-                   double dt,
+                   const stomp_core::StompConfiguration &config,
                    moveit_msgs::MoveItErrorCodes& error_code);
 
   /**
@@ -120,6 +119,15 @@ public:
                                       std::size_t num_timesteps,
                                       int iteration_number,
                                       Eigen::MatrixXd& updates) const override;
+
+  /**
+   * @brief Called by Stomp at the end of the optimization process
+   *
+   * @param success           Whether the optimization succeeded
+   * @param total_iterations  Number of iterations used
+   * @param final_cost        The cost value after optimizing.
+   */
+  virtual void done(bool success,int total_iterations,double final_cost) override;
 
 protected:
 

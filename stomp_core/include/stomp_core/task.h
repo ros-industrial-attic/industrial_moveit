@@ -28,6 +28,7 @@
 #include <XmlRpcValue.h>
 #include <boost/shared_ptr.hpp>
 #include <Eigen/Core>
+#include "stomp_core/utils.h"
 
 namespace stomp_core
 {
@@ -43,7 +44,6 @@ public:
     Task(){}
 
     virtual ~Task(){};
-
 
     /**
      * @brief computes the state costs as a function of the parameters for each time step.

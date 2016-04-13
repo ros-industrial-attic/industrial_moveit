@@ -8,8 +8,8 @@
 #include <ros/ros.h>
 #include <moveit/robot_state/conversions.h>
 #include <stomp_moveit/stomp_planner.h>
-#include <stomp_core/stomp_core_utils.h>
 #include <class_loader/class_loader.h>
+#include <stomp_core/utils.h>
 
 
 const std::string DESCRIPTION = "STOMP";
@@ -91,8 +91,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   }
 
   // setting up up optimization task
-  if(!task_->setMotionPlanRequest(planning_scene_,request_, stomp_config_.num_timesteps,
-                                  stomp_config_.delta_t,res.error_code_))
+  if(!task_->setMotionPlanRequest(planning_scene_,request_, stomp_config_,res.error_code_))
   {
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
     return false;
