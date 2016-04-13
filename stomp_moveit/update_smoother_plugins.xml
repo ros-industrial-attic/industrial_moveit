@@ -1,0 +1,7 @@
+<library path="libstomp_moveit_smoothers">
+  <class name="stomp_moveit/ControlCostProjectionMatrix" type="stomp_moveit::smoothers::ControlCostProjection" base_class_type="stomp_moveit::smoothers::SmootherInterface">
+    <description>
+      Applies the Control Cost Projection matrix "M" in order to smooth out the noisy parameter updates. 
+    </description>
+  </class>
+</library>

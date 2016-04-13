@@ -89,6 +89,26 @@ public:
       return true;
     };
 
+
+    /**
+     * Applies a smoothing scheme to the parameter updates
+     *
+     * @param start_timestep      column index in at which to start the smoothing.
+     * @param num_timestep        number of elements column-wise to which smoothing will be applied.
+     * @param dt                  time step.
+     * @param iteration_number    the current iteration count.
+     * @param updates             the parameter updates.
+     * @return false if there was a failure, true otherwise.
+     */
+    virtual bool smoothParameterUpdates(std::size_t start_timestep,
+                                        std::size_t num_timesteps,
+                                        double dt,
+                                        int iteration_number,
+                                        Eigen::MatrixXd& updates) const
+    {
+      return true;
+    }
+
 };
 
 }

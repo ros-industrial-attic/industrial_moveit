@@ -349,7 +349,6 @@ bool Stomp::resetVariables()
     max = projection_matrix_M_(t,t);
     projection_matrix_M_.col(t)*= (1.0/(config_.num_timesteps*max)); // scaling such that the maximum value is 1/num_timesteps
   }
-  inv_projection_matrix_M_ = projection_matrix_M_.fullPivLu().inverse();
 
   /* Noise Generation*/
   random_dist_generators_.clear();
@@ -390,9 +389,9 @@ bool Stomp::resetVariables()
   }
 
   // parameter updates
+  parameters_updates_ = Eigen::MatrixXd::Zero(d, config_.num_timesteps);
   parameters_control_costs_= Eigen::MatrixXd::Zero(d, config_.num_timesteps);
   parameters_state_costs_ = Eigen::VectorXd::Zero(config_.num_timesteps);
-  temp_parameter_updates_ = Eigen::VectorXd::Zero(config_.num_timesteps);
 
   return true;
 }
@@ -790,22 +789,30 @@ bool Stomp::computeProbabilities()
 
 bool Stomp::updateParameters()
 {
+  // computing updates from probabilities using convex combination
+  parameters_updates_.setZero();
   for(auto d = 0u; d < config_.num_dimensions ; d++)
   {
 
-    temp_parameter_updates_.setZero();
     for(auto r = 0u; r < num_active_rollouts_; r++)
     {
       auto& rollout = noisy_rollouts_[r];
-      temp_parameter_updates_ += (rollout.noise.row(d).array() * rollout.probabilities.row(d).array()).matrix();
+      parameters_updates_.row(d) +=  (rollout.noise.row(d).array() * rollout.probabilities.row(d).array()).matrix();
     }
-
-    parameters_optimized_.row(d) += (projection_matrix_M_*temp_parameter_updates_).transpose();
 
   }
 
-  return true;
+  // applying smoothing
+  if(!task_->smoothParameterUpdates(0,config_.num_timesteps,config_.delta_t,current_iteration_,parameters_updates_))
+  {
+    ROS_ERROR("Update smoothing step failed");
+    return false;
+  }
 
+  // updating parameters
+  parameters_optimized_ += parameters_updates_;
+
+  return true;
 }
 
 bool Stomp::filterUpdatedParameters()

@@ -82,11 +82,13 @@ static const double FINITE_DIFF_COEFFS[FINITE_DIFF_RULE_LENGTH][FINITE_DIFF_RULE
     {0, 1 / 12.0, -17 / 12.0, 46 / 12.0, -46 / 12.0, 17 / 12.0, -1 / 12.0} // jerk
 };
 
-bool generateFiniteDifferenceMatrix(int num_time_steps, DerivativeOrders::DerivativeOrder order, double dt,
+void generateFiniteDifferenceMatrix(int num_time_steps, DerivativeOrders::DerivativeOrder order, double dt,
                                     Eigen::MatrixXd& diff_matrix);
 
 void differentiate(const Eigen::VectorXd& parameters, DerivativeOrders::DerivativeOrder order,
                           double dt, Eigen::VectorXd& derivatives );
+
+void generateSmoothingMatrix(int num_time_steps,double dt, Eigen::MatrixXd& projection_matrix_M);
 
 void toVector(const Eigen::MatrixXd& m,std::vector<Eigen::VectorXd>& v);
 std::string toString(const std::vector<Eigen::VectorXd>& data);

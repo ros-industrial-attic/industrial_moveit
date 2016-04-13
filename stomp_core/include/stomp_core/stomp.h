@@ -119,9 +119,9 @@ protected:
   double parameters_total_cost_;  /**< Total cost of the optimized parameters */
   Eigen::MatrixXd initial_control_cost_parameters_;    /**< [Dimensions][timesteps]*/
   Eigen::MatrixXd parameters_optimized_;               /**< [Dimensions][timesteps]*/
+  Eigen::MatrixXd parameters_updates_;                 /**< [Dimensions][timesteps]*/
   Eigen::VectorXd parameters_state_costs_;                          /**< [timesteps]*/
   Eigen::MatrixXd parameters_control_costs_;           /**< [Dimensions][timesteps]*/
-  Eigen::VectorXd temp_parameter_updates_;                          /**< [timesteps]*/
 
   // noise generation
   std::vector<double> noise_stddevs_;
@@ -143,7 +143,6 @@ protected:
   Eigen::MatrixXd control_cost_matrix_R_;           /**< [timesteps x timesteps], Referred to as 'R = A x A_transpose' in the literature */
   Eigen::MatrixXd inv_control_cost_matrix_R_;       /**< [timesteps x timesteps], R^-1 ' matrix */
   Eigen::MatrixXd projection_matrix_M_;             /**< [timesteps x timesteps], Projection smoothing matrix  M > */
-  Eigen::MatrixXd inv_projection_matrix_M_;         /**< [timesteps x timesteps], Inverse projection smoothing matrix M-1 >*/
 
 
 };

@@ -35,7 +35,8 @@ bool parsePlugins(XmlRpc::XmlRpcValue config,
   }
   else
   {
-    ROS_ERROR("Failed to find plugin under entry '%s' in parameter %s",param_name.c_str(),config.toXml().c_str());
+    ROS_WARN("Plugin under entry '%s' was not found in ros parameter.",param_name.c_str());
+    ROS_DEBUG("Failed to find plugin under entry '%s' in ros parameter %s",param_name.c_str(),config.toXml().c_str());
     return false;
   }
 
@@ -55,6 +56,7 @@ StompOptimizationTask::StompOptimizationTask(
   // initializing plugin loaders
   cost_function_loader_.reset(new CostFunctionLoader("stomp_moveit", "stomp_moveit::cost_functions::StompCostFunction"));
   filter_loader_.reset(new FilterLoader("stomp_moveit", "stomp_moveit::filters::StompFilter"));
+  smoother_loader_.reset(new SmootherLoader("stomp_moveit", "stomp_moveit::smoothers::SmootherInterface"));
 
   // loading cost function plugins
   if(!initializeCostFunctionPlugins(config))
@@ -73,6 +75,12 @@ StompOptimizationTask::StompOptimizationTask(
   if(!initializeFilterPlugins(config,"optimized_filters",filters_))
   {
     ROS_WARN("StompOptimizationTask failed to load 'optimized_filters' plugins from yaml");
+  }
+
+  // loading smoother plugins
+  if(!initializeSmootherPlugins(config))
+  {
+    ROS_WARN("StompOptimizationTask failed to load 'update_smoothers' plugins from yaml");
   }
 }
 
@@ -104,6 +112,7 @@ bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcVa
       if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
       {
         cost_functions_.push_back(plugin);
+        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" CostFunction plugin");
       }
       else
       {
@@ -157,6 +166,49 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
       if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
       {
         filters.push_back(plugin);
+        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" Filter plugin");
+        success = true;
+      }
+      else
+      {
+        ROS_WARN("%s plugin failed to initialize",entry.first.c_str());
+        continue;
+      }
+    }
+  }
+  else
+  {
+    return false;
+  }
+
+  return success;
+}
+
+bool StompOptimizationTask::initializeSmootherPlugins(const XmlRpc::XmlRpcValue& config)
+{
+  std::map<std::string,XmlRpc::XmlRpcValue> plugins_map;
+  bool success = false;
+  if(parsePlugins(config,"update_smoothers",plugins_map))
+  {
+    for(auto& entry: plugins_map)
+    {
+      // instantiating
+      smoothers::SmootherInterfacePtr plugin;
+      try
+      {
+        plugin = smoother_loader_->createInstance(entry.first);
+      }
+      catch(pluginlib::PluginlibException& ex)
+      {
+        ROS_WARN("%s plugin could not be created",entry.first.c_str());
+        continue;
+      }
+
+      // initializing
+      if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
+      {
+        smoothers_.push_back(plugin);
+        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" Smoother plugin");
         success = true;
       }
       else
@@ -223,6 +275,32 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
     if(!p->setMotionPlanRequest(planning_scene,req,error_code))
     {
       ROS_ERROR("Failed to set Plan Request on filter %s",p->getName().c_str());
+      return false;
+    }
+  }
+
+  for(auto p: smoothers_)
+  {
+    if(!p->setMotionPlanRequest(planning_scene,req,error_code))
+    {
+      ROS_ERROR("Failed to set Plan Request on smoother %s",p->getName().c_str());
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool StompOptimizationTask::smoothParameterUpdates(std::size_t start_timestep,
+                                    std::size_t num_timesteps,
+                                    double dt,
+                                    int iteration_number,
+                                    Eigen::MatrixXd& updates) const
+{
+  for(auto& s : smoothers_)
+  {
+    if(!s->smooth(start_timestep,num_timesteps,dt,iteration_number,updates))
+    {
       return false;
     }
   }

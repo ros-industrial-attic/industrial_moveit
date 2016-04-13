@@ -51,7 +51,7 @@ stomp/manipulator_rail:
   task:
     cost_functions:
       - class: stomp_moveit/CollisionCheck 
-        collision_penalty: 5.0
+        collision_penalty: 1.0
         cost_weight: 1.0
 #      - class: stomp_moveit/ObstacleAvoidance 
 #        collision_clearance: 0.2
@@ -65,5 +65,7 @@ stomp/manipulator_rail:
       - class: stomp_moveit/JointLimits
         lock_start: True
         lock_goal: True
+    update_smoothers:
+      - class: stomp_moveit/ControlCostProjectionMatrix
     
     
