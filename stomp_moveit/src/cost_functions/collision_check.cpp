@@ -40,6 +40,7 @@ bool CollisionCheck::initialize(moveit::core::RobotModelConstPtr robot_model_ptr
 
 bool CollisionCheck::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                  const moveit_msgs::MotionPlanRequest &req,
+                 int num_timesteps,
                  moveit_msgs::MoveItErrorCodes& error_code)
 {
   planning_scene_ = planning_scene;

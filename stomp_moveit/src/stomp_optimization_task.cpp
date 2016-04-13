@@ -241,6 +241,7 @@ bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
   {
     bool valid;
     auto cf = cost_functions_[i];
+
     if(!cf->computeCosts(parameters,start_timestep,num_timesteps,iteration_number,rollout_number,state_costs,valid))
     {
       return false;
@@ -256,11 +257,12 @@ bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
 
 bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                                         const moveit_msgs::MotionPlanRequest &req,
+                                        int num_timesteps,
                                         moveit_msgs::MoveItErrorCodes& error_code)
 {
   for(auto p : cost_functions_)
   {
-    if(!p->setMotionPlanRequest(planning_scene,req,error_code))
+    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,error_code))
     {
       ROS_ERROR("Failed to set Plan Request on cost function %s",p->getName().c_str());
       return false;
@@ -272,7 +274,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
   all_filters.insert(all_filters.end(),filters_.begin(),filters_.end());
   for(auto p: all_filters)
   {
-    if(!p->setMotionPlanRequest(planning_scene,req,error_code))
+    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,error_code))
     {
       ROS_ERROR("Failed to set Plan Request on filter %s",p->getName().c_str());
       return false;
@@ -281,7 +283,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
 
   for(auto p: smoothers_)
   {
-    if(!p->setMotionPlanRequest(planning_scene,req,error_code))
+    if(!p->setMotionPlanRequest(planning_scene,req,num_timesteps,error_code))
     {
       ROS_ERROR("Failed to set Plan Request on smoother %s",p->getName().c_str());
       return false;

@@ -55,8 +55,12 @@ bool ControlCostProjection::configure(const XmlRpc::XmlRpcValue& config)
 
 bool ControlCostProjection::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                  const moveit_msgs::MotionPlanRequest &req,
+                 int num_timesteps,
                  moveit_msgs::MoveItErrorCodes& error_code)
 {
+
+  num_timesteps_ = num_timesteps;
+  stomp_core::generateSmoothingMatrix(num_timesteps_,DEFAULT_TIME_STEP,projection_matrix_M_);
 
   error_code.val = error_code.SUCCESS;
   return true;
@@ -72,6 +76,8 @@ bool ControlCostProjection::smooth(std::size_t start_timestep,
   {
     num_timesteps_ = updates.cols();
     stomp_core::generateSmoothingMatrix(num_timesteps_,DEFAULT_TIME_STEP,projection_matrix_M_);
+    ROS_WARN("Number of time steps [%i] in updates doesn't match the projection matrix dimensions [%i x %i], will recompute matrix",
+             int(updates.cols()),num_timesteps_,num_timesteps_);
   }
 
   for(auto d = 0u; d < updates.rows();d++)
