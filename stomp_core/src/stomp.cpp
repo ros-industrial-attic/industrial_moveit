@@ -324,9 +324,6 @@ bool Stomp::resetVariables()
   generateFiniteDifferenceMatrix(num_timesteps_padded_,DerivativeOrders::STOMP_ACCELERATION,
                                  OPTIMIZATION_TIMESTEP,finite_diff_matrix_A_padded_);
 
-  finite_diff_matrix_A_ = finite_diff_matrix_A_padded_.block(
-      start_index_padded_,start_index_padded_,config_.num_timesteps,config_.num_timesteps);
-
   /* control cost matrix (R = A_transpose * A):
    * Note: Original code multiplies the A product by the time interval.  However this is not
    * what was described in the literature
@@ -343,15 +340,6 @@ bool Stomp::resetVariables()
   control_cost_matrix_R_padded_ *= maxVal;
   control_cost_matrix_R_ *= maxVal;
   inv_control_cost_matrix_R_ /= maxVal;
-
-  // projection matrix
-  projection_matrix_M_ = inv_control_cost_matrix_R_;
-  double max = 0;
-  for(auto t = 0u; t < config_.num_timesteps; t++)
-  {
-    max = projection_matrix_M_(t,t);
-    projection_matrix_M_.col(t)*= (1.0/(config_.num_timesteps*max)); // scaling such that the maximum value is 1/num_timesteps
-  }
 
   /* Noise Generation*/
   random_dist_generators_.clear();
@@ -592,7 +580,7 @@ bool Stomp::filterNoisyRollouts()
 {
   // apply post noise generation filters
   bool filtered = false;
-  for(auto r = 0u ; r < num_active_rollouts_; r++)
+  for(auto r = 0u ; r < config_.num_rollouts; r++)
   {
     if(!task_->filterNoisyParameters(0,config_.num_timesteps,current_iteration_,r,noisy_rollouts_[r].parameters_noise,filtered))
     {

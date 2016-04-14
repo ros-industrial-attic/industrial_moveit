@@ -88,7 +88,6 @@ protected:
   // optimized parameters
   bool parameters_valid_;         /**< whether or not the optimized parameters are valid */
   double parameters_total_cost_;  /**< Total cost of the optimized parameters */
-  Eigen::MatrixXd initial_control_cost_parameters_;    /**< [Dimensions][timesteps]*/
   Eigen::MatrixXd parameters_optimized_;               /**< [Dimensions][timesteps]*/
   Eigen::MatrixXd parameters_updates_;                 /**< [Dimensions][timesteps]*/
   Eigen::VectorXd parameters_state_costs_;                          /**< [timesteps]*/
@@ -110,10 +109,8 @@ protected:
   int start_index_padded_;                          /** index corresponding to the start of the non-paded section in the padded arrays */
   Eigen::MatrixXd finite_diff_matrix_A_padded_;
   Eigen::MatrixXd control_cost_matrix_R_padded_;
-  Eigen::MatrixXd finite_diff_matrix_A_;            /**< [timesteps x timesteps], Referred to as 'A' in the literature */
   Eigen::MatrixXd control_cost_matrix_R_;           /**< [timesteps x timesteps], Referred to as 'R = A x A_transpose' in the literature */
   Eigen::MatrixXd inv_control_cost_matrix_R_;       /**< [timesteps x timesteps], R^-1 ' matrix */
-  Eigen::MatrixXd projection_matrix_M_;             /**< [timesteps x timesteps], Projection smoothing matrix  M > */
 
 
 };
