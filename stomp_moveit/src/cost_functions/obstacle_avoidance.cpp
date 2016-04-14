@@ -6,6 +6,7 @@
  */
 #include <ros/console.h>
 #include <pluginlib/class_list_macros.h>
+#include <moveit/robot_state/conversions.h>
 #include "stomp_moveit/cost_functions/obstacle_avoidance.h"
 
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::ObstacleAvoidance,stomp_moveit::cost_functions::StompCostFunction);
@@ -19,7 +20,8 @@ namespace cost_functions
 {
 
 ObstacleAvoidance::ObstacleAvoidance():
-    name_("ObstacleAvoidancePlugin")
+    name_("ObstacleAvoidancePlugin"),
+    robot_state_()
 {
   // TODO Auto-generated constructor stub
 
@@ -43,6 +45,8 @@ bool ObstacleAvoidance::setMotionPlanRequest(const planning_scene::PlanningScene
                  const stomp_core::StompConfiguration &config,
                  moveit_msgs::MoveItErrorCodes& error_code)
 {
+  using namespace moveit::core;
+
   planning_scene_ = planning_scene;
   plan_request_ = req;
   error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
@@ -61,6 +65,14 @@ bool ObstacleAvoidance::setMotionPlanRequest(const planning_scene::PlanningScene
   collision_world_.reset(new collision_detection::CollisionWorldFCLDetailed(
       boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld()), collision_clearance_));
 
+  // storing robot state
+  robot_state_.reset(new RobotState(robot_model_ptr_));
+  if(!robotStateMsgToRobotState(req.start_state,*robot_state_,true))
+  {
+    ROS_ERROR("%s Failed to get current robot state from request",getName().c_str());
+    return false;
+  }
+
   return true;
 }
 
@@ -74,6 +86,12 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
 {
 
   using namespace moveit::core;
+
+  if(!robot_state_)
+  {
+    ROS_ERROR("%s Robot State has not been updated",getName().c_str());
+    return false;
+  }
 
   typedef collision_detection::CollisionResult::ContactMap ContactMap;
   typedef ContactMap::iterator ContactMapIterator;
@@ -90,7 +108,6 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
 
   // robot state
   const JointModelGroup* joint_group = robot_model_ptr_->getJointModelGroup(group_name_);
-  RobotStatePtr robot_state_ptr(new RobotState(robot_model_ptr_));
   std::vector<double> joint_values(parameters.rows(),0);
 
   if(parameters.cols()<start_timestep + num_timesteps)
@@ -102,8 +119,8 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
   // iterating through collisions
   for (auto t=start_timestep; t<start_timestep + num_timesteps; ++t)
   {
-    robot_state_ptr->setJointGroupPositions(joint_group,parameters.col(t));
-    robot_state_ptr->update();
+    robot_state_->setJointGroupPositions(joint_group,parameters.col(t));
+    robot_state_->update();
 
     // checking robot vs world (attached objects, octomap, not in urdf) collisions
     result_world_collision.distance = std::numeric_limits<double>::max();
@@ -111,12 +128,12 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
     collision_world_->checkRobotCollision(request,
                                           result_world_collision,
                                           *collision_robot_,
-                                          *robot_state_ptr,
+                                          *robot_state_,
                                           planning_scene_->getAllowedCollisionMatrix());
 
     collision_robot_->checkSelfCollision(request,
                                          result_robot_collision,
-                                         *robot_state_ptr,
+                                         *robot_state_,
                                          planning_scene_->getAllowedCollisionMatrix());
 
     results[0]= result_world_collision;
@@ -168,6 +185,11 @@ bool ObstacleAvoidance::configure(const XmlRpc::XmlRpcValue& config)
   }
 
   return true;
+}
+
+void ObstacleAvoidance::done(bool success,int total_iterations,double final_cost)
+{
+  robot_state_.reset();
 }
 
 } /* namespace cost_functions */

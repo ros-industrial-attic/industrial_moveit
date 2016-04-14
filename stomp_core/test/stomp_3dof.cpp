@@ -61,6 +61,16 @@ public:
                                         std::size_t start_timestep,
                                         std::size_t num_timesteps,
                                         int iteration_number,
+                                        Eigen::VectorXd& costs,
+                                        bool& validity) const override
+  {
+    return computeNoisyCosts(parameters,start_timestep,num_timesteps,iteration_number,-1,costs,validity);
+  }
+
+  virtual bool computeNoisyCosts(const Trajectory& parameters,
+                                        std::size_t start_timestep,
+                                        std::size_t num_timesteps,
+                                        int iteration_number,
                                         int rollout_number,
                                         Eigen::VectorXd& costs,
                                         bool& validity) const override

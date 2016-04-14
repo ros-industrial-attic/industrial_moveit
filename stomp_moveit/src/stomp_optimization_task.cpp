@@ -228,7 +228,7 @@ bool StompOptimizationTask::initializeSmootherPlugins(const XmlRpc::XmlRpcValue&
   return success;
 }
 
-bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
+bool StompOptimizationTask::computeNoisyCosts(const Eigen::MatrixXd& parameters,
                                          std::size_t start_timestep,
                                          std::size_t num_timesteps,
                                          int iteration_number,
@@ -245,6 +245,34 @@ bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
     auto cf = cost_functions_[i];
 
     if(!cf->computeCosts(parameters,start_timestep,num_timesteps,iteration_number,rollout_number,state_costs,valid))
+    {
+      return false;
+    }
+
+    validity &= valid;
+
+    cost_matrix.col(i) = state_costs * cf->getWeight();
+  }
+  costs = cost_matrix.rowwise().sum();
+  return true;
+}
+
+bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
+                                         std::size_t start_timestep,
+                                         std::size_t num_timesteps,
+                                         int iteration_number,
+                                         Eigen::VectorXd& costs,
+                                         bool& validity) const
+{
+  Eigen::MatrixXd cost_matrix = Eigen::MatrixXd::Zero(num_timesteps,cost_functions_.size());
+  Eigen::VectorXd state_costs = Eigen::VectorXd::Zero(num_timesteps);
+  validity = true;
+  for(auto i = 0u; i < cost_functions_.size(); i++ )
+  {
+    bool valid;
+    auto cf = cost_functions_[i];
+
+    if(!cf->computeCosts(parameters,start_timestep,num_timesteps,iteration_number,cf->getOptimizedIndex(),state_costs,valid))
     {
       return false;
     }
@@ -342,7 +370,7 @@ bool StompOptimizationTask::filterParameters(std::size_t start_timestep,
   bool temp;
   for(auto& f: filters_)
   {
-    if(f->filter(start_timestep,num_timesteps,iteration_number,-1,parameters,temp))
+    if(f->filter(start_timestep,num_timesteps,iteration_number,f->getOptimizedIndex(),parameters,temp))
     {
       filtered |= temp;
     }

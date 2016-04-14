@@ -65,6 +65,8 @@ public:
     return "CollisionCheck/" + group_name_;
   }
 
+  virtual void done(bool success,int total_iterations,double final_cost) override;
+
 protected:
 
   std::string name_;
@@ -72,6 +74,7 @@ protected:
   // robot details
   std::string group_name_;
   moveit::core::RobotModelConstPtr robot_model_ptr_;
+  moveit::core::RobotStatePtr robot_state_;
 
   // planning context information
   planning_scene::PlanningSceneConstPtr planning_scene_;

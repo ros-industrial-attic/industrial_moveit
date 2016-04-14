@@ -51,25 +51,36 @@ public:
                    moveit_msgs::MoveItErrorCodes& error_code);
 
   /**
-   * @brief calls each loaded cost function class in order to compute the state costs
-   * as a function of the parameters for each time step.
-   *
+   * @brief computes the state costs as a function of the noisy parameters for each time step.
    * @param parameters [num_dimensions] num_parameters - policy parameters to execute
-   * @param start_timestep    start index into the 'parameters' array, usually 0.
-   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'   *
-   * @param iteration_number  The current iteration count in the optimization loop
-   * @param rollout_number    index of the noisy trajectory whose cost is being evaluated.   *
-   * @param costs             vector containing the state costs per timestep.
-   * @param validity          whether or not the trajectory is valid
+   * @param costs vector containing the state costs per timestep.
+   * @param iteration_number
+   * @param rollout_number index of the noisy trajectory whose cost is being evaluated.
+   * @param validity whether or not the trajectory is valid
+   * @return true if cost were properly computed
+   */
+  virtual bool computeNoisyCosts(const Eigen::MatrixXd& parameters,
+                       std::size_t start_timestep,
+                       std::size_t num_timesteps,
+                       int iteration_number,
+                       int rollout_number,
+                       Eigen::VectorXd& costs,
+                       bool& validity) const;
+
+  /**
+   * @brief computes the state costs as a function of the optimized parameters for each time step.
+   * @param parameters [num_dimensions] num_parameters - policy parameters to execute
+   * @param costs vector containing the state costs per timestep.
+   * @param iteration_number
+   * @param validity whether or not the trajectory is valid
    * @return true if cost were properly computed
    */
   virtual bool computeCosts(const Eigen::MatrixXd& parameters,
-                            std::size_t start_timestep,
-                            std::size_t num_timesteps,
-                            int iteration_number,
-                            int rollout_number,
-                            Eigen::VectorXd& costs,
-                            bool& validity) const override;
+                       std::size_t start_timestep,
+                       std::size_t num_timesteps,
+                       int iteration_number,
+                       Eigen::VectorXd& costs,
+                       bool& validity) const;
 
   /**
    * @brief Filters the given noisy parameters which is applied after noisy trajectory generation. It could be used for clipping

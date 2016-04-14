@@ -651,7 +651,7 @@ bool Stomp::computeRolloutsStateCosts()
     }
 
     Rollout& rollout = noisy_rollouts_[r];
-    if(!task_->computeCosts(rollout.parameters_noise,0,
+    if(!task_->computeNoisyCosts(rollout.parameters_noise,0,
                             config_.num_timesteps,
                             current_iteration_,r,
                             rollout.state_costs,all_valid))
@@ -833,7 +833,7 @@ bool Stomp::computeOptimizedCost()
 
   // state costs
   if(task_->computeCosts(parameters_optimized_,
-                         0,config_.num_timesteps,current_iteration_,0,parameters_state_costs_,parameters_valid_))
+                         0,config_.num_timesteps,current_iteration_,parameters_state_costs_,parameters_valid_))
   {
 
 
