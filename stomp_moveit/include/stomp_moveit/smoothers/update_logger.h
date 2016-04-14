@@ -68,9 +68,14 @@ protected:
   std::string package_;
   std::string directory_;
 
+  // config
+  stomp_core::StompConfiguration stomp_config_;
+
   // logging
+  std::stringstream stream_;
   std::string full_file_name_;
-  std::ofstream stream_;
+  std::ofstream file_stream_;
+  Eigen::IOFormat format_;
 
 };
 
