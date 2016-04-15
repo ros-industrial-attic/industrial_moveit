@@ -60,6 +60,7 @@ target_link_libraries(${PROJECT_NAME}_cost_functions ${catkin_LIBRARIES})
 add_library(${PROJECT_NAME}_filters
   src/filters/joint_limits.cpp
   src/filters/trajectory_visualization.cpp
+  src/filters/multi_trajectory_visualization.cpp
 )
 target_link_libraries(${PROJECT_NAME}_filters ${catkin_LIBRARIES})
 
