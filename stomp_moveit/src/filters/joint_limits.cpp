@@ -106,7 +106,7 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
 }
 
 bool JointLimits::filter(std::size_t start_timestep,std::size_t num_timesteps,
-                         int iteration_number,int rollout_number,Eigen::MatrixXd& parameters,bool& filtered) const
+                         int iteration_number,int rollout_number,Eigen::MatrixXd& parameters,bool& filtered)
 {
   using namespace moveit::core;
 

@@ -14,6 +14,7 @@
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/robot_trajectory/robot_trajectory.h>
 #include <moveit/planning_scene/planning_scene.h>
+#include <moveit_msgs/MotionPlanRequest.h>
 
 namespace stomp_moveit
 {
@@ -55,7 +56,7 @@ public:
                       int iteration_number,
                       int rollout_number,
                       Eigen::MatrixXd& parameters,
-                      bool& filtered) const = 0 ;
+                      bool& filtered) = 0 ;
 
   /**
    * @brief Called by the Stomp at the end of the optimization process

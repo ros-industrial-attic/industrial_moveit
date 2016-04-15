@@ -60,7 +60,7 @@ public:
                          int iteration_number,
                          int rollout_number,
                          Eigen::VectorXd& costs,
-                         bool& validity) const = 0 ;
+                         bool& validity) = 0 ;
 
     /**
      * @brief computes the state costs as a function of the optimized parameters for each time step.
@@ -75,7 +75,7 @@ public:
                          std::size_t num_timesteps,
                          int iteration_number,
                          Eigen::VectorXd& costs,
-                         bool& validity) const = 0 ;
+                         bool& validity) = 0 ;
 
     /**
      * @brief Filters the given noisy parameters which is applied after noisy trajectory generation. It could be used for clipping
@@ -93,7 +93,7 @@ public:
                                        int iteration_number,
                                        int rollout_number,
                                        Eigen::MatrixXd& parameters,
-                                       bool& filtered) const
+                                       bool& filtered)
     {
       filtered = false;
       return true;
@@ -114,7 +114,7 @@ public:
                                   std::size_t num_timesteps,
                                   int iteration_number,
                                   Eigen::MatrixXd& parameters,
-                                  bool& filtered) const
+                                  bool& filtered)
     {
       filtered = false;
       return true;
@@ -133,7 +133,7 @@ public:
     virtual bool smoothParameterUpdates(std::size_t start_timestep,
                                         std::size_t num_timesteps,
                                         int iteration_number,
-                                        Eigen::MatrixXd& updates) const
+                                        Eigen::MatrixXd& updates)
     {
       return true;
     }

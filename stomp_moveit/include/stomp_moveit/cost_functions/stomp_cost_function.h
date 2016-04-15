@@ -64,7 +64,7 @@ public:
                             int iteration_number,
                             int rollout_number,
                             Eigen::VectorXd& costs,
-                            bool& validity) const = 0 ;
+                            bool& validity) = 0 ;
 
   /**
    * @brief Called by the Stomp Task at the end of the optimization process
@@ -81,7 +81,7 @@ public:
     return "Not Implemented";
   }
 
-  virtual double getWeight()
+  virtual double getWeight() const
   {
     return cost_weight_;
   }

@@ -65,7 +65,7 @@ public:
                        int iteration_number,
                        int rollout_number,
                        Eigen::VectorXd& costs,
-                       bool& validity) const;
+                       bool& validity) override;
 
   /**
    * @brief computes the state costs as a function of the optimized parameters for each time step.
@@ -80,7 +80,7 @@ public:
                        std::size_t num_timesteps,
                        int iteration_number,
                        Eigen::VectorXd& costs,
-                       bool& validity) const;
+                       bool& validity) override;
 
   /**
    * @brief Filters the given noisy parameters which is applied after noisy trajectory generation. It could be used for clipping
@@ -98,7 +98,7 @@ public:
                                      int iteration_number,
                                      int rollout_number,
                                      Eigen::MatrixXd& parameters,
-                                     bool& filtered) const override;
+                                     bool& filtered) override;
 
   /**
    * @brief Filters the given parameters which is applied after the update. It could be used for clipping of joint limits
@@ -115,7 +115,7 @@ public:
                                 std::size_t num_timesteps,
                                 int iteration_number,
                                 Eigen::MatrixXd& parameters,
-                                bool& filtered) const override;
+                                bool& filtered) override;
 
   /**
    * @brief Applies a smoothing scheme to the parameter updates
@@ -129,7 +129,7 @@ public:
   virtual bool smoothParameterUpdates(std::size_t start_timestep,
                                       std::size_t num_timesteps,
                                       int iteration_number,
-                                      Eigen::MatrixXd& updates) const override;
+                                      Eigen::MatrixXd& updates) override;
 
   /**
    * @brief Called by Stomp at the end of the optimization process

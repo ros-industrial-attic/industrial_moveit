@@ -11,6 +11,7 @@
 #include <stomp_moveit/filters/stomp_filter.h>
 #include <ros/node_handle.h>
 #include <ros/publisher.h>
+#include <Eigen/Core>
 #include <geometry_msgs/Point.h>
 
 namespace stomp_moveit
@@ -25,14 +26,14 @@ public:
   virtual ~TrajectoryVisualization();
 
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
-                          const std::string& group_name,const XmlRpc::XmlRpcValue& config);
+                          const std::string& group_name,const XmlRpc::XmlRpcValue& config) override;
 
-  virtual bool configure(const XmlRpc::XmlRpcValue& config);
+  virtual bool configure(const XmlRpc::XmlRpcValue& config) override;
 
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
-                   moveit_msgs::MoveItErrorCodes& error_code);
+                   moveit_msgs::MoveItErrorCodes& error_code) override;
 
   /**
    * @brief filters the parameters and modifies the original values
@@ -49,7 +50,7 @@ public:
                       int iteration_number,
                       int rollout_number,
                       Eigen::MatrixXd& parameters,
-                      bool& filtered) const;
+                      bool& filtered) override;
 
   /**
    * @brief Called by the Stomp at the end of the optimization process
@@ -74,6 +75,15 @@ public:
 
 protected:
 
+  // utilities
+  static void eigenToPointsMsgs(const Eigen::MatrixXd& in,std::vector<geometry_msgs::Point>& out);
+
+  static void createToolPathMarker(const Eigen::MatrixXd& tool_line, int id, std::string frame_id,
+                            const std_msgs::ColorRGBA& rgb,double line_width,
+                            std::string ns,visualization_msgs::Marker& m);
+
+protected:
+
   // identity
   std::string name_;
 
@@ -88,13 +98,15 @@ protected:
 
   // parameters
   double line_width_;
-  std::vector<double> rgb_;
+  std_msgs::ColorRGBA rgb_;
+  std_msgs::ColorRGBA error_rgb_;
   bool publish_intermediate_;
   std::string marker_topic_;
   std::string marker_namespace_;
 
   // tool trajectory
-  Eigen::MatrixXd tool_line_;
+  Eigen::MatrixXd tool_traj_line_;
+  visualization_msgs::Marker tool_traj_marker_;
 
 
 };

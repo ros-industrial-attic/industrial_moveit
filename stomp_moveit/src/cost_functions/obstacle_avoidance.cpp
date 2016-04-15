@@ -82,7 +82,7 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
                           int iteration_number,
                           int rollout_number,
                           Eigen::VectorXd& costs,
-                          bool& validity) const
+                          bool& validity)
 {
 
   using namespace moveit::core;

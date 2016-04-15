@@ -52,7 +52,7 @@ public:
                             int iteration_number,
                             int rollout_number,
                             Eigen::VectorXd& costs,
-                            bool& validity) const override;
+                            bool& validity) override;
 
   virtual std::string getGroupName() const override
   {

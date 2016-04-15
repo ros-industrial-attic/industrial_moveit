@@ -234,7 +234,7 @@ bool StompOptimizationTask::computeNoisyCosts(const Eigen::MatrixXd& parameters,
                                          int iteration_number,
                                          int rollout_number,
                                          Eigen::VectorXd& costs,
-                                         bool& validity) const
+                                         bool& validity)
 {
   Eigen::MatrixXd cost_matrix = Eigen::MatrixXd::Zero(num_timesteps,cost_functions_.size());
   Eigen::VectorXd state_costs = Eigen::VectorXd::Zero(num_timesteps);
@@ -262,7 +262,7 @@ bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
                                          std::size_t num_timesteps,
                                          int iteration_number,
                                          Eigen::VectorXd& costs,
-                                         bool& validity) const
+                                         bool& validity)
 {
   Eigen::MatrixXd cost_matrix = Eigen::MatrixXd::Zero(num_timesteps,cost_functions_.size());
   Eigen::VectorXd state_costs = Eigen::VectorXd::Zero(num_timesteps);
@@ -326,7 +326,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
 bool StompOptimizationTask::smoothParameterUpdates(std::size_t start_timestep,
                                     std::size_t num_timesteps,
                                     int iteration_number,
-                                    Eigen::MatrixXd& updates) const
+                                    Eigen::MatrixXd& updates)
 {
   for(auto& s : smoothers_)
   {
@@ -343,7 +343,7 @@ bool StompOptimizationTask::filterNoisyParameters(std::size_t start_timestep,
                                                   std::size_t num_timesteps,
                                                   int iteration_number,
                                                   int rollout_number,
-                                                  Eigen::MatrixXd& parameters,bool& filtered) const
+                                                  Eigen::MatrixXd& parameters,bool& filtered)
 {
   filtered = false;
   bool temp;
@@ -364,7 +364,7 @@ bool StompOptimizationTask::filterNoisyParameters(std::size_t start_timestep,
 bool StompOptimizationTask::filterParameters(std::size_t start_timestep,
                                              std::size_t num_timesteps,
                                              int iteration_number,
-                                             Eigen::MatrixXd& parameters,bool& filtered) const
+                                             Eigen::MatrixXd& parameters,bool& filtered)
 {
   filtered = false;
   bool temp;

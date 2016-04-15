@@ -59,7 +59,7 @@ public:
                       int iteration_number,
                       int rollout_number,
                       Eigen::MatrixXd& parameters,
-                      bool& filtered) const override;
+                      bool& filtered) override;
 
 protected:
 

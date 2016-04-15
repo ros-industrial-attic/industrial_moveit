@@ -8,37 +8,16 @@
 
 #include <moveit/robot_state/conversions.h>
 #include <tf/transform_datatypes.h>
+#include <pluginlib/class_list_macros.h>
 #include <stomp_moveit/filters/trajectory_visualization.h>
+
+PLUGINLIB_EXPORT_CLASS(stomp_moveit::filters::TrajectoryVisualization,stomp_moveit::filters::StompFilter);
 
 
 typedef std::vector<geometry_msgs::Point> ToolLine;
 using namespace moveit::core;
 
-void createToolPathMarker(const Eigen::MatrixXd& tool_line, int id, std::string frame_id,
-                          const std::vector<double>& rgb,double line_width,
-                          std::string ns,visualization_msgs::Marker& m,)
-{
-  m.ns = ns;
-  m.id = id;
-  m.header.frame_id = frame_id;
-  m.type = m.LINE_STRIP;
-  m.action = m.ADD;
-  tf::poseTFToMsg(tf::Transform::getIdentity(),m.pose);
-  m.scale.x = line_width;
-
-  if(tool_line.cols() == 0)
-  {
-    return;
-  }
-
-  m.points.resize(tool_line.cols());
-  for(auto t = 0u; t < tool_line.cols(); t++)
-  {
-    m.points[t].x = tool_line(0,t);
-    m.points[t].y = tool_line(1,t);
-    m.points[t].z = tool_line(2,t);
-  }
-}
+static const int MARKER_ID = 1;
 
 namespace stomp_moveit
 {
@@ -46,6 +25,7 @@ namespace filters
 {
 
 TrajectoryVisualization::TrajectoryVisualization():
+    name_("TrajectoryVisualization"),
     nh_("~"),
     line_width_(0.0),
     publish_intermediate_(false)
@@ -65,35 +45,39 @@ bool TrajectoryVisualization::initialize(moveit::core::RobotModelConstPtr robot_
   robot_model_ = robot_model_ptr;
   group_name_ = group_name;
 
-  if(!configure())
+  if(!configure(config))
   {
     return false;
   }
 
   // initializing publisher
-  viz_pub_ = nh_.advertise(marker_topic_,1);
+  viz_pub_ = nh_.advertise<visualization_msgs::Marker>(marker_topic_,1);
 
   return true;
 }
 
 bool TrajectoryVisualization::configure(const XmlRpc::XmlRpcValue& config)
 {
-  auto toStdVector = [] (const XmlRpc::XmlRpcValue& v)
+
+  auto toColorRgb = [](XmlRpc::XmlRpcValue& p)
   {
-    return static_cast<double>(v);
+    std_msgs::ColorRGBA rgb;
+    rgb.r = (static_cast<int>(p[0]))/255.0;
+    rgb.g = static_cast<int>(p[1])/255.0;
+    rgb.b = static_cast<int>(p[2])/255.0;
+    rgb.a = 1.0;
+    return rgb;
   };
 
   XmlRpc::XmlRpcValue c = config;
-  XmlRpc::XmlRpcValue::ValueArray rgb_array_;
-  rgb_.resize(3);
   try
   {
     line_width_ = static_cast<double>(c["line_width"]);
-    rgb_array_ = static_cast<XmlRpc::XmlRpcValue::ValueArray>(c["rgb"]);
-    rgb_ = std::transform(rgb_array_.begin(),rgb_array_.end(),rgb_.begin(),toStdVector);
+    rgb_ = toColorRgb(c["rgb"]);
+    error_rgb_ = toColorRgb(c["error_rgb"]);
     publish_intermediate_ = static_cast<bool>(c["publish_intermediate"]);
-    marker_topic_ = static_cast<std::string>(c["topic"]);
-    marker_namespace_ = static_cast<std::string>(c["maker_namespace"]);
+    marker_topic_ = static_cast<std::string>(c["marker_topic"]);
+    marker_namespace_ = static_cast<std::string>(c["marker_namespace"]);
   }
   catch(XmlRpc::XmlRpcException& e)
   {
@@ -115,19 +99,25 @@ bool TrajectoryVisualization::setMotionPlanRequest(const planning_scene::Plannin
 
 
   // initializing points array
-  tool_line_ = Eigen::MatrixXd::Zero(3,config.num_timesteps);
+  tool_traj_line_ = Eigen::MatrixXd::Zero(3,config.num_timesteps);
+
+  // initializing marker
+  createToolPathMarker(tool_traj_line_,
+                       MARKER_ID,robot_model_->getRootLinkName(),
+                       rgb_,line_width_,
+                       marker_namespace_,tool_traj_marker_);
 
   // updating state
-  state_.reset(new RobotState(robot_model_ptr));
+  state_.reset(new RobotState(robot_model_));
   if(!robotStateMsgToRobotState(req.start_state,*state_,true))
   {
     ROS_ERROR("%s Failed to get current robot state from request",getName().c_str());
     return false;
   }
 
-  //delete current markers
+  //delete current marker
   visualization_msgs::Marker m;
-  createToolPathMarker(Eigen::MatrixXd(),0,robot_model_->getRootLinkName(),rgb_,line_width_,marker_namespace_,m);
+  createToolPathMarker(Eigen::MatrixXd(),MARKER_ID,robot_model_->getRootLinkName(),rgb_,line_width_,marker_namespace_,m);
   m.action = m.DELETE;
   viz_pub_.publish(m);
 
@@ -139,7 +129,7 @@ bool TrajectoryVisualization::filter(std::size_t start_timestep,
                     int iteration_number,
                     int rollout_number,
                     Eigen::MatrixXd& parameters,
-                    bool& filtered) const
+                    bool& filtered)
 {
 
   if(rollout_number != getOptimizedIndex())
@@ -161,14 +151,15 @@ bool TrajectoryVisualization::filter(std::size_t start_timestep,
   {
     state_->setJointGroupPositions(joint_group,parameters.col(t));
     Eigen::Affine3d tool_pos = state_->getFrameTransform(tool_link);
-    tool_line_(0,t) = tool_pos.translation()(0);
-    tool_line_(1,t) = tool_pos.translation()(1);
-    tool_line_(2,t) = tool_pos.translation()(2);
+    tool_traj_line_(0,t) = tool_pos.translation()(0);
+    tool_traj_line_(1,t) = tool_pos.translation()(1);
+    tool_traj_line_(2,t) = tool_pos.translation()(2);
   }
 
   if(publish_intermediate_)
   {
-
+    eigenToPointsMsgs(tool_traj_line_,tool_traj_marker_.points);
+    viz_pub_.publish(tool_traj_marker_);
   }
 
   return true;
@@ -177,7 +168,53 @@ bool TrajectoryVisualization::filter(std::size_t start_timestep,
 
 void TrajectoryVisualization::done(bool success,int total_iterations,double final_cost)
 {
+  eigenToPointsMsgs(tool_traj_line_,tool_traj_marker_.points);
 
+  if(!success)
+  {
+    tool_traj_marker_.color = error_rgb_;
+  }
+
+  viz_pub_.publish(tool_traj_marker_);
+}
+
+void TrajectoryVisualization::createToolPathMarker(const Eigen::MatrixXd& tool_line, int id, std::string frame_id,
+                          const std_msgs::ColorRGBA& rgb,double line_width,
+                          std::string ns,visualization_msgs::Marker& m)
+{
+  m.ns = ns;
+  m.id = id;
+  m.header.frame_id = frame_id;
+  m.type = m.LINE_STRIP;
+  m.action = m.ADD;
+  m.color = rgb;
+  tf::poseTFToMsg(tf::Transform::getIdentity(),m.pose);
+  m.scale.x = line_width;
+
+  if(tool_line.cols() == 0)
+  {
+    return;
+  }
+
+  // copying points into marker
+  eigenToPointsMsgs(tool_line,m.points);
+}
+
+void TrajectoryVisualization::eigenToPointsMsgs(const Eigen::MatrixXd& in,std::vector<geometry_msgs::Point>& out)
+{
+  // resizing
+  if(out.size()!= in.cols())
+  {
+    out.resize(in.cols());
+  }
+
+  // copying points
+  for(auto t = 0u; t < in.cols(); t++)
+  {
+    out[t].x = in(0,t);
+    out[t].y = in(1,t);
+    out[t].z = in(2,t);
+  }
 }
 
 } /* namespace filters */

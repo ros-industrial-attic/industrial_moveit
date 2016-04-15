@@ -65,6 +65,13 @@ stomp/manipulator_rail:
       - class: stomp_moveit/JointLimits
         lock_start: True
         lock_goal: True
+      - class: stomp_moveit/TrajectoryVisualization
+        line_width: 0.05
+        rgb: [0, 191, 255]
+        error_rgb: [255, 0, 0]
+        publish_intermediate: True
+        marker_topic: stomp_trajectory
+        marker_namespace: optimized
     update_smoothers:
       - class: stomp_moveit/UpdateLogger
         package: stomp_moveit
