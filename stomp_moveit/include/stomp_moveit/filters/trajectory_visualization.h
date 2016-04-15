@@ -13,6 +13,7 @@
 #include <ros/publisher.h>
 #include <Eigen/Core>
 #include <geometry_msgs/Point.h>
+#include <visualization_msgs/Marker.h>
 
 namespace stomp_moveit
 {
@@ -73,14 +74,6 @@ public:
     return group_name_;
   }
 
-protected:
-
-  // utilities
-  static void eigenToPointsMsgs(const Eigen::MatrixXd& in,std::vector<geometry_msgs::Point>& out);
-
-  static void createToolPathMarker(const Eigen::MatrixXd& tool_line, int id, std::string frame_id,
-                            const std_msgs::ColorRGBA& rgb,double line_width,
-                            std::string ns,visualization_msgs::Marker& m);
 
 protected:
 

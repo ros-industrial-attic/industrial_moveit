@@ -11,7 +11,6 @@
 
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::ObstacleAvoidance,stomp_moveit::cost_functions::StompCostFunction);
 
-const double DEFAULT_PADDING = 0.0;
 const double DEFAULT_SCALE = 1.0;
 
 namespace stomp_moveit
@@ -21,7 +20,10 @@ namespace cost_functions
 
 ObstacleAvoidance::ObstacleAvoidance():
     name_("ObstacleAvoidancePlugin"),
-    robot_state_()
+    robot_state_(),
+    collision_clearance_(0.0),
+    collision_padding_(0.0),
+    collision_penalty_(0.0)
 {
   // TODO Auto-generated constructor stub
 
@@ -61,7 +63,7 @@ bool ObstacleAvoidance::setMotionPlanRequest(const planning_scene::PlanningScene
   collision_request_.verbose = false;
 
   collision_robot_.reset(new collision_detection::CollisionRobotFCLDetailed(
-      planning_scene_->getRobotModel(), DEFAULT_PADDING, DEFAULT_SCALE, collision_clearance_));
+      planning_scene_->getRobotModel(), collision_padding_, DEFAULT_SCALE, collision_clearance_));
   collision_world_.reset(new collision_detection::CollisionWorldFCLDetailed(
       boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld()), collision_clearance_));
 
@@ -171,11 +173,23 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
 
 bool ObstacleAvoidance::configure(const XmlRpc::XmlRpcValue& config)
 {
+  // check parameter presence
+  auto members = {"collision_clearance","collision_penalty","cost_weight","collision_padding"};
+  for(auto& m : members)
+  {
+    if(!config.hasMember(m))
+    {
+      ROS_ERROR("%s failed to find one or more required parameters",getName().c_str());
+      return false;
+    }
+  }
+
   try
   {
     XmlRpc::XmlRpcValue c = config;
     collision_clearance_ = static_cast<double>(c["collision_clearance"]);
     collision_penalty_ = static_cast<double>(c["collision_penalty"]);
+    collision_padding_ = static_cast<double>(c["collision_padding"]);
     cost_weight_ = static_cast<double>(c["cost_weight"]);
   }
   catch(XmlRpc::XmlRpcException& e)

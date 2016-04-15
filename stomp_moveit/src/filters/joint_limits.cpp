@@ -47,6 +47,18 @@ bool JointLimits::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
 
 bool JointLimits::configure(const XmlRpc::XmlRpcValue& config)
 {
+
+  // check parameter presence
+  auto members = {"lock_start","lock_goal"};
+  for(auto& m : members)
+  {
+    if(!config.hasMember(m))
+    {
+      ROS_ERROR("%s failed to find one or more required parameters",getName().c_str());
+      return false;
+    }
+  }
+
   try
   {
     XmlRpc::XmlRpcValue c = config;

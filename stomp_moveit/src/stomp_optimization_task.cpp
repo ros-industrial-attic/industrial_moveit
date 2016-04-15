@@ -63,26 +63,26 @@ StompOptimizationTask::StompOptimizationTask(
   // loading cost function plugins
   if(!initializeCostFunctionPlugins(config))
   {
-    ROS_ERROR("StompOptimizationTask failed to load 'cost_functions' plugins from yaml");
+    ROS_ERROR("StompOptimizationTask/%s failed to load 'cost_functions' plugins from yaml",group_name.c_str());
     throw std::logic_error("plugin not found");
   }
 
   // loading noisy filter plugins
   if(!initializeFilterPlugins(config,"noisy_filters",noisy_filters_))
   {
-    ROS_WARN("StompOptimizationTask failed to load 'noisy_filters' plugins from yaml");
+    ROS_WARN("StompOptimizationTask/%s failed to load 'noisy_filters' plugins from yaml",group_name.c_str());
   }
 
   // loading filter plugins
   if(!initializeFilterPlugins(config,"optimized_filters",filters_))
   {
-    ROS_WARN("StompOptimizationTask failed to load 'optimized_filters' plugins from yaml");
+    ROS_WARN("StompOptimizationTask/%s failed to load 'optimized_filters' plugins from yaml",group_name.c_str());
   }
 
   // loading smoother plugins
   if(!initializeSmootherPlugins(config))
   {
-    ROS_WARN("StompOptimizationTask failed to load 'update_smoothers' plugins from yaml");
+    ROS_WARN("StompOptimizationTask/%s failed to load 'update_smoothers' plugins from yaml",group_name.c_str());
   }
 }
 
@@ -114,7 +114,7 @@ bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcVa
       if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
       {
         cost_functions_.push_back(plugin);
-        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" CostFunction plugin");
+        ROS_INFO_STREAM("StompOptimizationTask loaded "<<plugin->getName()<<" CostFunction plugin");
       }
       else
       {

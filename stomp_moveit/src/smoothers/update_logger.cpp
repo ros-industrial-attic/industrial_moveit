@@ -40,6 +40,17 @@ bool UpdateLogger::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
 
 bool UpdateLogger::configure(const XmlRpc::XmlRpcValue& config)
 {
+  // check parameter presence
+  auto members = {"filename","directory","package"};
+  for(auto& m : members)
+  {
+    if(!config.hasMember(m))
+    {
+      ROS_ERROR("%s failed to find one or more required parameters",getName().c_str());
+      return false;
+    }
+  }
+
   XmlRpc::XmlRpcValue c = config;
   try
   {

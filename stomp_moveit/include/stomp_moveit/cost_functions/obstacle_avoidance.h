@@ -80,9 +80,12 @@ protected:
   planning_scene::PlanningSceneConstPtr planning_scene_;
   moveit_msgs::MotionPlanRequest plan_request_;
 
-  // collision
+  // parameters
   double collision_clearance_;
   double collision_penalty_;
+  double collision_padding_;
+
+  // collision
   collision_detection::CollisionRequest collision_request_;
   collision_detection::CollisionRobotPtr collision_robot_;
   collision_detection::CollisionWorldPtr collision_world_;

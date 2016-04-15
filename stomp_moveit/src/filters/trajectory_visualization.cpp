@@ -19,6 +19,46 @@ using namespace moveit::core;
 
 static const int MARKER_ID = 1;
 
+
+inline void eigenToPointsMsgs(const Eigen::MatrixXd& in,std::vector<geometry_msgs::Point>& out)
+{
+  // resizing
+  if(out.size()!= in.cols())
+  {
+    out.resize(in.cols());
+  }
+
+  // copying points
+  for(auto t = 0u; t < in.cols(); t++)
+  {
+    out[t].x = in(0,t);
+    out[t].y = in(1,t);
+    out[t].z = in(2,t);
+  }
+}
+
+inline void createToolPathMarker(const Eigen::MatrixXd& tool_line, int id, std::string frame_id,
+                          const std_msgs::ColorRGBA& rgb,double line_width,
+                          std::string ns,visualization_msgs::Marker& m)
+{
+  m.ns = ns;
+  m.id = id;
+  m.header.frame_id = frame_id;
+  m.type = m.LINE_STRIP;
+  m.action = m.ADD;
+  m.color = rgb;
+  tf::poseTFToMsg(tf::Transform::getIdentity(),m.pose);
+  m.scale.x = line_width;
+
+  if(tool_line.cols() == 0)
+  {
+    return;
+  }
+
+  // copying points into marker
+  eigenToPointsMsgs(tool_line,m.points);
+}
+
 namespace stomp_moveit
 {
 namespace filters
@@ -69,6 +109,17 @@ bool TrajectoryVisualization::configure(const XmlRpc::XmlRpcValue& config)
     return rgb;
   };
 
+  // check parameter presence
+  auto members = {"line_width","rgb","error_rgb","publish_intermediate","marker_topic","marker_namespace"};
+  for(auto& m : members)
+  {
+    if(!config.hasMember(m))
+    {
+      ROS_ERROR("%s failed to find one or more required parameters",getName().c_str());
+      return false;
+    }
+  }
+
   XmlRpc::XmlRpcValue c = config;
   try
   {
@@ -81,7 +132,7 @@ bool TrajectoryVisualization::configure(const XmlRpc::XmlRpcValue& config)
   }
   catch(XmlRpc::XmlRpcException& e)
   {
-    ROS_ERROR("%s failed to find required parameters, %s",getName().c_str(),e.getMessage().c_str());
+    ROS_ERROR("%s failed to load required parameters, %s",getName().c_str(),e.getMessage().c_str());
     return false;
   }
 
@@ -176,45 +227,6 @@ void TrajectoryVisualization::done(bool success,int total_iterations,double fina
   }
 
   viz_pub_.publish(tool_traj_marker_);
-}
-
-void TrajectoryVisualization::createToolPathMarker(const Eigen::MatrixXd& tool_line, int id, std::string frame_id,
-                          const std_msgs::ColorRGBA& rgb,double line_width,
-                          std::string ns,visualization_msgs::Marker& m)
-{
-  m.ns = ns;
-  m.id = id;
-  m.header.frame_id = frame_id;
-  m.type = m.LINE_STRIP;
-  m.action = m.ADD;
-  m.color = rgb;
-  tf::poseTFToMsg(tf::Transform::getIdentity(),m.pose);
-  m.scale.x = line_width;
-
-  if(tool_line.cols() == 0)
-  {
-    return;
-  }
-
-  // copying points into marker
-  eigenToPointsMsgs(tool_line,m.points);
-}
-
-void TrajectoryVisualization::eigenToPointsMsgs(const Eigen::MatrixXd& in,std::vector<geometry_msgs::Point>& out)
-{
-  // resizing
-  if(out.size()!= in.cols())
-  {
-    out.resize(in.cols());
-  }
-
-  // copying points
-  for(auto t = 0u; t < in.cols(); t++)
-  {
-    out[t].x = in(0,t);
-    out[t].y = in(1,t);
-    out[t].z = in(2,t);
-  }
 }
 
 } /* namespace filters */
