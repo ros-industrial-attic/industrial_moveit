@@ -10,6 +10,7 @@
 
 #include <string>
 #include <XmlRpc.h>
+#include <stomp_core/utils.h>
 #include <moveit_msgs/GetMotionPlan.h>
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/robot_trajectory/robot_trajectory.h>
@@ -42,6 +43,7 @@ public:
 
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
+                   const stomp_core::StompConfiguration &config,
                    moveit_msgs::MoveItErrorCodes& error_code) = 0;
 
 
@@ -64,9 +66,19 @@ public:
                             Eigen::VectorXd& costs,
                             bool& validity) const = 0 ;
 
+  /**
+   * @brief Called by the Stomp Task at the end of the optimization process
+   *
+   * @param success           Whether the optimization succeeded
+   * @param total_iterations  Number of iterations used
+   * @param final_cost        The cost value after optimizing.
+   */
+  virtual void done(bool success,int total_iterations,double final_cost){}
+
+
   virtual std::string getGroupName() const
   {
-    return "";
+    return "Not Implemented";
   }
 
   virtual double getWeight()
@@ -74,7 +86,11 @@ public:
     return cost_weight_;
   }
 
-  virtual std::string getName() const = 0;
+  virtual std::string getName() const
+  {
+    return "Not Implemented";
+  }
+
 
 protected:
 

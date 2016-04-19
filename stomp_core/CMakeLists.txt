@@ -34,7 +34,7 @@ include_directories(
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
    src/stomp.cpp
-   src/stomp_core_utils.cpp
+   src/utils.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})

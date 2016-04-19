@@ -75,6 +75,36 @@ namespace DerivativeOrders
 }
 ;
 
+namespace TrajectoryInitializations
+{
+enum TrajectoryInitialization
+{
+  LINEAR_INTERPOLATION = 1,
+  CUBIC_POLYNOMIAL_INTERPOLATION,
+  MININUM_CONTROL_COST
+};
+}
+
+struct StompConfiguration
+{
+  // General settings
+  int num_iterations;
+  int num_iterations_after_valid;   /**< Stomp will stop optimizing this many iterations after finding a valid solution */
+  int num_timesteps;
+  int num_dimensions;               /** parameter dimensionality */
+  double delta_t;               /** time change between consecutive points */
+  int initialization_method; /** TrajectoryInitializations::TrajectoryInitialization */
+
+  // Noisy trajectory generation
+  int num_rollouts; /**< Number of noisy trajectories*/
+  int min_rollouts; /**< There be no less than min_rollouts computed on each iteration */
+  int max_rollouts; /**< The combined number of new and old rollouts during each iteration shouldn't exceed this value */
+  NoiseGeneration noise_generation;
+
+  // Cost calculation
+  double control_cost_weight;  /**< Percentage of the trajectory accelerations cost to be applied in the total cost calculation >*/
+};
+
 static const int FINITE_DIFF_RULE_LENGTH = 7;
 static const double FINITE_DIFF_COEFFS[FINITE_DIFF_RULE_LENGTH][FINITE_DIFF_RULE_LENGTH] = { {0, 0, 0, 1, 0, 0, 0}, // position
     {0, 0, -1, 1, 0, 0, 0}, // velocity (backward difference)
@@ -82,11 +112,13 @@ static const double FINITE_DIFF_COEFFS[FINITE_DIFF_RULE_LENGTH][FINITE_DIFF_RULE
     {0, 1 / 12.0, -17 / 12.0, 46 / 12.0, -46 / 12.0, 17 / 12.0, -1 / 12.0} // jerk
 };
 
-bool generateFiniteDifferenceMatrix(int num_time_steps, DerivativeOrders::DerivativeOrder order, double dt,
+void generateFiniteDifferenceMatrix(int num_time_steps, DerivativeOrders::DerivativeOrder order, double dt,
                                     Eigen::MatrixXd& diff_matrix);
 
 void differentiate(const Eigen::VectorXd& parameters, DerivativeOrders::DerivativeOrder order,
                           double dt, Eigen::VectorXd& derivatives );
+
+void generateSmoothingMatrix(int num_time_steps,double dt, Eigen::MatrixXd& projection_matrix_M);
 
 void toVector(const Eigen::MatrixXd& m,std::vector<Eigen::VectorXd>& v);
 std::string toString(const std::vector<Eigen::VectorXd>& data);

@@ -39,19 +39,19 @@ stomp/manipulator_rail:
     delta_t: 0.1
     num_rollouts: 10
     min_rollouts: 5
-    max_rollouts: 40 
+    max_rollouts: 100 
     initialization_method: 3 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
     control_cost_weight: 0.0
     noise_generation:
       stddev: [0.05, 0.3, 1.2, 0.4, 0.4, 0.1, 0.1]
       min_stddev: [0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]
       decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8] # Used by EXPONENTIAL_DECAY method only
-      method: 1 # [0 : CONSTANT, 1 : ADAPTIVE, 2 : EXPONENTIAL_DECAY]
+      method: 0 # [0 : CONSTANT, 1 : ADAPTIVE, 2 : EXPONENTIAL_DECAY]
       update_rate: 0.5 # Used by ADAPTIVE method only
   task:
     cost_functions:
       - class: stomp_moveit/CollisionCheck 
-        collision_penalty: 5.0
+        collision_penalty: 1.0
         cost_weight: 1.0
 #      - class: stomp_moveit/ObstacleAvoidance 
 #        collision_clearance: 0.2
@@ -65,5 +65,15 @@ stomp/manipulator_rail:
       - class: stomp_moveit/JointLimits
         lock_start: True
         lock_goal: True
+    update_smoothers:
+      - class: stomp_moveit/UpdateLogger
+        package: stomp_moveit
+        directory: log
+        filename: noisy_update.txt
+      - class: stomp_moveit/ControlCostProjectionMatrix
+      - class: stomp_moveit/UpdateLogger
+        package: stomp_moveit
+        directory: log
+        filename: smoothed_update.txt
     
     

@@ -49,6 +49,10 @@ public:
               bias_thresholds_(bias_thresholds)
   {
 
+    // generate smoothing matrix
+    int num_timesteps = parameters_bias.cols();
+    generateSmoothingMatrix(num_timesteps,1.0,smoothing_M_);
+
   }
 
   virtual ~DummyTask(){}
@@ -59,7 +63,7 @@ public:
                                         int iteration_number,
                                         int rollout_number,
                                         Eigen::VectorXd& costs,
-                                        bool& validity) const
+                                        bool& validity) const override
   {
     costs.setZero(num_timesteps);
     double diff;
@@ -86,10 +90,25 @@ public:
     return true;
   }
 
+  virtual bool smoothParameterUpdates(std::size_t start_timestep,
+                                      std::size_t num_timesteps,
+                                      int iteration_number,
+                                      Eigen::MatrixXd& updates) const override
+  {
+
+    for(auto d = 0u; d < updates.rows(); d++)
+    {
+      updates.row(d).transpose() = smoothing_M_*(updates.row(d).transpose());
+    }
+
+    return true;
+  }
+
 protected:
 
   Trajectory parameters_bias_;
   std::vector<double> bias_thresholds_;
+  Eigen::MatrixXd smoothing_M_;
 };
 
 bool compareDiff(const Trajectory& optimized, const Trajectory& desired,

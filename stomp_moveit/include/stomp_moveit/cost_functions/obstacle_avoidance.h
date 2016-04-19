@@ -2,7 +2,7 @@
  * obstacle_avoidance.h
  *
  *  Created on: Mar 30, 2016
- *      Author: ros-ubuntu
+ *      Author: Jorge Nicho
  */
 
 #ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_OBSTACLE_AVOIDANCE_H_
@@ -31,6 +31,7 @@ public:
 
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
+                   const stomp_core::StompConfiguration &config,
                    moveit_msgs::MoveItErrorCodes& error_code) override;
 
 

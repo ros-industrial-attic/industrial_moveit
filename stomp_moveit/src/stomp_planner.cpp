@@ -8,8 +8,8 @@
 #include <ros/ros.h>
 #include <moveit/robot_state/conversions.h>
 #include <stomp_moveit/stomp_planner.h>
-#include <stomp_core/stomp_core_utils.h>
 #include <class_loader/class_loader.h>
+#include <stomp_core/utils.h>
 
 
 const std::string DESCRIPTION = "STOMP";
@@ -82,13 +82,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   ros::WallTime start_time = ros::WallTime::now();
   bool success = false;
 
-  if(!task_->setMotionPlanRequest(planning_scene_,request_,res.error_code_))
-  {
-    res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
-    return false;
-  }
-
-  // initializing stomp
+  // parsing stomp parameters
   if(!config_.hasMember("optimization") || !Stomp::parseConfig(config_["optimization" ],stomp_config_))
   {
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
@@ -96,6 +90,12 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     return false;
   }
 
+  // setting up up optimization task
+  if(!task_->setMotionPlanRequest(planning_scene_,request_, stomp_config_,res.error_code_))
+  {
+    res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    return false;
+  }
 
   // extracting start and goal
   std::vector<double> start, goal;

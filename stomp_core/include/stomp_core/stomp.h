@@ -27,43 +27,14 @@
 
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
+#include <stomp_core/utils.h>
 #include <XmlRpc.h>
-#include "stomp_core/stomp_core_utils.h"
 #include "stomp_core/task.h"
 #include "stomp_core/multivariate_gaussian.h"
 
 namespace stomp_core
 {
 
-namespace TrajectoryInitializations
-{
-enum TrajectoryInitialization
-{
-  LINEAR_INTERPOLATION = 1,
-  CUBIC_POLYNOMIAL_INTERPOLATION,
-  MININUM_CONTROL_COST
-};
-}
-
-struct StompConfiguration
-{
-  // General settings
-  int num_iterations;
-  int num_iterations_after_valid;   /**< Stomp will stop optimizing this many iterations after finding a valid solution */
-  int num_timesteps;
-  int num_dimensions;               /** parameter dimensionality */
-  double delta_t;               /** time change between consecutive points */
-  int initialization_method; /** TrajectoryInitializations::TrajectoryInitialization */
-
-  // Noisy trajectory generation
-  int num_rollouts; /**< Number of noisy trajectories*/
-  int min_rollouts; /**< There be no less than min_rollouts computed on each iteration */
-  int max_rollouts; /**< The combined number of new and old rollouts during each iteration shouldn't exceed this value */
-  NoiseGeneration noise_generation;
-
-  // Cost calculation
-  double control_cost_weight;  /**< Percentage of the trajectory accelerations cost to be applied in the total cost calculation >*/
-};
 
 using MultivariateGaussianPtr = boost::shared_ptr<MultivariateGaussian>;
 class Stomp
@@ -117,11 +88,10 @@ protected:
   // optimized parameters
   bool parameters_valid_;         /**< whether or not the optimized parameters are valid */
   double parameters_total_cost_;  /**< Total cost of the optimized parameters */
-  Eigen::MatrixXd initial_control_cost_parameters_;    /**< [Dimensions][timesteps]*/
   Eigen::MatrixXd parameters_optimized_;               /**< [Dimensions][timesteps]*/
+  Eigen::MatrixXd parameters_updates_;                 /**< [Dimensions][timesteps]*/
   Eigen::VectorXd parameters_state_costs_;                          /**< [timesteps]*/
   Eigen::MatrixXd parameters_control_costs_;           /**< [Dimensions][timesteps]*/
-  Eigen::VectorXd temp_parameter_updates_;                          /**< [timesteps]*/
 
   // noise generation
   std::vector<double> noise_stddevs_;
@@ -139,11 +109,8 @@ protected:
   int start_index_padded_;                          /** index corresponding to the start of the non-paded section in the padded arrays */
   Eigen::MatrixXd finite_diff_matrix_A_padded_;
   Eigen::MatrixXd control_cost_matrix_R_padded_;
-  Eigen::MatrixXd finite_diff_matrix_A_;            /**< [timesteps x timesteps], Referred to as 'A' in the literature */
   Eigen::MatrixXd control_cost_matrix_R_;           /**< [timesteps x timesteps], Referred to as 'R = A x A_transpose' in the literature */
   Eigen::MatrixXd inv_control_cost_matrix_R_;       /**< [timesteps x timesteps], R^-1 ' matrix */
-  Eigen::MatrixXd projection_matrix_M_;             /**< [timesteps x timesteps], Projection smoothing matrix  M > */
-  Eigen::MatrixXd inv_projection_matrix_M_;         /**< [timesteps x timesteps], Inverse projection smoothing matrix M-1 >*/
 
 
 };

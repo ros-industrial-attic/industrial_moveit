@@ -22,16 +22,17 @@
  *      Author: Jorge Nicho
  */
 
+#include <stomp_core/utils.h>
 #include <cmath>
 #include <iostream>
 #include <Eigen/Dense>
-#include "stomp_core/stomp_core_utils.h"
 
 namespace stomp_core
 {
 
 
-bool generateFiniteDifferenceMatrix(int num_time_steps,
+
+void generateFiniteDifferenceMatrix(int num_time_steps,
                                              DerivativeOrders::DerivativeOrder order,
                                              double dt, Eigen::MatrixXd& diff_matrix)
 {
@@ -56,6 +57,37 @@ bool generateFiniteDifferenceMatrix(int num_time_steps,
 
       diff_matrix(i,index) = multiplier * FINITE_DIFF_COEFFS[order][j+FINITE_DIFF_RULE_LENGTH/2];
     }
+  }
+}
+
+void generateSmoothingMatrix(int num_timesteps,double dt, Eigen::MatrixXd& projection_matrix_M)
+{
+  using namespace Eigen;
+
+  // generate augmented finite differencing matrix
+  int start_index_padded = FINITE_DIFF_RULE_LENGTH-1;
+  int num_timesteps_padded = num_timesteps + 2*(FINITE_DIFF_RULE_LENGTH-1);
+  MatrixXd finite_diff_matrix_A_padded;
+  generateFiniteDifferenceMatrix(num_timesteps_padded,DerivativeOrders::STOMP_ACCELERATION,
+                                 dt,finite_diff_matrix_A_padded);
+
+
+  /* computing control cost matrix (R = A_transpose * A):
+   * Note: Original code multiplies the A product by the time interval.  However this is not
+   * what was described in the literature
+   */
+  MatrixXd control_cost_matrix_R_padded = dt*finite_diff_matrix_A_padded.transpose() * finite_diff_matrix_A_padded;
+  MatrixXd control_cost_matrix_R = control_cost_matrix_R_padded.block(
+      start_index_padded,start_index_padded,num_timesteps,num_timesteps);
+  MatrixXd inv_control_cost_matrix_R = control_cost_matrix_R.fullPivLu().inverse();
+
+  // computing projection matrix M
+  projection_matrix_M = inv_control_cost_matrix_R;
+  double max = 0;
+  for(auto t = 0u; t < num_timesteps; t++)
+  {
+    max = projection_matrix_M(t,t);
+    projection_matrix_M.col(t)*= (1.0/(num_timesteps*max)); // scaling such that the maximum value is 1/num_timesteps
   }
 }
 

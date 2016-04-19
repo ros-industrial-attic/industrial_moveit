@@ -62,6 +62,13 @@ add_library(${PROJECT_NAME}_filters
 )
 target_link_libraries(${PROJECT_NAME}_filters ${catkin_LIBRARIES})
 
+# cost function plugin(s)
+add_library(${PROJECT_NAME}_smoothers
+  src/smoothers/control_cost_projection.cpp
+  src/smoothers/update_logger.cpp
+ )
+target_link_libraries(${PROJECT_NAME}_cost_functions ${catkin_LIBRARIES})
+
 #############
 ## Install ##
 #############

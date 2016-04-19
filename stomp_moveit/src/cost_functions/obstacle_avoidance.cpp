@@ -2,7 +2,7 @@
  * obstacle_avoidance.cpp
  *
  *  Created on: Mar 30, 2016
- *      Author: ros-ubuntu
+ *      Author: Jorge Nicho
  */
 #include <ros/console.h>
 #include <pluginlib/class_list_macros.h>
@@ -40,6 +40,7 @@ bool ObstacleAvoidance::initialize(moveit::core::RobotModelConstPtr robot_model_
 
 bool ObstacleAvoidance::setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                  const moveit_msgs::MotionPlanRequest &req,
+                 const stomp_core::StompConfiguration &config,
                  moveit_msgs::MoveItErrorCodes& error_code)
 {
   planning_scene_ = planning_scene;

@@ -27,9 +27,9 @@
 #include <Eigen/LU>
 #include <Eigen/Cholesky>
 #include <math.h>
+#include <stomp_core/utils.h>
 #include <numeric>
 #include "stomp_core/stomp.h"
-#include "stomp_core/stomp_core_utils.h"
 
 static const double DEFAULT_NOISY_COST_IMPORTANCE_WEIGHT = 1.0;
 static const double EXPONENTIATED_COST_SENSITIVITY = 10;
@@ -297,6 +297,9 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
 
   parameters_optimized = parameters_optimized_;
 
+  // notifying task
+  task_->done(parameters_valid_,current_iteration_,lowest_cost);
+
   return parameters_valid_;
 }
 
@@ -321,9 +324,6 @@ bool Stomp::resetVariables()
   generateFiniteDifferenceMatrix(num_timesteps_padded_,DerivativeOrders::STOMP_ACCELERATION,
                                  OPTIMIZATION_TIMESTEP,finite_diff_matrix_A_padded_);
 
-  finite_diff_matrix_A_ = finite_diff_matrix_A_padded_.block(
-      start_index_padded_,start_index_padded_,config_.num_timesteps,config_.num_timesteps);
-
   /* control cost matrix (R = A_transpose * A):
    * Note: Original code multiplies the A product by the time interval.  However this is not
    * what was described in the literature
@@ -340,16 +340,6 @@ bool Stomp::resetVariables()
   control_cost_matrix_R_padded_ *= maxVal;
   control_cost_matrix_R_ *= maxVal;
   inv_control_cost_matrix_R_ /= maxVal;
-
-  // projection matrix
-  projection_matrix_M_ = inv_control_cost_matrix_R_;
-  double max = 0;
-  for(auto t = 0u; t < config_.num_timesteps; t++)
-  {
-    max = projection_matrix_M_(t,t);
-    projection_matrix_M_.col(t)*= (1.0/(config_.num_timesteps*max)); // scaling such that the maximum value is 1/num_timesteps
-  }
-  inv_projection_matrix_M_ = projection_matrix_M_.fullPivLu().inverse();
 
   /* Noise Generation*/
   random_dist_generators_.clear();
@@ -390,9 +380,9 @@ bool Stomp::resetVariables()
   }
 
   // parameter updates
+  parameters_updates_ = Eigen::MatrixXd::Zero(d, config_.num_timesteps);
   parameters_control_costs_= Eigen::MatrixXd::Zero(d, config_.num_timesteps);
   parameters_state_costs_ = Eigen::VectorXd::Zero(config_.num_timesteps);
-  temp_parameter_updates_ = Eigen::VectorXd::Zero(config_.num_timesteps);
 
   return true;
 }
@@ -476,7 +466,7 @@ bool Stomp::computeInitialTrajectory(const std::vector<double>& first,const std:
 
   // filtering and returning
   bool filtered;
-  return task_->filterParameters(parameters_optimized_,filtered);
+  return task_->filterParameters(0,config_.num_timesteps,current_iteration_,parameters_optimized_,filtered);
 }
 
 bool Stomp::cancel()
@@ -590,9 +580,9 @@ bool Stomp::filterNoisyRollouts()
 {
   // apply post noise generation filters
   bool filtered = false;
-  for(auto r = 0u ; r < num_active_rollouts_; r++)
+  for(auto r = 0u ; r < config_.num_rollouts; r++)
   {
-    if(!task_->filterNoisyParameters(noisy_rollouts_[r].parameters_noise,filtered))
+    if(!task_->filterNoisyParameters(0,config_.num_timesteps,current_iteration_,r,noisy_rollouts_[r].parameters_noise,filtered))
     {
       ROS_ERROR_STREAM("Failed to filter noisy parameters");
       return filtered;
@@ -790,28 +780,36 @@ bool Stomp::computeProbabilities()
 
 bool Stomp::updateParameters()
 {
+  // computing updates from probabilities using convex combination
+  parameters_updates_.setZero();
   for(auto d = 0u; d < config_.num_dimensions ; d++)
   {
 
-    temp_parameter_updates_.setZero();
     for(auto r = 0u; r < num_active_rollouts_; r++)
     {
       auto& rollout = noisy_rollouts_[r];
-      temp_parameter_updates_ += (rollout.noise.row(d).array() * rollout.probabilities.row(d).array()).matrix();
+      parameters_updates_.row(d) +=  (rollout.noise.row(d).array() * rollout.probabilities.row(d).array()).matrix();
     }
-
-    parameters_optimized_.row(d) += (projection_matrix_M_*temp_parameter_updates_).transpose();
 
   }
 
-  return true;
+  // applying smoothing
+  if(!task_->smoothParameterUpdates(0,config_.num_timesteps,current_iteration_,parameters_updates_))
+  {
+    ROS_ERROR("Update smoothing step failed");
+    return false;
+  }
 
+  // updating parameters
+  parameters_optimized_ += parameters_updates_;
+
+  return true;
 }
 
 bool Stomp::filterUpdatedParameters()
 {
   bool filtered = false;
-  return task_->filterParameters(parameters_optimized_,filtered);
+  return task_->filterParameters(0,config_.num_timesteps,current_iteration_,parameters_optimized_,filtered);
 }
 
 bool Stomp::computeOptimizedCost()
