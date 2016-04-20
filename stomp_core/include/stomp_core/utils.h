@@ -54,7 +54,6 @@ struct Rollout
   Eigen::VectorXd state_costs; /**< num_time_steps */
   Eigen::MatrixXd control_costs; /**< [num_dimensions] x num_time_steps */
   Eigen::MatrixXd total_costs; /**< [num_dimensions] x num_time_steps total_cost[d] = state_costs_ + control_costs_[d]*/
-  Eigen::MatrixXd cumulative_costs; /**< [num_dimensions] x num_time_steps cumulative_costs[d] = Ones(num_time_steps) * total_costs_[d].sum();*/
   Eigen::MatrixXd probabilities; /**< [num_dimensions] x num_time_steps */
 
   std::vector<double> full_probabilities; /**< [num_dimensions] probabilities of full trajectory */

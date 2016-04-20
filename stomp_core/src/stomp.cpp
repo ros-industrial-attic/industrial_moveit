@@ -370,7 +370,6 @@ bool Stomp::resetVariables()
   rollout.full_probabilities.resize(d);
 
   rollout.full_costs.resize(d);
-  rollout.cumulative_costs= Eigen::MatrixXd::Zero(d, config_.num_timesteps);
   rollout.control_costs = Eigen::MatrixXd::Zero(d, config_.num_timesteps);
   rollout.total_costs= Eigen::MatrixXd::Zero(d, config_.num_timesteps);
   rollout.state_costs = Eigen::VectorXd::Zero(config_.num_timesteps);
@@ -632,8 +631,6 @@ bool Stomp::computeNoisyRolloutsCosts()
       for(auto d = 0u; d < config_.num_dimensions; d++)
       {
         rollout.total_costs.row(d) = rollout.state_costs.transpose() + rollout.control_costs.row(d);
-        rollout.cumulative_costs.row(d) = rollout.total_costs.row(d);
-        //rollout.cumulative_costs[d] = Eigen::VectorXd::Ones(config_.num_timesteps)*rollout.total_costs[d].sum();
       }
     }
   }
@@ -712,11 +709,11 @@ bool Stomp::computeProbabilities()
     {
 
       // find min and max cost over all rollouts at timestep 't':
-      min_cost = noisy_rollouts_[0].cumulative_costs(d,t);
+      min_cost = noisy_rollouts_[0].total_costs(d,t);
       max_cost = min_cost;
       for (auto r=0u; r<num_active_rollouts_; ++r)
       {
-          cost = noisy_rollouts_[r].cumulative_costs(d,t);
+          cost = noisy_rollouts_[r].total_costs(d,t);
           if (cost < min_cost)
               min_cost = cost;
           if (cost > max_cost)
@@ -735,7 +732,7 @@ bool Stomp::computeProbabilities()
       for (auto r = 0u; r<num_active_rollouts_; ++r)
       {
         // this is the exponential term in the probability calculation described in the literature
-        exponent = -h*(noisy_rollouts_[r].cumulative_costs(d,t) - min_cost)/denom;
+        exponent = -h*(noisy_rollouts_[r].total_costs(d,t) - min_cost)/denom;
         noisy_rollouts_[r].probabilities(d,t) = noisy_rollouts_[r].importance_weight *
             exp(exponent);
 

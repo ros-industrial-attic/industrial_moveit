@@ -35,7 +35,7 @@ stomp/manipulator:
 stomp/manipulator_rail:
   group_name: manipulator_rail
   optimization:
-    num_timesteps: 30
+    num_timesteps: 50
     num_dimensions: 7
     num_iterations: 40
     num_iterations_after_valid: 0

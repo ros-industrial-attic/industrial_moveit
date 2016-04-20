@@ -8,6 +8,7 @@
 #ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_COLLISION_CHECK_H_
 #define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_COLLISION_CHECK_H_
 
+#include <Eigen/Sparse>
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/collision_detection_fcl/collision_world_fcl.h>
 #include <moveit/collision_detection_fcl/collision_robot_fcl.h>
@@ -83,6 +84,13 @@ protected:
   // parameters
   double collision_penalty_;
   double collision_padding_;
+  double cost_decay_;
+
+  // cost smoothing
+  Eigen::SparseMatrix<double,Eigen::RowMajor> exp_smoothing_matrix_; //square matrix of size = num_timesteps + WINDOW_SIZE -1
+  Eigen::VectorXd costs_padded_;
+  Eigen::VectorXd intermediate_costs_slots_;                          // logical array of size num_timesteps
+  Eigen::VectorXd min_costs_;                                         // stores the minimum costs, size: num_timesteps
 
   // collision
   collision_detection::CollisionRequest collision_request_;
