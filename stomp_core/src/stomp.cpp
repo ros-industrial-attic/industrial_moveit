@@ -725,7 +725,7 @@ bool Stomp::computeProbabilities()
       // prevent division by zero:
       if (denom < MIN_COST_DIFFERENCE)
       {
-        denom = MIN_COST_DIFFERENCE;
+        denom = 1;
       }
 
       probl_sum = 0.0;
@@ -761,7 +761,7 @@ bool Stomp::computeProbabilities()
     }
 
     denom = max_cost - min_cost;
-    denom = denom < 1e-8 ? 1e-8 : denom;
+    denom = denom < MIN_COST_DIFFERENCE ? 1 : denom;
 
     probl_sum = 0.0;
     for (int r=0; r<num_active_rollouts_; ++r)
