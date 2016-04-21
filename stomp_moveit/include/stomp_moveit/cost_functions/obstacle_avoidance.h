@@ -52,7 +52,7 @@ public:
                             int iteration_number,
                             int rollout_number,
                             Eigen::VectorXd& costs,
-                            bool& validity) const override;
+                            bool& validity) override;
 
   virtual std::string getGroupName() const override
   {
@@ -65,6 +65,8 @@ public:
     return name_ + "/" + group_name_;
   }
 
+  virtual void done(bool success,int total_iterations,double final_cost) override;
+
 protected:
 
   std::string name_;
@@ -72,14 +74,18 @@ protected:
   // robot details
   std::string group_name_;
   moveit::core::RobotModelConstPtr robot_model_ptr_;
+  moveit::core::RobotStatePtr robot_state_;
 
   // planning context information
   planning_scene::PlanningSceneConstPtr planning_scene_;
   moveit_msgs::MotionPlanRequest plan_request_;
 
-  // collision
+  // parameters
   double collision_clearance_;
   double collision_penalty_;
+  double collision_padding_;
+
+  // collision
   collision_detection::CollisionRequest collision_request_;
   collision_detection::CollisionRobotPtr collision_robot_;
   collision_detection::CollisionWorldPtr collision_world_;

@@ -46,7 +46,7 @@ public:
     virtual ~Task(){};
 
     /**
-     * @brief computes the state costs as a function of the parameters for each time step.
+     * @brief computes the state costs as a function of the noisy parameters for each time step.
      * @param parameters [num_dimensions] num_parameters - policy parameters to execute
      * @param costs vector containing the state costs per timestep.
      * @param iteration_number
@@ -54,13 +54,28 @@ public:
      * @param validity whether or not the trajectory is valid
      * @return true if cost were properly computed
      */
-    virtual bool computeCosts(const Eigen::MatrixXd& parameters,
+    virtual bool computeNoisyCosts(const Eigen::MatrixXd& parameters,
                          std::size_t start_timestep,
                          std::size_t num_timesteps,
                          int iteration_number,
                          int rollout_number,
                          Eigen::VectorXd& costs,
-                         bool& validity) const = 0 ;
+                         bool& validity) = 0 ;
+
+    /**
+     * @brief computes the state costs as a function of the optimized parameters for each time step.
+     * @param parameters [num_dimensions] num_parameters - policy parameters to execute
+     * @param costs vector containing the state costs per timestep.
+     * @param iteration_number
+     * @param validity whether or not the trajectory is valid
+     * @return true if cost were properly computed
+     */
+    virtual bool computeCosts(const Eigen::MatrixXd& parameters,
+                         std::size_t start_timestep,
+                         std::size_t num_timesteps,
+                         int iteration_number,
+                         Eigen::VectorXd& costs,
+                         bool& validity) = 0 ;
 
     /**
      * @brief Filters the given noisy parameters which is applied after noisy trajectory generation. It could be used for clipping
@@ -78,7 +93,7 @@ public:
                                        int iteration_number,
                                        int rollout_number,
                                        Eigen::MatrixXd& parameters,
-                                       bool& filtered) const
+                                       bool& filtered)
     {
       filtered = false;
       return true;
@@ -99,7 +114,7 @@ public:
                                   std::size_t num_timesteps,
                                   int iteration_number,
                                   Eigen::MatrixXd& parameters,
-                                  bool& filtered) const
+                                  bool& filtered)
     {
       filtered = false;
       return true;
@@ -118,7 +133,7 @@ public:
     virtual bool smoothParameterUpdates(std::size_t start_timestep,
                                         std::size_t num_timesteps,
                                         int iteration_number,
-                                        Eigen::MatrixXd& updates) const
+                                        Eigen::MatrixXd& updates)
     {
       return true;
     }

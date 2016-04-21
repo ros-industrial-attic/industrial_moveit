@@ -64,7 +64,7 @@ public:
                             int iteration_number,
                             int rollout_number,
                             Eigen::VectorXd& costs,
-                            bool& validity) const = 0 ;
+                            bool& validity) = 0 ;
 
   /**
    * @brief Called by the Stomp Task at the end of the optimization process
@@ -81,7 +81,7 @@ public:
     return "Not Implemented";
   }
 
-  virtual double getWeight()
+  virtual double getWeight() const
   {
     return cost_weight_;
   }
@@ -89,6 +89,16 @@ public:
   virtual std::string getName() const
   {
     return "Not Implemented";
+  }
+
+  /**
+   * @brief The index returned by this method will be passed by the Task to the corresponding plugin method
+   *        as the 'rollout_number' argument when operating on the noiseless (optimized) parameters.
+   *
+   */
+  virtual int getOptimizedIndex() const
+  {
+    return -1;
   }
 
 

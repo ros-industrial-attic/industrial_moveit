@@ -47,6 +47,18 @@ bool JointLimits::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
 
 bool JointLimits::configure(const XmlRpc::XmlRpcValue& config)
 {
+
+  // check parameter presence
+  auto members = {"lock_start","lock_goal"};
+  for(auto& m : members)
+  {
+    if(!config.hasMember(m))
+    {
+      ROS_ERROR("%s failed to find one or more required parameters",getName().c_str());
+      return false;
+    }
+  }
+
   try
   {
     XmlRpc::XmlRpcValue c = config;
@@ -106,7 +118,7 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
 }
 
 bool JointLimits::filter(std::size_t start_timestep,std::size_t num_timesteps,
-                         int iteration_number,int rollout_number,Eigen::MatrixXd& parameters,bool& filtered) const
+                         int iteration_number,int rollout_number,Eigen::MatrixXd& parameters,bool& filtered)
 {
   using namespace moveit::core;
 

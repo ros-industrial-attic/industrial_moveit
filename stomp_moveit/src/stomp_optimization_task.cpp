@@ -63,26 +63,26 @@ StompOptimizationTask::StompOptimizationTask(
   // loading cost function plugins
   if(!initializeCostFunctionPlugins(config))
   {
-    ROS_ERROR("StompOptimizationTask failed to load 'cost_functions' plugins from yaml");
+    ROS_ERROR("StompOptimizationTask/%s failed to load 'cost_functions' plugins from yaml",group_name.c_str());
     throw std::logic_error("plugin not found");
   }
 
   // loading noisy filter plugins
   if(!initializeFilterPlugins(config,"noisy_filters",noisy_filters_))
   {
-    ROS_WARN("StompOptimizationTask failed to load 'noisy_filters' plugins from yaml");
+    ROS_WARN("StompOptimizationTask/%s failed to load 'noisy_filters' plugins from yaml",group_name.c_str());
   }
 
   // loading filter plugins
   if(!initializeFilterPlugins(config,"optimized_filters",filters_))
   {
-    ROS_WARN("StompOptimizationTask failed to load 'optimized_filters' plugins from yaml");
+    ROS_WARN("StompOptimizationTask/%s failed to load 'optimized_filters' plugins from yaml",group_name.c_str());
   }
 
   // loading smoother plugins
   if(!initializeSmootherPlugins(config))
   {
-    ROS_WARN("StompOptimizationTask failed to load 'update_smoothers' plugins from yaml");
+    ROS_WARN("StompOptimizationTask/%s failed to load 'update_smoothers' plugins from yaml",group_name.c_str());
   }
 }
 
@@ -114,7 +114,7 @@ bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcVa
       if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
       {
         cost_functions_.push_back(plugin);
-        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" CostFunction plugin");
+        ROS_INFO_STREAM("StompOptimizationTask loaded "<<plugin->getName()<<" CostFunction plugin");
       }
       else
       {
@@ -228,13 +228,13 @@ bool StompOptimizationTask::initializeSmootherPlugins(const XmlRpc::XmlRpcValue&
   return success;
 }
 
-bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
+bool StompOptimizationTask::computeNoisyCosts(const Eigen::MatrixXd& parameters,
                                          std::size_t start_timestep,
                                          std::size_t num_timesteps,
                                          int iteration_number,
                                          int rollout_number,
                                          Eigen::VectorXd& costs,
-                                         bool& validity) const
+                                         bool& validity)
 {
   Eigen::MatrixXd cost_matrix = Eigen::MatrixXd::Zero(num_timesteps,cost_functions_.size());
   Eigen::VectorXd state_costs = Eigen::VectorXd::Zero(num_timesteps);
@@ -245,6 +245,34 @@ bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
     auto cf = cost_functions_[i];
 
     if(!cf->computeCosts(parameters,start_timestep,num_timesteps,iteration_number,rollout_number,state_costs,valid))
+    {
+      return false;
+    }
+
+    validity &= valid;
+
+    cost_matrix.col(i) = state_costs * cf->getWeight();
+  }
+  costs = cost_matrix.rowwise().sum();
+  return true;
+}
+
+bool StompOptimizationTask::computeCosts(const Eigen::MatrixXd& parameters,
+                                         std::size_t start_timestep,
+                                         std::size_t num_timesteps,
+                                         int iteration_number,
+                                         Eigen::VectorXd& costs,
+                                         bool& validity)
+{
+  Eigen::MatrixXd cost_matrix = Eigen::MatrixXd::Zero(num_timesteps,cost_functions_.size());
+  Eigen::VectorXd state_costs = Eigen::VectorXd::Zero(num_timesteps);
+  validity = true;
+  for(auto i = 0u; i < cost_functions_.size(); i++ )
+  {
+    bool valid;
+    auto cf = cost_functions_[i];
+
+    if(!cf->computeCosts(parameters,start_timestep,num_timesteps,iteration_number,cf->getOptimizedIndex(),state_costs,valid))
     {
       return false;
     }
@@ -298,7 +326,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
 bool StompOptimizationTask::smoothParameterUpdates(std::size_t start_timestep,
                                     std::size_t num_timesteps,
                                     int iteration_number,
-                                    Eigen::MatrixXd& updates) const
+                                    Eigen::MatrixXd& updates)
 {
   for(auto& s : smoothers_)
   {
@@ -315,7 +343,7 @@ bool StompOptimizationTask::filterNoisyParameters(std::size_t start_timestep,
                                                   std::size_t num_timesteps,
                                                   int iteration_number,
                                                   int rollout_number,
-                                                  Eigen::MatrixXd& parameters,bool& filtered) const
+                                                  Eigen::MatrixXd& parameters,bool& filtered)
 {
   filtered = false;
   bool temp;
@@ -336,13 +364,13 @@ bool StompOptimizationTask::filterNoisyParameters(std::size_t start_timestep,
 bool StompOptimizationTask::filterParameters(std::size_t start_timestep,
                                              std::size_t num_timesteps,
                                              int iteration_number,
-                                             Eigen::MatrixXd& parameters,bool& filtered) const
+                                             Eigen::MatrixXd& parameters,bool& filtered)
 {
   filtered = false;
   bool temp;
   for(auto& f: filters_)
   {
-    if(f->filter(start_timestep,num_timesteps,iteration_number,-1,parameters,temp))
+    if(f->filter(start_timestep,num_timesteps,iteration_number,f->getOptimizedIndex(),parameters,temp))
     {
       filtered |= temp;
     }

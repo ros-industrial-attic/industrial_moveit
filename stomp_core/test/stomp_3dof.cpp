@@ -61,9 +61,19 @@ public:
                                         std::size_t start_timestep,
                                         std::size_t num_timesteps,
                                         int iteration_number,
+                                        Eigen::VectorXd& costs,
+                                        bool& validity) override
+  {
+    return computeNoisyCosts(parameters,start_timestep,num_timesteps,iteration_number,-1,costs,validity);
+  }
+
+  virtual bool computeNoisyCosts(const Trajectory& parameters,
+                                        std::size_t start_timestep,
+                                        std::size_t num_timesteps,
+                                        int iteration_number,
                                         int rollout_number,
                                         Eigen::VectorXd& costs,
-                                        bool& validity) const override
+                                        bool& validity) override
   {
     costs.setZero(num_timesteps);
     double diff;
@@ -93,7 +103,7 @@ public:
   virtual bool smoothParameterUpdates(std::size_t start_timestep,
                                       std::size_t num_timesteps,
                                       int iteration_number,
-                                      Eigen::MatrixXd& updates) const override
+                                      Eigen::MatrixXd& updates) override
   {
 
     for(auto d = 0u; d < updates.rows(); d++)

@@ -10,7 +10,7 @@ stomp/manipulator:
     min_rollouts: 5
     max_rollouts: 10
     initialization_method: 1 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
-    control_cost_weight: 0.0
+    control_cost_weight: 0.1
     noise_generation:
       stddev: [0.3, 1.0, 0.5, 0.4, 0.3, 0.3]
       min_stddev: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
@@ -20,7 +20,10 @@ stomp/manipulator:
   task:
     cost_functions:
       - class: stomp_moveit/ObstacleAvoidance
+        collision_padding: 0.01
         collision_clearance: 0.01
+        collision_penalty: 1.0 
+        cost_weight: 1.0   
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
@@ -43,28 +46,42 @@ stomp/manipulator_rail:
     initialization_method: 3 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
     control_cost_weight: 0.0
     noise_generation:
-      stddev: [0.05, 0.3, 1.2, 0.4, 0.4, 0.1, 0.1]
-      min_stddev: [0.01, 0.01, 0.01, 0.01, 0.01, 0.1, 0.01]
+      stddev: [0.05, 0.4, 1.2, 0.4, 0.4, 0.1, 0.1]
+      min_stddev: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
       decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8] # Used by EXPONENTIAL_DECAY method only
       method: 0 # [0 : CONSTANT, 1 : ADAPTIVE, 2 : EXPONENTIAL_DECAY]
       update_rate: 0.5 # Used by ADAPTIVE method only
   task:
     cost_functions:
       - class: stomp_moveit/CollisionCheck 
+        collision_padding: 0.02
         collision_penalty: 1.0
         cost_weight: 1.0
 #      - class: stomp_moveit/ObstacleAvoidance 
-#        collision_clearance: 0.2
-#        collision_penalty: 1.0
+#        collision_padding: 0.01
+#        collision_clearance: 0.5
+#        collision_penalty: 2.0
 #        cost_weight: 1.0
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
         lock_goal: True
+      - class: stomp_moveit/MultiTrajectoryVisualization
+        line_width: 0.02
+        rgb: [255, 255, 0]
+        marker_array_topic: stomp_trajectories
+        marker_namespace: noisy
     optimized_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
         lock_goal: True
+      - class: stomp_moveit/TrajectoryVisualization
+        line_width: 0.05
+        rgb: [0, 191, 255]
+        error_rgb: [255, 0, 0]
+        publish_intermediate: True
+        marker_topic: stomp_trajectory
+        marker_namespace: optimized
     update_smoothers:
       - class: stomp_moveit/UpdateLogger
         package: stomp_moveit

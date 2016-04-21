@@ -122,12 +122,15 @@ void computeParametersControlCosts(const Eigen::MatrixXd& parameters,
 {
   std::size_t num_timesteps = parameters.cols();
   double cost = 0;
-  control_costs = Eigen::MatrixXd(parameters.size(),num_timesteps);
-  for(auto d = 0u; d < parameters.size(); d++)
+  for(auto d = 0u; d < parameters.rows(); d++)
   {
-    cost = parameters.row(d)*control_cost_matrix_R*parameters.row(d).transpose();
-    control_costs.row(d).setConstant( 0.5*control_cost_weight*(1/dt)*cost );
+    cost = double(parameters.row(d)*(control_cost_matrix_R*parameters.row(d).transpose()));
+    control_costs.row(d).setConstant( 0.5*(1/dt)*cost );
   }
+
+  double max_coeff = control_costs.maxCoeff();
+  control_costs /= (max_coeff > 1e-8) ? max_coeff : 1;
+  control_costs *= control_cost_weight;
 }
 
 
@@ -412,7 +415,6 @@ void Stomp::updateNoiseStddev()
                            * control_cost_matrix_R_ * noisy_rollouts_[r].noise.row(d).transpose());
         }
         frob_stddev =  sqrt(numer/(denom*config_.num_timesteps));
-        //frob_stddev = std::isnan(frob_stddev) ? 0 : frob_stddev;
 
         if(!std::isnan(frob_stddev))
         {
@@ -432,10 +434,12 @@ void Stomp::updateNoiseStddev()
       break;
     case NoiseGeneration::EXPONENTIAL_DECAY:
 
+      const std::vector<double>& min_stddev = config_.noise_generation.min_stddev;
       noise_stddevs_.resize(stddev.size());
       for(unsigned int i = 0; i < stddev.size() ; i++)
       {
-        noise_stddevs_[i] = stddev[i]*pow(decay[i],current_iteration_);
+        noise_stddevs_[i] = stddev[i]*pow(decay[i],config_.noise_generation.update_rate*(current_iteration_ -1));
+        noise_stddevs_[i] = (noise_stddevs_[i] < min_stddev[i]) ? min_stddev[i]: noise_stddevs_[i];
       }
       break;
   }
@@ -651,7 +655,7 @@ bool Stomp::computeRolloutsStateCosts()
     }
 
     Rollout& rollout = noisy_rollouts_[r];
-    if(!task_->computeCosts(rollout.parameters_noise,0,
+    if(!task_->computeNoisyCosts(rollout.parameters_noise,0,
                             config_.num_timesteps,
                             current_iteration_,r,
                             rollout.state_costs,all_valid))
@@ -833,7 +837,7 @@ bool Stomp::computeOptimizedCost()
 
   // state costs
   if(task_->computeCosts(parameters_optimized_,
-                         0,config_.num_timesteps,current_iteration_,0,parameters_state_costs_,parameters_valid_))
+                         0,config_.num_timesteps,current_iteration_,parameters_state_costs_,parameters_valid_))
   {
 
 

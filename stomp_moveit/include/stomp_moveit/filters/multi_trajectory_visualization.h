@@ -1,27 +1,30 @@
 /*
- * joint_limits.h
+ * multi_trajectory_visualization.h
  *
- *  Created on: Apr 1, 2016
+ *  Created on: Apr 15, 2016
  *      Author: Jorge Nicho
  */
 
-#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_FILTERS_JOINT_LIMITS_H_
-#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_FILTERS_JOINT_LIMITS_H_
+#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_FILTERS_MULTI_TRAJECTORY_VISUALIZATION_H_
+#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_FILTERS_MULTI_TRAJECTORY_VISUALIZATION_H_
 
-#include <moveit/robot_model/robot_model.h>
-#include <moveit_msgs/GetMotionPlan.h>
-#include "stomp_moveit/filters/stomp_filter.h"
+#include <stomp_moveit/filters/stomp_filter.h>
+#include <ros/node_handle.h>
+#include <ros/publisher.h>
+#include <Eigen/Core>
+#include <visualization_msgs/MarkerArray.h>
+#include <geometry_msgs/Point.h>
 
 namespace stomp_moveit
 {
 namespace filters
 {
 
-class JointLimits : public StompFilter
+class MultiTrajectoryVisualization : public StompFilter
 {
 public:
-  JointLimits();
-  virtual ~JointLimits();
+  MultiTrajectoryVisualization();
+  virtual ~MultiTrajectoryVisualization();
 
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,const XmlRpc::XmlRpcValue& config) override;
@@ -32,17 +35,6 @@ public:
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
                    moveit_msgs::MoveItErrorCodes& error_code) override;
-
-
-  virtual std::string getGroupName() const override
-  {
-    return group_name_;
-  }
-
-  virtual std::string getName() const override
-  {
-    return "JointLimits/" + group_name_;
-  }
 
   /**
    * @brief filters the parameters and modifies the original values
@@ -61,23 +53,44 @@ public:
                       Eigen::MatrixXd& parameters,
                       bool& filtered) override;
 
+
+  virtual std::string getName() const override
+  {
+    return name_ + "/" + group_name_;
+  }
+
+  virtual std::string getGroupName() const override
+  {
+    return group_name_;
+  }
+
 protected:
 
-  moveit::core::RobotModelConstPtr robot_model_;
+  // identity
+  std::string name_;
+
+  // robot
   std::string group_name_;
+  moveit::core::RobotModelConstPtr robot_model_;
+  moveit::core::RobotStatePtr state_;
 
-  // options
-  bool lock_start_;
-  bool lock_goal_;
+  // ros comm
+  ros::NodeHandle nh_;
+  ros::Publisher viz_pub_;
 
-  // start and goal
-  moveit::core::RobotStatePtr start_state_;
-  moveit::core::RobotStatePtr goal_state_;
+  // parameters
+  double line_width_;
+  std_msgs::ColorRGBA rgb_;
+  std::string marker_topic_;
+  std::string marker_namespace_;
 
-
+  // tool trajectory
+  std::size_t traj_total_;
+  Eigen::MatrixXd tool_traj_line_;
+  visualization_msgs::MarkerArray tool_traj_markers_;
 };
 
 } /* namespace filters */
 } /* namespace stomp_moveit */
 
-#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_FILTERS_JOINT_LIMITS_H_ */
+#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_FILTERS_MULTI_TRAJECTORY_VISUALIZATION_H_ */
