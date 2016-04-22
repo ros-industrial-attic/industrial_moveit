@@ -12,6 +12,51 @@
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::CollisionCheck,stomp_moveit::cost_functions::StompCostFunction);
 
 const double DEFAULT_SCALE = 1.0;
+const double DEFAULT_EXP_DECAY = 0.5;
+const int WINDOW_SIZE = 7;
+
+void generateExponentialSmoothingMatrix(int window_size, int num_timesteps, double decay,
+                                        Eigen::SparseMatrix<double,Eigen::RowMajor>& exp_matrix)
+{
+  using namespace Eigen;
+
+  // generating decay coefficients
+  VectorXd coeffs(window_size);
+  int mid_index = window_size/2;
+  coeffs(mid_index) = decay;
+  double val;
+  for(auto i = 1u; i <= mid_index; i++)
+  {
+    val = std::pow((1 - decay),i);
+    coeffs(mid_index + i) = val;
+    coeffs(mid_index - i) = val;
+  }
+  coeffs/=(coeffs.sum());
+
+  // populating sparse matrix
+  int size = num_timesteps + window_size - 1;
+  exp_matrix = SparseMatrix<double,RowMajor>(size,size);
+  exp_matrix.reserve(window_size);
+  for(int m = 0; m < size; m++)
+  {
+    exp_matrix.insert(m,m) = coeffs(mid_index);
+    for(int c = 1; c <= mid_index; c++)
+    {
+      if((m-c) > 0)
+      {
+        exp_matrix.insert(m,m-c) = coeffs(mid_index-c);
+      }
+
+      if((m+c) < size)
+      {
+        exp_matrix.insert(m,m+c) = coeffs(mid_index+c);
+      }
+    }
+  }
+
+  exp_matrix.makeCompressed();
+
+}
 
 namespace stomp_moveit
 {
@@ -22,7 +67,8 @@ CollisionCheck::CollisionCheck():
     name_("CollisionCheckPlugin"),
     robot_state_(),
     collision_padding_(0.0),
-    collision_penalty_(0.0)
+    collision_penalty_(0.0),
+    cost_decay_(DEFAULT_EXP_DECAY)
 {
   // TODO Auto-generated constructor stub
 
@@ -75,6 +121,13 @@ bool CollisionCheck::setMotionPlanRequest(const planning_scene::PlanningSceneCon
     return false;
   }
 
+  // initializing decay square matrix of size = num_timesteps + WINDOW_SIZE -1
+  generateExponentialSmoothingMatrix(WINDOW_SIZE,config.num_timesteps,cost_decay_,exp_smoothing_matrix_);
+  int padded_timesteps = config.num_timesteps + WINDOW_SIZE - 1;
+  costs_padded_ = Eigen::VectorXd::Zero(padded_timesteps);
+  intermediate_costs_slots_ = Eigen::VectorXd::Zero(config.num_timesteps);
+  min_costs_ = Eigen::VectorXd::Zero(config.num_timesteps);
+
   return true;
 }
 
@@ -88,6 +141,7 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
 {
 
   using namespace moveit::core;
+  using namespace Eigen;
 
   if(!robot_state_)
   {
@@ -149,6 +203,31 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
         break;
       }
     }
+  }
+
+  // applying exponential smoothing and minimum costs
+  if(!validity)
+  {
+    double min_penalty = collision_penalty_*(double((costs.array() > 0).count())/num_timesteps);
+
+    int padding = WINDOW_SIZE/2;
+    int start_ind = WINDOW_SIZE/2;
+    costs_padded_.segment(start_ind,num_timesteps) = costs;
+    costs_padded_.head(padding).setConstant(costs(0));
+    costs_padded_.tail(padding).setConstant(costs(num_timesteps-1));
+
+    // smoothed costs
+    costs = (exp_smoothing_matrix_ * costs_padded_).col(0).segment(start_ind,num_timesteps);
+
+    // reducing elements costs[i] < min_penalty to zero
+    intermediate_costs_slots_ = (costs.array() > min_penalty).matrix().cast<double>();
+    costs = (costs.array() * intermediate_costs_slots_.array()).matrix(); // turn all values < min_penalty  to zero
+
+    // computing array with min_penalty at the elements where costs[i] < min_penalty
+    min_costs_ = min_penalty * (costs.array() < min_penalty).matrix().cast<double>();
+
+    // adding minimum penalty array
+    costs+=min_costs_;
   }
 
   return true;
