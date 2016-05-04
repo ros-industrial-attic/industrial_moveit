@@ -203,12 +203,7 @@ bool Stomp::parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_con
 
 Stomp::Stomp(const StompConfiguration& config,TaskPtr task):
     config_(config),
-    task_(task),
-    proceed_(true),
-    parameters_total_cost_(0),
-    parameters_valid_(false),
-    num_active_rollouts_(0),
-    current_iteration_(0)
+    task_(task)
 {
 
   resetVariables();
@@ -218,6 +213,11 @@ Stomp::Stomp(const StompConfiguration& config,TaskPtr task):
 Stomp::~Stomp()
 {
 
+}
+
+bool Stomp::clear()
+{
+  return resetVariables();
 }
 
 bool Stomp::solve(const std::vector<double>& first,const std::vector<double>& last,
@@ -254,8 +254,6 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
       return false;
     }
   }
-
-  setProceed(true);
 
   current_iteration_ = 1;
   unsigned int valid_iterations = 0;
@@ -295,7 +293,10 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
   }
   else
   {
-    ROS_ERROR("STOMP failed to find a valid solution after %i iterations",current_iteration_);
+    if (proceed_)
+      ROS_ERROR("STOMP failed to find a valid solution after %i iterations",current_iteration_);
+    else
+      ROS_ERROR_STREAM("Stomp was terminated");
   }
 
   parameters_optimized = parameters_optimized_;
@@ -308,6 +309,12 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
 
 bool Stomp::resetVariables()
 {
+  proceed_= true;
+  parameters_total_cost_ = 0;
+  parameters_valid_ = false;
+  num_active_rollouts_ = 0;
+  current_iteration_ = 0;
+
   // verifying configuration
   if(config_.max_rollouts < config_.num_rollouts)
   {
@@ -320,6 +327,64 @@ bool Stomp::resetVariables()
     ROS_WARN_STREAM("'min_rollouts' must be less than 'num_rollouts_per_iteration'");
     config_.min_rollouts = config_.num_rollouts;
   }
+
+  noise_stddevs_ = config_.noise_generation.stddev;
+
+  temp_noise_array_.resize(config_.num_timesteps);
+  temp_noise_array_.setZero();
+
+  // noisy rollouts allocation
+  int d = config_.num_dimensions;
+  num_active_rollouts_ = 0;
+  noisy_rollouts_.resize(config_.max_rollouts);
+  reused_rollouts_.resize(config_.max_rollouts);
+
+  // initializing rollout
+  Rollout rollout;
+  rollout.noise.resize(d, config_.num_timesteps);
+  rollout.noise.setZero();
+
+  rollout.parameters_noise.resize(d, config_.num_timesteps);
+  rollout.parameters_noise.setZero();
+
+  rollout.probabilities.resize(d, config_.num_timesteps);
+  rollout.probabilities.setZero();
+
+  rollout.full_probabilities.clear();
+  rollout.full_probabilities.resize(d);
+
+  rollout.full_costs.clear();
+  rollout.full_costs.resize(d);
+
+  rollout.control_costs.resize(d, config_.num_timesteps);
+  rollout.control_costs.setZero();
+
+  rollout.total_costs.resize(d, config_.num_timesteps);
+  rollout.total_costs.setZero();
+
+  rollout.state_costs.resize(config_.num_timesteps);
+  rollout.state_costs.setZero();
+
+  rollout.importance_weight = DEFAULT_NOISY_COST_IMPORTANCE_WEIGHT;
+
+  for(unsigned int r = 0; r < config_.max_rollouts ; r++)
+  {
+    noisy_rollouts_[r] = rollout;
+    reused_rollouts_[r] = rollout;
+  }
+
+  // parameter updates
+  parameters_updates_.resize(d, config_.num_timesteps);
+  parameters_updates_.setZero();
+
+  parameters_control_costs_.resize(d, config_.num_timesteps);
+  parameters_control_costs_.setZero();
+
+  parameters_state_costs_.resize(config_.num_timesteps);
+  parameters_state_costs_.setZero();
+
+  parameters_optimized_.resize(config_.num_dimensions,config_.num_timesteps);
+  parameters_optimized_.setZero();
 
   // generate finite difference matrix
   start_index_padded_ = FINITE_DIFF_RULE_LENGTH-1;
@@ -352,39 +417,6 @@ bool Stomp::resetVariables()
         MultivariateGaussianPtr(new MultivariateGaussian(Eigen::VectorXd::Zero(config_.num_timesteps),
                                               inv_control_cost_matrix_R_)));
   }
-  noise_stddevs_ = config_.noise_generation.stddev;
-  temp_noise_array_ =  Eigen::VectorXd::Zero(config_.num_timesteps);
-
-  // noisy rollouts allocation
-  int d = config_.num_dimensions;
-  num_active_rollouts_ = 0;
-  noisy_rollouts_.resize(config_.max_rollouts);
-  reused_rollouts_.resize(config_.max_rollouts);
-
-  // initializing rollout
-  Rollout rollout;
-  rollout.noise = Eigen::MatrixXd::Zero(d, config_.num_timesteps);
-  rollout.parameters_noise = Eigen::MatrixXd::Zero(d, config_.num_timesteps);
-
-  rollout.probabilities= Eigen::MatrixXd::Zero(d, config_.num_timesteps);
-  rollout.full_probabilities.resize(d);
-
-  rollout.full_costs.resize(d);
-  rollout.control_costs = Eigen::MatrixXd::Zero(d, config_.num_timesteps);
-  rollout.total_costs= Eigen::MatrixXd::Zero(d, config_.num_timesteps);
-  rollout.state_costs = Eigen::VectorXd::Zero(config_.num_timesteps);
-  rollout.importance_weight = DEFAULT_NOISY_COST_IMPORTANCE_WEIGHT;
-
-  for(unsigned int r = 0; r < config_.max_rollouts ; r++)
-  {
-    noisy_rollouts_[r] = rollout;
-    reused_rollouts_[r] = rollout;
-  }
-
-  // parameter updates
-  parameters_updates_ = Eigen::MatrixXd::Zero(d, config_.num_timesteps);
-  parameters_control_costs_= Eigen::MatrixXd::Zero(d, config_.num_timesteps);
-  parameters_state_costs_ = Eigen::VectorXd::Zero(config_.num_timesteps);
 
   return true;
 }
@@ -446,9 +478,6 @@ void Stomp::updateNoiseStddev()
 
 bool Stomp::computeInitialTrajectory(const std::vector<double>& first,const std::vector<double>& last)
 {
-  // allocating
-  parameters_optimized_= Eigen::MatrixXd::Zero(config_.num_dimensions,config_.num_timesteps);
-
   bool valid = true;
 
   switch(config_.initialization_method)
@@ -475,13 +504,13 @@ bool Stomp::computeInitialTrajectory(const std::vector<double>& first,const std:
 bool Stomp::cancel()
 {
   ROS_WARN("Interrupting STOMP");
-  setProceed(false);
-  return !getProceed();
+  proceed_ = false;
+  return !proceed_;
 }
 
 bool Stomp::runSingleIteration()
 {
-  if(!getProceed())
+  if(!proceed_)
   {
     return false;
   }
@@ -645,7 +674,7 @@ bool Stomp::computeRolloutsStateCosts()
   bool proceed = true;
   for(auto r = 0u ; r < config_.num_rollouts; r++)
   {
-    if(!getProceed())
+    if(!proceed_)
     {
       proceed = false;
       break;
@@ -847,22 +876,5 @@ bool Stomp::computeOptimizedCost()
 
   return proceed;
 }
-
-void Stomp::setProceed(bool proceed)
-{
-  proceed_mutex_.lock();
-  proceed_ = proceed;
-  proceed_mutex_.unlock();
-}
-
-bool Stomp::getProceed()
-{
-  bool proceed;
-  proceed_mutex_.lock();
-  proceed = proceed_;
-  proceed_mutex_.unlock();
-  return proceed;
-}
-
 
 } /* namespace stomp */

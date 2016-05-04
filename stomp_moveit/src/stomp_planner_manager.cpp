@@ -31,40 +31,20 @@ bool StompPlannerManager::initialize(const robot_model::RobotModelConstPtr &mode
     nh_ = ros::NodeHandle(ns);
   }
 
-  // Create a stomp planner for each group
-  XmlRpc::XmlRpcValue config;
-  if(!nh_.getParam("stomp",config))
-  {
-    ROS_ERROR("The 'stomp' configuration parameter was not found");
-    return false;
-  }
-
   // each element under 'stomp' should be a group name
-  XmlRpc::XmlRpcValue group_config;
-  std::string group_name;
-  try
+  std::map<std::string, XmlRpc::XmlRpcValue> group_config = stomp_moveit::StompPlanner::getConfigData(nh_, "stomp");
+
+  for(std::map<std::string, XmlRpc::XmlRpcValue>::iterator v = group_config.begin(); v != group_config.end(); v++)
   {
-    for(XmlRpc::XmlRpcValue::iterator v = config.begin(); v != config.end(); v++)
+    if(!model->hasJointModelGroup(v->first))
     {
-      group_config = v->second;
-      group_name = static_cast<std::string>(group_config["group_name"]);
-
-      if(!model->hasJointModelGroup(group_name))
-      {
-        ROS_ERROR("The robot model does not support the planning group '%s' listed by in the stomp configuration",
-                  group_name.c_str());
-        return false;
-      }
-
-      boost::shared_ptr<StompPlanner> planner(new StompPlanner(group_name,group_config,model));
-      planners_.insert(std::make_pair(group_name,planner));
+      ROS_ERROR("The robot model does not support the planning group '%s' listed by in the stomp configuration",
+                v->first.c_str());
+      return false;
     }
 
-  }
-  catch(XmlRpc::XmlRpcException& e )
-  {
-    ROS_ERROR("The group_name parameter was not found, %s",group_config.toXml().c_str());
-    return false;
+    boost::shared_ptr<StompPlanner> planner(new StompPlanner(v->first, v->second, model));
+    planners_.insert(std::make_pair(v->first, planner));
   }
 
   return true;

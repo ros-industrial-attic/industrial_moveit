@@ -25,8 +25,7 @@
 #ifndef INDUSTRIAL_MOVEIT_STOMP_CORE_INCLUDE_STOMP_CORE_STOMP_H_
 #define INDUSTRIAL_MOVEIT_STOMP_CORE_INCLUDE_STOMP_CORE_STOMP_H_
 
-#include <boost/thread/thread.hpp>
-#include <boost/thread/mutex.hpp>
+#include <atomic>
 #include <stomp_core/utils.h>
 #include <XmlRpc.h>
 #include "stomp_core/task.h"
@@ -49,6 +48,8 @@ public:
              Eigen::MatrixXd& parameters_optimized);
   bool cancel();
 
+  bool clear();
+
   static bool parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_config);
 
 protected:
@@ -69,18 +70,13 @@ protected:
   bool filterUpdatedParameters();
   bool computeOptimizedCost();
 
-  // thread safe methods
-  void setProceed(bool proceed);
-  bool getProceed();
-
   // noise generation variables
   void updateNoiseStddev();
 
 protected:
 
   // process control
-  boost::mutex proceed_mutex_;
-  bool proceed_;
+  std::atomic<bool> proceed_;
   TaskPtr task_;
   StompConfiguration config_;
   unsigned int current_iteration_;
