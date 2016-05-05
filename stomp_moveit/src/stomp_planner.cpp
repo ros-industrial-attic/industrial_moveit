@@ -19,7 +19,7 @@ namespace stomp_moveit
 
 StompPlanner::StompPlanner(const std::string& group,const XmlRpc::XmlRpcValue& config,
                            const moveit::core::RobotModelConstPtr& model):
-    PlanningContext("Stomp",group),
+    PlanningContext(DESCRIPTION,group),
     config_(config),
     robot_model_(model),
     stomp_()
@@ -268,10 +268,10 @@ bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<doubl
 
 bool StompPlanner::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) const
 {
-  // check if planner is available
-  if (req.planner_id != "STOMP" && req.planner_id != "CHOMP")
+  // check group
+  if(req.group_name != getGroupName())
   {
-    ROS_ERROR("STOMP: Planner %s not available.", req.planner_id.c_str());
+    ROS_ERROR("STOMP: Unsupported planning group '%s' requested", req.group_name.c_str());
     return false;
   }
 

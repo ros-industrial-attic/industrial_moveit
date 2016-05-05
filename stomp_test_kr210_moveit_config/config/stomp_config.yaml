@@ -15,23 +15,36 @@ stomp/manipulator:
       stddev: [0.3, 1.0, 0.5, 0.4, 0.3, 0.3]
       min_stddev: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
       decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
-      method: 1 # [0 : CONSTANT, 1 : ADAPTIVE, 2 : EXPONENTIAL_DECAY]
+      method: 0 # [0 : CONSTANT, 1 : ADAPTIVE, 2 : EXPONENTIAL_DECAY]
       update_rate: 0.2 # Used by EXPONENTIAL_DECAY method only
   task:
     cost_functions:
-      - class: stomp_moveit/ObstacleAvoidance
+      - class: stomp_moveit/CollisionCheck 
         collision_padding: 0.01
-        collision_clearance: 0.01
-        collision_penalty: 1.0 
-        cost_weight: 1.0   
+        collision_penalty: 1.0
+        cost_weight: 1.0 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
         lock_goal: True
+      - class: stomp_moveit/MultiTrajectoryVisualization
+        line_width: 0.02
+        rgb: [0, 255, 0]
+        marker_array_topic: stomp_trajectories
+        marker_namespace: noisy
     optimized_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
         lock_goal: True
+      - class: stomp_moveit/TrajectoryVisualization
+        line_width: 0.02
+        rgb: [191, 0, 255]
+        error_rgb: [255, 0, 0]
+        publish_intermediate: True
+        marker_topic: stomp_trajectory
+        marker_namespace: optimized
+    update_smoothers:
+      - class: stomp_moveit/ControlCostProjectionMatrix
 stomp/manipulator_rail:
   group_name: manipulator_rail
   optimization:

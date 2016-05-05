@@ -59,6 +59,7 @@ bool StompPlannerManager::initialize(const robot_model::RobotModelConstPtr &mode
       boost::shared_ptr<StompPlanner> planner(new StompPlanner(group_name,group_config,model));
       planners_.insert(std::make_pair(group_name,planner));
     }
+
   }
   catch(XmlRpc::XmlRpcException& e )
   {
@@ -71,10 +72,14 @@ bool StompPlannerManager::initialize(const robot_model::RobotModelConstPtr &mode
 
 bool StompPlannerManager::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) const
 {
-  bool proceed = (planners_.count(req.group_name) > 0) &&
-      !req.goal_constraints.empty();
+  if(planners_.count(req.group_name) == 0)
+  {
+    return false;
+  }
 
-  return proceed;
+  // Get planner
+  boost::shared_ptr<StompPlanner> planner = boost::static_pointer_cast<StompPlanner>(planners_.at(req.group_name));
+  return planner->canServiceRequest(req);
 }
 
 void StompPlannerManager::getPlanningAlgorithms(std::vector<std::string> &algs) const
@@ -82,7 +87,7 @@ void StompPlannerManager::getPlanningAlgorithms(std::vector<std::string> &algs) 
   algs.clear();
   if(!planners_.empty())
   {
-    algs.push_back("Stomp");
+    algs.push_back(planners_.begin()->second->getName());
   }
 }
 
@@ -113,13 +118,19 @@ planning_interface::PlanningContextPtr StompPlannerManager::getPlanningContext(c
 
   if(planners_.count(req.group_name) <=0)
   {
-    ROS_ERROR("Stomp does not have a planning context for group %s",req.group_name.c_str());
+    ROS_ERROR("STOMP does not have a planning context for group %s",req.group_name.c_str());
     error_code.val = moveit_msgs::MoveItErrorCodes::FAILURE;
     return planning_interface::PlanningContextPtr();
   }
 
   // Get planner
-  planning_interface::PlanningContextPtr planner = planners_.at(req.group_name);
+  boost::shared_ptr<StompPlanner> planner = boost::static_pointer_cast<StompPlanner>(planners_.at(req.group_name));
+
+  if(!planner->canServiceRequest(req))
+  {
+    error_code.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+    return planning_interface::PlanningContextPtr();
+  }
 
   // Setup Planner
   planner->clear();
