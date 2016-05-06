@@ -48,7 +48,11 @@ void StompPlanner::setup()
 
     // parsing stomp parameters
     if(!config_.hasMember("optimization") || !stomp_core::Stomp::parseConfig(config_["optimization" ],stomp_config_))
-      ROS_ERROR("Stomp 'optimization' parameter for group '%s' was not found",group_.c_str());
+    {
+      std::string msg = "Stomp 'optimization' parameter for group '" + group_ + "' was not found";
+      ROS_ERROR(msg.c_str());
+      throw std::logic_error(msg);
+    }
 
     stomp_.reset(new stomp_core::Stomp(stomp_config_,task_));
   }
@@ -105,7 +109,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 
 
   // solve
-  ROS_INFO_STREAM("Stomp planning started");
+  ROS_DEBUG_STREAM("Stomp planning started");
   trajectory_msgs::JointTrajectory trajectory;
   Eigen::MatrixXd parameters;
   if(stomp_->solve(start,goal,parameters))
@@ -309,32 +313,31 @@ void StompPlanner::clear()
   stomp_->clear();
 }
 
-std::map<std::string, XmlRpc::XmlRpcValue> StompPlanner::getConfigData(ros::NodeHandle &nh, std::string param)
+bool StompPlanner::getConfigData(ros::NodeHandle &nh, std::map<std::string, XmlRpc::XmlRpcValue> &config, std::string param)
 {
   // Create a stomp planner for each group
-  XmlRpc::XmlRpcValue config;
-  if(!nh.getParam(param, config))
+  XmlRpc::XmlRpcValue stomp_config;
+  if(!nh.getParam(param, stomp_config))
   {
     ROS_ERROR("The 'stomp' configuration parameter was not found");
-    return std::map<std::string, XmlRpc::XmlRpcValue>();
+    return false;
   }
 
   // each element under 'stomp' should be a group name
-  std::map<std::string, XmlRpc::XmlRpcValue> group_config;
   std::string group_name;
   try
   {
-    for(XmlRpc::XmlRpcValue::iterator v = config.begin(); v != config.end(); v++)
+    for(XmlRpc::XmlRpcValue::iterator v = stomp_config.begin(); v != stomp_config.end(); v++)
     {
       group_name = static_cast<std::string>(v->second["group_name"]);
-      group_config.insert(std::make_pair(group_name, v->second));
+      config.insert(std::make_pair(group_name, v->second));
     }
-    return group_config;
+    return true;
   }
   catch(XmlRpc::XmlRpcException& e )
   {
-    ROS_ERROR("Unable to parse ROS parameter:\n %s",config.toXml().c_str());
-    return std::map<std::string, XmlRpc::XmlRpcValue>();
+    ROS_ERROR("Unable to parse ROS parameter:\n %s",stomp_config.toXml().c_str());
+    return false;
   }
 }
 
