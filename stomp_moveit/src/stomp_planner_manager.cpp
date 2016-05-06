@@ -33,6 +33,7 @@ bool StompPlannerManager::initialize(const robot_model::RobotModelConstPtr &mode
 
   // each element under 'stomp' should be a group name
   std::map<std::string, XmlRpc::XmlRpcValue> group_config;
+
   if (!StompPlanner::getConfigData(nh_, group_config))
     return false;
 
