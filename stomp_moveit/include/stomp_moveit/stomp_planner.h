@@ -45,6 +45,8 @@ public:
    */
   virtual void clear() override;
 
+  static bool getConfigData(ros::NodeHandle &nh, std::map<std::string, XmlRpc::XmlRpcValue> &config, std::string param = std::string("stomp"));
+
   /**
    * @brief Determine whether this plugin instance is able to represent this planning request
    */

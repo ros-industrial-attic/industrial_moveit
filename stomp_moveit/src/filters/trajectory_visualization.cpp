@@ -197,7 +197,7 @@ bool TrajectoryVisualization::filter(std::size_t start_timestep,
 
   // FK on each point
   const moveit::core::JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_name_);
-  std::string tool_link = joint_group->getUpdatedLinkModelNames().back();
+  std::string tool_link = joint_group->getLinkModelNames().back();
   for(auto t = 0u; t < parameters.cols();t++)
   {
     state_->setJointGroupPositions(joint_group,parameters.col(t));

@@ -21,8 +21,7 @@ StompPlanner::StompPlanner(const std::string& group,const XmlRpc::XmlRpcValue& c
                            const moveit::core::RobotModelConstPtr& model):
     PlanningContext(DESCRIPTION,group),
     config_(config),
-    robot_model_(model),
-    stomp_()
+    robot_model_(model)
 {
   setup();
 }
@@ -46,6 +45,16 @@ void StompPlanner::setup()
     XmlRpc::XmlRpcValue task_config;
     task_config = config_["task"];
     task_.reset(new StompOptimizationTask(robot_model_,group_,task_config));
+
+    // parsing stomp parameters
+    if(!config_.hasMember("optimization") || !stomp_core::Stomp::parseConfig(config_["optimization" ],stomp_config_))
+    {
+      std::string msg = "Stomp 'optimization' parameter for group '" + group_ + "' was not found";
+      ROS_ERROR(msg.c_str());
+      throw std::logic_error(msg);
+    }
+
+    stomp_.reset(new stomp_core::Stomp(stomp_config_,task_));
   }
   catch(XmlRpc::XmlRpcException& e)
   {
@@ -82,14 +91,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   ros::WallTime start_time = ros::WallTime::now();
   bool success = false;
 
-  // parsing stomp parameters
-  if(!config_.hasMember("optimization") || !Stomp::parseConfig(config_["optimization" ],stomp_config_))
-  {
-    res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
-    ROS_ERROR("Stomp 'optimization' parameter for group '%s' was not found",group_.c_str());
-    return false;
-  }
-
   // setting up up optimization task
   if(!task_->setMotionPlanRequest(planning_scene_,request_, stomp_config_,res.error_code_))
   {
@@ -111,7 +112,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   ROS_DEBUG_STREAM("Stomp planning started");
   trajectory_msgs::JointTrajectory trajectory;
   Eigen::MatrixXd parameters;
-  stomp_.reset(new stomp_core::Stomp(stomp_config_,task_));
   if(stomp_->solve(start,goal,parameters))
   {
     if(!parametersToJointTrajectory(parameters,trajectory))
@@ -299,11 +299,7 @@ bool StompPlanner::terminate()
 {
   if(stomp_)
   {
-    if(stomp_->cancel())
-    {
-      ROS_ERROR_STREAM("Stomp was terminated");
-    }
-    else
+    if(!stomp_->cancel())
     {
       ROS_ERROR_STREAM("Failed to interrupt Stomp");
       return false;
@@ -314,7 +310,35 @@ bool StompPlanner::terminate()
 
 void StompPlanner::clear()
 {
-  stomp_.reset();
+  stomp_->clear();
+}
+
+bool StompPlanner::getConfigData(ros::NodeHandle &nh, std::map<std::string, XmlRpc::XmlRpcValue> &config, std::string param)
+{
+  // Create a stomp planner for each group
+  XmlRpc::XmlRpcValue stomp_config;
+  if(!nh.getParam(param, stomp_config))
+  {
+    ROS_ERROR("The 'stomp' configuration parameter was not found");
+    return false;
+  }
+
+  // each element under 'stomp' should be a group name
+  std::string group_name;
+  try
+  {
+    for(XmlRpc::XmlRpcValue::iterator v = stomp_config.begin(); v != stomp_config.end(); v++)
+    {
+      group_name = static_cast<std::string>(v->second["group_name"]);
+      config.insert(std::make_pair(group_name, v->second));
+    }
+    return true;
+  }
+  catch(XmlRpc::XmlRpcException& e )
+  {
+    ROS_ERROR("Unable to parse ROS parameter:\n %s",stomp_config.toXml().c_str());
+    return false;
+  }
 }
 
 
