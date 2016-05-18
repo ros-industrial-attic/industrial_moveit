@@ -9,6 +9,7 @@ add_definitions("-std=c++11")
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   stomp_moveit
+  constrained_ik
   moveit_core
 )
 
@@ -27,9 +28,11 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${EIGEN
 
 ## Declare a C++ executable
 add_executable(stomp_benchmarking_node src/stomp_valgrind.cpp)
+add_executable(joint_interpolated_benchmarking_node src/joint_interpolated_valgrind.cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(stomp_benchmarking_node ${catkin_LIBRARIES})
+target_link_libraries(joint_interpolated_benchmarking_node ${catkin_LIBRARIES})
 
 #############
 ## Install ##
