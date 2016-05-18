@@ -153,6 +153,27 @@
     </collision>
   </link>
 
+  <link name="obstacle_cube">
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://stomp_test_support/meshes/cube/visual/menger_sponge.stl"/>
+      </geometry>
+     <material name="red">
+       <color rgba="1.0 0.4 0.4 1.0"/>
+     </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://stomp_test_support/meshes/cube/visual/menger_sponge.stl"/>
+      </geometry>
+     <material name="red">
+       <color rgba="1.0 0.4 0.4 1.0"/>
+     </material>
+    </collision>
+  </link>
+
   <joint name="world_to_bounds" type="fixed">
     <parent link="world" />
     <child link="workcell_bounds" />
@@ -177,6 +198,12 @@
     <parent link="world" />
     <child link="obstacle_cylinder" />
     <origin xyz="0 1.5 ${0.5*cylinder_height}"/>
+  </joint>
+
+  <joint name="world_to_cube" type="fixed">
+    <parent link="world" />
+    <child link="obstacle_cube" />
+    <origin xyz="0.25 1.25 0.25"/>
   </joint>
 </robot>
 
