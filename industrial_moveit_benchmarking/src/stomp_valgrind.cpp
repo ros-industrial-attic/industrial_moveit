@@ -10,7 +10,6 @@
 #include <moveit/kinematic_constraints/utils.h>
 #include <stomp_moveit/stomp_planner.h>
 #include <fstream>
-#include <time.h>
 
 using namespace ros;
 using namespace stomp_moveit;
@@ -31,10 +30,9 @@ int main (int argc, char *argv[])
   map<string, XmlRpc::XmlRpcValue> config;
   robot_model_loader::RobotModelLoaderPtr loader;
   robot_model::RobotModelPtr robot_model;
-  bool active;
   string urdf_file_path, srdf_file_path;
 
-  urdf_file_path = package::getPath("stomp_test_support") + "/urdf/test_kr210l150.urdf";
+  urdf_file_path = package::getPath("stomp_test_support") + "/urdf/test_kr210l150_500K.urdf";
   srdf_file_path = package::getPath("stomp_test_kr210_moveit_config") + "/config/test_kr210.srdf";
 
   ifstream ifs1 (urdf_file_path.c_str());
@@ -49,9 +47,7 @@ int main (int argc, char *argv[])
 
   if (!robot_model)
   {
-    ROS_ERROR_STREAM("Could not load URDF model from " << urdf_file_path);
-    ROS_ERROR_STREAM("Could not load SRDF model from " << srdf_file_path);
-    active = false;
+    ROS_ERROR_STREAM("Unable to load robot model from urdf and srdf.");
     return false;
   }
 
@@ -101,15 +97,15 @@ int main (int argc, char *argv[])
   dist[5] = 0.05;
   dist[6] = 0.05;
 
-  clock_t t1, t2;
-  t1 = clock();
+  ros::Time t1, t2;
+  t1 = ros::Time::now();
   const robot_state::JointModelGroup *jmg = goal.getJointModelGroup(group_name);
   for (int i = 0; i < 100; i++)
   {
     if (jmg)
     {
       robot_state::RobotState new_goal = goal;
-//      new_goal.setToRandomPositionsNearBy(jmg, goal, dist);
+      new_goal.setToRandomPositionsNearBy(jmg, goal, dist);
       req.goal_constraints.resize(1);
       req.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(new_goal, jmg);
     }
@@ -122,8 +118,8 @@ int main (int argc, char *argv[])
       ROS_ERROR_STREAM("STOMP Solver failed:" << res.error_code_);
 
   }
-  t2=clock();
+  t2 = ros::Time::now();
 
-  ROS_ERROR_STREAM("DIFF: " << (t2-t1)/CLOCKS_PER_SEC/100.0);
+  ROS_ERROR("DIFF: %4.10f seconds", (t2-t1).toSec()/100.0);
   return 0;
 }
