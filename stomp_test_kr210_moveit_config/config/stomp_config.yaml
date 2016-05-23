@@ -8,7 +8,7 @@ stomp/manipulator:
     delta_t: 0.1
     num_rollouts: 10
     min_rollouts: 5
-    max_rollouts: 10
+    max_rollouts: 100
     initialization_method: 1 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
     control_cost_weight: 0.1
     noise_generation:
@@ -55,7 +55,7 @@ stomp/manipulator_rail:
     delta_t: 0.1
     num_rollouts: 10
     min_rollouts: 5
-    max_rollouts: 100 
+    max_rollouts: 10 
     initialization_method: 3 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
     control_cost_weight: 0.0
     noise_generation:
@@ -105,5 +105,56 @@ stomp/manipulator_rail:
         package: stomp_moveit
         directory: log
         filename: smoothed_update.txt
-    
+stomp/manipulator_tool:
+  group_name: manipulator_tool
+  optimization:
+    num_timesteps: 50
+    num_dimensions: 7
+    num_iterations: 40
+    num_iterations_after_valid: 0
+    delta_t: 0.1
+    num_rollouts: 10
+    min_rollouts: 5
+    max_rollouts: 100 
+    initialization_method: 3 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
+    control_cost_weight: 0.0
+    noise_generation:
+      stddev: [0.05, 0.4, 1.2, 0.4, 0.4, 0.4, 0.5]
+      min_stddev: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+      decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8] # Used by EXPONENTIAL_DECAY method only
+      method: 0 # [0 : CONSTANT, 1 : ADAPTIVE, 2 : EXPONENTIAL_DECAY]
+      update_rate: 0.5 # Used by ADAPTIVE method only
+  task:
+    cost_functions:
+      - class: stomp_moveit/CollisionCheck 
+        collision_padding: 0.02
+        collision_penalty: 1.0
+        cost_weight: 1.0
+    noisy_filters:
+      - class: stomp_moveit/JointLimits
+        lock_start: True
+        lock_goal: False
+      - class: stomp_moveit/UnderconstrainedGoal
+        constrained_dofs: [1, 1, 1, 1, 1, 0]
+        cartesian_convergence: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+        update_weight: 0.1
+        max_ik_iterations: 40
+      - class: stomp_moveit/MultiTrajectoryVisualization
+        line_width: 0.02
+        rgb: [255, 255, 0]
+        marker_array_topic: stomp_tool_trajectories
+        marker_namespace: noisy
+    optimized_filters:
+      - class: stomp_moveit/JointLimits
+        lock_start: True
+        lock_goal: False
+      - class: stomp_moveit/TrajectoryVisualization
+        line_width: 0.05
+        rgb: [0, 191, 255]
+        error_rgb: [255, 0, 0]
+        publish_intermediate: True
+        marker_topic: stomp_trajectory
+        marker_namespace: optimized
+    update_smoothers:
+      - class: stomp_moveit/ControlCostProjectionMatrix
     
