@@ -1,0 +1,109 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+	<!-- parameter list -->
+	<xacro:property name="gripper_length" value="0.24"/>
+	<xacro:property name="gripper_width" value="0.04"/>
+	<xacro:property name="gripper_height" value="0.10"/>
+	<xacro:property name="gripper_spacer_length" value="0.05"/>
+	<xacro:property name="gripper_spacer_radius" value="0.04"/>
+	<xacro:property name="finger_length" value="0.09"/>
+	<xacro:property name="finger_width" value="0.03"/>
+	<xacro:property name="finger_thickness" value="0.02"/>
+	<xacro:property name="workrange" value="0.12"/>
+
+	<material name="black">
+		<color rgba="0.1 0.1 0.1 1"/>
+	</material>
+	<material name="gray0">
+		<color rgba="0.8 0.8 0.8 1"/>
+	</material>
+
+	<xacro:macro name="digit_components" >
+		<visual>	
+			<material name="black"/>
+			<origin xyz="${0.5*workrange + 0.5*finger_thickness} 0 ${gripper_height + 0.5*finger_length}" rpy="0 0 0"/>
+			<geometry>
+				<box size="${finger_thickness} ${finger_width} ${finger_length}"/>
+			</geometry>
+		</visual>
+		<collision>
+			<origin xyz="${0.5*workrange + 0.5*finger_thickness} 0 ${gripper_height + 0.5*finger_length}" rpy="0 0 0"/>
+			<geometry>
+				<box size="${finger_thickness} ${finger_width} ${finger_length}"/>
+			</geometry>
+		</collision>
+		<visual>	
+			<material name="black"/>
+			<origin xyz="-${0.5*workrange + 0.5*finger_thickness} 0 ${gripper_height + 0.5*finger_length}" rpy="0 0 0"/>
+			<geometry>
+				<box size="${finger_thickness} ${finger_width} ${finger_length}"/>
+			</geometry>
+		</visual>
+		<collision>
+			<origin xyz="-${0.5*workrange + 0.5*finger_thickness} 0 ${gripper_height + 0.5*finger_length}" rpy="0 0 0"/>
+			<geometry>
+				<box size="${finger_thickness} ${finger_width} ${finger_length}"/>
+			</geometry>
+		</collision>
+	</xacro:macro>
+
+	<xacro:macro name="simple_2fgripper_link" params="prefix">
+
+		<link name="${prefix}gripper_frame"/>
+
+		<link name="${prefix}gripper_spacer">
+			<material name="gray0"/>
+			<visual>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<geometry>
+					<cylinder length="${gripper_spacer_length}" radius="${gripper_spacer_radius}"/>
+				</geometry>
+			</visual>
+			<collision>
+				<origin xyz="0 0 0" rpy="0 0 0"/>
+				<geometry>
+					<cylinder length="${gripper_spacer_length}" radius="${gripper_spacer_radius}"/>
+				</geometry>
+			</collision>
+		</link>
+
+		<link name="${prefix}gripper_body">
+			<visual>
+				<material name="gray0"/>
+				<origin xyz="0 0 ${0.5*gripper_height}" rpy="0 0 0"/>
+				<geometry>
+					<box size="${gripper_length} ${gripper_width} ${gripper_height}"/>
+				</geometry>
+			</visual>
+			<collision>
+				<origin xyz="0 0 ${0.5*gripper_height}" rpy="0 0 0"/>
+				<geometry>
+					<box size="${gripper_length} ${gripper_width} ${gripper_height}"/>
+				</geometry>
+			</collision>
+			<xacro:digit_components />
+		</link>
+
+		<link name="${prefix}tcp_frame">
+		</link>
+
+		<joint name="${prefix}gripper_frame_to_spacer" type="fixed">
+			<parent link="${prefix}gripper_frame"/>
+			<child link="${prefix}gripper_spacer"/>
+			<origin xyz="0 0 ${0.5*gripper_spacer_length}" rpy="0 0 0"/>
+		</joint>
+	
+		<joint name="${prefix}gripper_frame_to_body" type="fixed">
+			<parent link="${prefix}gripper_frame"/>
+			<child link="${prefix}gripper_body"/>
+			<origin xyz="0 0 ${gripper_spacer_length}" rpy="0 0 0"/>
+		</joint>
+
+		<joint name="${prefix}gripper_to_tcp" type="fixed">
+			<parent link="${prefix}gripper_frame"/>
+			<child link="${prefix}tcp_frame"/>
+			<origin xyz=" 0 0 ${gripper_height + gripper_spacer_length + 0.45*finger_length}" rpy="0 0 0"/>
+		</joint>	
+
+	</xacro:macro>
+</robot>
