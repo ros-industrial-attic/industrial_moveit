@@ -73,12 +73,8 @@ public:
 
 protected:
 
-  void reduceJacobian(const Eigen::MatrixXd& jacb,Eigen::MatrixXd& jacb_reduced);
-  void calculatePseudoInverse(const Eigen::MatrixXd& jacb,Eigen::MatrixXd& jacb_pseudo_inv);
-  void computeTwist(const Eigen::Affine3d& start_pose,
-                   const Eigen::Affine3d& end_pose,
-                   std::array<bool,6>& nullity,
-                   Eigen::VectorXd& twist);
+  bool nullSpaceIK(const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
+                   Eigen::VectorXd& joint_pose);
 
 protected:
 
@@ -88,10 +84,11 @@ protected:
   // tool goal
   Eigen::Affine3d tool_goal_pose_;
 
-  // underconstrained info
-  std::array<bool,6> dof_nullity_;
-  std::array<double,6> dof_convergence_thresholds_;
-  int num_constrained_dof_;
+  // ik
+  Eigen::ArrayXi dof_nullity_;
+  Eigen::ArrayXd cartesian_convergence_thresholds_;
+  double update_weight_;
+  int max_iterations_;
 
   // robot
   moveit::core::RobotModelConstPtr robot_model_;

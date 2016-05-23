@@ -10,6 +10,61 @@
 #include <moveit/robot_state/robot_state.h>
 #include <moveit/robot_state/conversions.h>
 #include <stomp_moveit/filters/underconstrained_goal.h>
+#include <pluginlib/class_list_macros.h>
+#include <XmlRpcException.h>
+
+PLUGINLIB_EXPORT_CLASS(stomp_moveit::filters::UnderconstrainedGoal,stomp_moveit::filters::StompFilter);
+
+
+const static unsigned int DOF_SIZE = 6;
+
+static void reduceJacobian(const Eigen::MatrixXd& jacb,
+                                          const Eigen::ArrayXi& nullity,Eigen::MatrixXd& jacb_reduced)
+{
+  Eigen::VectorXi indices = (nullity != 0).cast<int>();
+  jacb_reduced.resize(indices.size(),jacb.cols());
+  for(auto i = 0u; i < indices.size(); i++)
+  {
+    jacb_reduced.row(i) = jacb.row(indices(i));
+  }
+}
+
+static void calculatePseudoInverse(const Eigen::MatrixXd& jacb,Eigen::MatrixXd& jacb_pseudo_inv)
+{
+  Eigen::MatrixXd jacb_transpose = jacb.transpose();
+  jacb_pseudo_inv = (jacb_transpose) * ((jacb * jacb_transpose).inverse());
+}
+
+static void computeTwist(const Eigen::Affine3d& p0,
+                                        const Eigen::Affine3d& pf,
+                                        const Eigen::ArrayXi& nullity,Eigen::VectorXd& twist)
+{
+  twist.resize(nullity.size());
+  twist.setConstant(0);
+  Eigen::Vector3d twist_pos = pf.translation() - p0.translation();
+
+  // relative rotation -> R = inverse(R0) * Rf
+  Eigen::AngleAxisd relative_rot(p0.rotation().transpose() * pf.rotation());
+  double angle = relative_rot.angle();
+  Eigen::Vector3d axis = relative_rot.axis().normalized();
+
+  // forcing angle to range [-pi , pi]
+  while( (angle > M_PI) || (angle < -M_PI))
+  {
+    angle = (angle >  M_PI) ? (angle - 2*M_PI) : angle;
+    angle = (angle < -M_PI )? (angle + 2*M_PI) : angle;
+  }
+
+  // creating twist rotation relative to world
+  Eigen::Vector3d twist_rot = p0.rotation() * axis * angle;
+
+  // assigning into full 6dof twist vector
+  twist.head(3) = twist_pos;
+  twist.tail(3) = twist_rot;
+
+  // zeroing all underconstrained cartesian dofs
+  twist = (nullity == 0).select(0,twist);
+}
 
 namespace stomp_moveit
 {
@@ -30,11 +85,52 @@ UnderconstrainedGoal::~UnderconstrainedGoal()
 bool UnderconstrainedGoal::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                         const std::string& group_name,const XmlRpc::XmlRpcValue& config)
 {
-  return true;
+  group_name_ = group_name;
+  robot_model_ = robot_model_ptr;
+
+  return configure(config);
 }
 
 bool UnderconstrainedGoal::configure(const XmlRpc::XmlRpcValue& config)
 {
+  using namespace XmlRpc;
+
+  try
+  {
+    XmlRpcValue params = config;
+
+    XmlRpcValue dof_nullity_param = params["constrained_dofs"];
+    XmlRpcValue dof_thresholds_param = params["cartesian_convergence"];
+    if((dof_nullity_param.getType() != dof_nullity_param.TypeArray) ||
+        dof_nullity_param.size() < DOF_SIZE ||
+        dof_thresholds_param.getType() != XmlRpcValue::TypeArray ||
+        dof_thresholds_param.size() < DOF_SIZE )
+    {
+      ROS_ERROR("UnderconstrainedGoal received invalid array parameters");
+      return false;
+    }
+
+    dof_nullity_.resize(DOF_SIZE);
+    for(auto i = 0u; i < dof_nullity_param.size(); i++)
+    {
+      dof_nullity_(i) = static_cast<int>(dof_nullity_param[i]);
+    }
+
+    cartesian_convergence_thresholds_.resize(DOF_SIZE);
+    for(auto i = 0u; i < dof_thresholds_param.size(); i++)
+    {
+      cartesian_convergence_thresholds_(i) = static_cast<double>(dof_thresholds_param[i]);
+    }
+
+    update_weight_ = static_cast<double>(params["update_weight"]);
+    max_iterations_ = static_cast<int>(params["max_ik_iterations"]);
+  }
+  catch(XmlRpc::XmlRpcException& e)
+  {
+    ROS_ERROR("UnderconstrainedGoal failed to load parameters, %s",e.getMessage().c_str());
+    return false;
+  }
+
   return true;
 }
 
@@ -45,7 +141,6 @@ bool UnderconstrainedGoal::setMotionPlanRequest(const planning_scene::PlanningSc
 {
   using namespace Eigen;
   using namespace moveit::core;
-
 
   const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_name_);
   tool_link_ = joint_group->getLinkModelNames().back();
@@ -114,66 +209,91 @@ bool UnderconstrainedGoal::filter(std::size_t start_timestep,
   using namespace Eigen;
   using namespace moveit::core;
 
-  VectorXd joint_pose = parameters.rightCols(1);
-  const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_name_);
-  state_->setJointGroupPositions(joint_group,joint_pose);
-  Affine3d tool_current_pose = state_->getGlobalLinkTransform(tool_link_);
+  VectorXd init_joint_pose = parameters.rightCols(1);
+  VectorXd joint_pose;
 
-  // computing twist vector
-  VectorXd tool_twist;
-  computeTwist(tool_current_pose,tool_goal_pose_,dof_nullity_,tool_twist);
+  if(!nullSpaceIK(tool_goal_pose_,init_joint_pose,joint_pose))
+  {
+    ROS_ERROR("UnderconstrainedGoal failed to find valid ik close to reference pose");
+    filtered = false;
+    return false;
+  }
+
+  filtered = true;
+  parameters.rightCols(1) = joint_pose;
 
   return true;
 }
 
-void UnderconstrainedGoal::reduceJacobian(const Eigen::MatrixXd& jacb,Eigen::MatrixXd& jacb_reduced)
+bool UnderconstrainedGoal::nullSpaceIK(const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
+                                       Eigen::VectorXd& joint_pose)
 {
+  using namespace Eigen;
+  using namespace moveit::core;
 
-}
+  // joint variables
+  VectorXd delta_j = VectorXd::Zero(init_joint_pose.size());
+  joint_pose = init_joint_pose;
+  const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_name_);
+  state_->setJointGroupPositions(joint_group,joint_pose);
+  Affine3d tool_current_pose = state_->getGlobalLinkTransform(tool_link_);
 
-void UnderconstrainedGoal::calculatePseudoInverse(const Eigen::MatrixXd& jacb,Eigen::MatrixXd& jacb_pseudo_inv)
-{
+  // tool twist variables
+  VectorXd tool_twist, tool_twist_reduced;
+  Eigen::VectorXi indices = (dof_nullity_ != 0).cast<int>();
+  tool_twist_reduced = VectorXd::Zero(indices.size());
 
-}
+  // jacobian calculation variables
+  MatrixXd identity = MatrixXd::Identity(init_joint_pose.size(),init_joint_pose.size());
+  MatrixXd jacb, jacb_reduced, jacb_pseudo_inv;
 
-
-void UnderconstrainedGoal::computeTwist(const Eigen::Affine3d& p0,
-                                        const Eigen::Affine3d& pf,
-                                        std::array<bool,6>& nullity,Eigen::VectorXd& twist)
-{
-  twist = Eigen::VectorXd::Zero(nullity.size());
-  Eigen::Vector3d twist_pos = pf.translation() - p0.translation();
-
-  // relative rotation -> R = inverse(R0) * Rf
-  Eigen::AngleAxisd relative_rot(p0.rotation().transpose() * pf.rotation());
-  double angle = relative_rot.angle();
-  Eigen::Vector3d axis = relative_rot.axis().normalized();
-
-  // forcing angle to range [-pi , pi]
-  while( (angle > M_PI) || (angle < -M_PI))
+  unsigned int iteration_count = 0;
+  bool converged = false;
+  while(iteration_count < max_iterations_)
   {
-    angle = (angle >  M_PI) ? (angle - 2*M_PI) : angle;
-    angle = (angle < -M_PI )? (angle + 2*M_PI) : angle;
-  }
+    // computing twist vector
+    computeTwist(tool_current_pose,tool_goal_pose,dof_nullity_,tool_twist);
 
-  // creating twist rotation relative to world
-  Eigen::Vector3d twist_rot = p0.rotation() * axis * angle;
-
-  // assigning into full twist vector
-  twist.head(3) = twist_pos;
-  twist.tail(3) = twist_rot;
-
-  // nullifying underconstrained
-  for(auto i = 0u; i < nullity.size(); i++)
-  {
-    if(!nullity[i])
+    // check convergence
+    if((tool_twist.array() < cartesian_convergence_thresholds_).all())
     {
-      twist(i) = 0;
+      // converged
+      converged = true;
+      ROS_DEBUG("Found numeric ik solution after %i iterations",iteration_count);
+      break;
     }
+
+    // updating reduced tool twist
+    for(auto i = 0u; i < indices.size(); i++)
+    {
+      tool_twist_reduced(i) = tool_twist(indices(i));
+    }
+
+    // computing jacobian
+    if(!state_->getJacobian(joint_group,state_->getLinkModel(tool_link_),Vector3d::Zero(),jacb))
+    {
+      ROS_ERROR("Failed to get Jacobian for link %s",tool_link_.c_str());
+      return false;
+    }
+
+    // reduce jacobian and compute its pseudo inverse
+    reduceJacobian(jacb,dof_nullity_,jacb_reduced);
+    calculatePseudoInverse(jacb_reduced,jacb_pseudo_inv);
+
+    // computing joint change
+    delta_j = update_weight_*(jacb_pseudo_inv*tool_twist_reduced) + (
+        identity - jacb_pseudo_inv * jacb_reduced)*(init_joint_pose - joint_pose);
+
+    // updating joint values
+    joint_pose += delta_j;
+
+    iteration_count++;
   }
 
-
+  return converged;
 }
+
+
 
 } /* namespace filters */
 } /* namespace stomp_moveit */

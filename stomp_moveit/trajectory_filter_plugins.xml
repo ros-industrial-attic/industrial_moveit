@@ -14,4 +14,9 @@
       FCL Mesh-model-based exact collision 
     </description>
   </class>
+  <class name="stomp_moveit/UnderconstrainedGoal" type="stomp_moveit::filters::UnderconstrainedGoal" base_class_type="stomp_moveit::filters::StompFilter">
+    <description>
+      FCL Mesh-model-based exact collision 
+    </description>
+  </class>
 </library>
