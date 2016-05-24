@@ -10,7 +10,10 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   stomp_moveit
   constrained_ik
+  cmake_modules
+  pluginlib
   moveit_core
+  moveit_ros_planning
 )
 
 ## System dependencies are found with CMake's conventions

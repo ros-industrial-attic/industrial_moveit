@@ -8,16 +8,21 @@
 #include <moveit/robot_state/conversions.h>
 #include <moveit/kinematic_constraints/kinematic_constraint.h>
 #include <moveit/kinematic_constraints/utils.h>
+#include <moveit/collision_detection/collision_plugin.h>
+#include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <constrained_ik/moveit_interface/joint_interpolation_planner.h>
 #include <constrained_ik/ConstrainedIKPlannerDynamicReconfigureConfig.h>
 #include <fstream>
 #include <time.h>
+#include <pluginlib/class_loader.h>
 
 using namespace ros;
 using namespace constrained_ik;
 using namespace Eigen;
 using namespace moveit::core;
 using namespace std;
+
+typedef boost::shared_ptr<collision_detection::CollisionPlugin> CollisionPluginPtr;
 
 int main (int argc, char *argv[])
 {
@@ -52,9 +57,19 @@ int main (int argc, char *argv[])
     return false;
   }
 
+//  boost::shared_ptr<pluginlib::ClassLoader<collision_detection::CollisionPlugin> > cd_loader(new pluginlib::ClassLoader<collision_detection::CollisionPlugin>("moveit_core", "collision_detection::CollisionPlugin"));
+  collision_detection::CollisionPluginLoader cd_loader;
   ConstrainedIKPlannerDynamicReconfigureConfig config;
   config.joint_discretization_step = 0.02;
-  planning_scene::PlanningSceneConstPtr planning_scene(new planning_scene::PlanningScene(robot_model));
+  planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(robot_model));
+
+  //Now assign collision detection plugin
+  std::string class_name = "collision_detection/IndustrialMoveitCollisionDetection";
+  cd_loader.setupScene(pnh, planning_scene);
+  cd_loader.activate(class_name, planning_scene, true);
+//  CollisionPluginPtr plugin = boost::shared_ptr<collision_detection::CollisionPlugin>(cd_loader->createUnmanagedInstance(class_name));
+//  plugin->initialize(planning_scene, true);
+
   planning_interface::MotionPlanRequest req;
   planning_interface::MotionPlanResponse res;
   string group_name = "manipulator_rail";
