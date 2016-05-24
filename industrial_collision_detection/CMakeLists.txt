@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(industrial_collision_detection)
 
+add_definitions("-std=c++11")
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   cmake_modules
@@ -30,7 +32,7 @@ set(LIBFCL_LIBRARIES "${LIBFCL_LIBRARIES_FULL}")
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
- LIBRARIES ${PROJECT_NAME}
+ LIBRARIES ${PROJECT_NAME} ${PROJECT_NAME}_plugin
  CATKIN_DEPENDS roscpp moveit_core cmake_modules pluginlib
  DEPENDS boost eigen fcl
 )
@@ -44,9 +46,12 @@ add_library(${PROJECT_NAME}
   src/collision_robot_industrial.cpp
   src/collision_world_industrial.cpp
 )
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES} ${urdfdom_LIBRARIES} ${urdfdom_headers_LIBRARIES} ${LIBFCL_LIBRARIES} ${Boost_LIBRARIES})
 
-target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES} ${urdfdom_LIBRARIES} ${urdfdom_headers_LIBRARIES} ${LIBFCL_LIBRARIES} ${Boost_LIBRARIES})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+add_library(${PROJECT_NAME}_plugin
+  src/industrial_collision_detection_plugin.cpp
+)
+target_link_libraries(${PROJECT_NAME}_plugin ${PROJECT_NAME} ${catkin_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME}
         LIBRARY DESTINATION lib
