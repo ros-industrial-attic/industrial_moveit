@@ -68,6 +68,7 @@ collision_detection::CollisionRobotIndustrial::CollisionRobotIndustrial(const ro
 collision_detection::CollisionRobotIndustrial::CollisionRobotIndustrial(const CollisionRobotIndustrial &other) : CollisionRobot(other)
 {
   geoms_ = other.geoms_;
+  fcl_objs_ = other.fcl_objs_;
 }
 
 void collision_detection::CollisionRobotIndustrial::getAttachedBodyObjects(const robot_state::AttachedBody *ab, std::vector<FCLGeometryConstPtr> &geoms) const
