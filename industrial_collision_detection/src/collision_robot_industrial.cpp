@@ -40,7 +40,7 @@ collision_detection::CollisionRobotIndustrial::CollisionRobotIndustrial(const ro
   : CollisionRobot(model, padding, scale)
 {
   const std::vector<const robot_model::LinkModel*>& links = robot_model_->getLinkModelsWithCollisionGeometry();
-  int index;
+  std::size_t index;
   geoms_.resize(robot_model_->getLinkGeometryCount());
   fcl_objs_.resize(robot_model_->getLinkGeometryCount());
   // we keep the same order of objects as what RobotState *::getLinkState() returns
@@ -57,8 +57,7 @@ collision_detection::CollisionRobotIndustrial::CollisionRobotIndustrial(const ro
         // Every time this object is created, g->computeLocalAABB() is called  which is
         // very expensive and should only be calculated once. To update the AABB, use the
         // collObj->setTsetTransform and then call collObj->computeAABB() to tranform the AABB.
-        fcl::CollisionObject *collObj = new fcl::CollisionObject(g->collision_geometry_);
-        fcl_objs_[index] = boost::shared_ptr<fcl::CollisionObject>(collObj);
+        fcl_objs_[index] = FCLCollisionObjectConstPtr(new fcl::CollisionObject(g->collision_geometry_));
       }
       else
         logError("Unable to construct collision geometry for link '%s'", links[i]->getName().c_str());
@@ -86,16 +85,15 @@ void collision_detection::CollisionRobotIndustrial::constructFCLObject(const rob
 {
   fcl_obj.collision_objects_.reserve(geoms_.size());
   fcl::Transform3f tf;
-  fcl::CollisionObject *collObj;
 
   for (std::size_t i = 0 ; i < geoms_.size() ; ++i)
     if (geoms_[i] && geoms_[i]->collision_geometry_)
     {
       transform2fcl(state.getCollisionBodyTransform(geoms_[i]->collision_geometry_data_->ptr.link, geoms_[i]->collision_geometry_data_->shape_index), tf);
-      collObj = new fcl::CollisionObject(*fcl_objs_[i]);
+      fcl::CollisionObject *collObj = new fcl::CollisionObject(*fcl_objs_[i]);
       collObj->setTransform(tf);
       collObj->computeAABB();
-      fcl_obj.collision_objects_.push_back(boost::shared_ptr<fcl::CollisionObject>(collObj));
+      fcl_obj.collision_objects_.push_back(FCLCollisionObjectPtr(collObj));
     }
   
   // TODO: Implement a method for caching fcl::CollisionObject's for robot_state::AttachedBody's
@@ -109,8 +107,8 @@ void collision_detection::CollisionRobotIndustrial::constructFCLObject(const rob
     for (std::size_t k = 0 ; k < objs.size() ; ++k)
       if (objs[k]->collision_geometry_)
       {
-        collObj = new fcl::CollisionObject(objs[k]->collision_geometry_, transform2fcl(ab_t[k]));
-        fcl_obj.collision_objects_.push_back(boost::shared_ptr<fcl::CollisionObject>(collObj));
+        transform2fcl(ab_t[k], tf);
+        fcl_obj.collision_objects_.push_back(FCLCollisionObjectPtr(new fcl::CollisionObject(objs[k]->collision_geometry_, tf)));
         // we copy the shared ptr to the CollisionGeometryData, as this is not stored by the class itself,
         // and would be destroyed when objs goes out of scope.
         fcl_obj.collision_geometry_.push_back(objs[k]);
@@ -208,7 +206,7 @@ void collision_detection::CollisionRobotIndustrial::checkOtherCollisionHelper(co
 
 void collision_detection::CollisionRobotIndustrial::updatedPaddingOrScaling(const std::vector<std::string> &links)
 {
-  int index;
+  std::size_t index;
   for (std::size_t i = 0 ; i < links.size() ; ++i)
   {
     const robot_model::LinkModel *lmodel = robot_model_->getLinkModel(links[i]);
@@ -221,8 +219,7 @@ void collision_detection::CollisionRobotIndustrial::updatedPaddingOrScaling(cons
         {
           index = lmodel->getFirstCollisionBodyTransformIndex() + j;
           geoms_[index] = g;
-          fcl::CollisionObject *collObj = new fcl::CollisionObject(g->collision_geometry_);
-          fcl_objs_[index] = boost::shared_ptr<fcl::CollisionObject>(collObj);
+          fcl_objs_[index] = FCLCollisionObjectConstPtr(new fcl::CollisionObject(g->collision_geometry_));
         }
       }
     }

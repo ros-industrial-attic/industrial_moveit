@@ -44,6 +44,8 @@
 
 namespace collision_detection
 {
+  typedef boost::shared_ptr<fcl::CollisionObject> FCLCollisionObjectPtr;
+  typedef boost::shared_ptr<const fcl::CollisionObject> FCLCollisionObjectConstPtr;
 
   class CollisionRobotIndustrial : public CollisionRobot
   {
@@ -95,7 +97,7 @@ namespace collision_detection
                                const robot_state::RobotState &other_state, const AllowedCollisionMatrix *acm) const;
 
     std::vector<FCLGeometryConstPtr> geoms_;
-    std::vector<boost::shared_ptr<fcl::CollisionObject> > fcl_objs_;
+    std::vector<FCLCollisionObjectConstPtr> fcl_objs_;
   };
 
 }
