@@ -67,7 +67,6 @@ protected:
   bool computeRolloutsControlCosts();
   bool computeProbabilities();
   bool updateParameters();
-  bool filterUpdatedParameters();
   bool computeOptimizedCost();
 
   // noise generation variables

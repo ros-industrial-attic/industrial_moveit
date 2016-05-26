@@ -496,9 +496,7 @@ bool Stomp::computeInitialTrajectory(const std::vector<double>& first,const std:
       break;
   }
 
-  // filtering and returning
-  bool filtered;
-  return task_->filterParameters(0,config_.num_timesteps,current_iteration_,parameters_optimized_,filtered);
+  return valid;
 }
 
 bool Stomp::cancel()
@@ -523,7 +521,6 @@ bool Stomp::runSingleIteration()
       filterNoisyRollouts() &&
       computeProbabilities() &&
       updateParameters() &&
-      filterUpdatedParameters() &&
       computeOptimizedCost();
 
   return proceed;
@@ -823,10 +820,10 @@ bool Stomp::updateParameters()
 
   }
 
-  // applying smoothing
-  if(!task_->smoothParameterUpdates(0,config_.num_timesteps,current_iteration_,parameters_updates_))
+  // filtering updates
+  if(!task_->filterParameterUpdates(0,config_.num_timesteps,current_iteration_,parameters_optimized_,parameters_updates_))
   {
-    ROS_ERROR("Update smoothing step failed");
+    ROS_ERROR("Updates filtering step failed");
     return false;
   }
 
@@ -834,12 +831,6 @@ bool Stomp::updateParameters()
   parameters_optimized_ += parameters_updates_;
 
   return true;
-}
-
-bool Stomp::filterUpdatedParameters()
-{
-  bool filtered = false;
-  return task_->filterParameters(0,config_.num_timesteps,current_iteration_,parameters_optimized_,filtered);
 }
 
 bool Stomp::computeOptimizedCost()
