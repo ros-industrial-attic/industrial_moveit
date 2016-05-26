@@ -119,7 +119,7 @@ stomp/manipulator_tool:
     initialization_method: 3 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
     control_cost_weight: 0.0
     noise_generation:
-      stddev: [0.05, 0.4, 1.2, 0.4, 0.4, 0.4, 0.5]
+      stddev: [0.05, 0.4, 1.2, 0.4, 0.4, 0.4, 1.5]
       min_stddev: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
       decay:  [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8] # Used by EXPONENTIAL_DECAY method only
       method: 0 # [0 : CONSTANT, 1 : ADAPTIVE, 2 : EXPONENTIAL_DECAY]
@@ -127,7 +127,7 @@ stomp/manipulator_tool:
   task:
     cost_functions:
       - class: stomp_moveit/CollisionCheck 
-        collision_padding: 0.02
+        collision_padding: 0.005
         collision_penalty: 1.0
         cost_weight: 1.0
     noisy_filters:
@@ -136,8 +136,8 @@ stomp/manipulator_tool:
         lock_goal: False
       - class: stomp_moveit/UnderconstrainedGoal
         constrained_dofs: [1, 1, 1, 1, 1, 0]
-        cartesian_convergence: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
-        update_weight: 0.1
+        cartesian_convergence: [0.001, 0.001, 0.001, 0.01, 0.01, 1.00]
+        joint_update_rates: [0.1, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
         max_ik_iterations: 40
       - class: stomp_moveit/MultiTrajectoryVisualization
         line_width: 0.02
