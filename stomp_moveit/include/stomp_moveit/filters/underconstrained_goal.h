@@ -12,6 +12,9 @@
 #include <stomp_moveit/filters/stomp_filter.h>
 #include <array>
 #include <Eigen/Core>
+#include <boost/random.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
 
 namespace stomp_moveit
 {
@@ -73,7 +76,7 @@ public:
 
 protected:
 
-  bool nullSpaceIK(const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
+  bool runIK(const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
                    Eigen::VectorXd& joint_pose);
 
 protected:
@@ -85,6 +88,7 @@ protected:
   Eigen::Affine3d tool_goal_pose_;
 
   // ik
+  Eigen::ArrayXd joint_update_rates_;
   Eigen::ArrayXi dof_nullity_;
   Eigen::ArrayXd cartesian_convergence_thresholds_;
   double update_weight_;
@@ -94,9 +98,6 @@ protected:
   moveit::core::RobotModelConstPtr robot_model_;
   moveit::core::RobotStatePtr state_;
   std::string tool_link_;
-
-
-
 
 };
 

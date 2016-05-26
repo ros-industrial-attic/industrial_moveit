@@ -6,6 +6,7 @@
  */
 
 #include <ros/console.h>
+#include <Eigen/Geometry>
 #include <eigen_conversions/eigen_msg.h>
 #include <moveit/robot_state/robot_state.h>
 #include <moveit/robot_state/conversions.h>
@@ -17,22 +18,55 @@ PLUGINLIB_EXPORT_CLASS(stomp_moveit::filters::UnderconstrainedGoal,stomp_moveit:
 
 
 const static unsigned int DOF_SIZE = 6;
+const static double EPSILON = 0.1;
+const static double LAMBDA = 0.01;
 
 static void reduceJacobian(const Eigen::MatrixXd& jacb,
-                                          const Eigen::ArrayXi& nullity,Eigen::MatrixXd& jacb_reduced)
+                                          const std::vector<int>& indices,Eigen::MatrixXd& jacb_reduced)
 {
-  Eigen::VectorXi indices = (nullity != 0).cast<int>();
   jacb_reduced.resize(indices.size(),jacb.cols());
   for(auto i = 0u; i < indices.size(); i++)
   {
-    jacb_reduced.row(i) = jacb.row(indices(i));
+    jacb_reduced.row(i) = jacb.row(indices[i]);
   }
 }
 
-static void calculatePseudoInverse(const Eigen::MatrixXd& jacb,Eigen::MatrixXd& jacb_pseudo_inv)
+static void calculateMoorePenrosePseudoInverse(const Eigen::MatrixXd& jacb,Eigen::MatrixXd& jacb_pseudo_inv)
 {
   Eigen::MatrixXd jacb_transpose = jacb.transpose();
   jacb_pseudo_inv = (jacb_transpose) * ((jacb * jacb_transpose).inverse());
+}
+
+static void calculateDampedPseudoInverse(const Eigen::MatrixXd &jacb, Eigen::MatrixXd &jacb_pseudo_inv,
+                                         double eps = 0.011, double lambda = 0.01)
+{
+  using namespace Eigen;
+
+
+  //Calculate A+ (pseudoinverse of A) = V S+ U*, where U* is Hermition of U (just transpose if all values of U are real)
+  //in order to solve Ax=b -> x*=A+ b
+  Eigen::JacobiSVD<MatrixXd> svd(jacb, Eigen::ComputeThinU | Eigen::ComputeThinV);
+  const MatrixXd &U = svd.matrixU();
+  const VectorXd &Sv = svd.singularValues();
+  const MatrixXd &V = svd.matrixV();
+
+  // calculate the reciprocal of Singular-Values
+  // damp inverse with lambda so that inverse doesn't oscillate near solution
+  size_t nSv = Sv.size();
+  VectorXd inv_Sv(nSv);
+  for(size_t i=0; i< nSv; ++i)
+  {
+    if (fabs(Sv(i)) > eps)
+    {
+      inv_Sv(i) = 1/Sv(i);
+    }
+    else
+    {
+      inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
+    }
+  }
+
+  jacb_pseudo_inv = V * inv_Sv.asDiagonal() * U.transpose();
 }
 
 static void computeTwist(const Eigen::Affine3d& p0,
@@ -46,7 +80,7 @@ static void computeTwist(const Eigen::Affine3d& p0,
   // relative rotation -> R = inverse(R0) * Rf
   Eigen::AngleAxisd relative_rot(p0.rotation().transpose() * pf.rotation());
   double angle = relative_rot.angle();
-  Eigen::Vector3d axis = relative_rot.axis().normalized();
+  Eigen::Vector3d axis = relative_rot.axis();
 
   // forcing angle to range [-pi , pi]
   while( (angle > M_PI) || (angle < -M_PI))
@@ -55,8 +89,8 @@ static void computeTwist(const Eigen::Affine3d& p0,
     angle = (angle < -M_PI )? (angle + 2*M_PI) : angle;
   }
 
-  // creating twist rotation relative to world
-  Eigen::Vector3d twist_rot = p0.rotation() * axis * angle;
+  // creating twist rotation relative to tool
+  Eigen::Vector3d twist_rot = axis * angle;
 
   // assigning into full 6dof twist vector
   twist.head(3) = twist_pos;
@@ -73,7 +107,6 @@ namespace filters
 
 UnderconstrainedGoal::UnderconstrainedGoal()
 {
-  // TODO Auto-generated constructor stub
 
 }
 
@@ -101,10 +134,13 @@ bool UnderconstrainedGoal::configure(const XmlRpc::XmlRpcValue& config)
 
     XmlRpcValue dof_nullity_param = params["constrained_dofs"];
     XmlRpcValue dof_thresholds_param = params["cartesian_convergence"];
-    if((dof_nullity_param.getType() != dof_nullity_param.TypeArray) ||
+    XmlRpcValue joint_updates_param = params["joint_update_rates"];
+    if((dof_nullity_param.getType() != XmlRpcValue::TypeArray) ||
         dof_nullity_param.size() < DOF_SIZE ||
         dof_thresholds_param.getType() != XmlRpcValue::TypeArray ||
-        dof_thresholds_param.size() < DOF_SIZE )
+        dof_thresholds_param.size() < DOF_SIZE  ||
+        joint_updates_param.getType() != XmlRpcValue::TypeArray ||
+        joint_updates_param.size() == 0)
     {
       ROS_ERROR("UnderconstrainedGoal received invalid array parameters");
       return false;
@@ -122,7 +158,13 @@ bool UnderconstrainedGoal::configure(const XmlRpc::XmlRpcValue& config)
       cartesian_convergence_thresholds_(i) = static_cast<double>(dof_thresholds_param[i]);
     }
 
-    update_weight_ = static_cast<double>(params["update_weight"]);
+    joint_update_rates_.resize(joint_updates_param.size());
+    for(auto i = 0u; i < joint_updates_param.size(); i++)
+    {
+      joint_update_rates_(i) = static_cast<double>(joint_updates_param[i]);
+    }
+
+    //update_weight_ = static_cast<double>(params["update_weight"]);
     max_iterations_ = static_cast<int>(params["max_ik_iterations"]);
   }
   catch(XmlRpc::XmlRpcException& e)
@@ -212,7 +254,7 @@ bool UnderconstrainedGoal::filter(std::size_t start_timestep,
   VectorXd init_joint_pose = parameters.rightCols(1);
   VectorXd joint_pose;
 
-  if(!nullSpaceIK(tool_goal_pose_,init_joint_pose,joint_pose))
+  if(!runIK(tool_goal_pose_,init_joint_pose,joint_pose))
   {
     ROS_ERROR("UnderconstrainedGoal failed to find valid ik close to reference pose");
     filtered = false;
@@ -220,12 +262,13 @@ bool UnderconstrainedGoal::filter(std::size_t start_timestep,
   }
 
   filtered = true;
+  ROS_DEBUG_STREAM("Last joint pose changes "<<(parameters.rightCols(1) - joint_pose).transpose());
   parameters.rightCols(1) = joint_pose;
 
   return true;
 }
 
-bool UnderconstrainedGoal::nullSpaceIK(const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
+bool UnderconstrainedGoal::runIK(const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
                                        Eigen::VectorXd& joint_pose)
 {
   using namespace Eigen;
@@ -240,7 +283,14 @@ bool UnderconstrainedGoal::nullSpaceIK(const Eigen::Affine3d& tool_goal_pose,con
 
   // tool twist variables
   VectorXd tool_twist, tool_twist_reduced;
-  Eigen::VectorXi indices = (dof_nullity_ != 0).cast<int>();
+  std::vector<int> indices;
+  for(auto i = 0u; i < dof_nullity_.size(); i++)
+  {
+    if(dof_nullity_(i) != 0)
+    {
+      indices.push_back(i);
+    }
+  }
   tool_twist_reduced = VectorXd::Zero(indices.size());
 
   // jacobian calculation variables
@@ -251,11 +301,12 @@ bool UnderconstrainedGoal::nullSpaceIK(const Eigen::Affine3d& tool_goal_pose,con
   bool converged = false;
   while(iteration_count < max_iterations_)
   {
+
     // computing twist vector
     computeTwist(tool_current_pose,tool_goal_pose,dof_nullity_,tool_twist);
 
     // check convergence
-    if((tool_twist.array() < cartesian_convergence_thresholds_).all())
+    if((tool_twist.cwiseAbs().array() < cartesian_convergence_thresholds_).all())
     {
       // converged
       converged = true;
@@ -266,7 +317,7 @@ bool UnderconstrainedGoal::nullSpaceIK(const Eigen::Affine3d& tool_goal_pose,con
     // updating reduced tool twist
     for(auto i = 0u; i < indices.size(); i++)
     {
-      tool_twist_reduced(i) = tool_twist(indices(i));
+      tool_twist_reduced(i) = tool_twist(indices[i]);
     }
 
     // computing jacobian
@@ -276,19 +327,27 @@ bool UnderconstrainedGoal::nullSpaceIK(const Eigen::Affine3d& tool_goal_pose,con
       return false;
     }
 
+    // transform jacobian rotational part to tool coordinates
+    jacb.bottomRows(3) = tool_current_pose.rotation().transpose()*jacb.bottomRows(3);
+
     // reduce jacobian and compute its pseudo inverse
-    reduceJacobian(jacb,dof_nullity_,jacb_reduced);
-    calculatePseudoInverse(jacb_reduced,jacb_pseudo_inv);
+    reduceJacobian(jacb,indices,jacb_reduced);
+    calculateDampedPseudoInverse(jacb_reduced,jacb_pseudo_inv,EPSILON,LAMBDA);
 
     // computing joint change
-    delta_j = update_weight_*(jacb_pseudo_inv*tool_twist_reduced) + (
-        identity - jacb_pseudo_inv * jacb_reduced)*(init_joint_pose - joint_pose);
+    delta_j = (jacb_pseudo_inv*tool_twist_reduced);
 
     // updating joint values
-    joint_pose += delta_j;
+    joint_pose += (joint_update_rates_* delta_j.array()).matrix();
+
+    // updating tool pose
+    state_->setJointGroupPositions(joint_group,joint_pose);
+    tool_current_pose = state_->getGlobalLinkTransform(tool_link_);
 
     iteration_count++;
   }
+
+  ROS_DEBUG_STREAM("Final tool twist "<<tool_twist.transpose());
 
   return converged;
 }
