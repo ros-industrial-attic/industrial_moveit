@@ -30,7 +30,7 @@
   <export>
     <moveit_core plugin="${prefix}/planner_manager_plugins.xml"/>
     <stomp_moveit plugin="${prefix}/cost_function_plugins.xml"/>
-    <stomp_moveit plugin="${prefix}/trajectory_filter_plugins.xml"/>
-    <stomp_moveit plugin="${prefix}/update_smoother_plugins.xml"/>
+    <stomp_moveit plugin="${prefix}/noisy_filter_plugins.xml"/>
+    <stomp_moveit plugin="${prefix}/update_filter_plugins.xml"/>
   </export>
 </package>

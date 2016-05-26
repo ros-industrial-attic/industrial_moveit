@@ -8,13 +8,13 @@
 #include <ros/console.h>
 #include <pluginlib/class_list_macros.h>
 #include <moveit/robot_state/conversions.h>
-#include "stomp_moveit/filters/joint_limits.h"
+#include <stomp_moveit/noisy_filters/joint_limits.h>
 
-PLUGINLIB_EXPORT_CLASS(stomp_moveit::filters::JointLimits,stomp_moveit::filters::StompFilter);
+PLUGINLIB_EXPORT_CLASS(stomp_moveit::noisy_filters::JointLimits,stomp_moveit::noisy_filters::StompNoisyFilter);
 
 namespace stomp_moveit
 {
-namespace filters
+namespace noisy_filters
 {
 
 JointLimits::JointLimits():

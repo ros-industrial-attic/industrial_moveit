@@ -9,9 +9,9 @@
 #include <moveit/robot_state/conversions.h>
 #include <tf/transform_datatypes.h>
 #include <pluginlib/class_list_macros.h>
-#include <stomp_moveit/filters/trajectory_visualization.h>
+#include <stomp_moveit/update_filters/trajectory_visualization.h>
 
-PLUGINLIB_EXPORT_CLASS(stomp_moveit::filters::TrajectoryVisualization,stomp_moveit::filters::StompFilter);
+PLUGINLIB_EXPORT_CLASS(stomp_moveit::update_filters::TrajectoryVisualization,stomp_moveit::update_filters::StompUpdateFilter);
 
 
 typedef std::vector<geometry_msgs::Point> ToolLine;
@@ -61,7 +61,7 @@ inline void createToolPathMarker(const Eigen::MatrixXd& tool_line, int id, std::
 
 namespace stomp_moveit
 {
-namespace filters
+namespace update_filters
 {
 
 TrajectoryVisualization::TrajectoryVisualization():
@@ -176,18 +176,12 @@ bool TrajectoryVisualization::setMotionPlanRequest(const planning_scene::Plannin
 }
 
 bool TrajectoryVisualization::filter(std::size_t start_timestep,
-                    std::size_t num_timesteps,
-                    int iteration_number,
-                    int rollout_number,
-                    Eigen::MatrixXd& parameters,
-                    bool& filtered)
+                                     std::size_t num_timesteps,
+                                     int iteration_number,
+                                     const Eigen::MatrixXd& parameters,
+                                     Eigen::MatrixXd& updates,
+                                     bool& filtered)
 {
-
-  if(rollout_number != getOptimizedIndex())
-  {
-    // noisy rollout, do not process
-    return true;
-  }
 
   if(!state_)
   {
@@ -198,9 +192,10 @@ bool TrajectoryVisualization::filter(std::size_t start_timestep,
   // FK on each point
   const moveit::core::JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_name_);
   std::string tool_link = joint_group->getLinkModelNames().back();
-  for(auto t = 0u; t < parameters.cols();t++)
+  Eigen::MatrixXd updated_parameters = parameters + updates;
+  for(auto t = 0u; t < updated_parameters.cols();t++)
   {
-    state_->setJointGroupPositions(joint_group,parameters.col(t));
+    state_->setJointGroupPositions(joint_group,updated_parameters.col(t));
     Eigen::Affine3d tool_pos = state_->getFrameTransform(tool_link);
     tool_traj_line_(0,t) = tool_pos.translation()(0);
     tool_traj_line_(1,t) = tool_pos.translation()(1);
@@ -229,5 +224,5 @@ void TrajectoryVisualization::done(bool success,int total_iterations,double fina
   viz_pub_.publish(tool_traj_marker_);
 }
 
-} /* namespace filters */
+} /* namespace updated_filters */
 } /* namespace stomp_moveit */

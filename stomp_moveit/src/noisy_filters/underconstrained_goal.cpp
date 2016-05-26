@@ -10,11 +10,11 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <moveit/robot_state/robot_state.h>
 #include <moveit/robot_state/conversions.h>
-#include <stomp_moveit/filters/underconstrained_goal.h>
 #include <pluginlib/class_list_macros.h>
+#include <stomp_moveit/noisy_filters/underconstrained_goal.h>
 #include <XmlRpcException.h>
 
-PLUGINLIB_EXPORT_CLASS(stomp_moveit::filters::UnderconstrainedGoal,stomp_moveit::filters::StompFilter);
+PLUGINLIB_EXPORT_CLASS(stomp_moveit::noisy_filters::UnderconstrainedGoal,stomp_moveit::noisy_filters::StompNoisyFilter);
 
 
 const static unsigned int DOF_SIZE = 6;
@@ -102,10 +102,11 @@ static void computeTwist(const Eigen::Affine3d& p0,
 
 namespace stomp_moveit
 {
-namespace filters
+namespace noisy_filters
 {
 
-UnderconstrainedGoal::UnderconstrainedGoal()
+UnderconstrainedGoal::UnderconstrainedGoal():
+    name_("UnderconstrainedGoal")
 {
 
 }

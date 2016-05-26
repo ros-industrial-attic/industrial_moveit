@@ -10,6 +10,10 @@
 
 using PluginArray = std::vector< std::pair<std::string,XmlRpc::XmlRpcValue> >;
 
+static const std::string COST_FUNCTIONS_FIELD = "cost_functions";
+static const std::string NOISY_FILTERS_FIELD = "noisy_filters";
+static const std::string UPDATE_FILTERS_FIELD = "update_filters";
+
 bool parsePlugins(XmlRpc::XmlRpcValue config,
                       std::string param_name,
                       PluginArray& plugins)
@@ -57,8 +61,8 @@ StompOptimizationTask::StompOptimizationTask(
 {
   // initializing plugin loaders
   cost_function_loader_.reset(new CostFunctionLoader("stomp_moveit", "stomp_moveit::cost_functions::StompCostFunction"));
-  filter_loader_.reset(new FilterLoader("stomp_moveit", "stomp_moveit::filters::StompFilter"));
-  smoother_loader_.reset(new SmootherLoader("stomp_moveit", "stomp_moveit::smoothers::SmootherInterface"));
+  noisy_filter_loader_.reset(new NoisyFilterLoader("stomp_moveit", "stomp_moveit::noisy_filters::StompNoisyFilter"));
+  update_filter_loader_.reset(new UpdateFilterLoader("stomp_moveit", "stomp_moveit::update_filters::StompUpdateFilter"));
 
   // loading cost function plugins
   if(!initializeCostFunctionPlugins(config))
@@ -68,22 +72,17 @@ StompOptimizationTask::StompOptimizationTask(
   }
 
   // loading noisy filter plugins
-  if(!initializeFilterPlugins(config,"noisy_filters",noisy_filters_))
+  if(!initializeNoisyFilterPlugins(config,noisy_filters_))
   {
     ROS_WARN("StompOptimizationTask/%s failed to load 'noisy_filters' plugins from yaml",group_name.c_str());
   }
 
   // loading filter plugins
-  if(!initializeFilterPlugins(config,"optimized_filters",filters_))
+  if(!initializeUpdateFilterPlugins(config,update_filters_))
   {
-    ROS_WARN("StompOptimizationTask/%s failed to load 'optimized_filters' plugins from yaml",group_name.c_str());
+    ROS_WARN("StompOptimizationTask/%s failed to load 'update_filters' plugins from yaml",group_name.c_str());
   }
 
-  // loading smoother plugins
-  if(!initializeSmootherPlugins(config))
-  {
-    ROS_WARN("StompOptimizationTask/%s failed to load 'update_smoothers' plugins from yaml",group_name.c_str());
-  }
 }
 
 StompOptimizationTask::~StompOptimizationTask()
@@ -94,7 +93,7 @@ StompOptimizationTask::~StompOptimizationTask()
 bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcValue& config)
 {
   PluginArray plugins;
-  if(parsePlugins(config,"cost_functions",plugins))
+  if(parsePlugins(config,COST_FUNCTIONS_FIELD,plugins))
   {
     for(auto& entry: plugins)
     {
@@ -143,24 +142,24 @@ bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcVa
   return true;
 }
 
-bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& config,std::string param_name,
-                                                    std::vector<filters::StompFilterPtr>& filters)
+bool StompOptimizationTask::initializeNoisyFilterPlugins(const XmlRpc::XmlRpcValue& config,
+                                                    std::vector<noisy_filters::StompNoisyFilterPtr>& filters)
 {
   PluginArray plugins;
   bool success = false;
-  if(parsePlugins(config,param_name,plugins))
+  if(parsePlugins(config,NOISY_FILTERS_FIELD,plugins))
   {
     for(auto& entry: plugins)
     {
       // instantiating
-      filters::StompFilterPtr plugin;
+      noisy_filters::StompNoisyFilterPtr plugin;
       try
       {
-        plugin = filter_loader_->createInstance(entry.first);
+        plugin = noisy_filter_loader_->createInstance(entry.first);
       }
       catch(pluginlib::PluginlibException& ex)
       {
-        ROS_WARN("%s plugin could not be created",entry.first.c_str());
+        ROS_WARN("%s noisy plugin could not be created",entry.first.c_str());
         continue;
       }
 
@@ -168,12 +167,12 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
       if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
       {
         filters.push_back(plugin);
-        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" Filter plugin");
+        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" NoisyFilter plugin");
         success = true;
       }
       else
       {
-        ROS_WARN("%s plugin failed to initialize",entry.first.c_str());
+        ROS_WARN("%s noisy plugin failed to initialize",entry.first.c_str());
         continue;
       }
     }
@@ -186,36 +185,37 @@ bool StompOptimizationTask::initializeFilterPlugins(const XmlRpc::XmlRpcValue& c
   return success;
 }
 
-bool StompOptimizationTask::initializeSmootherPlugins(const XmlRpc::XmlRpcValue& config)
+bool StompOptimizationTask::initializeUpdateFilterPlugins(const XmlRpc::XmlRpcValue& config,
+                             std::vector<update_filters::StompUpdateFilterPtr>& filters)
 {
   PluginArray plugins;
   bool success = false;
-  if(parsePlugins(config,"update_smoothers",plugins))
+  if(parsePlugins(config,UPDATE_FILTERS_FIELD,plugins))
   {
     for(auto& entry: plugins)
     {
       // instantiating
-      smoothers::SmootherInterfacePtr plugin;
+      update_filters::StompUpdateFilterPtr plugin;
       try
       {
-        plugin = smoother_loader_->createInstance(entry.first);
+        plugin = update_filter_loader_->createInstance(entry.first);
       }
       catch(pluginlib::PluginlibException& ex)
       {
-        ROS_WARN("%s plugin could not be created",entry.first.c_str());
+        ROS_WARN("%s update plugin could not be created",entry.first.c_str());
         continue;
       }
 
       // initializing
       if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
       {
-        smoothers_.push_back(plugin);
-        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" Smoother plugin");
+        filters.push_back(plugin);
+        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" UpdateFilter plugin");
         success = true;
       }
       else
       {
-        ROS_WARN("%s plugin failed to initialize",entry.first.c_str());
+        ROS_WARN("%s update plugin failed to initialize",entry.first.c_str());
         continue;
       }
     }
@@ -299,10 +299,7 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
     }
   }
 
-  std::vector<filters::StompFilterPtr> all_filters;
-  all_filters.insert(all_filters.end(),noisy_filters_.begin(),noisy_filters_.end());
-  all_filters.insert(all_filters.end(),filters_.begin(),filters_.end());
-  for(auto p: all_filters)
+  for(auto p: noisy_filters_)
   {
     if(!p->setMotionPlanRequest(planning_scene,req,config,error_code))
     {
@@ -311,27 +308,11 @@ bool StompOptimizationTask::setMotionPlanRequest(const planning_scene::PlanningS
     }
   }
 
-  for(auto p: smoothers_)
+  for(auto p: update_filters_)
   {
     if(!p->setMotionPlanRequest(planning_scene,req,config,error_code))
     {
       ROS_ERROR("Failed to set Plan Request on smoother %s",p->getName().c_str());
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool StompOptimizationTask::smoothParameterUpdates(std::size_t start_timestep,
-                                    std::size_t num_timesteps,
-                                    int iteration_number,
-                                    Eigen::MatrixXd& updates)
-{
-  for(auto& s : smoothers_)
-  {
-    if(!s->smooth(start_timestep,num_timesteps,iteration_number,updates))
-    {
       return false;
     }
   }
@@ -361,16 +342,17 @@ bool StompOptimizationTask::filterNoisyParameters(std::size_t start_timestep,
   return true;
 }
 
-bool StompOptimizationTask::filterParameters(std::size_t start_timestep,
+bool StompOptimizationTask::filterParameterUpdates(std::size_t start_timestep,
                                              std::size_t num_timesteps,
                                              int iteration_number,
-                                             Eigen::MatrixXd& parameters,bool& filtered)
+                                             const Eigen::MatrixXd& parameters,
+                                             Eigen::MatrixXd& updates)
 {
-  filtered = false;
+  bool filtered = false;
   bool temp;
-  for(auto& f: filters_)
+  for(auto& f: update_filters_)
   {
-    if(f->filter(start_timestep,num_timesteps,iteration_number,f->getOptimizedIndex(),parameters,temp))
+    if(f->filter(start_timestep,num_timesteps,iteration_number,parameters,updates,temp))
     {
       filtered |= temp;
     }
@@ -389,15 +371,12 @@ void StompOptimizationTask::done(bool success,int total_iterations,double final_
     p->done(success,total_iterations,final_cost);
   }
 
-  std::vector<filters::StompFilterPtr> all_filters;
-  all_filters.insert(all_filters.end(),noisy_filters_.begin(),noisy_filters_.end());
-  all_filters.insert(all_filters.end(),filters_.begin(),filters_.end());
-  for(auto p: all_filters)
+  for(auto p: noisy_filters_)
   {
     p->done(success,total_iterations,final_cost);
   }
 
-  for(auto p: smoothers_)
+  for(auto p: update_filters_)
   {
     p->done(success,total_iterations,final_cost);
   }

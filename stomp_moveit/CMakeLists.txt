@@ -57,20 +57,21 @@ add_library(${PROJECT_NAME}_cost_functions
 target_link_libraries(${PROJECT_NAME}_cost_functions ${catkin_LIBRARIES})
 
 # filter plugin(s)
-add_library(${PROJECT_NAME}_filters
-  src/filters/joint_limits.cpp
-  src/filters/trajectory_visualization.cpp
-  src/filters/multi_trajectory_visualization.cpp
-  src/filters/underconstrained_goal.cpp
+add_library(${PROJECT_NAME}_noisy_filters
+  src/noisy_filters/joint_limits.cpp  
+  src/noisy_filters/multi_trajectory_visualization.cpp
+  src/noisy_filters/underconstrained_goal.cpp
 )
-target_link_libraries(${PROJECT_NAME}_filters ${catkin_LIBRARIES})
+
+target_link_libraries(${PROJECT_NAME}_noisy_filters ${catkin_LIBRARIES})
 
 # cost function plugin(s)
-add_library(${PROJECT_NAME}_smoothers
-  src/smoothers/control_cost_projection.cpp
-  src/smoothers/update_logger.cpp
+add_library(${PROJECT_NAME}_update_filters
+  src/update_filters/trajectory_visualization.cpp
+  src/update_filters/control_cost_projection.cpp
+  src/update_filters/update_logger.cpp
  )
-target_link_libraries(${PROJECT_NAME}_cost_functions ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_update_filters ${catkin_LIBRARIES})
 
 #############
 ## Install ##
