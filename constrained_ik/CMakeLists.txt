@@ -4,7 +4,17 @@ project(constrained_ik)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS kdl_parser roscpp urdf eigen_conversions moveit_ros_planning moveit_core dynamic_reconfigure tf_conversions cmake_modules)
+find_package(catkin REQUIRED COMPONENTS
+              kdl_parser
+              roscpp
+              urdf
+              eigen_conversions
+              moveit_ros_planning
+              moveit_core
+              dynamic_reconfigure
+              tf_conversions
+              cmake_modules
+              industrial_collision_detection)
 
 ## System dependencies are found with CMake's conventions
 find_package(orocos_kdl REQUIRED)
@@ -52,7 +62,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
  LIBRARIES constrained_ik moveit_clik_planner_plugin constrained_ik_plugin
- CATKIN_DEPENDS roscpp urdf eigen_conversions tf_conversions urdf moveit_ros_planning moveit_core dynamic_reconfigure kdl_parser cmake_modules
+ CATKIN_DEPENDS roscpp urdf eigen_conversions tf_conversions urdf moveit_ros_planning moveit_core dynamic_reconfigure kdl_parser cmake_modules industrial_collision_detection
  DEPENDS boost eigen orocos_kdl
 )
 
@@ -72,9 +82,6 @@ add_library(constrained_ik
             src/solver_state.cpp
             src/enum_types.cpp
             src/constrained_ik_utils.cpp
-            src/collision_common_detailed.cpp
-            src/collision_robot_fcl_detailed.cpp
-            src/collision_world_fcl_detailed.cpp
             src/constraints/avoid_joint_limits.cpp
             src/constraint_group.cpp
 )

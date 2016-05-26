@@ -32,7 +32,7 @@ set(LIBFCL_LIBRARIES "${LIBFCL_LIBRARIES_FULL}")
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
- LIBRARIES ${PROJECT_NAME} ${PROJECT_NAME}_plugin
+ LIBRARIES ${PROJECT_NAME}
  CATKIN_DEPENDS roscpp moveit_core cmake_modules pluginlib
  DEPENDS boost eigen fcl
 )

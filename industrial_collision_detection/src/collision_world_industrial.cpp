@@ -120,7 +120,14 @@ void collision_detection::CollisionWorldIndustrial::checkRobotCollisionHelper(co
     manager_->collide(fcl_obj.collision_objects_[i].get(), &cd, &collisionCallback);
 
   if (req.distance)
-    res.distance = distanceRobotHelper(robot, state, acm);
+  {
+    DistanceRequest dreq(false, true, req.group_name, acm);
+    DistanceResult dres;
+
+    dreq.enableGroup(robot.getRobotModel());
+    distanceRobotHelper(dreq, dres, robot, state);
+    res.distance = dres.minimum_distance.min_distance;
+  }
 }
 
 void collision_detection::CollisionWorldIndustrial::checkWorldCollision(const CollisionRequest &req, CollisionResult &res, const CollisionWorld &other_world) const
@@ -257,6 +264,18 @@ double collision_detection::CollisionWorldIndustrial::distanceRobotHelper(const 
   return res.distance;
 }
 
+void collision_detection::CollisionWorldIndustrial::distanceRobotHelper(const DistanceRequest &req, DistanceResult &res, const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state) const
+{
+  const CollisionRobotIndustrial& robot_fcl = dynamic_cast<const CollisionRobotIndustrial&>(robot);
+  FCLObject fcl_obj;
+  robot_fcl.constructFCLObject(state, fcl_obj);
+
+  DistanceData drd(&req, &res);
+  for(std::size_t i = 0; !drd.done && i < fcl_obj.collision_objects_.size(); ++i)
+    manager_->distance(fcl_obj.collision_objects_[i].get(), &drd, &distanceDetailedCallback);
+
+}
+
 double collision_detection::CollisionWorldIndustrial::distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state) const
 {
   return distanceRobotHelper(robot, state, NULL);
@@ -265,6 +284,11 @@ double collision_detection::CollisionWorldIndustrial::distanceRobot(const Collis
 double collision_detection::CollisionWorldIndustrial::distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix &acm) const
 {
   return distanceRobotHelper(robot, state, &acm);
+}
+
+void collision_detection::CollisionWorldIndustrial::distanceRobot(const DistanceRequest &req, DistanceResult &res, const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state) const
+{
+  distanceRobotHelper(req, res, robot, state);
 }
 
 double collision_detection::CollisionWorldIndustrial::distanceWorld(const CollisionWorld &world) const
@@ -289,4 +313,4 @@ double collision_detection::CollisionWorldIndustrial::distanceWorldHelper(const 
 }
 
 #include <industrial_collision_detection/collision_detector_allocator_industrial.h>
-const std::string collision_detection::CollisionDetectorAllocatorIndustrial::NAME_("Industrial");
+const std::string collision_detection::CollisionDetectorAllocatorIndustrial::NAME_("IndustrialFCL");

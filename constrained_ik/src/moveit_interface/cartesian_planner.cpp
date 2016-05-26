@@ -162,6 +162,7 @@ namespace constrained_ik
         catch (std::exception &e)
         {
           found_ik = false;
+          ROS_ERROR_STREAM("Caught exception from IK: " << e.what());
         }
 
         if (!found_ik || planning_scene_->isStateColliding(*mid_state, request_.group_name))

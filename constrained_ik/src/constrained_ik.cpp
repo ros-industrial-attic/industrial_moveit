@@ -28,10 +28,10 @@
 #include <constrained_ik/constrained_ik.h>
 #include "constrained_ik/constraint_group.h"
 #include <boost/make_shared.hpp>
-#include <constrained_ik/collision_robot_fcl_detailed.h>
-#include <constrained_ik/collision_world_fcl_detailed.h>
 #include <constrained_ik/constraint_results.h>
 #include <ros/ros.h>
+
+const std::string DEFAULT_COLLISION_DETECTOR = "IndustrialFCL";
 
 namespace constrained_ik
 {
@@ -148,11 +148,22 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   state.condition = checkInitialized();
   state.planning_scene = planning_scene;
 
+  //TODO: Does this still belong here?
   if(planning_scene)
   {
     state.robot_state = robot_state::RobotStatePtr(new moveit::core::RobotState(planning_scene->getCurrentState()));
-    state.collision_robot = CollisionRobotFCLDetailed::CollisionRobotFCLDetailedPtr(new CollisionRobotFCLDetailed(planning_scene->getRobotModel()));
-    state.collision_world = CollisionWorldFCLDetailed::CollisionWorldFCLDetailedPtr(new CollisionWorldFCLDetailed(boost::const_pointer_cast<collision_detection::World>(planning_scene->getWorld())));
+
+    //Check and make sure the correct collision detector is loaded.
+    if (planning_scene->getActiveCollisionDetectorName() != DEFAULT_COLLISION_DETECTOR)
+    {
+      throw std::runtime_error("Constrained IK requires the use of collision detector \"" + DEFAULT_COLLISION_DETECTOR + "\"\n"
+                               "To resolve the issue add the ros parameter collision_detector = " + DEFAULT_COLLISION_DETECTOR +
+                               ".\nIt is recommend to added it where the move_group node is launched, usually in the in the "
+                               "(robot_name)_moveit_config/launch/move_group.launch");
+    }
+
+    state.collision_robot = boost::dynamic_pointer_cast<const collision_detection::CollisionRobotIndustrial>(planning_scene->getCollisionRobot());
+    state.collision_world = boost::dynamic_pointer_cast<const collision_detection::CollisionWorldIndustrial>(planning_scene->getCollisionWorld());
   }
 
   if (state.condition == initialization_state::NothingInitialized || state.condition == initialization_state::AuxiliaryOnly)

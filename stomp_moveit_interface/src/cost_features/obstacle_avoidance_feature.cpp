@@ -7,13 +7,11 @@
 
 #include <stomp_moveit_interface/obstacle_avoidance_feature.h>
 
-PLUGINLIB_EXPORT_CLASS(stomp_moveit_interface::ObstacleAvoidanceFeature,stomp_moveit_interface::StompCostFeature);
+PLUGINLIB_EXPORT_CLASS(stomp_moveit_interface::ObstacleAvoidanceFeature,stomp_moveit_interface::StompCostFeature)
 
 const int NUM_FEATURE_VALUES = 1;
 const double DEFAULT_CLEARANCE = 0.01f;
-const double DEFAULT_SCALE = 1.0;
-const double DEFAULT_PADDING = 0.0;
-const std::string DEFAULT_COLLISION_DETECTOR = "FCL";
+const std::string DEFAULT_COLLISION_DETECTOR = "IndustrialFCL";
 const std::string FEATURE_NAME = "ObstacleAvoidance";
 
 namespace stomp_moveit_interface
@@ -45,11 +43,18 @@ bool ObstacleAvoidanceFeature::initialize(XmlRpc::XmlRpcValue& config,
 
 void ObstacleAvoidanceFeature::setPlanningScene(planning_scene::PlanningSceneConstPtr planning_scene)
 {
-  //collision_detection::WorldPtr world = boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld());
   StompCostFeature::setPlanningScene(planning_scene);
-  collision_robot_.reset(new collision_detection::CollisionRobotFCLDetailed(planning_scene_->getRobotModel(), DEFAULT_PADDING, DEFAULT_SCALE, clearance_));
-  collision_world_.reset(
-      new collision_detection::CollisionWorldFCLDetailed(boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld()), clearance_));
+
+  //Check and make sure the correct collision detector is loaded.
+  if (planning_scene->getActiveCollisionDetectorName() != DEFAULT_COLLISION_DETECTOR)
+  {
+    throw std::runtime_error("STOMP Moveit Interface requires the use of collision detector \"" + DEFAULT_COLLISION_DETECTOR + "\"\n"
+                             "To resolve the issue add the ros parameter collision_detector = " + DEFAULT_COLLISION_DETECTOR +
+                             ".\nIt is recommend to added it where the move_group node is launched, usually in the in the "
+                             "(robot_name)_moveit_config/launch/move_group.launch");
+  }
+  collision_robot_ = boost::dynamic_pointer_cast<const collision_detection::CollisionRobotIndustrial>(planning_scene->getCollisionRobot());
+  collision_world_ = boost::dynamic_pointer_cast<const collision_detection::CollisionWorldIndustrial>(planning_scene->getCollisionWorld());
 }
 
 bool ObstacleAvoidanceFeature::loadParameters(XmlRpc::XmlRpcValue& config)

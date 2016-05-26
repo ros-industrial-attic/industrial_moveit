@@ -62,6 +62,7 @@ namespace collision_detection
     virtual void checkWorldCollision(const CollisionRequest &req, CollisionResult &res, const CollisionWorld &other_world, const AllowedCollisionMatrix &acm) const;
 
     virtual double distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state) const;
+    virtual void distanceRobot(const DistanceRequest &req, DistanceResult &res, const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state) const;
     virtual double distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix &acm) const;
     virtual double distanceWorld(const CollisionWorld &world) const;
     virtual double distanceWorld(const CollisionWorld &world, const AllowedCollisionMatrix &acm) const;
@@ -73,6 +74,7 @@ namespace collision_detection
     void checkWorldCollisionHelper(const CollisionRequest &req, CollisionResult &res, const CollisionWorld &other_world, const AllowedCollisionMatrix *acm) const;
     void checkRobotCollisionHelper(const CollisionRequest &req, CollisionResult &res, const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix *acm) const;
     double distanceRobotHelper(const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix *acm) const;
+    void distanceRobotHelper(const DistanceRequest &req, DistanceResult &res, const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state) const;
     double distanceWorldHelper(const CollisionWorld &world, const AllowedCollisionMatrix *acm) const;
 
     void constructFCLObject(const World::Object *obj, FCLObject &fcl_obj) const;
@@ -88,6 +90,8 @@ namespace collision_detection
     World::ObserverHandle observer_handle_;
   };
 
+  typedef boost::shared_ptr<CollisionWorldIndustrial> CollisionWorldIndustrialPtr;
+  typedef boost::shared_ptr<const CollisionWorldIndustrial> CollisionWorldIndustrialConstPtr;
 }
 
 #endif

@@ -19,8 +19,7 @@ stomp/manipulator:
       update_rate: 0.2 # Used by EXPONENTIAL_DECAY method only
   task:
     cost_functions:
-      - class: stomp_moveit/CollisionCheck 
-        collision_padding: 0.01
+      - class: stomp_moveit/CollisionCheck
         collision_penalty: 1.0
         cost_weight: 1.0 
     noisy_filters:
@@ -66,12 +65,10 @@ stomp/manipulator_rail:
       update_rate: 0.5 # Used by ADAPTIVE method only
   task:
     cost_functions:
-      - class: stomp_moveit/CollisionCheck 
-        collision_padding: 0.02
+      - class: stomp_moveit/CollisionCheck
         collision_penalty: 1.0
         cost_weight: 1.0
-#      - class: stomp_moveit/ObstacleAvoidance 
-#        collision_padding: 0.01
+#      - class: stomp_moveit/ObstacleAvoidance
 #        collision_clearance: 0.5
 #        collision_penalty: 2.0
 #        cost_weight: 1.0
