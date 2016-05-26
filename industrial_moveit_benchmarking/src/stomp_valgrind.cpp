@@ -100,7 +100,8 @@ int main (int argc, char *argv[])
   ros::Time t1, t2;
   t1 = ros::Time::now();
   const robot_state::JointModelGroup *jmg = goal.getJointModelGroup(group_name);
-  for (int i = 0; i < 100; i++)
+  int test_runs = 100;
+  for (int i = 0; i < test_runs; i++)
   {
     if (jmg)
     {
@@ -120,6 +121,6 @@ int main (int argc, char *argv[])
   }
   t2 = ros::Time::now();
 
-  ROS_ERROR("DIFF: %4.10f seconds", (t2-t1).toSec()/100.0);
+  ROS_ERROR("Average time spent calculating trajectory: %4.10f seconds", (t2-t1).toSec()/test_runs);
   return 0;
 }
