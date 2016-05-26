@@ -617,7 +617,7 @@ bool Stomp::filterNoisyRollouts()
     if(!task_->filterNoisyParameters(0,config_.num_timesteps,current_iteration_,r,noisy_rollouts_[r].parameters_noise,filtered))
     {
       ROS_ERROR_STREAM("Failed to filter noisy parameters");
-      return filtered;
+      return false;
     }
 
     if(filtered)
