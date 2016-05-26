@@ -26,12 +26,6 @@
 				<box size="${finger_thickness} ${finger_width} ${finger_length}"/>
 			</geometry>
 		</visual>
-		<collision>
-			<origin xyz="${0.5*workrange + 0.5*finger_thickness} 0 ${gripper_height + 0.5*finger_length}" rpy="0 0 0"/>
-			<geometry>
-				<box size="${finger_thickness} ${finger_width} ${finger_length}"/>
-			</geometry>
-		</collision>
 		<visual>	
 			<material name="black"/>
 			<origin xyz="-${0.5*workrange + 0.5*finger_thickness} 0 ${gripper_height + 0.5*finger_length}" rpy="0 0 0"/>
@@ -40,9 +34,9 @@
 			</geometry>
 		</visual>
 		<collision>
-			<origin xyz="-${0.5*workrange + 0.5*finger_thickness} 0 ${gripper_height + 0.5*finger_length}" rpy="0 0 0"/>
+			<origin xyz="0 0 ${gripper_height + 0.5*finger_length}" rpy="0 0 0"/>
 			<geometry>
-				<box size="${finger_thickness} ${finger_width} ${finger_length}"/>
+				<box size="${finger_thickness + workrange} ${finger_width} ${finger_length}"/>
 			</geometry>
 		</collision>
 	</xacro:macro>
