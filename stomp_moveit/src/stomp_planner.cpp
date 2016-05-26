@@ -21,7 +21,8 @@ StompPlanner::StompPlanner(const std::string& group,const XmlRpc::XmlRpcValue& c
                            const moveit::core::RobotModelConstPtr& model):
     PlanningContext(DESCRIPTION,group),
     config_(config),
-    robot_model_(model)
+    robot_model_(model),
+    seed_provided_(false)
 {
   setup();
 }
@@ -112,7 +113,26 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   ROS_DEBUG_STREAM("Stomp planning started");
   trajectory_msgs::JointTrajectory trajectory;
   Eigen::MatrixXd parameters;
-  if(stomp_->solve(start,goal,parameters))
+
+  // Dispatch to different solve method based on state of seed
+  bool planning_success;
+  if (seed_provided_)
+  {
+    Eigen::MatrixXd initial_parameters;
+    jointTrajectorytoParameters(seed_traj_, initial_parameters);
+
+    planning_success = stomp_->solve(initial_parameters, parameters);
+  }
+  else
+  {
+    planning_success = stomp_->solve(start,goal,parameters);
+  }
+
+  // invalidate seed
+  seed_provided_ = false;
+
+  // Handle results
+  if(planning_success)
   {
     if(!parametersToJointTrajectory(parameters,trajectory))
     {
@@ -203,6 +223,79 @@ bool StompPlanner::parametersToJointTrajectory(Eigen::MatrixXd& parameters, traj
   return true;
 }
 
+bool StompPlanner::jointTrajectorytoParameters(const trajectory_msgs::JointTrajectory& traj, Eigen::MatrixXd& parameters) const
+{
+  const auto dof = traj.joint_names.size();
+  const auto timesteps = traj.points.size();
+
+  Eigen::MatrixXd mat (dof, timesteps);
+
+  for (size_t step = 0; step < timesteps; ++step)
+  {
+    for (size_t joint = 0; joint < dof; ++joint)
+    {
+      mat(joint, step) = traj.points[step].positions[joint];
+    }
+  }
+
+  parameters = mat;
+  return true;
+}
+
+trajectory_msgs::JointTrajectoryPoint interpolatePosition(const trajectory_msgs::JointTrajectory& traj, double t, double total_tm)
+{
+  ros::Duration d (t);
+
+  // Identify the bounding points
+  size_t lower = 0, upper = 0;
+  for (size_t i = 1; i < traj.points.size(); ++i)
+  {
+    if (traj.points[i].time_from_start >= d)
+    {
+      lower = i - 1;
+      upper = i;
+      break;
+    }
+  }
+
+  const static auto interp = [](double start, double stop, double ratio) { return start + (stop - start) * ratio; };
+
+  // Linear interpolation
+  assert(!(lower == 0) && (upper == 0));
+  trajectory_msgs::JointTrajectoryPoint pt;
+  for (size_t i = 0; i < traj.joint_names.size(); ++i)
+  {
+    pt.positions.push_back(interp(traj.points[lower].positions[i],
+                                  traj.points[upper].positions[i],
+                                  t / total_tm));
+  }
+
+  return pt;
+}
+
+trajectory_msgs::JointTrajectory StompPlanner::resample(const trajectory_msgs::JointTrajectory& other) const
+{
+  assert(stomp_config_.num_dimensions == other.joint_names.size());
+  assert(other.points.size() >= 2);
+  assert(stomp_config_.num_timesteps >= 2);
+
+  trajectory_msgs::JointTrajectory jt;
+  jt.header = other.header;
+  jt.joint_names = other.joint_names;
+
+  auto total_tm = other.points.back().time_from_start.toSec();
+  auto interval_tm = total_tm / stomp_config_.num_timesteps;
+
+  for (auto i = 0; i < stomp_config_.num_timesteps; ++i)
+  {
+    auto t = interval_tm * i;
+    auto point = interpolatePosition(other, t, total_tm);
+    jt.points.push_back(std::move(point));
+  }
+
+  return jt;
+}
+
 bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<double>& goal)
 {
   using namespace moveit::core;
@@ -291,6 +384,38 @@ bool StompPlanner::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) 
     ROS_ERROR("STOMP: Can only handle joint space goals.");
     return false;
   }
+
+  return true;
+}
+
+bool StompPlanner::setInitialTrajectory(const trajectory_msgs::JointTrajectory& initial_traj)
+{
+  auto dof = initial_traj.joint_names.size();
+  if (dof != stomp_config_.num_dimensions)
+  {
+    ROS_WARN("STOMP Unable to set seed trajectory: DOF in planner must equal STOMP configuration (%d vs %d)",
+             static_cast<int>(dof), stomp_config_.num_dimensions);
+    return false;
+  }
+
+  if (initial_traj.points.size() < 2)
+  {
+    ROS_WARN("STOMP unable to set seed trajectory: Seed trajectory must have at least 2 points");
+    return false;
+  }
+
+  if (initial_traj.points.back().time_from_start.toSec() == 0.0)
+  {
+    ROS_WARN("STOMP unable to set seed trajectory: Seed trajectory must have non-zero ending point");
+    return false;
+  }
+
+  // It passed, so record it into the object
+  seed_provided_ = true;
+  if (initial_traj.points.size() != stomp_config_.num_timesteps)
+    seed_traj_ = resample(initial_traj);
+  else
+    seed_traj_ = initial_traj;
 
   return true;
 }

@@ -52,11 +52,21 @@ public:
    */
   bool canServiceRequest(const moveit_msgs::MotionPlanRequest &req)  const;
 
+  /**
+   * @brief On the next call to 'solve()', the trajectory provided here will be passed
+   *        along to the underlying planner and then will be cleared.
+   */
+  bool setInitialTrajectory(const trajectory_msgs::JointTrajectory& initial_traj);
+
 protected:
 
   void setup();
   bool getStartAndGoal(std::vector<double>& start, std::vector<double>& goal);
+
   bool parametersToJointTrajectory(Eigen::MatrixXd& parameters, trajectory_msgs::JointTrajectory& traj);
+  bool jointTrajectorytoParameters(const trajectory_msgs::JointTrajectory& traj, Eigen::MatrixXd& parameters) const;
+
+  trajectory_msgs::JointTrajectory resample(const trajectory_msgs::JointTrajectory& other) const;
 
 protected:
 
@@ -68,6 +78,10 @@ protected:
 
   // robot environment
   moveit::core::RobotModelConstPtr robot_model_;
+
+  // For seeding the optimization
+  bool seed_provided_;
+  trajectory_msgs::JointTrajectory seed_traj_;
 
 };
 
