@@ -8,6 +8,7 @@
 #include <moveit/robot_state/conversions.h>
 #include <moveit/kinematic_constraints/kinematic_constraint.h>
 #include <moveit/kinematic_constraints/utils.h>
+#include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <stomp_moveit/stomp_planner.h>
 #include <fstream>
 
@@ -52,11 +53,16 @@ int main (int argc, char *argv[])
   }
 
   StompPlanner::getConfigData(pnh, config);
-  planning_scene::PlanningSceneConstPtr planning_scene(new planning_scene::PlanningScene(robot_model));
+  planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(robot_model));
   planning_interface::MotionPlanRequest req;
   planning_interface::MotionPlanResponse res;
   string group_name = "manipulator_rail";
   StompPlanner stomp(group_name, config[group_name], robot_model);
+
+  //Now assign collision detection plugin
+  collision_detection::CollisionPluginLoader cd_loader;
+  std::string class_name = "IndustrialFCL";
+  cd_loader.activate(class_name, planning_scene, true);
 
   req.allowed_planning_time = 10;
   req.num_planning_attempts = 1;

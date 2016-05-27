@@ -56,14 +56,13 @@ int main (int argc, char *argv[])
     return false;
   }
 
-  collision_detection::CollisionPluginLoader cd_loader;
   ConstrainedIKPlannerDynamicReconfigureConfig config;
   config.joint_discretization_step = 0.02;
   planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(robot_model));
 
   //Now assign collision detection plugin
+  collision_detection::CollisionPluginLoader cd_loader;
   std::string class_name = "IndustrialFCL";
-  cd_loader.setupScene(pnh, planning_scene);
   cd_loader.activate(class_name, planning_scene, true);
 
   planning_interface::MotionPlanRequest req;
