@@ -5,25 +5,25 @@
  *      Author: Jorge Nicho
  */
 
-#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_SMOOTHERS_UPDATE_LOGGER_H_
-#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_SMOOTHERS_UPDATE_LOGGER_H_
+#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_UPDATE_FILTERS_UPDATE_LOGGER_H_
+#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_UPDATE_FILTERS_UPDATE_LOGGER_H_
 
-#include <stomp_moveit/smoothers/smoother_interface.h>
+#include <stomp_moveit/update_filters/stomp_update_filter.h>
 #include <fstream>
 
 namespace stomp_moveit
 {
-namespace smoothers
+namespace update_filters
 {
 
-class UpdateLogger : public SmootherInterface
+class UpdateLogger : public StompUpdateFilter
 {
 public:
   UpdateLogger();
   virtual ~UpdateLogger();
 
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
-                          const std::string& group_name,XmlRpc::XmlRpcValue& config);
+                          const std::string& group_name,const XmlRpc::XmlRpcValue& config);
 
   virtual bool configure(const XmlRpc::XmlRpcValue& config);
 
@@ -33,18 +33,22 @@ public:
                    moveit_msgs::MoveItErrorCodes& error_code);
 
   /**
-   * Applies a smoothing scheme to the parameter updates
+   * Prints the parameter updates
    *
-   * @param start_timestep      start column index in the 'updates' matrix.
-   * @param num_timestep        number of column-wise elements to use from the 'updates' matrix.
-   * @param iteration_number    the current iteration count.
-   * @param updates             the parameter updates.
-   * @return                    False if there was a failure, true otherwise.
+   * @param start_timestep    start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+   * @param iteration_number  The current iteration count in the optimization loop
+   * @param parameters        The parameters generated in the previous iteration [num_dimensions] x [num_timesteps]
+   * @param updates           The updates to be applied to the parameters [num_dimensions] x [num_timesteps]
+   * @param filtered          set ot 'true' if the updates were modified.
+   * @return false if something failed
    */
-  virtual bool smooth(std::size_t start_timestep,
+  virtual bool filter(std::size_t start_timestep,
                       std::size_t num_timesteps,
                       int iteration_number,
-                      Eigen::MatrixXd& updates);
+                      const Eigen::MatrixXd& parameters,
+                      Eigen::MatrixXd& updates,
+                      bool& filtered) override;
 
   virtual std::string getGroupName() const override
   {
@@ -82,4 +86,4 @@ protected:
 } /* namespace smoothers */
 } /* namespace stomp_moveit */
 
-#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_SMOOTHERS_UPDATE_LOGGER_H_ */
+#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_UPDATE_FILTERS_UPDATE_LOGGER_H_ */

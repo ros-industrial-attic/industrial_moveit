@@ -5,18 +5,18 @@
  *      Author: Jorge Nicho
  */
 
-#include <stomp_moveit/smoothers/update_logger.h>
+#include <stomp_moveit/update_filters/update_logger.h>
 #include <boost/filesystem.hpp>
 #include <ros/console.h>
 #include <pluginlib/class_list_macros.h>
 #include <ros/package.h>
 #include <Eigen/Core>
 
-PLUGINLIB_EXPORT_CLASS(stomp_moveit::smoothers::UpdateLogger,stomp_moveit::smoothers::SmootherInterface);
+PLUGINLIB_EXPORT_CLASS(stomp_moveit::update_filters::UpdateLogger,stomp_moveit::update_filters::StompUpdateFilter);
 
 namespace stomp_moveit
 {
-namespace smoothers
+namespace update_filters
 {
 
 UpdateLogger::UpdateLogger():
@@ -31,7 +31,7 @@ UpdateLogger::~UpdateLogger()
 }
 
 bool UpdateLogger::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
-                        const std::string& group_name,XmlRpc::XmlRpcValue& config)
+                        const std::string& group_name,const XmlRpc::XmlRpcValue& config)
 {
   format_ = Eigen::IOFormat(Eigen::StreamPrecision,0," ","\n");
   group_name_ = group_name;
@@ -104,13 +104,14 @@ bool UpdateLogger::setMotionPlanRequest(const planning_scene::PlanningSceneConst
   return true;
 }
 
-bool UpdateLogger::smooth(std::size_t start_timestep,
-                    std::size_t num_timesteps,
-                    int iteration_number,
-                    Eigen::MatrixXd& updates)
+bool UpdateLogger::filter(std::size_t start_timestep,std::size_t num_timesteps,int iteration_number,
+                          const Eigen::MatrixXd& parameters,
+                          Eigen::MatrixXd& updates,
+                          bool& filtered)
 {
 
   stream_<<updates.format(format_)<<std::endl;
+  filtered = false;
   return true;
 }
 

@@ -110,33 +110,15 @@ public:
      * @param filtered          False if no filtering was done
      * @return                  False if there was a failure
      */
-    virtual bool filterParameters(std::size_t start_timestep,
+    virtual bool filterParameterUpdates(std::size_t start_timestep,
                                   std::size_t num_timesteps,
                                   int iteration_number,
-                                  Eigen::MatrixXd& parameters,
-                                  bool& filtered)
+                                  const Eigen::MatrixXd& parameters,
+                                  Eigen::MatrixXd& updates)
     {
-      filtered = false;
       return true;
     };
 
-
-    /**
-     * @brief Applies a smoothing scheme to the parameter updates
-     *
-     * @param start_timestep      start column index in the 'updates' matrix.
-     * @param num_timestep        number of column-wise elements to use from the 'updates' matrix.
-     * @param iteration_number    the current iteration count.
-     * @param updates             the parameter updates.
-     * @return                    False if there was a failure, true otherwise.
-     */
-    virtual bool smoothParameterUpdates(std::size_t start_timestep,
-                                        std::size_t num_timesteps,
-                                        int iteration_number,
-                                        Eigen::MatrixXd& updates)
-    {
-      return true;
-    }
 
     /**
      * @brief Called by Stomp at the end of the optimization process

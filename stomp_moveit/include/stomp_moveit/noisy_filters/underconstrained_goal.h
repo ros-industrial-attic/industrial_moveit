@@ -1,40 +1,41 @@
 /*
- * trajectory_visualization.h
+ * UNDERCONSTRAINED_GOAL.h
  *
- *  Created on: Apr 14, 2016
+ *  Created on: Apr 21, 2016
  *      Author: Jorge Nicho
  */
 
-#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_FILTERS_TRAJECTORY_VISUALIZATION_H_
-#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_FILTERS_TRAJECTORY_VISUALIZATION_H_
+#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_SRC_FILTERS_UNDERCONSTRAINED_GOAL_H_
+#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_SRC_FILTERS_UNDERCONSTRAINED_GOAL_H_
 
-#include <stomp_moveit/filters/stomp_filter.h>
-#include <ros/node_handle.h>
-#include <ros/publisher.h>
+#include <moveit/robot_model/robot_model.h>
+#include <array>
 #include <Eigen/Core>
-#include <geometry_msgs/Point.h>
-#include <visualization_msgs/Marker.h>
+#include <boost/random.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
+#include <stomp_moveit/noisy_filters/stomp_noisy_filter.h>
 
 namespace stomp_moveit
 {
-namespace filters
+namespace noisy_filters
 {
 
-class TrajectoryVisualization : public StompFilter
+class UnderconstrainedGoal : public StompNoisyFilter
 {
 public:
-  TrajectoryVisualization();
-  virtual ~TrajectoryVisualization();
+  UnderconstrainedGoal();
+  virtual ~UnderconstrainedGoal();
 
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
-                          const std::string& group_name,const XmlRpc::XmlRpcValue& config) override;
+                          const std::string& group_name,const XmlRpc::XmlRpcValue& config);
 
-  virtual bool configure(const XmlRpc::XmlRpcValue& config) override;
+  virtual bool configure(const XmlRpc::XmlRpcValue& config);
 
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
-                   moveit_msgs::MoveItErrorCodes& error_code) override;
+                   moveit_msgs::MoveItErrorCodes& error_code);
 
   /**
    * @brief filters the parameters and modifies the original values
@@ -51,7 +52,7 @@ public:
                       int iteration_number,
                       int rollout_number,
                       Eigen::MatrixXd& parameters,
-                      bool& filtered) override;
+                      bool& filtered);
 
   /**
    * @brief Called by the Stomp at the end of the optimization process
@@ -60,51 +61,47 @@ public:
    * @param total_iterations  Number of iterations used
    * @param final_cost        The cost value after optimizing.
    */
-  virtual void done(bool success,int total_iterations,double final_cost) override;
+  virtual void done(bool success,int total_iterations,double final_cost){}
 
 
-  virtual std::string getName() const override
+  virtual std::string getName() const
   {
     return name_ + "/" + group_name_;
   }
 
-
-  virtual std::string getGroupName() const override
+  virtual std::string getGroupName() const
   {
     return group_name_;
   }
 
+protected:
+
+  bool runIK(const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
+                   Eigen::VectorXd& joint_pose);
 
 protected:
 
-  // identity
   std::string name_;
+  std::string group_name_;
+
+  // tool goal
+  Eigen::Affine3d tool_goal_pose_;
+
+  // ik
+  Eigen::ArrayXd joint_update_rates_;
+  Eigen::ArrayXi dof_nullity_;
+  Eigen::ArrayXd cartesian_convergence_thresholds_;
+  double update_weight_;
+  int max_iterations_;
 
   // robot
-  std::string group_name_;
   moveit::core::RobotModelConstPtr robot_model_;
   moveit::core::RobotStatePtr state_;
-
-  // ros comm
-  ros::NodeHandle nh_;
-  ros::Publisher viz_pub_;
-
-  // parameters
-  double line_width_;
-  std_msgs::ColorRGBA rgb_;
-  std_msgs::ColorRGBA error_rgb_;
-  bool publish_intermediate_;
-  std::string marker_topic_;
-  std::string marker_namespace_;
-
-  // tool trajectory
-  Eigen::MatrixXd tool_traj_line_;
-  visualization_msgs::Marker tool_traj_marker_;
-
+  std::string tool_link_;
 
 };
 
 } /* namespace filters */
 } /* namespace stomp_moveit */
 
-#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_FILTERS_TRAJECTORY_VISUALIZATION_H_ */
+#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_SRC_FILTERS_UNDERCONSTRAINED_GOAL_H_ */

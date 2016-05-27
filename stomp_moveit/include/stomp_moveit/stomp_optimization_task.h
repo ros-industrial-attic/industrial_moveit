@@ -12,11 +12,11 @@
 #include <moveit_msgs/MotionPlanRequest.h>
 #include <moveit/robot_model/robot_model.h>
 #include <stomp_core/task.h>
-#include <stomp_moveit/filters/stomp_filter.h>
 #include <stomp_moveit/cost_functions/stomp_cost_function.h>
 #include <XmlRpcValue.h>
 #include <pluginlib/class_loader.h>
-#include <stomp_moveit/smoothers/smoother_interface.h>
+#include <stomp_moveit/noisy_filters/stomp_noisy_filter.h>
+#include <stomp_moveit/update_filters/stomp_update_filter.h>
 
 
 namespace stomp_moveit
@@ -24,10 +24,10 @@ namespace stomp_moveit
 
 typedef pluginlib::ClassLoader<stomp_moveit::cost_functions::StompCostFunction> CostFunctionLoader;
 typedef std::shared_ptr<CostFunctionLoader> CostFuctionLoaderPtr;
-typedef pluginlib::ClassLoader<stomp_moveit::filters::StompFilter> FilterLoader;
-typedef std::shared_ptr<FilterLoader> FilterLoaderPtr;
-typedef pluginlib::ClassLoader<smoothers::SmootherInterface> SmootherLoader;
-typedef std::shared_ptr<SmootherLoader> SmootherLoaderPtr;
+typedef pluginlib::ClassLoader<stomp_moveit::noisy_filters::StompNoisyFilter> NoisyFilterLoader;
+typedef std::shared_ptr<NoisyFilterLoader> NoisyFilterLoaderPtr;
+typedef pluginlib::ClassLoader<stomp_moveit::update_filters::StompUpdateFilter> UpdateFilterLoader;
+typedef std::shared_ptr<UpdateFilterLoader> UpdateFilterLoaderPtr;
 
 class StompOptimizationTask: public stomp_core::Task
 {
@@ -102,33 +102,20 @@ public:
 
   /**
    * @brief Filters the given parameters which is applied after the update. It could be used for clipping of joint limits
-   * or projecting into the null space of the Jacobian.
+   * or smoothing the noisy update.
    *
    * @param start_timestep    start index into the 'parameters' array, usually 0.
    * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
    * @param iteration_number  The current iteration count in the optimization loop
-   * @param parameters        The optimized parameters
+   * @param parameters        The parameters values before the update is applied [num_dimensions] x [num_timesteps]
+   * @param updates           The updates to be applied to the parameters [num_dimensions] x [num_timesteps]
    * @param filtered          False if no filtering was done
    * @return                  False if there was a failure
    */
-  virtual bool filterParameters(std::size_t start_timestep,
-                                std::size_t num_timesteps,
-                                int iteration_number,
-                                Eigen::MatrixXd& parameters,
-                                bool& filtered) override;
-
-  /**
-   * @brief Applies a smoothing scheme to the parameter updates
-   *
-   * @param start_timestep      start column index in the 'updates' matrix.
-   * @param num_timestep        number of column-wise elements to use from the 'updates' matrix.
-   * @param iteration_number    the current iteration count.
-   * @param updates             the parameter updates.
-   * @return                    False if there was a failure, true otherwise.
-   */
-  virtual bool smoothParameterUpdates(std::size_t start_timestep,
+  virtual bool filterParameterUpdates(std::size_t start_timestep,
                                       std::size_t num_timesteps,
                                       int iteration_number,
+                                      const Eigen::MatrixXd& parameters,
                                       Eigen::MatrixXd& updates) override;
 
   /**
@@ -143,10 +130,10 @@ public:
 protected:
 
   bool initializeCostFunctionPlugins(const XmlRpc::XmlRpcValue& config);
-  bool initializeFilterPlugins(const XmlRpc::XmlRpcValue& config,std::string param_name,
-                               std::vector<filters::StompFilterPtr>& filters);
-  bool initializeSmootherPlugins(const XmlRpc::XmlRpcValue& config);
-
+  bool initializeNoisyFilterPlugins(const XmlRpc::XmlRpcValue& config,
+                               std::vector<noisy_filters::StompNoisyFilterPtr>& filters);
+  bool initializeUpdateFilterPlugins(const XmlRpc::XmlRpcValue& config,
+                               std::vector<update_filters::StompUpdateFilterPtr>& filters);
 protected:
 
   // robot environment
@@ -156,13 +143,12 @@ protected:
 
   // plugins
   CostFuctionLoaderPtr cost_function_loader_;
-  FilterLoaderPtr filter_loader_;
-  SmootherLoaderPtr smoother_loader_;
+  NoisyFilterLoaderPtr noisy_filter_loader_;
+  UpdateFilterLoaderPtr update_filter_loader_;
 
   std::vector<cost_functions::StompCostFunctionPtr> cost_functions_;
-  std::vector<filters::StompFilterPtr> noisy_filters_;
-  std::vector<filters::StompFilterPtr> filters_;
-  std::vector<smoothers::SmootherInterfacePtr> smoothers_;
+  std::vector<noisy_filters::StompNoisyFilterPtr> noisy_filters_;
+  std::vector<update_filters::StompUpdateFilterPtr> update_filters_;
 };
 
 

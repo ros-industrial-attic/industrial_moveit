@@ -18,6 +18,9 @@
     <group name="manipulator_rail">
         <chain base_link="rail" tip_link="tool0" />
     </group>
+    <group name="manipulator_tool">
+        <chain base_link="rail" tip_link="tcp_frame" />
+    </group>
     <!--GROUP STATES: Purpose: Define a named state for a particular group, in terms of joint values. This is useful to define states like 'folded arms'-->
     <group_state name="start_pose" group="manipulator">
         <joint name="joint_1" value="0.9795" />
@@ -36,13 +39,13 @@
         <joint name="joint_6" value="0" />
     </group_state>
     <group_state name="rails_start_pose" group="manipulator_rail">
-        <joint name="joint_1" value="1.4149" />
+        <joint name="joint_1" value="1.0884" />
         <joint name="joint_2" value="0.553" />
         <joint name="joint_3" value="0.1098" />
         <joint name="joint_4" value="-1.0295" />
         <joint name="joint_5" value="0" />
         <joint name="joint_6" value="0" />
-        <joint name="rail_to_base" value="1.3933" />
+        <joint name="rail_to_base" value="1.4382" />
     </group_state>
     <group_state name="rail_end_pose" group="manipulator_rail">
         <joint name="joint_1" value="1.306" />
@@ -52,6 +55,24 @@
         <joint name="joint_5" value="0" />
         <joint name="joint_6" value="0" />
         <joint name="rail_to_base" value="-1.2584" />
+    </group_state>
+    <group_state name="start_tool_pose" group="manipulator_tool">
+        <joint name="joint_1" value="1.1972" />
+        <joint name="joint_2" value="-0.3137" />
+        <joint name="joint_3" value="0.676" />
+        <joint name="joint_4" value="-1.0295" />
+        <joint name="joint_5" value="-1.2011" />
+        <joint name="joint_6" value="-1.51" />
+        <joint name="rail_to_base" value="1.3483" />
+    </group_state>
+    <group_state name="end_tool_pose" group="manipulator_tool">
+        <joint name="joint_1" value="1.5237" />
+        <joint name="joint_2" value="-0.3137" />
+        <joint name="joint_3" value="0.676" />
+        <joint name="joint_4" value="-3.2945" />
+        <joint name="joint_5" value="-1.2011" />
+        <joint name="joint_6" value="-1.51" />
+        <joint name="rail_to_base" value="-0.8539" />
     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="eef" parent_link="link_6" group="eef" parent_group="manipulator" />
@@ -67,6 +88,16 @@
     <disable_collisions link1="base_link" link2="obstacle_cylinder" reason="Never" />
     <disable_collisions link1="base_link" link2="rail" reason="Adjacent" />
     <disable_collisions link1="base_link" link2="workcell_bounds" reason="Never" />
+    <disable_collisions link1="gripper_body" link2="gripper_spacer" reason="Adjacent" />
+    <disable_collisions link1="gripper_body" link2="link_3" reason="Never" />
+    <disable_collisions link1="gripper_body" link2="link_4" reason="Never" />
+    <disable_collisions link1="gripper_body" link2="link_5" reason="Never" />
+    <disable_collisions link1="gripper_body" link2="link_6" reason="Adjacent" />
+    <disable_collisions link1="gripper_spacer" link2="link_2" reason="Never" />
+    <disable_collisions link1="gripper_spacer" link2="link_3" reason="Never" />
+    <disable_collisions link1="gripper_spacer" link2="link_4" reason="Never" />
+    <disable_collisions link1="gripper_spacer" link2="link_5" reason="Never" />
+    <disable_collisions link1="gripper_spacer" link2="link_6" reason="Adjacent" />
     <disable_collisions link1="link_2" link2="link_3" reason="Adjacent" />
     <disable_collisions link1="link_2" link2="link_4" reason="Never" />
     <disable_collisions link1="link_2" link2="link_5" reason="Never" />

@@ -5,12 +5,12 @@
  *      Author: Jorge Nicho
  */
 
-#include <stomp_moveit/filters/multi_trajectory_visualization.h>
 #include <moveit/robot_state/conversions.h>
 #include <tf/transform_datatypes.h>
 #include <pluginlib/class_list_macros.h>
+#include <stomp_moveit/noisy_filters/multi_trajectory_visualization.h>
 
-PLUGINLIB_EXPORT_CLASS(stomp_moveit::filters::MultiTrajectoryVisualization,stomp_moveit::filters::StompFilter);
+PLUGINLIB_EXPORT_CLASS(stomp_moveit::noisy_filters::MultiTrajectoryVisualization,stomp_moveit::noisy_filters::StompNoisyFilter);
 
 inline void eigenToPointsMsgs(const Eigen::MatrixXd& in,std::vector<geometry_msgs::Point>& out)
 {
@@ -53,7 +53,7 @@ inline void createToolPathMarker(const Eigen::MatrixXd& tool_line, int id, std::
 
 namespace stomp_moveit
 {
-namespace filters
+namespace noisy_filters
 {
 
 MultiTrajectoryVisualization::MultiTrajectoryVisualization():
@@ -177,12 +177,6 @@ bool MultiTrajectoryVisualization::filter(std::size_t start_timestep,
                     Eigen::MatrixXd& parameters,
                     bool& filtered)
 {
-
-  if(rollout_number == getOptimizedIndex())
-  {
-    // optimized trajectory do not process
-    return true;
-  }
 
   if(!state_)
   {

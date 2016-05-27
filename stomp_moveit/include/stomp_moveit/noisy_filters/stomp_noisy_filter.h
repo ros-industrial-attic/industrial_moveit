@@ -5,8 +5,8 @@
  *      Author: Jorge Nicho
  */
 
-#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_FILTER_H_
-#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_FILTER_H_
+#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_NOISY_FILTER_H_
+#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_NOISY_FILTER_H_
 
 #include <Eigen/Core>
 #include <XmlRpc.h>
@@ -19,17 +19,17 @@
 namespace stomp_moveit
 {
 
-namespace filters
+namespace noisy_filters
 {
 
-class StompFilter;
-typedef boost::shared_ptr<StompFilter> StompFilterPtr;
+class StompNoisyFilter;
+typedef boost::shared_ptr<StompNoisyFilter> StompNoisyFilterPtr;
 
-class StompFilter
+class StompNoisyFilter
 {
 public:
-  StompFilter(){}
-  virtual ~StompFilter(){}
+  StompNoisyFilter(){}
+  virtual ~StompNoisyFilter(){}
 
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,const XmlRpc::XmlRpcValue& config) = 0;
@@ -79,15 +79,6 @@ public:
     return "Not implemented";
   }
 
-  /**
-   * @brief The index returned by this method will be passed by the Task to the corresponding plugin method
-   *        as the 'rollout_number' argument when operating on the noiseless (optimized) parameters.
-   *
-   */
-  virtual int getOptimizedIndex() const
-  {
-    return -1;
-  }
 
 };
 
@@ -95,4 +86,4 @@ public:
 
 } /* namespace stomp_moveit */
 
-#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_FILTER_H_ */
+#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_NOISY_FILTER_H_ */
