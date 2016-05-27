@@ -263,7 +263,6 @@ bool UnderconstrainedGoal::filter(std::size_t start_timestep,
   }
 
   filtered = true;
-  ROS_DEBUG_STREAM("Last joint pose changes "<<(parameters.rightCols(1) - joint_pose).transpose());
   parameters.rightCols(1) = joint_pose;
 
   return true;
