@@ -4,4 +4,14 @@
   <xacro:kuka_kr210l150 prefix=""/>
   <xacro:include filename="$(find stomp_test_support)/urdf/test_kr210l150_macro.xacro"/>
   <xacro:test_kr210l150 simple="true"/>
+
+  <xacro:include filename="$(find stomp_test_support)/urdf/simple_2fgripper_macro.xacro"/>
+  <xacro:simple_2fgripper_link prefix=""/>
+
+  <joint name="wrist_to_gripper" type="fixed">
+    <parent link="tool0" />
+    <child link="gripper_frame" />
+    <origin xyz="0 0 0" rpy="0 1.57079632679 0"/>
+  </joint>
+
 </robot>
