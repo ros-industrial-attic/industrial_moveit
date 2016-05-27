@@ -34,8 +34,8 @@
 
 /* Author: Ioan Sucan */
 
-#ifndef MOVEIT_COLLISION_DETECTION_FCL_COLLISION_WORLD_FCL_
-#define MOVEIT_COLLISION_DETECTION_FCL_COLLISION_WORLD_FCL_
+#ifndef COLLISION_DETECTION_COLLISION_WORLD_INDUSTRIAL_H_
+#define COLLISION_DETECTION_COLLISION_WORLD_INDUSTRIAL_H_
 
 #include <industrial_collision_detection/collision_robot_industrial.h>
 #include <fcl/broadphase/broadphase.h>

@@ -34,8 +34,8 @@
 
 /* Author: Ioan Sucan */
 
-#ifndef MOVEIT_COLLISION_DETECTION_INDUSTRIAL_COLLISION_ROBOT_
-#define MOVEIT_COLLISION_DETECTION_INDUSTRIAL_COLLISION_ROBOT_
+#ifndef COLLISION_DETECTION_COLLISION_ROBOT_INDUSTRIAL_H_
+#define COLLISION_DETECTION_COLLISION_ROBOT_INDUSTRIAL_H_
 
 #include <moveit/collision_detection/collision_robot.h>
 #include <moveit/collision_detection_fcl/collision_common.h>

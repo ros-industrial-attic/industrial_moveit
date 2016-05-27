@@ -1,5 +1,5 @@
 <library path="lib/libindustrial_collision_detection_plugin">
-  <class name="IndustrialFCL" type="collision_detection::IndustrialMoveitCollisionDetectionLoader" base_class_type="collision_detection::CollisionPlugin">
+  <class name="IndustrialFCL" type="collision_detection::IndustrialFCLPluginLoader" base_class_type="collision_detection::CollisionPlugin">
     <description>
       A implementation of an improved version of moveit's fcl collision detection.
     </description>

@@ -3,11 +3,11 @@
 
 namespace collision_detection
 {
-  bool IndustrialMoveitCollisionDetectionLoader::initialize(const planning_scene::PlanningScenePtr& scene, bool exclusive) const
+  bool IndustrialFCLPluginLoader::initialize(const planning_scene::PlanningScenePtr& scene, bool exclusive) const
   {
     scene->setActiveCollisionDetector(CollisionDetectorAllocatorIndustrial::create(), exclusive);
     return true;
   }
 }
 
-PLUGINLIB_EXPORT_CLASS(collision_detection::IndustrialMoveitCollisionDetectionLoader, collision_detection::CollisionPlugin)
+PLUGINLIB_EXPORT_CLASS(collision_detection::IndustrialFCLPluginLoader, collision_detection::CollisionPlugin)

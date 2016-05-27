@@ -34,8 +34,8 @@
 
 /* Author: Acorn Pooley, Ioan Sucan */
 
-#ifndef MOVEIT_COLLISION_DETECTION_COLLISION_DETECTOR_INDUSTRIAL_H_
-#define MOVEIT_COLLISION_DETECTION_COLLISION_DETECTOR_INDUSTRIAL_H_
+#ifndef COLLISION_DETECTION_COLLISION_DETECTOR_INDUSTRIAL_H_
+#define COLLISION_DETECTION_COLLISION_DETECTOR_INDUSTRIAL_H_
 
 #include <moveit/collision_detection/collision_detector_allocator.h>
 #include <industrial_collision_detection/collision_robot_industrial.h>
