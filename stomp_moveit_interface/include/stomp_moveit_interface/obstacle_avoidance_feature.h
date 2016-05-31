@@ -9,8 +9,8 @@
 #define STOMP_MOVEIT_INTERFACE_OBSTACLE_AVOIDANCE_FEATURE_H_
 
 #include <stomp_moveit_interface/cost_features/stomp_cost_feature.h>
-#include <moveit/collision_fcl_detailed/collision_robot_fcl_detailed.h>
-#include <moveit/collision_fcl_detailed/collision_world_fcl_detailed.h>
+#include <industrial_collision_detection/collision_robot_industrial.h>
+#include <industrial_collision_detection/collision_world_industrial.h>
 
 namespace stomp_moveit_interface
 {
@@ -47,8 +47,8 @@ protected:
 protected:
 
   collision_detection::CollisionRequest collision_request_;
-  boost::shared_ptr< collision_detection::CollisionRobotFCLDetailed > collision_robot_;
-  boost::shared_ptr< collision_detection::CollisionWorldFCLDetailed > collision_world_;
+  collision_detection::CollisionRobotIndustrialConstPtr collision_robot_;
+  collision_detection::CollisionWorldIndustrialConstPtr collision_world_;
 
   // parameters
   double clearance_;

@@ -9,10 +9,11 @@
 #include <moveit/robot_state/conversions.h>
 #include "stomp_moveit/cost_functions/collision_check.h"
 
-PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::CollisionCheck,stomp_moveit::cost_functions::StompCostFunction);
+PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::CollisionCheck,stomp_moveit::cost_functions::StompCostFunction)
 
 const double DEFAULT_SCALE = 1.0;
 const double DEFAULT_EXP_DECAY = 0.5;
+const std::string DEFAULT_COLLISION_DETECTOR = "IndustrialFCL";
 const int WINDOW_SIZE = 7;
 
 void generateExponentialSmoothingMatrix(int window_size, int num_timesteps, double decay,
@@ -66,7 +67,6 @@ namespace cost_functions
 CollisionCheck::CollisionCheck():
     name_("CollisionCheckPlugin"),
     robot_state_(),
-    collision_padding_(0.0),
     collision_penalty_(0.0),
     cost_decay_(DEFAULT_EXP_DECAY)
 {
@@ -107,11 +107,16 @@ bool CollisionCheck::setMotionPlanRequest(const planning_scene::PlanningSceneCon
   collision_request_.contacts = true;
   collision_request_.verbose = false;
 
-  collision_robot_.reset(new collision_detection::CollisionRobotFCL(
-      planning_scene_->getRobotModel(), collision_padding_, DEFAULT_SCALE));
-
-  collision_detection::WorldPtr world = boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld());
-  collision_world_.reset(new collision_detection::CollisionWorldFCL(world));
+  //Check and make sure the correct collision detector is loaded.
+  if (planning_scene->getActiveCollisionDetectorName() != DEFAULT_COLLISION_DETECTOR)
+  {
+    throw std::runtime_error("STOMP Moveit Interface requires the use of collision detector \"" + DEFAULT_COLLISION_DETECTOR + "\"\n"
+                             "To resolve the issue add the ros parameter collision_detector = " + DEFAULT_COLLISION_DETECTOR +
+                             ".\nIt is recommend to added it where the move_group node is launched, usually in the in the "
+                             "(robot_name)_moveit_config/launch/move_group.launch");
+  }
+  collision_robot_ = boost::dynamic_pointer_cast<const collision_detection::CollisionRobotIndustrial>(planning_scene->getCollisionRobot());
+  collision_world_ = boost::dynamic_pointer_cast<const collision_detection::CollisionWorldIndustrial>(planning_scene->getCollisionWorld());
 
   // storing robot state
   robot_state_.reset(new RobotState(robot_model_ptr_));
@@ -237,7 +242,7 @@ bool CollisionCheck::configure(const XmlRpc::XmlRpcValue& config)
 {
 
   // check parameter presence
-  auto members = {"cost_weight","collision_penalty","collision_padding"};
+  auto members = {"cost_weight","collision_penalty"};
   for(auto& m : members)
   {
     if(!config.hasMember(m))
@@ -252,7 +257,6 @@ bool CollisionCheck::configure(const XmlRpc::XmlRpcValue& config)
     XmlRpc::XmlRpcValue c = config;
     cost_weight_ = static_cast<double>(c["cost_weight"]);
     collision_penalty_ = static_cast<double>(c["collision_penalty"]);
-    collision_padding_ = static_cast<double>(c["collision_padding"]);
   }
   catch(XmlRpc::XmlRpcException& e)
   {

@@ -29,7 +29,7 @@
 
 #include "constrained_ik/constraint.h"
 #include "constrained_ik/constrained_ik.h"
-#include <constrained_ik/collision_robot_fcl_detailed.h>
+#include <industrial_collision_detection/collision_common.h>
 #include <vector>
 #include <algorithm>
 #include <kdl/chain.hpp>
@@ -97,9 +97,9 @@ public:
   {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     const constraints::AvoidObstacles* parent_;
-    DistanceResult distance_res_;
-    DistanceMap distance_map_;
-    DistanceInfoMap distance_info_map_;
+    collision_detection::DistanceResult distance_res_;
+    collision_detection::DistanceMap distance_map_;
+    collision_detection::DistanceInfoMap distance_info_map_;
 
     AvoidObstaclesData(const constrained_ik::SolverState &state, const constraints::AvoidObstacles* parent);
   };

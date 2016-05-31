@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(stomp_moveit_interface)
 
-find_package(catkin REQUIRED COMPONENTS stomp moveit_core pluginlib moveit_experimental cmake_modules)
+find_package(catkin REQUIRED COMPONENTS stomp moveit_core pluginlib moveit_experimental cmake_modules industrial_collision_detection)
 find_package(Eigen REQUIRED)
 
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES stomp_moveit_interface
-  CATKIN_DEPENDS stomp moveit_core pluginlib moveit_experimental
+  CATKIN_DEPENDS stomp moveit_core pluginlib moveit_experimental industrial_collision_detection
   DEPENDS 
 )
 

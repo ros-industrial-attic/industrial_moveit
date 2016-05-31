@@ -9,9 +9,9 @@
 #include <moveit/robot_state/conversions.h>
 #include "stomp_moveit/cost_functions/obstacle_avoidance.h"
 
-PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::ObstacleAvoidance,stomp_moveit::cost_functions::StompCostFunction);
+PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::ObstacleAvoidance,stomp_moveit::cost_functions::StompCostFunction)
 
-const double DEFAULT_SCALE = 1.0;
+const std::string DEFAULT_COLLISION_DETECTOR = "IndustrialFCL";
 
 namespace stomp_moveit
 {
@@ -22,7 +22,6 @@ ObstacleAvoidance::ObstacleAvoidance():
     name_("ObstacleAvoidancePlugin"),
     robot_state_(),
     collision_clearance_(0.0),
-    collision_padding_(0.0),
     collision_penalty_(0.0)
 {
   // TODO Auto-generated constructor stub
@@ -62,10 +61,16 @@ bool ObstacleAvoidance::setMotionPlanRequest(const planning_scene::PlanningScene
   collision_request_.contacts = false;
   collision_request_.verbose = false;
 
-  collision_robot_.reset(new collision_detection::CollisionRobotFCLDetailed(
-      planning_scene_->getRobotModel(), collision_padding_, DEFAULT_SCALE, collision_clearance_));
-  collision_world_.reset(new collision_detection::CollisionWorldFCLDetailed(
-      boost::const_pointer_cast<collision_detection::World>(planning_scene_->getWorld()), collision_clearance_));
+  //Check and make sure the correct collision detector is loaded.
+  if (planning_scene->getActiveCollisionDetectorName() != DEFAULT_COLLISION_DETECTOR)
+  {
+    throw std::runtime_error("STOMP Moveit Interface requires the use of collision detector \"" + DEFAULT_COLLISION_DETECTOR + "\"\n"
+                             "To resolve the issue add the ros parameter collision_detector = " + DEFAULT_COLLISION_DETECTOR +
+                             ".\nIt is recommend to added it where the move_group node is launched, usually in the in the "
+                             "(robot_name)_moveit_config/launch/move_group.launch");
+  }
+  collision_robot_ = boost::dynamic_pointer_cast<const collision_detection::CollisionRobotIndustrial>(planning_scene->getCollisionRobot());
+  collision_world_ = boost::dynamic_pointer_cast<const collision_detection::CollisionWorldIndustrial>(planning_scene->getCollisionWorld());
 
   // storing robot state
   robot_state_.reset(new RobotState(robot_model_ptr_));
@@ -174,7 +179,7 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
 bool ObstacleAvoidance::configure(const XmlRpc::XmlRpcValue& config)
 {
   // check parameter presence
-  auto members = {"collision_clearance","collision_penalty","cost_weight","collision_padding"};
+  auto members = {"collision_clearance","collision_penalty","cost_weight"};
   for(auto& m : members)
   {
     if(!config.hasMember(m))
@@ -189,7 +194,6 @@ bool ObstacleAvoidance::configure(const XmlRpc::XmlRpcValue& config)
     XmlRpc::XmlRpcValue c = config;
     collision_clearance_ = static_cast<double>(c["collision_clearance"]);
     collision_penalty_ = static_cast<double>(c["collision_penalty"]);
-    collision_padding_ = static_cast<double>(c["collision_padding"]);
     cost_weight_ = static_cast<double>(c["cost_weight"]);
   }
   catch(XmlRpc::XmlRpcException& e)

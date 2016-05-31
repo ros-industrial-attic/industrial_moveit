@@ -8,16 +8,20 @@
 #include <moveit/robot_state/conversions.h>
 #include <moveit/kinematic_constraints/kinematic_constraint.h>
 #include <moveit/kinematic_constraints/utils.h>
+#include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <constrained_ik/moveit_interface/joint_interpolation_planner.h>
 #include <constrained_ik/ConstrainedIKPlannerDynamicReconfigureConfig.h>
 #include <fstream>
 #include <time.h>
+
 
 using namespace ros;
 using namespace constrained_ik;
 using namespace Eigen;
 using namespace moveit::core;
 using namespace std;
+
+typedef boost::shared_ptr<collision_detection::CollisionPlugin> CollisionPluginPtr;
 
 int main (int argc, char *argv[])
 {
@@ -54,7 +58,13 @@ int main (int argc, char *argv[])
 
   ConstrainedIKPlannerDynamicReconfigureConfig config;
   config.joint_discretization_step = 0.02;
-  planning_scene::PlanningSceneConstPtr planning_scene(new planning_scene::PlanningScene(robot_model));
+  planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(robot_model));
+
+  //Now assign collision detection plugin
+  collision_detection::CollisionPluginLoader cd_loader;
+  std::string class_name = "IndustrialFCL";
+  cd_loader.activate(class_name, planning_scene, true);
+
   planning_interface::MotionPlanRequest req;
   planning_interface::MotionPlanResponse res;
   string group_name = "manipulator_rail";

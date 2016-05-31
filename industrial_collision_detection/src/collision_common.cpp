@@ -1,11 +1,9 @@
-#include <constrained_ik/collision_common_detailed.h>
+#include <industrial_collision_detection/collision_common.h>
 #include <moveit/collision_detection_fcl/collision_common.h>
 #include <ros/ros.h>
 
-namespace constrained_ik
+namespace collision_detection
 {
-  using namespace collision_detection;
-
   bool getDistanceInfo(const DistanceMap &distance_detailed, DistanceInfoMap &distance_info_map)
   {
     Eigen::Affine3d tf;
@@ -45,7 +43,8 @@ namespace constrained_ik
         ROS_ERROR("getDistanceInfo was unable to find link after match!");
         status &= false;
       }
-      distance_info_map.insert(std::make_pair<std::string, DistanceInfo>(it->first, dist_info));
+
+      distance_info_map.insert(std::make_pair(it->first, dist_info));
     }
 
     return status;
@@ -208,7 +207,7 @@ namespace constrained_ik
         {
           if (it1 == cdata->res->distance.end())
           {
-            cdata->res->distance.insert(std::make_pair<std::string, fcl::DistanceResult>(cd1->ptr.obj->id_, dist_result));
+            cdata->res->distance.insert(std::make_pair(cd1->ptr.obj->id_, dist_result));
           }
           else
           {
@@ -220,7 +219,7 @@ namespace constrained_ik
         {
           if (it2 == cdata->res->distance.end())
           {
-            cdata->res->distance.insert(std::make_pair<std::string, fcl::DistanceResult>(cd2->ptr.obj->id_, dist_result));
+            cdata->res->distance.insert(std::make_pair(cd2->ptr.obj->id_, dist_result));
           }
           else
           {

@@ -1,11 +1,12 @@
-#ifndef COLLISION_COMMON_DETAILED_H
-#define COLLISION_COMMON_DETAILED_H
+#ifndef COLLISION_DETECTION_COLLISION_COMMON_H_
+#define COLLISION_DETECTION_COLLISION_COMMON_H_
 
+#include <moveit/collision_detection/world.h>
+#include <moveit/collision_detection/collision_world.h>
+#include <fcl/broadphase/broadphase.h>
+#include <fcl/collision.h>
 #include <fcl/distance.h>
-#include <moveit/robot_model/robot_model.h>
-#include <moveit/robot_state/robot_state.h>
-#include <moveit/collision_detection/collision_matrix.h>
-#include <eigen3/Eigen/Core>
+#include <set>
 
 namespace collision_detection
 {
@@ -95,6 +96,13 @@ namespace collision_detection
     fcl::DistanceResult minimum_distance;
 
     DistanceMap distance;
+
+    void clear()
+    {
+      collision = false;
+      minimum_distance.clear();
+      distance.clear();
+    }
   };
 
   struct DistanceData
@@ -140,7 +148,6 @@ namespace collision_detection
    * @return bool, true if succesfully converted DistanceDetailedMap to DistanceInfoMap
    */
   bool getDistanceInfo(const DistanceMap &distance_detailed, DistanceInfoMap &distance_info_map);
-
 }
-#endif // COLLISION_COMMON_DETAILED_H
 
+#endif
