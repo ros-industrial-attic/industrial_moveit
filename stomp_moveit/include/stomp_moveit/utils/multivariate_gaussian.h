@@ -34,8 +34,8 @@
 
 /** \author Mrinal Kalakrishnan */
 
-#ifndef STOMP_MULTIVARIATE_GAUSSIAN_H_
-#define STOMP_MULTIVARIATE_GAUSSIAN_H_
+#ifndef STOMP_MOVEIT_MULTIVARIATE_GAUSSIAN_H_
+#define STOMP_MOVEIT_MULTIVARIATE_GAUSSIAN_H_
 
 #include <Eigen/Core>
 #include <Eigen/Cholesky>
@@ -45,8 +45,14 @@
 #include <boost/shared_ptr.hpp>
 #include <cstdlib>
 
-namespace stomp_core
+namespace stomp_moveit
 {
+
+namespace utils
+{
+
+class MultivariateGaussian;
+typedef boost::shared_ptr<MultivariateGaussian> MultivariateGaussianPtr;
 
 /**
  * \brief Generates samples from a multivariate gaussian distribution
@@ -58,7 +64,7 @@ public:
   MultivariateGaussian(const Eigen::MatrixBase<Derived1>& mean, const Eigen::MatrixBase<Derived2>& covariance);
 
   template <typename Derived>
-  void sample(Eigen::MatrixBase<Derived>& output);
+  void sample(Eigen::MatrixBase<Derived>& output,bool use_covariance = true);
 
 private:
   Eigen::VectorXd mean_;                /**< Mean of the gaussian distribution */
@@ -87,13 +93,23 @@ MultivariateGaussian::MultivariateGaussian(const Eigen::MatrixBase<Derived1>& me
 }
 
 template <typename Derived>
-void MultivariateGaussian::sample(Eigen::MatrixBase<Derived>& output)
+void MultivariateGaussian::sample(Eigen::MatrixBase<Derived>& output,bool use_covariance)
 {
   for (int i=0; i<size_; ++i)
     output(i) = (*gaussian_)();
-  output = mean_ + covariance_cholesky_*output;
+
+  if(use_covariance)
+  {
+    output = mean_ + covariance_cholesky_*output;
+  }
+  else
+  {
+    output = mean_ + output;
+  }
 }
 
 }
 
-#endif /* STOMP_MULTIVARIATE_GAUSSIAN_H_ */
+}
+
+#endif /* STOMP_MOVEIT_MULTIVARIATE_GAUSSIAN_H_ */

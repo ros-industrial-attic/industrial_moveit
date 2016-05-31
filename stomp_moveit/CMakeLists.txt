@@ -74,6 +74,12 @@ add_library(${PROJECT_NAME}_update_filters
  )
 target_link_libraries(${PROJECT_NAME}_update_filters ${catkin_LIBRARIES})
 
+# noise generator plugin(s)
+add_library(${PROJECT_NAME}_noise_generators
+  src/noise_generators/normal_distribution_sampling.cpp
+ )
+target_link_libraries(${PROJECT_NAME}_noise_generators ${catkin_LIBRARIES})
+
 #############
 ## Install ##
 #############

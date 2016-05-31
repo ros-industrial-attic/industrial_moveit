@@ -186,6 +186,7 @@ bool UnderconstrainedGoal::setMotionPlanRequest(const planning_scene::PlanningSc
   using namespace moveit::core;
 
   const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_name_);
+  int num_joints = joint_group->getActiveJointModels().size();
   tool_link_ = joint_group->getLinkModelNames().back();
   state_.reset(new RobotState(robot_model_));
   robotStateMsgToRobotState(req.start_state,*state_);
@@ -227,7 +228,7 @@ bool UnderconstrainedGoal::setMotionPlanRequest(const planning_scene::PlanningSc
   }
   else
   {
-    // tool goal
+    // tool cartesian goal
     const moveit_msgs::PositionConstraint& pos_constraint = goals.front().position_constraints.front();
     const moveit_msgs::OrientationConstraint& orient_constraint = goals.front().orientation_constraints.front();
 
@@ -236,6 +237,18 @@ bool UnderconstrainedGoal::setMotionPlanRequest(const planning_scene::PlanningSc
     pose.orientation = orient_constraint.orientation;
     tf::poseMsgToEigen(pose,tool_goal_pose_);
   }
+
+  Eigen::VectorXd joint_pose = Eigen::VectorXd::Zero(num_joints);
+  ref_goal_joint_pose_.resize(num_joints);
+  robotStateMsgToRobotState(req.start_state,*state_);
+  state_->copyJointGroupPositions(joint_group,joint_pose);
+  if(!runIK(tool_goal_pose_,joint_pose,ref_goal_joint_pose_))
+  {
+    ROS_WARN("%s IK failed using start pose as seed",getName().c_str());
+    ref_goal_joint_pose_.resize(0);
+  }
+
+
 
   error_code.val = error_code.SUCCESS;
   return true;
@@ -255,15 +268,24 @@ bool UnderconstrainedGoal::filter(std::size_t start_timestep,
   VectorXd init_joint_pose = parameters.rightCols(1);
   VectorXd joint_pose;
 
+  filtered = false;
   if(!runIK(tool_goal_pose_,init_joint_pose,joint_pose))
   {
-    ROS_ERROR("UnderconstrainedGoal failed to find valid ik close to reference pose");
-    filtered = false;
-    return false;
-  }
+    ROS_WARN("UnderconstrainedGoal failed to find valid ik close to current goal pose");
 
-  filtered = true;
-  parameters.rightCols(1) = joint_pose;
+    if(ref_goal_joint_pose_.size() != 0)
+    {
+      joint_pose = ref_goal_joint_pose_; // assigning previously computed valid pose
+      filtered = true;
+      parameters.rightCols(1) = joint_pose;
+    }
+
+  }
+  else
+  {
+    filtered = true;
+    parameters.rightCols(1) = joint_pose;
+  }
 
   return true;
 }

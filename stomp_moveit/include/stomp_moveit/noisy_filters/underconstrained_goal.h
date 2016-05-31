@@ -93,6 +93,7 @@ protected:
   Eigen::ArrayXd cartesian_convergence_thresholds_;
   double update_weight_;
   int max_iterations_;
+  Eigen::VectorXd ref_goal_joint_pose_;
 
   // robot
   moveit::core::RobotModelConstPtr robot_model_;

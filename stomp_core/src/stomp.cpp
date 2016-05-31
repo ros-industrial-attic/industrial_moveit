@@ -107,7 +107,8 @@ bool computeMinCostTrajectory(const std::vector<double>& first,
     linear_control_cost[d] *=2;
 
     trajectory_joints.row(d) = -0.5*inv_control_cost_matrix_R*linear_control_cost[d];
-
+    trajectory_joints(d,0) = first[d];
+    trajectory_joints(d,timesteps - 1) = last[d];
   }
 
   return true;
@@ -147,7 +148,6 @@ bool Stomp::parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_con
     stomp_config.delta_t = static_cast<double>(config["delta_t"]);
     stomp_config.initialization_method = static_cast<int>(config["initialization_method"]);
     stomp_config.max_rollouts = static_cast<int>(config["max_rollouts"]);
-    stomp_config.min_rollouts = static_cast<int>(config["min_rollouts"]);
     stomp_config.num_dimensions = static_cast<int>(config["num_dimensions"]);
     stomp_config.num_iterations = static_cast<int>(config["num_iterations"]);
     stomp_config.num_iterations_after_valid = static_cast<int>(config["num_iterations_after_valid"]);
@@ -157,43 +157,6 @@ bool Stomp::parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_con
   catch(XmlRpc::XmlRpcException& e)
   {
     ROS_ERROR("Failed to parse Stomp configuration ");
-    return false;
-  }
-
-  try
-  {
-
-    // noise parameters
-    XmlRpc::XmlRpcValue noisegen, array;
-    noisegen = config["noise_generation"];
-
-    // stddev
-    std::vector<double> vals;
-    std::map<std::string,std::vector<double> > array_entries = {{"stddev", vals},{"decay", vals},{"min_stddev",vals}};
-    for(auto& entry: array_entries)
-    {
-      array = noisegen[entry.first];
-      vals.clear();
-      for(auto i = 0u; i < array.size(); i++)
-      {
-        vals.push_back(static_cast<double>(array[i]));
-      }
-      array_entries[entry.first] = vals;
-    }
-
-    stomp_config.noise_generation.stddev = array_entries["stddev"];
-    stomp_config.noise_generation.decay = array_entries["decay"];
-    stomp_config.noise_generation.min_stddev = array_entries["min_stddev"];
-
-    stomp_config.noise_generation.method = static_cast<int>(noisegen["method"]);
-    stomp_config.noise_generation.update_rate = static_cast<double>(noisegen["update_rate"]);
-
-  }
-  catch(XmlRpc::XmlRpcException& e)
-  {
-    std::stringstream ss;
-    config.write(ss);
-    ROS_ERROR("Failed to parse Stomp 'noise_generation' entry from parameter %s",ss.str().c_str());
     return false;
   }
 
@@ -322,17 +285,6 @@ bool Stomp::resetVariables()
     config_.max_rollouts = config_.num_rollouts;
   }
 
-  if(config_.min_rollouts > config_.num_rollouts)
-  {
-    ROS_WARN_STREAM("'min_rollouts' must be less than 'num_rollouts_per_iteration'");
-    config_.min_rollouts = config_.num_rollouts;
-  }
-
-  noise_stddevs_ = config_.noise_generation.stddev;
-
-  temp_noise_array_.resize(config_.num_timesteps);
-  temp_noise_array_.setZero();
-
   // noisy rollouts allocation
   int d = config_.num_dimensions;
   num_active_rollouts_ = 0;
@@ -407,73 +359,9 @@ bool Stomp::resetVariables()
   double maxVal = std::abs(inv_control_cost_matrix_R_.maxCoeff());
   control_cost_matrix_R_padded_ *= maxVal;
   control_cost_matrix_R_ *= maxVal;
-  inv_control_cost_matrix_R_ /= maxVal;
-
-  /* Noise Generation*/
-  random_dist_generators_.clear();
-  for(auto d = 0; d < config_.num_dimensions ; d++)
-  {
-    random_dist_generators_.push_back(
-        MultivariateGaussianPtr(new MultivariateGaussian(Eigen::VectorXd::Zero(config_.num_timesteps),
-                                              inv_control_cost_matrix_R_)));
-  }
+  inv_control_cost_matrix_R_ /= maxVal; // used in computing the minimum control cost initial trajectory
 
   return true;
-}
-
-void Stomp::updateNoiseStddev()
-{
-  std::vector<double>& stddev = config_.noise_generation.stddev;
-  std::vector<double>& decay = config_.noise_generation.decay;
-  switch(config_.noise_generation.method)
-  {
-    case NoiseGeneration::ADAPTIVE:
-    {
-      double denom;
-      double numer;
-      double frob_stddev;
-      double update_rate = config_.noise_generation.update_rate;
-      const std::vector<double>& min_stddev = config_.noise_generation.min_stddev;
-      for(unsigned int d = 0; d < config_.num_dimensions; d++)
-      {
-        denom = 0;
-        numer = 0;
-        for (auto r = 0u; r<num_active_rollouts_; ++r)
-        {
-            denom += noisy_rollouts_[r].full_probabilities[d];
-            numer += noisy_rollouts_[r].full_probabilities[d] *
-                    double( noisy_rollouts_[r].noise.row(d)
-                           * control_cost_matrix_R_ * noisy_rollouts_[r].noise.row(d).transpose());
-        }
-        frob_stddev =  sqrt(numer/(denom*config_.num_timesteps));
-
-        if(!std::isnan(frob_stddev))
-        {
-          noise_stddevs_[d] = (1.0 - update_rate)*noise_stddevs_[d] + update_rate * frob_stddev;
-        }
-
-        if (noise_stddevs_[d] < min_stddev[d])
-          noise_stddevs_[d] = min_stddev[d];
-
-      }
-    }
-
-      break;
-    case NoiseGeneration::CONSTANT:
-
-      noise_stddevs_ = stddev;
-      break;
-    case NoiseGeneration::EXPONENTIAL_DECAY:
-
-      const std::vector<double>& min_stddev = config_.noise_generation.min_stddev;
-      noise_stddevs_.resize(stddev.size());
-      for(unsigned int i = 0; i < stddev.size() ; i++)
-      {
-        noise_stddevs_[i] = stddev[i]*pow(decay[i],config_.noise_generation.update_rate*(current_iteration_ -1));
-        noise_stddevs_[i] = (noise_stddevs_[i] < min_stddev[i]) ? min_stddev[i]: noise_stddevs_[i];
-      }
-      break;
-  }
 }
 
 bool Stomp::computeInitialTrajectory(const std::vector<double>& first,const std::vector<double>& last)
@@ -512,9 +400,6 @@ bool Stomp::runSingleIteration()
   {
     return false;
   }
-
-  // updates using previous iteration results
-  updateNoiseStddev();
 
   bool proceed = generateNoisyRollouts() &&
       computeNoisyRolloutsCosts() &&
@@ -590,11 +475,14 @@ bool Stomp::generateNoisyRollouts()
   // generate new noisy rollouts
   for(auto r = 0u; r < rollouts_generate; r++)
   {
-    for (auto d = 0u; d<config_.num_dimensions; ++d)
+    if(!task_->generateNoisyParameters(parameters_optimized_,
+                                      0,config_.num_timesteps,
+                                      current_iteration_,r,
+                                      noisy_rollouts_[r].parameters_noise,
+                                      noisy_rollouts_[r].noise))
     {
-      random_dist_generators_[d]->sample(temp_noise_array_);
-      noisy_rollouts_[r].noise.row(d).transpose()  = noise_stddevs_[d] * temp_noise_array_;
-      noisy_rollouts_[r].parameters_noise.row(d) = parameters_optimized_.row(d) + noisy_rollouts_[r].noise.row(d);
+      ROS_ERROR("Failed to generate noisy parameters at iteration %i",current_iteration_);
+      return false;
     }
 
   }
