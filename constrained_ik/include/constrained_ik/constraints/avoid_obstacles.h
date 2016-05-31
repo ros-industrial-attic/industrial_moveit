@@ -29,7 +29,7 @@
 
 #include "constrained_ik/constraint.h"
 #include "constrained_ik/constrained_ik.h"
-#include <industrial_collision_detection/collision_common_industrial.h>
+#include <industrial_collision_detection/collision_common.h>
 #include <vector>
 #include <algorithm>
 #include <kdl/chain.hpp>

@@ -42,7 +42,7 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME}
-  src/collision_common_industrial.cpp
+  src/collision_common.cpp
   src/collision_robot_industrial.cpp
   src/collision_world_industrial.cpp
 )

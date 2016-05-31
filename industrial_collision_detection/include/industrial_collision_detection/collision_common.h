@@ -1,5 +1,5 @@
-#ifndef COLLISION_DETECTION_COLLISION_COMMON_INDUSTRIAL_H_
-#define COLLISION_DETECTION_COLLISION_COMMON_INDUSTRIAL_H_
+#ifndef COLLISION_DETECTION_COLLISION_COMMON_H_
+#define COLLISION_DETECTION_COLLISION_COMMON_H_
 
 #include <moveit/collision_detection/world.h>
 #include <moveit/collision_detection/collision_world.h>
