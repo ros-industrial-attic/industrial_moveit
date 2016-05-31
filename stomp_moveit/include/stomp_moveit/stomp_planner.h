@@ -54,7 +54,9 @@ public:
 
   /**
    * @brief On the next call to 'solve()', the trajectory provided here will be passed
-   *        along to the underlying planner and then will be cleared.
+   *        along to the underlying planner. Subsiquent calls will not be affected. If this
+   *        trajectory does not match the dimensions of the current STOMP configuration,
+   *        the trajectory will be linearly re-sampled to fit the bill.
    */
   bool setInitialTrajectory(const trajectory_msgs::JointTrajectory& initial_traj);
 
@@ -63,9 +65,16 @@ protected:
   void setup();
   bool getStartAndGoal(std::vector<double>& start, std::vector<double>& goal);
 
+  // Converts from STOMP optimization format to a joint trajectory
   bool parametersToJointTrajectory(Eigen::MatrixXd& parameters, trajectory_msgs::JointTrajectory& traj);
+
+  // Converts from a joint trajectory to STOMP optimization format
   bool jointTrajectorytoParameters(const trajectory_msgs::JointTrajectory& traj, Eigen::MatrixXd& parameters) const;
 
+  /**
+   * @brief Given an input trajectory, computes a new trajectory with even time spacing and the dimensions from
+   *        the current stomp configuration (see stomp_config_).
+   */
   trajectory_msgs::JointTrajectory resample(const trajectory_msgs::JointTrajectory& other) const;
 
 protected:

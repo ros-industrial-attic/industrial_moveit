@@ -242,11 +242,18 @@ bool StompPlanner::jointTrajectorytoParameters(const trajectory_msgs::JointTraje
   return true;
 }
 
+/**
+ * @brief Computes the location of robot at time 't' of total time 'total_tm' given a reference trajectory traj and linear interpolation.
+ * @param traj Reference trajectory
+ * @param t The time at which to compute a new point.
+ * @param total_tm The total time of the trajectory.
+ * @return Resampled point from 'traj' at time 't'
+ */
 trajectory_msgs::JointTrajectoryPoint interpolatePosition(const trajectory_msgs::JointTrajectory& traj, double t, double total_tm)
 {
   ros::Duration d (t);
 
-  // Identify the bounding points
+  // Walk the trajectory and find the span in which 't' lies. I.e. the reference points before & after the sample time.
   size_t lower = 0, upper = 0;
   for (size_t i = 1; i < traj.points.size(); ++i)
   {
@@ -258,16 +265,27 @@ trajectory_msgs::JointTrajectoryPoint interpolatePosition(const trajectory_msgs:
     }
   }
 
+  assert(!(lower == 0) && (upper == 0)); // We were given a 't' out of bounds. This function is private and should never
+  // be called in a way to trip this; but we check just to be sure.
+
+  // inline linear interpolation helper func
   const static auto interp = [](double start, double stop, double ratio) { return start + (stop - start) * ratio; };
 
-  // Linear interpolation
-  assert(!(lower == 0) && (upper == 0));
+  // Given the bounding trajectory points, compute the normalized distance in time between them
+  auto tm_prime = (d - traj.points[lower].time_from_start).toSec();
+  auto tm_segment = (traj.points[upper].time_from_start - traj.points[lower].time_from_start).toSec();
+  auto r = tm_prime / tm_segment; // ratio where 0 is at the lower point and 1 is at the upper one
+
+  assert(tm_segment != 0.0);
+  assert(r >= 0.0 && r <= 1.0);
+
+  // Perform the interpolation for each joint
   trajectory_msgs::JointTrajectoryPoint pt;
   for (size_t i = 0; i < traj.joint_names.size(); ++i)
   {
     pt.positions.push_back(interp(traj.points[lower].positions[i],
                                   traj.points[upper].positions[i],
-                                  t / total_tm));
+                                  r));
   }
 
   return pt;
@@ -283,8 +301,8 @@ trajectory_msgs::JointTrajectory StompPlanner::resample(const trajectory_msgs::J
   jt.header = other.header;
   jt.joint_names = other.joint_names;
 
-  auto total_tm = other.points.back().time_from_start.toSec();
-  auto interval_tm = total_tm / stomp_config_.num_timesteps;
+  auto total_tm = other.points.back().time_from_start.toSec(); // total trajectory time in seconds
+  auto interval_tm = total_tm / stomp_config_.num_timesteps; // even time step required for each seed point
 
   for (auto i = 0; i < stomp_config_.num_timesteps; ++i)
   {
