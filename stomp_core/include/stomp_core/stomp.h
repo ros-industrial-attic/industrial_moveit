@@ -78,6 +78,7 @@ protected:
   // optimized parameters
   bool parameters_valid_;         /**< whether or not the optimized parameters are valid */
   double parameters_total_cost_;  /**< Total cost of the optimized parameters */
+  double current_lowest_cost_;
   Eigen::MatrixXd parameters_optimized_;               /**< [Dimensions][timesteps]*/
   Eigen::MatrixXd parameters_updates_;                 /**< [Dimensions][timesteps]*/
   Eigen::VectorXd parameters_state_costs_;                          /**< [timesteps]*/

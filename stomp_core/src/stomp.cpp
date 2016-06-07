@@ -220,13 +220,11 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
 
   current_iteration_ = 1;
   unsigned int valid_iterations = 0;
-  double lowest_cost = std::numeric_limits<double>::max();
+  current_lowest_cost_ = std::numeric_limits<double>::max();
   while(current_iteration_ <= config_.num_iterations && runSingleIteration())
   {
 
-    lowest_cost = parameters_total_cost_ < lowest_cost ? parameters_total_cost_ : lowest_cost;
-
-    ROS_DEBUG("STOMP completed iteration %i with cost %f",current_iteration_,lowest_cost);
+    ROS_DEBUG("STOMP completed iteration %i with cost %f",current_iteration_,current_lowest_cost_);
 
 
     if(parameters_valid_)
@@ -252,7 +250,7 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
   if(parameters_valid_)
   {
     ROS_INFO("STOMP found a valid solution with cost %f after %i iterations",
-             lowest_cost,current_iteration_);
+             current_lowest_cost_,current_iteration_);
   }
   else
   {
@@ -265,7 +263,7 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
   parameters_optimized = parameters_optimized_;
 
   // notifying task
-  task_->done(parameters_valid_,current_iteration_,lowest_cost);
+  task_->done(parameters_valid_,current_iteration_,current_lowest_cost_);
 
   return parameters_valid_;
 }
@@ -723,7 +721,6 @@ bool Stomp::updateParameters()
 
 bool Stomp::computeOptimizedCost()
 {
-  bool proceed = true;
 
   // control costs
   parameters_total_cost_ = 0;
@@ -750,10 +747,20 @@ bool Stomp::computeOptimizedCost()
   }
   else
   {
-    proceed = false;
+    return false;
   }
 
-  return proceed;
+  if(current_lowest_cost_ > parameters_total_cost_)
+  {
+    current_lowest_cost_ = parameters_total_cost_;
+  }
+  else
+  {
+    // reverting updates as no improvement was made
+    parameters_optimized_ -= parameters_updates_;
+  }
+
+  return true;
 }
 
 } /* namespace stomp */

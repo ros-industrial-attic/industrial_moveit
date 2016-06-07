@@ -15,7 +15,7 @@
 #include <stomp_moveit/cost_functions/stomp_cost_function.h>
 #include <XmlRpcValue.h>
 #include <pluginlib/class_loader.h>
-#include <stomp_moveit/noise_generators/stomp_stomp_noise_generator.h>
+#include <stomp_moveit/noise_generators/stomp_noise_generator.h>
 #include <stomp_moveit/noisy_filters/stomp_noisy_filter.h>
 #include <stomp_moveit/update_filters/stomp_update_filter.h>
 

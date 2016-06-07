@@ -66,8 +66,10 @@ add_library(${PROJECT_NAME}_noisy_filters
 
 target_link_libraries(${PROJECT_NAME}_noisy_filters ${catkin_LIBRARIES})
 
-# cost function plugin(s)
+# update plugin(s)
 add_library(${PROJECT_NAME}_update_filters
+  src/update_filters/polynomial_smoother.cpp
+  src/update_filters/constrained_cartesian_goal.cpp
   src/update_filters/trajectory_visualization.cpp
   src/update_filters/control_cost_projection.cpp
   src/update_filters/update_logger.cpp

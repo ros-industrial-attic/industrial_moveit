@@ -1,15 +1,20 @@
 /*
- * NormalDistributionSampling.h
+ * noise_generator.h
  *
  *  Created on: May 31, 2016
- *      Author: ros-ubuntu
+ *      Author: Jorge Nicho
  */
 
-#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_NOISE_GENERATORS_NORMAL_DISTRIBUTION_SAMPLING_H_
-#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_NOISE_GENERATORS_NORMAL_DISTRIBUTION_SAMPLING_H_
+#ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_NOISE_GENERATORS_STOMP_NOISE_GENERATOR_H_
+#define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_NOISE_GENERATORS_STOMP_NOISE_GENERATOR_H_
 
-#include <stomp_moveit/noise_generators/stomp_noise_generator.h>
-#include <stomp_moveit/utils/multivariate_gaussian.h>
+#include <Eigen/Core>
+#include <XmlRpc.h>
+#include <stomp_core/utils.h>
+#include <moveit/robot_model/robot_model.h>
+#include <moveit/robot_trajectory/robot_trajectory.h>
+#include <moveit/planning_scene/planning_scene.h>
+#include <moveit_msgs/MotionPlanRequest.h>
 
 namespace stomp_moveit
 {
@@ -17,21 +22,25 @@ namespace stomp_moveit
 namespace noise_generators
 {
 
-class NormalDistributionSampling: public StompNoiseGenerator
+class StompNoiseGenerator;
+typedef boost::shared_ptr<StompNoiseGenerator> StompNoiseGeneratorPtr;
+
+
+class StompNoiseGenerator
 {
 public:
-  NormalDistributionSampling();
-  virtual ~NormalDistributionSampling();
+  StompNoiseGenerator(){}
+  virtual ~StompNoiseGenerator(){}
 
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
-                          const std::string& group_name,const XmlRpc::XmlRpcValue& config) override;
+                          const std::string& group_name,const XmlRpc::XmlRpcValue& config) = 0;
 
-  virtual bool configure(const XmlRpc::XmlRpcValue& config) override;
+  virtual bool configure(const XmlRpc::XmlRpcValue& config) = 0;
 
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
-                   moveit_msgs::MoveItErrorCodes& error_code) override;
+                   moveit_msgs::MoveItErrorCodes& error_code) = 0;
 
   /**
    * @brief Generates a noisy trajectory from the parameters.
@@ -50,7 +59,7 @@ public:
                                        int iteration_number,
                                        int rollout_number,
                                        Eigen::MatrixXd& parameters_noise,
-                                       Eigen::MatrixXd& noise) override;
+                                       Eigen::MatrixXd& noise) = 0;
 
   /**
    * @brief Called by the Stomp at the end of the optimization process
@@ -64,29 +73,19 @@ public:
 
   virtual std::string getName() const
   {
-    return name_ + "/" + group_;
+    return "Not implemented";
   }
 
 
   virtual std::string getGroupName() const
   {
-    return group_;
+    return "Not implemented";
   }
-
-protected:
-
-  // names
-  std::string name_;
-  std::string group_;
-
-  // random noise generation
-  std::vector<utils::MultivariateGaussianPtr> rand_generators_;
-  Eigen::VectorXd raw_noise_;
-  std::vector<double> stddev_;
-
 };
 
 } /* namespace noise_generators */
 } /* namespace stomp_moveit */
 
-#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_NOISE_GENERATORS_NORMAL_DISTRIBUTION_SAMPLING_H_ */
+
+
+#endif /* INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_NOISE_GENERATORS_STOMP_NOISE_GENERATOR_H_ */
