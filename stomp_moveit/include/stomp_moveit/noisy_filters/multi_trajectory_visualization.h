@@ -88,6 +88,7 @@ protected:
   std::size_t traj_total_;
   Eigen::MatrixXd tool_traj_line_;
   visualization_msgs::MarkerArray tool_traj_markers_;
+  visualization_msgs::MarkerArray tool_points_markers_;
 };
 
 } /* namespace filters */

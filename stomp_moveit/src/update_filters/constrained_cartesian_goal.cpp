@@ -144,11 +144,14 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
 
     state_->update(true);
     state_->enforceBounds(joint_group);
+
+    // storing reference goal position tool and pose
+    state_->copyJointGroupPositions(joint_group,ref_goal_joint_pose_);
     tool_goal_pose_ = state_->getGlobalLinkTransform(tool_link_);
   }
   else
   {
-    // tool cartesian goal
+    // storing reference goal position and tool pose using ik
     const moveit_msgs::PositionConstraint& pos_constraint = goals.front().position_constraints.front();
     const moveit_msgs::OrientationConstraint& orient_constraint = goals.front().orientation_constraints.front();
 
@@ -156,21 +159,23 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
     pose.position = pos_constraint.constraint_region.primitive_poses[0].position;
     pose.orientation = orient_constraint.orientation;
     tf::poseMsgToEigen(pose,tool_goal_pose_);
+
+    Eigen::VectorXd joint_pose = Eigen::VectorXd::Zero(num_joints);
+    ref_goal_joint_pose_.resize(num_joints);
+    robotStateMsgToRobotState(req.start_state,*state_);
+    state_->copyJointGroupPositions(joint_group,joint_pose);
+    if(!stomp_moveit::utils::kinematics::solveIK(state_,group_name_,dof_nullity_,
+                                                 joint_update_rates_,cartesian_convergence_thresholds_,
+                                                 max_iterations_,tool_goal_pose_,joint_pose,
+                                                 ref_goal_joint_pose_))
+    {
+
+      ROS_WARN("%s IK failed using start pose as seed",getName().c_str());
+      ref_goal_joint_pose_.resize(0);
+    }
   }
 
-  Eigen::VectorXd joint_pose = Eigen::VectorXd::Zero(num_joints);
-  ref_goal_joint_pose_.resize(num_joints);
-  robotStateMsgToRobotState(req.start_state,*state_);
-  state_->copyJointGroupPositions(joint_group,joint_pose);
-  if(!stomp_moveit::utils::kinematics::solveIK(state_,group_name_,dof_nullity_,
-                                               joint_update_rates_,cartesian_convergence_thresholds_,
-                                               max_iterations_,tool_goal_pose_,joint_pose,
-                                               ref_goal_joint_pose_))
-  {
 
-    ROS_WARN("%s IK failed using start pose as seed",getName().c_str());
-    ref_goal_joint_pose_.resize(0);
-  }
 
 
 
