@@ -56,7 +56,16 @@ protected:
 
   void setup();
   bool getStartAndGoal(std::vector<double>& start, std::vector<double>& goal);
+
+  // Converts from STOMP optimization format to a joint trajectory
   bool parametersToJointTrajectory(Eigen::MatrixXd& parameters, trajectory_msgs::JointTrajectory& traj);
+
+  // Converts from a joint trajectory to STOMP optimization format
+  bool jointTrajectorytoParameters(const trajectory_msgs::JointTrajectory& traj, Eigen::MatrixXd& parameters) const;
+
+  // Attempts to parse a seed trajectory out of the 'trajectory_constraints' field of the motion planning
+  // request. If successful, returns true and sets 'seed' to the seed trajectory.
+  bool extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const;
 
 protected:
 
@@ -68,8 +77,15 @@ protected:
 
   // robot environment
   moveit::core::RobotModelConstPtr robot_model_;
-
 };
+
+/**
+ * @brief A hack to encode seed trajectories directly into a set of constraints. Only position is currently
+ * encoded.
+ *
+ * Assumes that the seed's joint_names & values match the corresponding moveit planning group.
+ */
+moveit_msgs::TrajectoryConstraints encodeSeedTrajectory(const trajectory_msgs::JointTrajectory& seed);
 
 } /* namespace stomp_moveit */
 #endif /* STOMP_MOVEIT_STOMP_PLANNER_H_ */
