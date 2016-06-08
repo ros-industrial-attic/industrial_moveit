@@ -71,12 +71,6 @@ protected:
   // Converts from a joint trajectory to STOMP optimization format
   bool jointTrajectorytoParameters(const trajectory_msgs::JointTrajectory& traj, Eigen::MatrixXd& parameters) const;
 
-  /**
-   * @brief Given an input trajectory, computes a new trajectory with even time spacing and the dimensions from
-   *        the current stomp configuration (see stomp_config_).
-   */
-  trajectory_msgs::JointTrajectory resample(const trajectory_msgs::JointTrajectory& other) const;
-
 protected:
 
   // stomp optimization

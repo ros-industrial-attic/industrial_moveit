@@ -51,7 +51,7 @@ void StompPlanner::setup()
     if(!config_.hasMember("optimization") || !stomp_core::Stomp::parseConfig(config_["optimization" ],stomp_config_))
     {
       std::string msg = "Stomp 'optimization' parameter for group '" + group_ + "' was not found";
-      ROS_ERROR(msg.c_str());
+      ROS_ERROR("%s", msg.c_str());
       throw std::logic_error(msg);
     }
 
@@ -92,32 +92,22 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   ros::WallTime start_time = ros::WallTime::now();
   bool success = false;
 
-  // setting up up optimization task
-  if(!task_->setMotionPlanRequest(planning_scene_,request_, stomp_config_,res.error_code_))
-  {
-    res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
-    return false;
-  }
-
-  // extracting start and goal
-  std::vector<double> start, goal;
-  if(!getStartAndGoal(start,goal))
-  {
-    res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
-    ROS_ERROR("Stomp failed to get the start and goal positions");
-    return false;
-  }
-
-
-  // solve
-  ROS_DEBUG_STREAM("Stomp planning started");
   trajectory_msgs::JointTrajectory trajectory;
   Eigen::MatrixXd parameters;
-
-  // Dispatch to different solve method based on state of seed
   bool planning_success;
+
   if (seed_provided_)
   {
+    auto config_copy = stomp_config_;
+    config_copy.num_timesteps = seed_traj_.points.size();
+
+    // setting up up optimization task
+    if(!task_->setMotionPlanRequest(planning_scene_, request_, config_copy, res.error_code_))
+    {
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+      return false;
+    }
+
     Eigen::MatrixXd initial_parameters;
     jointTrajectorytoParameters(seed_traj_, initial_parameters);
 
@@ -125,6 +115,22 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   }
   else
   {
+    // setting up up optimization task
+    if(!task_->setMotionPlanRequest(planning_scene_,request_, stomp_config_,res.error_code_))
+    {
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+      return false;
+    }
+
+    // extracting start and goal
+    std::vector<double> start, goal;
+    if(!getStartAndGoal(start,goal))
+    {
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
+      ROS_ERROR("Stomp failed to get the start and goal positions");
+      return false;
+    }
+
     planning_success = stomp_->solve(start,goal,parameters);
   }
 
@@ -240,78 +246,6 @@ bool StompPlanner::jointTrajectorytoParameters(const trajectory_msgs::JointTraje
 
   parameters = mat;
   return true;
-}
-
-/**
- * @brief Computes the location of robot at time 't' of total time 'total_tm' given a reference trajectory traj and linear interpolation.
- * @param traj Reference trajectory
- * @param t The time at which to compute a new point.
- * @param total_tm The total time of the trajectory.
- * @return Resampled point from 'traj' at time 't'
- */
-trajectory_msgs::JointTrajectoryPoint interpolatePosition(const trajectory_msgs::JointTrajectory& traj, double t, double total_tm)
-{
-  ros::Duration d (t);
-
-  // Walk the trajectory and find the span in which 't' lies. I.e. the reference points before & after the sample time.
-  size_t lower = 0, upper = 0;
-  for (size_t i = 1; i < traj.points.size(); ++i)
-  {
-    if (traj.points[i].time_from_start >= d)
-    {
-      lower = i - 1;
-      upper = i;
-      break;
-    }
-  }
-
-  assert(!(lower == 0) && (upper == 0)); // We were given a 't' out of bounds. This function is private and should never
-  // be called in a way to trip this; but we check just to be sure.
-
-  // inline linear interpolation helper func
-  const static auto interp = [](double start, double stop, double ratio) { return start + (stop - start) * ratio; };
-
-  // Given the bounding trajectory points, compute the normalized distance in time between them
-  auto tm_prime = (d - traj.points[lower].time_from_start).toSec();
-  auto tm_segment = (traj.points[upper].time_from_start - traj.points[lower].time_from_start).toSec();
-  auto r = tm_prime / tm_segment; // ratio where 0 is at the lower point and 1 is at the upper one
-
-  assert(tm_segment != 0.0);
-  assert(r >= 0.0 && r <= 1.0);
-
-  // Perform the interpolation for each joint
-  trajectory_msgs::JointTrajectoryPoint pt;
-  for (size_t i = 0; i < traj.joint_names.size(); ++i)
-  {
-    pt.positions.push_back(interp(traj.points[lower].positions[i],
-                                  traj.points[upper].positions[i],
-                                  r));
-  }
-
-  return pt;
-}
-
-trajectory_msgs::JointTrajectory StompPlanner::resample(const trajectory_msgs::JointTrajectory& other) const
-{
-  assert(stomp_config_.num_dimensions == other.joint_names.size());
-  assert(other.points.size() >= 2);
-  assert(stomp_config_.num_timesteps >= 2);
-
-  trajectory_msgs::JointTrajectory jt;
-  jt.header = other.header;
-  jt.joint_names = other.joint_names;
-
-  auto total_tm = other.points.back().time_from_start.toSec(); // total trajectory time in seconds
-  auto interval_tm = total_tm / stomp_config_.num_timesteps; // even time step required for each seed point
-
-  for (auto i = 0; i < stomp_config_.num_timesteps; ++i)
-  {
-    auto t = interval_tm * i;
-    auto point = interpolatePosition(other, t, total_tm);
-    jt.points.push_back(std::move(point));
-  }
-
-  return jt;
 }
 
 bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<double>& goal)
@@ -430,10 +364,7 @@ bool StompPlanner::setInitialTrajectory(const trajectory_msgs::JointTrajectory& 
 
   // It passed, so record it into the object
   seed_provided_ = true;
-  if (initial_traj.points.size() != stomp_config_.num_timesteps)
-    seed_traj_ = resample(initial_traj);
-  else
-    seed_traj_ = initial_traj;
+  seed_traj_ = initial_traj;
 
   return true;
 }
