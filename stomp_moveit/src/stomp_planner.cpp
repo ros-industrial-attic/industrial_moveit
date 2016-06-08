@@ -21,8 +21,7 @@ StompPlanner::StompPlanner(const std::string& group,const XmlRpc::XmlRpcValue& c
                            const moveit::core::RobotModelConstPtr& model):
     PlanningContext(DESCRIPTION,group),
     config_(config),
-    robot_model_(model),
-    seed_provided_(false)
+    robot_model_(model)
 {
   setup();
 }
@@ -96,10 +95,15 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   Eigen::MatrixXd parameters;
   bool planning_success;
 
-  if (seed_provided_)
+  // look for seed state
+  trajectory_msgs::JointTrajectory seed_traj;
+  bool seed_provided = extractSeedTrajectory(request_, seed_traj);
+
+  if (seed_provided)
   {
+    ROS_INFO("Seeding stomp plan");
     auto config_copy = stomp_config_;
-    config_copy.num_timesteps = seed_traj_.points.size();
+    config_copy.num_timesteps = seed_traj.points.size();
 
     // setting up up optimization task
     if(!task_->setMotionPlanRequest(planning_scene_, request_, config_copy, res.error_code_))
@@ -109,7 +113,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     }
 
     Eigen::MatrixXd initial_parameters;
-    jointTrajectorytoParameters(seed_traj_, initial_parameters);
+    jointTrajectorytoParameters(seed_traj, initial_parameters);
 
     planning_success = stomp_->solve(initial_parameters, parameters);
   }
@@ -133,9 +137,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 
     planning_success = stomp_->solve(start,goal,parameters);
   }
-
-  // invalidate seed
-  seed_provided_ = false;
 
   // Handle results
   if(planning_success)
@@ -248,6 +249,47 @@ bool StompPlanner::jointTrajectorytoParameters(const trajectory_msgs::JointTraje
   return true;
 }
 
+bool StompPlanner::extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const
+{
+  if (req.trajectory_constraints.constraints.empty())
+    return false;
+
+  const auto* joint_group = robot_model_->getJointModelGroup(group_);
+  const auto& names = joint_group->getActiveJointModelNames();
+  const auto dof = names.size();
+
+  const auto& constraints = req.trajectory_constraints.constraints; // alias to keep names short
+  // Test the first point to ensure that it has all of the joints required
+  for (size_t i = 0; i < constraints.size(); ++i)
+  {
+    auto n = constraints[i].joint_constraints.size();
+    if (n != dof) // first test to ensure that dimensionality is correct
+    {
+      ROS_WARN("Seed trajectory index %lu does not have %lu constraints (has %lu instead).", i, dof, n);
+      return false;
+    }
+
+    trajectory_msgs::JointTrajectoryPoint joint_pt;
+
+    for (size_t j = 0; j < constraints[i].joint_constraints.size(); ++j)
+    {
+      const auto& c = constraints[i].joint_constraints[j];
+      if (c.joint_name != names[j])
+      {
+        ROS_WARN("Seed trajectory (index %lu, joint %lu) joint name '%s' does not match expected name '%s'",
+                 i, j, c.joint_name.c_str(), names[j].c_str());
+        return false;
+      }
+      joint_pt.positions.push_back(c.position);
+    }
+
+    seed.points.push_back(joint_pt);
+  }
+
+  seed.joint_names = names;
+  return true;
+}
+
 bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<double>& goal)
 {
   using namespace moveit::core;
@@ -340,35 +382,6 @@ bool StompPlanner::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) 
   return true;
 }
 
-bool StompPlanner::setInitialTrajectory(const trajectory_msgs::JointTrajectory& initial_traj)
-{
-  auto dof = initial_traj.joint_names.size();
-  if (dof != stomp_config_.num_dimensions)
-  {
-    ROS_WARN("STOMP Unable to set seed trajectory: DOF in planner must equal STOMP configuration (%d vs %d)",
-             static_cast<int>(dof), stomp_config_.num_dimensions);
-    return false;
-  }
-
-  if (initial_traj.points.size() < 2)
-  {
-    ROS_WARN("STOMP unable to set seed trajectory: Seed trajectory must have at least 2 points");
-    return false;
-  }
-
-  if (initial_traj.points.back().time_from_start.toSec() == 0.0)
-  {
-    ROS_WARN("STOMP unable to set seed trajectory: Seed trajectory must have non-zero ending point");
-    return false;
-  }
-
-  // It passed, so record it into the object
-  seed_provided_ = true;
-  seed_traj_ = initial_traj;
-
-  return true;
-}
-
 bool StompPlanner::terminate()
 {
   if(stomp_)
@@ -413,6 +426,33 @@ bool StompPlanner::getConfigData(ros::NodeHandle &nh, std::map<std::string, XmlR
     ROS_ERROR("Unable to parse ROS parameter:\n %s",stomp_config.toXml().c_str());
     return false;
   }
+}
+
+moveit_msgs::TrajectoryConstraints encodeSeedTrajectory(const trajectory_msgs::JointTrajectory& seed)
+{
+  moveit_msgs::TrajectoryConstraints res;
+
+  const auto dof = seed.joint_names.size();
+
+  for (size_t i = 0; i < seed.points.size(); ++i) // for each time step
+  {
+    moveit_msgs::Constraints c;
+
+    if (seed.points[i].positions.size() != dof)
+      throw std::runtime_error("All trajectory position fields must have same dimensions as joint_names");
+
+    for (size_t j = 0; j < dof; ++j) // for each joint
+    {
+      moveit_msgs::JointConstraint jc;
+      jc.joint_name = seed.joint_names[j];
+      jc.position = seed.points[i].positions[j];
+
+      c.joint_constraints.push_back(jc);
+    }
+
+    res.constraints.push_back(std::move(c));
+  }
+  return res;
 }
 
 
