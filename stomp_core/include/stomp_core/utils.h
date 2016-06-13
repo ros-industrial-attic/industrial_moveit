@@ -32,20 +32,6 @@
 namespace stomp_core
 {
 
-struct NoiseGeneration
-{
-  enum NoiseUpdateMethod
-  {
-    CONSTANT = 0, ADAPTIVE, EXPONENTIAL_DECAY
-  };
-
-  std::vector<double> stddev;
-  std::vector<double> decay;
-  std::vector<double> min_stddev;
-  int method; /**< method used to update the standard deviation values.  */
-  double update_rate; /**< used when using  KL divergence adaptation, should stay within values of (0,1] */
-};
-
 struct Rollout
 {
   Eigen::MatrixXd noise;                       /**< [num_dimensions] x num_time_steps, random noise applied to the parameters*/
@@ -96,9 +82,7 @@ struct StompConfiguration
 
   // Noisy trajectory generation
   int num_rollouts; /**< Number of noisy trajectories*/
-  int min_rollouts; /**< There be no less than min_rollouts computed on each iteration */
   int max_rollouts; /**< The combined number of new and old rollouts during each iteration shouldn't exceed this value */
-  NoiseGeneration noise_generation;
 
   // Cost calculation
   double control_cost_weight;  /**< Percentage of the trajectory accelerations cost to be applied in the total cost calculation >*/

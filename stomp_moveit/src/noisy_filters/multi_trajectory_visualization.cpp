@@ -9,6 +9,7 @@
 #include <tf/transform_datatypes.h>
 #include <pluginlib/class_list_macros.h>
 #include <stomp_moveit/noisy_filters/multi_trajectory_visualization.h>
+#include <eigen_conversions/eigen_msg.h>
 
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::noisy_filters::MultiTrajectoryVisualization,stomp_moveit::noisy_filters::StompNoisyFilter);
 
@@ -49,6 +50,22 @@ inline void createToolPathMarker(const Eigen::MatrixXd& tool_line, int id, std::
 
   // copying points into marker
   eigenToPointsMsgs(tool_line,m.points);
+}
+
+inline void createSphereMarker(const Eigen::Vector3d& tool_point, int id, std::string frame_id,
+                          const std_msgs::ColorRGBA& rgb,double radius,
+                          std::string ns,visualization_msgs::Marker& m)
+{
+  m.ns = ns;
+  m.id = id;
+  m.header.frame_id = frame_id;
+  m.type = m.SPHERE;
+  m.action = m.ADD;
+  m.color = rgb;
+  tf::poseTFToMsg(tf::Transform::getIdentity(),m.pose);
+  m.scale.x = m.scale.y = m.scale.z= 2*radius;
+  tf::pointEigenToMsg(tool_point,m.pose.position);
+
 }
 
 namespace stomp_moveit
@@ -142,16 +159,22 @@ bool MultiTrajectoryVisualization::setMotionPlanRequest(const planning_scene::Pl
 
   // initializing points array
   tool_traj_line_ = Eigen::MatrixXd::Zero(3,config.num_timesteps);
+  Eigen::Vector3d tool_point;
 
   // initializing marker array
   traj_total_ = config.num_rollouts;
   tool_traj_markers_.markers.resize(traj_total_);
+  tool_points_markers_.markers.resize(traj_total_);
   for(auto r = 0u; r < config.num_rollouts; r++)
   {
     createToolPathMarker(tool_traj_line_,
                          r+1,robot_model_->getRootLinkName(),
                          rgb_,line_width_,
                          marker_namespace_,tool_traj_markers_.markers[r]);
+    createSphereMarker(tool_point,
+                         r+1,robot_model_->getRootLinkName(),
+                         rgb_,line_width_,
+                         marker_namespace_ + "/goal",tool_points_markers_.markers[r]);
   }
 
 
@@ -205,11 +228,14 @@ bool MultiTrajectoryVisualization::filter(std::size_t start_timestep,
 
   // storing into marker
   eigenToPointsMsgs(tool_traj_line_,tool_traj_markers_.markers[rollout_number].points);
+  Eigen::Vector3d goal_tool_point = tool_traj_line_.rightCols(1);
+  tf::pointEigenToMsg(goal_tool_point, tool_points_markers_.markers[rollout_number].pose.position);
 
   // publish after collecting all rollouts
   if(rollout_number == traj_total_ - 1)
   {
     viz_pub_.publish(tool_traj_markers_);
+    viz_pub_.publish(tool_points_markers_);
   }
 
   return true;

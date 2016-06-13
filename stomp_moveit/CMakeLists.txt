@@ -52,6 +52,7 @@ target_link_libraries(${PROJECT_NAME}_planner_manager ${PROJECT_NAME} ${catkin_L
 
 # cost function plugin(s)
 add_library(${PROJECT_NAME}_cost_functions
+  src/cost_functions/tool_goal_pose.cpp
   src/cost_functions/obstacle_avoidance.cpp
   src/cost_functions/collision_check.cpp
  )
@@ -66,13 +67,21 @@ add_library(${PROJECT_NAME}_noisy_filters
 
 target_link_libraries(${PROJECT_NAME}_noisy_filters ${catkin_LIBRARIES})
 
-# cost function plugin(s)
+# update plugin(s)
 add_library(${PROJECT_NAME}_update_filters
+  src/update_filters/polynomial_smoother.cpp
+  src/update_filters/constrained_cartesian_goal.cpp
   src/update_filters/trajectory_visualization.cpp
   src/update_filters/control_cost_projection.cpp
   src/update_filters/update_logger.cpp
  )
 target_link_libraries(${PROJECT_NAME}_update_filters ${catkin_LIBRARIES})
+
+# noise generator plugin(s)
+add_library(${PROJECT_NAME}_noise_generators
+  src/noise_generators/normal_distribution_sampling.cpp
+ )
+target_link_libraries(${PROJECT_NAME}_noise_generators ${catkin_LIBRARIES})
 
 #############
 ## Install ##

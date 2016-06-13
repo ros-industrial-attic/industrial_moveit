@@ -29,13 +29,11 @@
 #include <stomp_core/utils.h>
 #include <XmlRpc.h>
 #include "stomp_core/task.h"
-#include "stomp_core/multivariate_gaussian.h"
 
 namespace stomp_core
 {
 
 
-using MultivariateGaussianPtr = boost::shared_ptr<MultivariateGaussian>;
 class Stomp
 {
 public:
@@ -69,9 +67,6 @@ protected:
   bool updateParameters();
   bool computeOptimizedCost();
 
-  // noise generation variables
-  void updateNoiseStddev();
-
 protected:
 
   // process control
@@ -83,16 +78,11 @@ protected:
   // optimized parameters
   bool parameters_valid_;         /**< whether or not the optimized parameters are valid */
   double parameters_total_cost_;  /**< Total cost of the optimized parameters */
+  double current_lowest_cost_;
   Eigen::MatrixXd parameters_optimized_;               /**< [Dimensions][timesteps]*/
   Eigen::MatrixXd parameters_updates_;                 /**< [Dimensions][timesteps]*/
   Eigen::VectorXd parameters_state_costs_;                          /**< [timesteps]*/
   Eigen::MatrixXd parameters_control_costs_;           /**< [Dimensions][timesteps]*/
-
-  // noise generation
-  std::vector<double> noise_stddevs_;
-  std::vector<MultivariateGaussianPtr > random_dist_generators_;
-  Eigen::VectorXd temp_noise_array_;
-
 
   // rollouts
   std::vector<Rollout> noisy_rollouts_;

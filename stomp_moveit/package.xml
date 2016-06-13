@@ -34,5 +34,6 @@
     <stomp_moveit plugin="${prefix}/cost_function_plugins.xml"/>
     <stomp_moveit plugin="${prefix}/noisy_filter_plugins.xml"/>
     <stomp_moveit plugin="${prefix}/update_filter_plugins.xml"/>
+    <stomp_moveit plugin="${prefix}/noise_generator_plugins.xml"/>
   </export>
 </package>

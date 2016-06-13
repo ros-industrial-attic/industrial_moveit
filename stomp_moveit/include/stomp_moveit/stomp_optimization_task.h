@@ -15,6 +15,7 @@
 #include <stomp_moveit/cost_functions/stomp_cost_function.h>
 #include <XmlRpcValue.h>
 #include <pluginlib/class_loader.h>
+#include <stomp_moveit/noise_generators/stomp_noise_generator.h>
 #include <stomp_moveit/noisy_filters/stomp_noisy_filter.h>
 #include <stomp_moveit/update_filters/stomp_update_filter.h>
 
@@ -28,6 +29,8 @@ typedef pluginlib::ClassLoader<stomp_moveit::noisy_filters::StompNoisyFilter> No
 typedef std::shared_ptr<NoisyFilterLoader> NoisyFilterLoaderPtr;
 typedef pluginlib::ClassLoader<stomp_moveit::update_filters::StompUpdateFilter> UpdateFilterLoader;
 typedef std::shared_ptr<UpdateFilterLoader> UpdateFilterLoaderPtr;
+typedef pluginlib::ClassLoader<stomp_moveit::noise_generators::StompNoiseGenerator> NoiseGeneratorLoader;
+typedef std::shared_ptr<NoiseGeneratorLoader> NoiseGeneratorLoaderPtr;
 
 class StompOptimizationTask: public stomp_core::Task
 {
@@ -51,11 +54,32 @@ public:
                    moveit_msgs::MoveItErrorCodes& error_code);
 
   /**
+   * @brief Generates a noisy trajectory from the parameters.
+   * @param parameters        [num_dimensions] x [num_parameters] the current value of the optimized parameters
+   * @param start_timestep    start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+   * @param iteration_number  The current iteration count in the optimization loop
+   * @param rollout_number    index of the noisy trajectory.
+   * @param parameters_noise  the parameters + noise
+   * @param noise             the noise applied to the parameters
+   * @return true if cost were properly computed
+   */
+  virtual bool generateNoisyParameters(const Eigen::MatrixXd& parameters,
+                                       std::size_t start_timestep,
+                                       std::size_t num_timesteps,
+                                       int iteration_number,
+                                       int rollout_number,
+                                       Eigen::MatrixXd& parameters_noise,
+                                       Eigen::MatrixXd& noise) override;
+
+  /**
    * @brief computes the state costs as a function of the noisy parameters for each time step.
    * @param parameters [num_dimensions] num_parameters - policy parameters to execute
-   * @param costs vector containing the state costs per timestep.
-   * @param iteration_number
+   * @param start_timestep    start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+   * @param iteration_number  The current iteration count in the optimization loop
    * @param rollout_number index of the noisy trajectory whose cost is being evaluated.
+   * @param costs vector containing the state costs per timestep.
    * @param validity whether or not the trajectory is valid
    * @return true if cost were properly computed
    */
@@ -69,10 +93,12 @@ public:
 
   /**
    * @brief computes the state costs as a function of the optimized parameters for each time step.
-   * @param parameters [num_dimensions] num_parameters - policy parameters to execute
-   * @param costs vector containing the state costs per timestep.
-   * @param iteration_number
-   * @param validity whether or not the trajectory is valid
+   * @param parameters        [num_dimensions] num_parameters - policy parameters to execute
+   * @param start_timestep    start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+   * @param iteration_number  The current iteration count in the optimization loop
+   * @param costs             vector containing the state costs per timestep.
+   * @param validity          whether or not the trajectory is valid
    * @return true if cost were properly computed
    */
   virtual bool computeCosts(const Eigen::MatrixXd& parameters,
@@ -90,7 +116,8 @@ public:
    * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
    * @param iteration_number  The current iteration count in the optimization loop
    * @param rollout_number    The rollout index for this noisy parameter set
-   * @param parameters        The noisy parameters
+   * @param parameters        The noisy parameters     *
+   * @param filtered          False if no filtering was done
    * @return false if no filtering was done
    */
   virtual bool filterNoisyParameters(std::size_t start_timestep,
@@ -102,14 +129,13 @@ public:
 
   /**
    * @brief Filters the given parameters which is applied after the update. It could be used for clipping of joint limits
-   * or smoothing the noisy update.
+   * or projecting into the null space of the Jacobian.
    *
    * @param start_timestep    start index into the 'parameters' array, usually 0.
    * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
    * @param iteration_number  The current iteration count in the optimization loop
-   * @param parameters        The parameters values before the update is applied [num_dimensions] x [num_timesteps]
-   * @param updates           The updates to be applied to the parameters [num_dimensions] x [num_timesteps]
-   * @param filtered          False if no filtering was done
+   * @param parameters        The optimized parameters
+   * @param updates           The updates to the parameters
    * @return                  False if there was a failure
    */
   virtual bool filterParameterUpdates(std::size_t start_timestep,
@@ -130,10 +156,9 @@ public:
 protected:
 
   bool initializeCostFunctionPlugins(const XmlRpc::XmlRpcValue& config);
-  bool initializeNoisyFilterPlugins(const XmlRpc::XmlRpcValue& config,
-                               std::vector<noisy_filters::StompNoisyFilterPtr>& filters);
-  bool initializeUpdateFilterPlugins(const XmlRpc::XmlRpcValue& config,
-                               std::vector<update_filters::StompUpdateFilterPtr>& filters);
+  bool initializeNoisyFilterPlugins(const XmlRpc::XmlRpcValue& config);
+  bool initializeUpdateFilterPlugins(const XmlRpc::XmlRpcValue& config);
+  bool initializeNoiseGeneratorPlugins(const XmlRpc::XmlRpcValue& config);
 protected:
 
   // robot environment
@@ -145,10 +170,12 @@ protected:
   CostFuctionLoaderPtr cost_function_loader_;
   NoisyFilterLoaderPtr noisy_filter_loader_;
   UpdateFilterLoaderPtr update_filter_loader_;
+  NoiseGeneratorLoaderPtr noise_generator_loader_;
 
   std::vector<cost_functions::StompCostFunctionPtr> cost_functions_;
   std::vector<noisy_filters::StompNoisyFilterPtr> noisy_filters_;
   std::vector<update_filters::StompUpdateFilterPtr> update_filters_;
+  std::vector<noise_generators::StompNoiseGeneratorPtr> noise_generators_;
 };
 
 

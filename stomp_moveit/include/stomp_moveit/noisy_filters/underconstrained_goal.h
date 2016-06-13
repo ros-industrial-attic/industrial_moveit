@@ -76,11 +76,6 @@ public:
 
 protected:
 
-  bool runIK(const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
-                   Eigen::VectorXd& joint_pose);
-
-protected:
-
   std::string name_;
   std::string group_name_;
 
@@ -91,8 +86,8 @@ protected:
   Eigen::ArrayXd joint_update_rates_;
   Eigen::ArrayXi dof_nullity_;
   Eigen::ArrayXd cartesian_convergence_thresholds_;
-  double update_weight_;
   int max_iterations_;
+  Eigen::VectorXd ref_goal_joint_pose_;
 
   // robot
   moveit::core::RobotModelConstPtr robot_model_;

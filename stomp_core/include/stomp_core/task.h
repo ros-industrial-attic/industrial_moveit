@@ -46,11 +46,32 @@ public:
     virtual ~Task(){};
 
     /**
+     * @brief Generates a noisy trajectory from the parameters.
+     * @param parameters        [num_dimensions] x [num_parameters] the current value of the optimized parameters
+     * @param start_timestep    start index into the 'parameters' array, usually 0.
+     * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+     * @param iteration_number  The current iteration count in the optimization loop
+     * @param rollout_number    index of the noisy trajectory.
+     * @param parameters_noise  the parameters + noise
+     * @param noise             the noise applied to the parameters
+     * @return true if cost were properly computed
+     */
+    virtual bool generateNoisyParameters(const Eigen::MatrixXd& parameters,
+                                         std::size_t start_timestep,
+                                         std::size_t num_timesteps,
+                                         int iteration_number,
+                                         int rollout_number,
+                                         Eigen::MatrixXd& parameters_noise,
+                                         Eigen::MatrixXd& noise) = 0;
+
+    /**
      * @brief computes the state costs as a function of the noisy parameters for each time step.
      * @param parameters [num_dimensions] num_parameters - policy parameters to execute
-     * @param costs vector containing the state costs per timestep.
-     * @param iteration_number
+     * @param start_timestep    start index into the 'parameters' array, usually 0.
+     * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+     * @param iteration_number  The current iteration count in the optimization loop
      * @param rollout_number index of the noisy trajectory whose cost is being evaluated.
+     * @param costs vector containing the state costs per timestep.
      * @param validity whether or not the trajectory is valid
      * @return true if cost were properly computed
      */
@@ -64,10 +85,12 @@ public:
 
     /**
      * @brief computes the state costs as a function of the optimized parameters for each time step.
-     * @param parameters [num_dimensions] num_parameters - policy parameters to execute
-     * @param costs vector containing the state costs per timestep.
-     * @param iteration_number
-     * @param validity whether or not the trajectory is valid
+     * @param parameters        [num_dimensions] num_parameters - policy parameters to execute
+     * @param start_timestep    start index into the 'parameters' array, usually 0.
+     * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+     * @param iteration_number  The current iteration count in the optimization loop
+     * @param costs             vector containing the state costs per timestep.
+     * @param validity          whether or not the trajectory is valid
      * @return true if cost were properly computed
      */
     virtual bool computeCosts(const Eigen::MatrixXd& parameters,
@@ -85,7 +108,8 @@ public:
      * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
      * @param iteration_number  The current iteration count in the optimization loop
      * @param rollout_number    The rollout index for this noisy parameter set
-     * @param parameters        The noisy parameters
+     * @param parameters        The noisy parameters     *
+     * @param filtered          False if no filtering was done
      * @return false if no filtering was done
      */
     virtual bool filterNoisyParameters(std::size_t start_timestep,
@@ -107,7 +131,7 @@ public:
      * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
      * @param iteration_number  The current iteration count in the optimization loop
      * @param parameters        The optimized parameters
-     * @param filtered          False if no filtering was done
+     * @param updates           The updates to the parameters
      * @return                  False if there was a failure
      */
     virtual bool filterParameterUpdates(std::size_t start_timestep,
