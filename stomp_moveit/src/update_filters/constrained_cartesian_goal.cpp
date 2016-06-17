@@ -18,6 +18,8 @@
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::update_filters::ConstrainedCartesianGoal,stomp_moveit::update_filters::StompUpdateFilter);
 
 static int CARTESIAN_DOF_SIZE = 6;
+static int const IK_ATTEMPTS = 10;
+static int const IK_TIMEOUT = 0.05;
 
 namespace stomp_moveit
 {
@@ -106,7 +108,6 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
 
   const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_name_);
   int num_joints = joint_group->getActiveJointModels().size();
-  updated_parameters_.resize(num_joints,config.num_timesteps);
   tool_link_ = joint_group->getLinkModelNames().back();
   state_.reset(new RobotState(robot_model_));
   robotStateMsgToRobotState(req.start_state,*state_);
@@ -146,7 +147,6 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
     state_->enforceBounds(joint_group);
 
     // storing reference goal position tool and pose
-    state_->copyJointGroupPositions(joint_group,ref_goal_joint_pose_);
     tool_goal_pose_ = state_->getGlobalLinkTransform(tool_link_);
   }
   else
@@ -161,23 +161,16 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
     tf::poseMsgToEigen(pose,tool_goal_pose_);
 
     Eigen::VectorXd joint_pose = Eigen::VectorXd::Zero(num_joints);
-    ref_goal_joint_pose_.resize(num_joints);
     robotStateMsgToRobotState(req.start_state,*state_);
     state_->copyJointGroupPositions(joint_group,joint_pose);
-    if(!stomp_moveit::utils::kinematics::solveIK(state_,group_name_,dof_nullity_,
-                                                 joint_update_rates_,cartesian_convergence_thresholds_,
-                                                 max_iterations_,tool_goal_pose_,joint_pose,
-                                                 ref_goal_joint_pose_))
+
+    if(!state_->setFromIK(joint_group,tool_goal_pose_,tool_link_,IK_ATTEMPTS,IK_TIMEOUT))
     {
-
-      ROS_WARN("%s IK failed using start pose as seed",getName().c_str());
-      ref_goal_joint_pose_.resize(0);
+      ROS_ERROR("%s failed calculating ik for tool goal pose",getName().c_str());
+      return false;
     }
+
   }
-
-
-
-
 
   error_code.val = error_code.SUCCESS;
   return true;
@@ -194,25 +187,31 @@ bool ConstrainedCartesianGoal::filter(std::size_t start_timestep,
   using namespace moveit::core;
   using namespace stomp_moveit::utils;
 
-  // updating local parameters
-  updated_parameters_ = parameters + updates;
-
-  VectorXd init_joint_pose = updated_parameters_.rightCols(1);
-  VectorXd joint_pose;
 
   filtered = false;
+  VectorXd init_joint_pose = parameters.rightCols(1);
+  VectorXd joint_pose;
+  MatrixXd jacb_nullspace;
 
-  if(!kinematics::solveIK(state_,group_name_,dof_nullity_,joint_update_rates_,cartesian_convergence_thresholds_,max_iterations_,
+  // projecting update into nullspace
+  if(kinematics::computeJacobianNullSpace(state_,group_name_,tool_link_,dof_nullity_,init_joint_pose,jacb_nullspace))
+  {
+    init_joint_pose += jacb_nullspace*(updates.rightCols(1));
+  }
+  else
+  {
+    ROS_WARN("%s failed to project into the nullspace of the jacobian",getName().c_str());
+  }
+
+
+  if(!kinematics::solveIK(state_,group_name_,dof_nullity_,joint_update_rates_,cartesian_convergence_thresholds_,
+                          ArrayXd::Zero(init_joint_pose.size()),updates.rightCols(1),max_iterations_,
               tool_goal_pose_,init_joint_pose,joint_pose))
   {
-    ROS_WARN("%s failed to find valid ik close to current goal pose",getName().c_str());
+    ROS_WARN("%s failed to find valid ik pose close to current goal pose, canceling goal update",getName().c_str());
 
-    if(ref_goal_joint_pose_.size() != 0)
-    {
-      joint_pose = ref_goal_joint_pose_; // assigning previously computed valid pose
-      filtered = true;
-      updates.rightCols(1) = joint_pose - parameters.rightCols(1);
-    }
+    filtered = true;
+    updates.rightCols(1) = Eigen::VectorXd::Zero(updates.rows());
 
   }
   else
