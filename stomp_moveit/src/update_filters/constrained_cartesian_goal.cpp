@@ -121,37 +121,10 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
   }
 
   // storing tool goal pose
-  if(goals.front().position_constraints.empty() ||
-      goals.front().orientation_constraints.empty())
+  if(!goals.front().position_constraints.empty() &&
+      !goals.front().orientation_constraints.empty())
   {
-    ROS_WARN("A goal constraint for the tool link was not provided, using forward kinematics");
-
-    // check joint constraints
-    if(goals.front().joint_constraints.empty())
-    {
-      ROS_ERROR_STREAM("No joint values for the goal were found");
-      error_code.val = error_code.INVALID_GOAL_CONSTRAINTS;
-      return false;
-    }
-
-    // compute FK to obtain tool pose
-    const std::vector<moveit_msgs::JointConstraint>& joint_constraints = goals.front().joint_constraints;
-
-    // copying goal values into state
-    for(auto& jc: joint_constraints)
-    {
-      state_->setVariablePosition(jc.joint_name,jc.position);
-    }
-
-    state_->update(true);
-    state_->enforceBounds(joint_group);
-
-    // storing reference goal position tool and pose
-    tool_goal_pose_ = state_->getGlobalLinkTransform(tool_link_);
-  }
-  else
-  {
-    // storing reference goal position and tool pose using ik
+    // storing cartesian goal pose using ik
     const moveit_msgs::PositionConstraint& pos_constraint = goals.front().position_constraints.front();
     const moveit_msgs::OrientationConstraint& orient_constraint = goals.front().orientation_constraints.front();
 
@@ -160,16 +133,36 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
     pose.orientation = orient_constraint.orientation;
     tf::poseMsgToEigen(pose,tool_goal_pose_);
 
-    Eigen::VectorXd joint_pose = Eigen::VectorXd::Zero(num_joints);
-    robotStateMsgToRobotState(req.start_state,*state_);
-    state_->copyJointGroupPositions(joint_group,joint_pose);
-
     if(!state_->setFromIK(joint_group,tool_goal_pose_,tool_link_,IK_ATTEMPTS,IK_TIMEOUT))
     {
-      ROS_ERROR("%s failed calculating ik for tool goal pose",getName().c_str());
+      ROS_WARN("%s failed calculating ik for cartesian goal pose in the MotionPlanRequest",getName().c_str());
+    }
+
+  }
+  else
+  {
+    // check joint constraints
+    if(goals.front().joint_constraints.empty())
+    {
+      ROS_ERROR_STREAM("No joint values for the goal were found");
+      error_code.val = error_code.INVALID_GOAL_CONSTRAINTS;
       return false;
     }
 
+    ROS_WARN("%s a cartesian goal pose in MotionPlanRequest was not provided,calculating it from FK",getName().c_str());
+
+    // compute FK to obtain cartesian goal pose
+    const std::vector<moveit_msgs::JointConstraint>& joint_constraints = goals.front().joint_constraints;
+
+    // copying goal values into state
+    for(auto& jc: joint_constraints)
+    {
+      state_->setVariablePosition(jc.joint_name,jc.position);
+    }
+
+    // storing reference goal position tool and pose
+    state_->update(true);
+    tool_goal_pose_ = state_->getGlobalLinkTransform(tool_link_);
   }
 
   error_code.val = error_code.SUCCESS;
@@ -208,7 +201,7 @@ bool ConstrainedCartesianGoal::filter(std::size_t start_timestep,
                           ArrayXd::Zero(init_joint_pose.size()),updates.rightCols(1),max_iterations_,
               tool_goal_pose_,init_joint_pose,joint_pose))
   {
-    ROS_WARN("%s failed to find valid ik pose close to current goal pose, canceling goal update",getName().c_str());
+    ROS_DEBUG("%s failed to find valid ik pose close to current goal pose, canceling goal update",getName().c_str());
 
     filtered = true;
     updates.rightCols(1) = Eigen::VectorXd::Zero(updates.rows());

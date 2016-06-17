@@ -83,13 +83,11 @@ protected:
 
   // parameters
   double collision_penalty_;
-  double cost_decay_;
+  double kernel_window_percentage_;
 
-  // cost smoothing
-  Eigen::SparseMatrix<double,Eigen::RowMajor> exp_smoothing_matrix_; //square matrix of size = num_timesteps + WINDOW_SIZE -1
-  Eigen::VectorXd costs_padded_;
-  Eigen::VectorXd intermediate_costs_slots_;                          // logical array of size num_timesteps
-  Eigen::VectorXd min_costs_;                                         // stores the minimum costs, size: num_timesteps
+  // cost calculation
+  Eigen::VectorXd raw_costs_;
+  Eigen::ArrayXd intermediate_costs_slots_;
 
   // collision
   collision_detection::CollisionRequest collision_request_;

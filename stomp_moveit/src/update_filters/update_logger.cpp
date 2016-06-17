@@ -92,7 +92,7 @@ bool UpdateLogger::setMotionPlanRequest(const planning_scene::PlanningSceneConst
 
   // open file
   file_stream_.open(full_file_name_);
-  if(stream_ < 0)
+  if(file_stream_ < 0)
   {
     ROS_ERROR("Unable to create/open update log file %s",full_file_name_.c_str());
     return false;

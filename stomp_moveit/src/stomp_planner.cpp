@@ -178,21 +178,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 bool StompPlanner::parametersToJointTrajectory(Eigen::MatrixXd& parameters, trajectory_msgs::JointTrajectory& trajectory)
 {
 
-  // checking parameters dimensions
-  if(parameters.rows() != stomp_config_.num_dimensions)
-  {
-    ROS_ERROR_STREAM("Parameters array dimensions "<<parameters.rows()<<"do not match the expected number of dimensions"
-                     <<stomp_config_.num_dimensions<<" JointTrajectory message will not be created");
-    return false;
-  }
-
-  if(parameters.cols() != stomp_config_.num_timesteps)
-  {
-    ROS_ERROR_STREAM("Parameters array time steps "<<parameters.cols()<<"do not match the expected number of points"
-                     <<stomp_config_.num_timesteps<<" JointTrajectory message will not be created");
-    return false;
-  }
-
   // computing velocities and accelerations
   Eigen::MatrixXd vels(parameters), accs(parameters);
   vels.setZero();
@@ -370,10 +355,7 @@ bool StompPlanner::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) 
   }
 
   // check that we have only joint constraints at the goal
-  if (req.goal_constraints[0].position_constraints.size() > 0
-      || req.goal_constraints[0].orientation_constraints.size() > 0
-      || req.goal_constraints[0].visibility_constraints.size() > 0
-      || req.goal_constraints[0].joint_constraints.size() == 0)
+  if (req.goal_constraints[0].joint_constraints.size() == 0)
   {
     ROS_ERROR("STOMP: Can only handle joint space goals.");
     return false;
