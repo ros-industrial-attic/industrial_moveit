@@ -11,51 +11,87 @@
 
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::CollisionCheck,stomp_moveit::cost_functions::StompCostFunction)
 
-const double DEFAULT_SCALE = 1.0;
-const double DEFAULT_EXP_DECAY = 0.5;
-const std::string DEFAULT_COLLISION_DETECTOR = "IndustrialFCL";
-const int WINDOW_SIZE = 7;
+static const std::string DEFAULT_COLLISION_DETECTOR = "IndustrialFCL";
+static const int MIN_KERNEL_WINDOW_SIZE = 3;
 
-void generateExponentialSmoothingMatrix(int window_size, int num_timesteps, double decay,
-                                        Eigen::SparseMatrix<double,Eigen::RowMajor>& exp_matrix)
+
+static void applyKernelSmoothing(std::size_t window_size, const Eigen::VectorXd& data, Eigen::VectorXd& smoothed)
 {
   using namespace Eigen;
 
-  // generating decay coefficients
-  VectorXd coeffs(window_size);
-  int mid_index = window_size/2;
-  coeffs(mid_index) = decay;
-  double val;
-  for(auto i = 1u; i <= mid_index; i++)
-  {
-    val = std::pow((1 - decay),i);
-    coeffs(mid_index + i) = val;
-    coeffs(mid_index - i) = val;
-  }
-  coeffs/=(coeffs.sum());
+  // allocation
+  window_size = 2*(window_size/2) + 1;// forcing it into an odd number
+  smoothed.setZero(data.size());
+  VectorXd x_nneighbors = VectorXd::Zero(window_size);
+  VectorXd y_nneighbors = VectorXd::Zero(window_size);
+  VectorXd kernel_weights = VectorXd::Zero(window_size);
 
-  // populating sparse matrix
-  int size = num_timesteps + window_size - 1;
-  exp_matrix = SparseMatrix<double,RowMajor>(size,size);
-  exp_matrix.reserve(window_size);
-  for(int m = 0; m < size; m++)
+
+  // indexing
+  int index_left, index_right;
+  std::size_t window_index_middle = window_size/2;
+
+  // kernel function
+  //Epanechnikov(x,neighbors,lambda)
+  auto epanechnikov_function = [](double x_m,const VectorXd& neighbors,double lambda, VectorXd& weights )
   {
-    exp_matrix.insert(m,m) = coeffs(mid_index);
-    for(int c = 1; c <= mid_index; c++)
+
+    double t = 0;
+    for(int i = 0; i < neighbors.size(); i++)
     {
-      if((m-c) > 0)
+      t = std::abs(x_m - neighbors(i))/lambda;
+      if(t < 1)
       {
-        exp_matrix.insert(m,m-c) = coeffs(mid_index-c);
+        weights(i) = 0.75f*(1 - std::pow(t,2));
       }
-
-      if((m+c) < size)
+      else
       {
-        exp_matrix.insert(m,m+c) = coeffs(mid_index+c);
+        weights(i) = 0;
       }
     }
+
+  };
+
+  for(int i = 0; i < data.size(); i++)
+  {
+    // middle term
+    x_nneighbors(window_index_middle) = i;
+    y_nneighbors(window_index_middle) = data(i);
+
+    // grabbing neighbors
+    for(int j = 1; j <= window_size/2; j++)
+    {
+      index_left = i - j;
+      index_right = i + j;
+
+      if(index_left < 0)
+      {
+        x_nneighbors(window_index_middle - j) = 0;
+        y_nneighbors(window_index_middle - j) = data(0);
+      }
+      else
+      {
+        x_nneighbors(window_index_middle - j) = index_left;
+        y_nneighbors(window_index_middle - j) = data(index_left);
+      }
+
+      if(index_right > data.rows()-1)
+      {
+        x_nneighbors(window_index_middle + j) = data.rows()-1;
+        y_nneighbors(window_index_middle + j) = data(data.rows() - 1);
+      }
+      else
+      {
+        x_nneighbors(window_index_middle + j) = index_right;
+        y_nneighbors(window_index_middle + j) = data(index_right);
+      }
+
+    }
+
+    epanechnikov_function(i,x_nneighbors,window_size,kernel_weights);
+    smoothed(i) = (y_nneighbors.array()*kernel_weights.array()).sum()/kernel_weights.sum();
   }
 
-  exp_matrix.makeCompressed();
 
 }
 
@@ -67,8 +103,7 @@ namespace cost_functions
 CollisionCheck::CollisionCheck():
     name_("CollisionCheckPlugin"),
     robot_state_(),
-    collision_penalty_(0.0),
-    cost_decay_(DEFAULT_EXP_DECAY)
+    collision_penalty_(0.0)
 {
   // TODO Auto-generated constructor stub
 
@@ -126,12 +161,9 @@ bool CollisionCheck::setMotionPlanRequest(const planning_scene::PlanningSceneCon
     return false;
   }
 
-  // initializing decay square matrix of size = num_timesteps + WINDOW_SIZE -1
-  generateExponentialSmoothingMatrix(WINDOW_SIZE,config.num_timesteps,cost_decay_,exp_smoothing_matrix_);
-  int padded_timesteps = config.num_timesteps + WINDOW_SIZE - 1;
-  costs_padded_ = Eigen::VectorXd::Zero(padded_timesteps);
-  intermediate_costs_slots_ = Eigen::VectorXd::Zero(config.num_timesteps);
-  min_costs_ = Eigen::VectorXd::Zero(config.num_timesteps);
+  // allocating arrays
+  raw_costs_ = Eigen::VectorXd::Zero(config.num_timesteps);
+
 
   return true;
 }
@@ -160,6 +192,9 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
 
   // initializing result array
   costs = Eigen::VectorXd::Zero(num_timesteps);
+
+  // resetting array
+  raw_costs_.setZero();
 
   // collision
   collision_detection::CollisionRequest request = collision_request_;
@@ -203,36 +238,25 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
       collision_detection::CollisionResult& result = *i;
       if(result.collision)
       {
-        costs(t) = collision_penalty_;
+        raw_costs_(t) = collision_penalty_;
         validity = false;
         break;
       }
     }
   }
 
-  // applying exponential smoothing and minimum costs
+  // applying kernel smoothing
   if(!validity)
   {
-    double min_penalty = collision_penalty_*(double((costs.array() > 0).count())/num_timesteps);
+    int window_size = num_timesteps*kernel_window_percentage_;
+    window_size = window_size < MIN_KERNEL_WINDOW_SIZE ? MIN_KERNEL_WINDOW_SIZE : window_size;
 
-    int padding = WINDOW_SIZE/2;
-    int start_ind = WINDOW_SIZE/2;
-    costs_padded_.segment(start_ind,num_timesteps) = costs;
-    costs_padded_.head(padding).setConstant(costs(0));
-    costs_padded_.tail(padding).setConstant(costs(num_timesteps-1));
+    // adding minimum cost
+    intermediate_costs_slots_ = (raw_costs_.array() < 1).cast<double>();
+    raw_costs_ += (raw_costs_.sum()/raw_costs_.size())*(intermediate_costs_slots_.matrix());
 
-    // smoothed costs
-    costs = (exp_smoothing_matrix_ * costs_padded_).col(0).segment(start_ind,num_timesteps);
-
-    // reducing elements costs[i] < min_penalty to zero
-    intermediate_costs_slots_ = (costs.array() > min_penalty).matrix().cast<double>();
-    costs = (costs.array() * intermediate_costs_slots_.array()).matrix(); // turn all values < min_penalty  to zero
-
-    // computing array with min_penalty at the elements where costs[i] < min_penalty
-    min_costs_ = min_penalty * (costs.array() < min_penalty).matrix().cast<double>();
-
-    // adding minimum penalty array
-    costs+=min_costs_;
+    // smoothing
+    applyKernelSmoothing(window_size,raw_costs_,costs);
   }
 
   return true;
@@ -254,9 +278,18 @@ bool CollisionCheck::configure(const XmlRpc::XmlRpcValue& config)
 
   try
   {
+    if(!config.hasMember("cost_weight") ||
+        !config.hasMember("collision_penalty") ||
+        !config.hasMember("kernel_window_percentage"))
+    {
+      ROS_ERROR("%s failed to load one or more parameters",getName().c_str());
+      return false;
+    }
+
     XmlRpc::XmlRpcValue c = config;
     cost_weight_ = static_cast<double>(c["cost_weight"]);
     collision_penalty_ = static_cast<double>(c["collision_penalty"]);
+    kernel_window_percentage_ = static_cast<double>(c["kernel_window_percentage"]);
   }
   catch(XmlRpc::XmlRpcException& e)
   {

@@ -25,11 +25,11 @@ namespace utils
 namespace kinematics
 {
 
-  const static double EPSILON = 0.1;
+  const static double EPSILON = 0.011;
   const static double LAMBDA = 0.01;
 
 
-  void computeTwist(const Eigen::Affine3d& p0,
+  static void computeTwist(const Eigen::Affine3d& p0,
                                           const Eigen::Affine3d& pf,
                                           const Eigen::ArrayXi& nullity,Eigen::VectorXd& twist)
   {
@@ -60,7 +60,7 @@ namespace kinematics
     twist = (nullity == 0).select(0,twist);
   }
 
-  void reduceJacobian(const Eigen::MatrixXd& jacb,
+  static void reduceJacobian(const Eigen::MatrixXd& jacb,
                                             const std::vector<int>& indices,Eigen::MatrixXd& jacb_reduced)
   {
     jacb_reduced.resize(indices.size(),jacb.cols());
@@ -102,11 +102,14 @@ namespace kinematics
     jacb_pseudo_inv = V * inv_Sv.asDiagonal() * U.transpose();
   }
 
-  bool solveIK(moveit::core::RobotStatePtr robot_state, const std::string& group_name, const Eigen::ArrayXi& constrained_dofs,
-               const Eigen::ArrayXd& joint_update_rates,const Eigen::ArrayXd& cartesian_convergence_thresholds, int max_iterations,
-               const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
-               Eigen::VectorXd& joint_pose)
+  static bool solveIK(moveit::core::RobotStatePtr robot_state, const std::string& group_name,
+                      const Eigen::ArrayXi& constrained_dofs, const Eigen::ArrayXd& joint_update_rates,
+                      const Eigen::ArrayXd& cartesian_convergence_thresholds, const Eigen::ArrayXd& null_proj_weights,
+                      const Eigen::VectorXd& null_space_vector,int max_iterations,
+                      const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
+                      Eigen::VectorXd& joint_pose)
   {
+
     using namespace Eigen;
     using namespace moveit::core;
 
@@ -133,6 +136,8 @@ namespace kinematics
     // jacobian calculation variables
     MatrixXd identity = MatrixXd::Identity(init_joint_pose.size(),init_joint_pose.size());
     MatrixXd jacb, jacb_reduced, jacb_pseudo_inv;
+    VectorXd null_space_proj;
+    bool project_into_nullspace = (null_proj_weights >1e-8).any();
 
     unsigned int iteration_count = 0;
     bool converged = false;
@@ -171,8 +176,19 @@ namespace kinematics
       reduceJacobian(jacb,indices,jacb_reduced);
       calculateDampedPseudoInverse(jacb_reduced,jacb_pseudo_inv,EPSILON,LAMBDA);
 
-      // computing joint change
-      delta_j = (jacb_pseudo_inv*tool_twist_reduced);
+      if(project_into_nullspace)
+      {
+        null_space_proj = (identity - jacb_pseudo_inv*jacb_reduced)*null_space_vector;
+        null_space_proj = (null_space_proj.array() * null_proj_weights).matrix();
+
+        // computing joint change
+        delta_j = (jacb_pseudo_inv*tool_twist_reduced) + null_space_proj;
+      }
+      else
+      {
+        // computing joint change
+        delta_j = (jacb_pseudo_inv*tool_twist_reduced);
+      }
 
       // updating joint values
       joint_pose += (joint_update_rates* delta_j.array()).matrix();
@@ -184,9 +200,64 @@ namespace kinematics
       iteration_count++;
     }
 
-    //ROS_DEBUG_STREAM("Final tool twist "<<tool_twist.transpose());
+    ROS_DEBUG_STREAM_COND(!converged,"Error tool twist "<<tool_twist.transpose());
 
     return converged;
+  }
+
+  static bool computeJacobianNullSpace(moveit::core::RobotStatePtr state,std::string group,std::string tool_link,
+                                       const Eigen::ArrayXi& constrained_dofs,const Eigen::VectorXd& joint_pose,
+                                       Eigen::MatrixXd& jacb_nullspace)
+  {
+    using namespace Eigen;
+    using namespace moveit::core;
+
+    // robot state
+    const JointModelGroup* joint_group = state->getJointModelGroup(group);
+    state->setJointGroupPositions(joint_group,joint_pose);
+    Affine3d tool_pose = state->getGlobalLinkTransform(tool_link);
+
+    // jacobian calculations
+    MatrixXd jacb, jacb_reduced, jacb_pseudo_inv;
+
+    if(!state->getJacobian(joint_group,state->getLinkModel(tool_link),Vector3d::Zero(),jacb))
+    {
+      ROS_ERROR("Failed to get Jacobian for link %s",tool_link.c_str());
+      return false;
+    }
+
+    // transform jacobian rotational part to tool coordinates
+    jacb.bottomRows(3) = tool_pose.rotation().transpose()*jacb.bottomRows(3);
+
+    // reduce jacobian and compute its pseudo inverse
+    std::vector<int> indices;
+    for(auto i = 0u; i < constrained_dofs.size(); i++)
+    {
+      if(constrained_dofs(i) != 0)
+      {
+        indices.push_back(i);
+      }
+    }
+    reduceJacobian(jacb,indices,jacb_reduced);
+    calculateDampedPseudoInverse(jacb_reduced,jacb_pseudo_inv,EPSILON,LAMBDA);
+
+    int num_joints = joint_pose.size();
+    jacb_nullspace = MatrixXd::Identity(num_joints,num_joints) - jacb_pseudo_inv*jacb_reduced;
+
+    return true;
+  }
+
+  static bool solveIK(moveit::core::RobotStatePtr robot_state, const std::string& group_name, const Eigen::ArrayXi& constrained_dofs,
+               const Eigen::ArrayXd& joint_update_rates,const Eigen::ArrayXd& cartesian_convergence_thresholds, int max_iterations,
+               const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
+               Eigen::VectorXd& joint_pose)
+  {
+    using namespace Eigen;
+    using namespace moveit::core;
+
+    return solveIK(robot_state,group_name,constrained_dofs,joint_update_rates,cartesian_convergence_thresholds,
+            ArrayXd::Zero(joint_update_rates.size()),VectorXd::Zero(joint_update_rates.size()),max_iterations,
+            tool_goal_pose,init_joint_pose,joint_pose);
   }
 
 

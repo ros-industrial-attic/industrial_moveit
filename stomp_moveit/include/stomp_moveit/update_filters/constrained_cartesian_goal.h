@@ -73,10 +73,6 @@ protected:
   Eigen::ArrayXi dof_nullity_;
   Eigen::ArrayXd cartesian_convergence_thresholds_;
   int max_iterations_;
-  Eigen::VectorXd ref_goal_joint_pose_;
-
-  // joint values
-  Eigen::MatrixXd updated_parameters_;
 
   // robot
   moveit::core::RobotModelConstPtr robot_model_;

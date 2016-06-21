@@ -138,6 +138,8 @@ bool JointLimits::filter(std::size_t start_timestep,std::size_t num_timesteps,
     {
       parameters(j,0) =  *start_state_->getJointPositions(joint_models[j]);
     }
+
+    filtered = true;
   }
 
   if(lock_goal_)
@@ -147,6 +149,8 @@ bool JointLimits::filter(std::size_t start_timestep,std::size_t num_timesteps,
     {
       parameters(j,last_index) =  *goal_state_->getJointPositions(joint_models[j]);
     }
+
+    filtered = true;
   }
 
   double val;

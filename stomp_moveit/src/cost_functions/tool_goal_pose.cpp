@@ -110,10 +110,22 @@ bool ToolGoalPose::setMotionPlanRequest(const planning_scene::PlanningSceneConst
   }
 
   // storing tool goal pose
-  if(goals.front().position_constraints.empty() ||
-      goals.front().orientation_constraints.empty())
+  if(!goals.front().position_constraints.empty() &&
+      !goals.front().orientation_constraints.empty())
   {
-    ROS_WARN("A goal constraint for the tool link was not provided, using forward kinematics");
+    // tool cartesian goal
+    const moveit_msgs::PositionConstraint& pos_constraint = goals.front().position_constraints.front();
+    const moveit_msgs::OrientationConstraint& orient_constraint = goals.front().orientation_constraints.front();
+
+    geometry_msgs::Pose pose;
+    pose.position = pos_constraint.constraint_region.primitive_poses[0].position;
+    pose.orientation = orient_constraint.orientation;
+    tf::poseMsgToEigen(pose,tool_goal_pose_);
+
+  }
+  else
+  {
+    ROS_WARN("%s a cartesian goal pose in MotionPlanRequest was not provided,calculating it from FK",getName().c_str());
 
     // check joint constraints
     if(goals.front().joint_constraints.empty())
@@ -132,20 +144,9 @@ bool ToolGoalPose::setMotionPlanRequest(const planning_scene::PlanningSceneConst
       state_->setVariablePosition(jc.joint_name,jc.position);
     }
 
+    // storing reference goal position tool and pose
     state_->update(true);
-    state_->enforceBounds(joint_group);
     tool_goal_pose_ = state_->getGlobalLinkTransform(tool_link_);
-  }
-  else
-  {
-    // tool cartesian goal
-    const moveit_msgs::PositionConstraint& pos_constraint = goals.front().position_constraints.front();
-    const moveit_msgs::OrientationConstraint& orient_constraint = goals.front().orientation_constraints.front();
-
-    geometry_msgs::Pose pose;
-    pose.position = pos_constraint.constraint_region.primitive_poses[0].position;
-    pose.orientation = orient_constraint.orientation;
-    tf::poseMsgToEigen(pose,tool_goal_pose_);
   }
 
   return true;

@@ -440,6 +440,12 @@ bool StompOptimizationTask::filterParameterUpdates(std::size_t start_timestep,
 
 void StompOptimizationTask::done(bool success,int total_iterations,double final_cost)
 {
+  for(auto p : noise_generators_)
+  {
+    p->done(success,total_iterations,final_cost);
+  }
+
+
   for(auto p : cost_functions_)
   {
     p->done(success,total_iterations,final_cost);
