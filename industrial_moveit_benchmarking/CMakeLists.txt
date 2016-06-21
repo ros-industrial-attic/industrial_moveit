@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   cmake_modules
   pluginlib
   moveit_core
+  moveit_experimental
 )
 
 # This is required because there is a bug in moveit_ros_planning they are not exporting
@@ -37,8 +38,10 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${EIGEN
 add_executable(stomp_benchmarking_node src/stomp_valgrind.cpp)
 add_executable(joint_interpolated_benchmarking_node src/joint_interpolated_valgrind.cpp)
 add_executable(cartesian_benchmarking_node src/clik_valgrind.cpp)
+add_executable(static_distance_field_benchmarking_node src/static_distance_field_valgrind.cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(stomp_benchmarking_node ${catkin_LIBRARIES})
 target_link_libraries(joint_interpolated_benchmarking_node ${catkin_LIBRARIES})
 target_link_libraries(cartesian_benchmarking_node ${catkin_LIBRARIES})
+target_link_libraries(static_distance_field_benchmarking_node ${catkin_LIBRARIES})
