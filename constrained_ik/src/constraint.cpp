@@ -1,7 +1,9 @@
 /**
  * @file constraint.cpp
  * @brief Base class for IK-solver Constraints
+ *
  * Specify relationship between joint velocities and constraint "error"
+ *
  * @author dsolomon
  * @date Sep 15, 2013
  * @version TODO

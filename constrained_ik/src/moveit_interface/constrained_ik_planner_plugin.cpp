@@ -1,6 +1,7 @@
 /**
 * @file constrained_ik_planner_plugin.cpp
 * @brief This class represents the CLIK planner plugin for moveit.  It manages all of the CLIK planners.
+*
 * @author Levi Armstrong
 * @date May 4, 2015
 * @version TODO

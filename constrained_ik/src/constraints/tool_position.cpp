@@ -1,6 +1,7 @@
 /**
 * @file tool_position.cpp
 * @brief Constraint to specify cartesian goal position in tool frame (XYZ rotation).
+*
 * @author dsolomon
 * @date Sep 23, 2013
 * @version TODO

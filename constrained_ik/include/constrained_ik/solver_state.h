@@ -1,6 +1,7 @@
 /**
  * @file solver_state.h
  * @brief Internal state of Constrained_IK solver
+ *
  * @author dsolomon
  * @date Sep 15, 2013
  * @version TODO

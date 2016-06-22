@@ -1,6 +1,7 @@
 /**
 * @file goal_pose.h
 * @brief Constraint to specify cartesian goal pose (XYZ + orientation).
+*
 * @author dsolomon
 * @date Sep 23, 2013
 * @version TODO
