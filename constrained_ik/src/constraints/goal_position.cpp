@@ -1,6 +1,7 @@
 /**
 * @file goal_position.cpp
 * @brief Constraint to specify cartesian goal position (XYZ)
+*
 * @author dsolomon
 * @date Sep 23, 2013
 * @version TODO

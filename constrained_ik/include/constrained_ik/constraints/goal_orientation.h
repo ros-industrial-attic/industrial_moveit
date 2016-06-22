@@ -1,6 +1,7 @@
 /**
  * @file goal_orientation.h
  * @brief Constraint to specify Cartesian goal orientation (XYZ rotation)
+ *
  * @author dsolomon
  * @date Sep 23, 2013
  * @version TODO

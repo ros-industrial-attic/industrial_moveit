@@ -1,6 +1,7 @@
 /**
 * @file basic_ik.h
 * @brief Basic IK Solver, solves for 6DOF cartesian goal.
+*
 * @author dsolomon
 * @date Sep 23, 2013
 * @version TODO

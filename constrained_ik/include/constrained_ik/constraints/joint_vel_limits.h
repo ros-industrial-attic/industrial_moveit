@@ -1,6 +1,7 @@
 /**
 * @file joint_vel_limits.h
 * @brief Constraint to avoid joint velocity limits.
+*
 * @author dsolomon
 * @date Sep 23, 2013
 * @version TODO

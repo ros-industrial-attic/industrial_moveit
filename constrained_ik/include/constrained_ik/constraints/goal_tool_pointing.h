@@ -1,6 +1,7 @@
 /**
 * @file goal_tool_pointing.h
 * @brief Constraint to specify cartesian tool goal pointing (XYZRP)
+*
 * @author Levi Armstrong
 * @date September 18, 2015
 * @version TODO

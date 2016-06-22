@@ -1,6 +1,7 @@
 /**
  * @file goal_minimize_change.cpp
  * @brief Constraint to pushes joints back towards their starting position
+ *
  * @author dsolomon
  * @date Sep 23, 2013
  * @version TODO

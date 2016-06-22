@@ -1,6 +1,7 @@
 /**
  * @file constrained_ik_planner_parameters.h
  * @brief This class represents the parameters used by each of the CLIK planners.
+ *
  * @author Levi Armstrong
  * @date May 4, 2015
  * @version TODO

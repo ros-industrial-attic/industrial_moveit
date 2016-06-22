@@ -1,6 +1,7 @@
 /**
 * @file goal_zero_jvel.h
 * @brief Constraint to dampen movement by driving joint velocity to zero in each iteration
+*
 * @author dsolomon
 * @date Sep 23, 2013
 * @version TODO
