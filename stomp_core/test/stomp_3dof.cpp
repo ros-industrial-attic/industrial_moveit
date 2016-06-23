@@ -32,11 +32,13 @@
 using Trajectory = Eigen::MatrixXd;
 
 const std::size_t NUM_DIMENSIONS = 3;
-const std::size_t NUM_TIMESTEPS = 60;
+const std::size_t NUM_TIMESTEPS = 20;
 const double DELTA_T = 0.1;
 const std::vector<double> START_POS = {1.4, 1.4, 0.5};
-const std::vector<double> END_POS = {-1.25, 1.3, -0.26};
-const std::vector<double> BIAS_THRESHOLD = {0.10,0.10,0.10};
+const std::vector<double> END_POS = {-1.25, 1.0, -0.26};
+const std::vector<double> BIAS_THRESHOLD = {0.050,0.050,0.050};
+const std::vector<double> STD_DEV = {1.0, 1.0, 1.0};
+
 
 using namespace stomp_core;
 
@@ -44,18 +46,45 @@ class DummyTask: public Task
 {
 public:
   DummyTask(const Trajectory& parameters_bias,
-            const std::vector<double>& bias_thresholds):
+            const std::vector<double>& bias_thresholds,
+            const std::vector<double>& std_dev):
               parameters_bias_(parameters_bias),
-              bias_thresholds_(bias_thresholds)
+              bias_thresholds_(bias_thresholds),
+              std_dev_(std_dev)
   {
 
     // generate smoothing matrix
     int num_timesteps = parameters_bias.cols();
     generateSmoothingMatrix(num_timesteps,1.0,smoothing_M_);
+    srand(time(0));
 
   }
 
   virtual ~DummyTask(){}
+
+  virtual bool generateNoisyParameters(const Eigen::MatrixXd& parameters,
+                                       std::size_t start_timestep,
+                                       std::size_t num_timesteps,
+                                       int iteration_number,
+                                       int rollout_number,
+                                       Eigen::MatrixXd& parameters_noise,
+                                       Eigen::MatrixXd& noise) override
+  {
+    double rand_noise;
+    for(std::size_t d = 0; d < parameters.rows(); d++)
+    {
+      for(std::size_t t = 0; t < parameters.cols(); t++)
+      {
+        rand_noise = static_cast<double>(rand()%RAND_MAX)/static_cast<double>(RAND_MAX - 1); // 0 to 1
+        rand_noise = 2*(0.5 - rand_noise);
+        noise(d,t) =  rand_noise*std_dev_[d];
+      }
+    }
+
+    parameters_noise = parameters + noise;
+
+    return true;
+  }
 
   virtual bool computeCosts(const Trajectory& parameters,
                                         std::size_t start_timestep,
@@ -100,10 +129,23 @@ public:
     return true;
   }
 
-  virtual bool smoothParameterUpdates(std::size_t start_timestep,
+
+  virtual bool filterParameterUpdates(std::size_t start_timestep,
+                                std::size_t num_timesteps,
+                                int iteration_number,
+                                const Eigen::MatrixXd& parameters,
+                                Eigen::MatrixXd& updates) override
+  {
+    return smoothParameterUpdates(start_timestep,num_timesteps,iteration_number,updates);
+  };
+
+
+protected:
+
+  bool smoothParameterUpdates(std::size_t start_timestep,
                                       std::size_t num_timesteps,
                                       int iteration_number,
-                                      Eigen::MatrixXd& updates) override
+                                      Eigen::MatrixXd& updates)
   {
 
     for(auto d = 0u; d < updates.rows(); d++)
@@ -118,6 +160,7 @@ protected:
 
   Trajectory parameters_bias_;
   std::vector<double> bias_thresholds_;
+  std::vector<double> std_dev_;
   Eigen::MatrixXd smoothing_M_;
 };
 
@@ -143,7 +186,7 @@ StompConfiguration create3DOFConfiguration()
 {
   StompConfiguration c;
   c.num_timesteps = NUM_TIMESTEPS;
-  c.num_iterations = 10;
+  c.num_iterations = 40;
   c.num_dimensions = NUM_DIMENSIONS;
   c.delta_t = DELTA_T;
   c.control_cost_weight = 0.0;
@@ -151,15 +194,6 @@ StompConfiguration create3DOFConfiguration()
   c.num_iterations_after_valid = 0;
   c.num_rollouts = 20;
   c.max_rollouts = 20;
-  c.min_rollouts = 5;
-
-  NoiseGeneration n;
-  n.stddev = {0.5, 0.5, 0.5};
-  n.decay = {0.9, 0.9, 0.9};
-  n.min_stddev = {0.05, 0.05, 0.05};
-  n.method = NoiseGeneration::ADAPTIVE;
-  n.update_rate = 0.2;
-  c.noise_generation = n;
 
   return c;
 }
@@ -184,7 +218,7 @@ TEST(Stomp3DOF,construction)
 {
   Trajectory trajectory_bias;
   interpolate(START_POS,END_POS,NUM_TIMESTEPS,trajectory_bias);
-  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD));
+  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD,STD_DEV));
 
   Stomp stomp(create3DOFConfiguration(),task);
 }
@@ -193,7 +227,7 @@ TEST(Stomp3DOF,solve_default)
 {
   Trajectory trajectory_bias;
   interpolate(START_POS,END_POS,NUM_TIMESTEPS,trajectory_bias);
-  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD));
+  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD,STD_DEV));
 
   StompConfiguration config = create3DOFConfiguration();
   Stomp stomp(config,task);
@@ -221,7 +255,7 @@ TEST(Stomp3DOF,solve_interpolated_initial)
 {
   Trajectory trajectory_bias;
   interpolate(START_POS,END_POS,NUM_TIMESTEPS,trajectory_bias);
-  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD));
+  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD,STD_DEV));
 
   StompConfiguration config = create3DOFConfiguration();
   config.initialization_method = TrajectoryInitializations::LINEAR_INTERPOLATION;
@@ -246,19 +280,75 @@ TEST(Stomp3DOF,solve_interpolated_initial)
   std::cout<<"Differences"<<"\n"<<toString(diff)<<line_separator;
 }
 
-TEST(Stomp3DOF,solve_stdev_exponential_decay)
+TEST(Stomp3DOF,solve_cubic_polynomial_initial)
+{
+  Trajectory trajectory_bias;
+  interpolate(START_POS,END_POS,NUM_TIMESTEPS,trajectory_bias);
+  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD,STD_DEV));
+
+  StompConfiguration config = create3DOFConfiguration();
+  config.initialization_method = TrajectoryInitializations::CUBIC_POLYNOMIAL_INTERPOLATION;
+  Stomp stomp(config,task);
+
+  Trajectory optimized;
+  stomp.solve(trajectory_bias,optimized);
+
+  EXPECT_EQ(optimized.rows(),NUM_DIMENSIONS);
+  EXPECT_EQ(optimized.cols(),NUM_TIMESTEPS);
+  EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));
+
+  // calculate difference
+  Trajectory diff;
+  diff = trajectory_bias - optimized;
+
+  std::string line_separator = "\n------------------------------------------------------\n";
+  std::cout<<line_separator;
+  std::cout<<stomp_core::toString(trajectory_bias);
+  std::cout<<line_separator;
+  std::cout<<toString(optimized)<<"\n";
+  std::cout<<"Differences"<<"\n"<<toString(diff)<<line_separator;
+}
+
+TEST(Stomp3DOF,solve_min_control_cost_initial)
+{
+  Trajectory trajectory_bias;
+  interpolate(START_POS,END_POS,NUM_TIMESTEPS,trajectory_bias);
+  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD,STD_DEV));
+
+  StompConfiguration config = create3DOFConfiguration();
+  config.initialization_method = TrajectoryInitializations::MININUM_CONTROL_COST;
+  Stomp stomp(config,task);
+
+  Trajectory optimized;
+  stomp.solve(trajectory_bias,optimized);
+
+  EXPECT_EQ(optimized.rows(),NUM_DIMENSIONS);
+  EXPECT_EQ(optimized.cols(),NUM_TIMESTEPS);
+  EXPECT_TRUE(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD));
+
+  // calculate difference
+  Trajectory diff;
+  diff = trajectory_bias - optimized;
+
+  std::string line_separator = "\n------------------------------------------------------\n";
+  std::cout<<line_separator;
+  std::cout<<stomp_core::toString(trajectory_bias);
+  std::cout<<line_separator;
+  std::cout<<toString(optimized)<<"\n";
+  std::cout<<"Differences"<<"\n"<<toString(diff)<<line_separator;
+}
+
+TEST(Stomp3DOF,solve_40_timesteps)
 {
   Trajectory trajectory_bias;
   int num_timesteps = 40;
   interpolate(START_POS,END_POS,num_timesteps,trajectory_bias);
-  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD));
+  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD,STD_DEV));
 
   StompConfiguration config = create3DOFConfiguration();
-  config.initialization_method = TrajectoryInitializations::MININUM_CONTROL_COST;
-  config.noise_generation.method = NoiseGeneration::EXPONENTIAL_DECAY;
-  config.num_iterations = 20;
+  config.initialization_method = TrajectoryInitializations::LINEAR_INTERPOLATION;
+  config.num_iterations = 100;
   config.num_timesteps = num_timesteps;
-  config.delta_t = 0.5;
   Stomp stomp(config,task);
 
   Trajectory optimized;
@@ -280,19 +370,17 @@ TEST(Stomp3DOF,solve_stdev_exponential_decay)
   std::cout<<"Differences"<<"\n"<<toString(diff)<<line_separator;
 }
 
-TEST(Stomp3DOF,solve_stdev_constant)
+TEST(Stomp3DOF,solve_60_timesteps)
 {
   Trajectory trajectory_bias;
   int num_timesteps = 60;
   interpolate(START_POS,END_POS,num_timesteps,trajectory_bias);
-  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD));
+  TaskPtr task(new DummyTask(trajectory_bias,BIAS_THRESHOLD,STD_DEV));
 
   StompConfiguration config = create3DOFConfiguration();
   config.initialization_method = TrajectoryInitializations::MININUM_CONTROL_COST;
-  config.noise_generation.method = NoiseGeneration::CONSTANT;
-  config.num_iterations = 20;
+  config.num_iterations = 100;
   config.num_timesteps = num_timesteps;
-  config.delta_t = 0.1;
   Stomp stomp(config,task);
 
   Trajectory optimized;
