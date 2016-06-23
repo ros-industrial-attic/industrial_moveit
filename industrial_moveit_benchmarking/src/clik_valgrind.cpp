@@ -158,7 +158,7 @@ int main (int argc, char *argv[])
     cart_planner.setMotionPlanRequest(req);
 
     if (!cart_planner.solve(res))
-      ROS_ERROR("Cartesian Solver failed (%d): %d", i, res.error_code_);
+      ROS_ERROR("Cartesian Solver failed (%d): %d", i, res.error_code_.val);
 
   }
   t2 = ros::Time::now();

@@ -154,7 +154,7 @@ int main (int argc, char *argv[])
     joint_interp.setMotionPlanRequest(req);
 
     if (!joint_interp.solve(res))
-      ROS_ERROR("Joint Interpolated Solver failed (%d): %d", i, res.error_code_);
+      ROS_ERROR("Joint Interpolated Solver failed (%d): %d", i, res.error_code_.val);
 
   }
   t2 = ros::Time::now();
