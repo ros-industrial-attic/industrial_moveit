@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(moveit_experimental)
 
+add_definitions("-std=c++11")
+
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -35,6 +37,7 @@ file(MAKE_DIRECTORY "${VERSION_FILE_PATH}")
 set(THIS_PACKAGE_INCLUDE_DIRS
     ${VERSION_FILE_PATH}
     collision_distance_field/include
+    distance_field/include
 )
 
 catkin_package(
@@ -76,5 +79,6 @@ include_directories(${THIS_PACKAGE_INCLUDE_DIRS}
 link_directories(${Boost_LIBRARY_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
 add_subdirectory(collision_distance_field)
+add_subdirectory(distance_field)
 
 # Generate and install version.h
