@@ -1,0 +1,8 @@
+<launch>
+  <arg name="profile" default="false" />
+  <arg unless="$(arg profile)" name="launch_prefix" value="" />
+  <arg     if="$(arg profile)" name="launch_prefix" value="valgrind --tool=callgrind" />
+
+  <rosparam command="load" file="$(find stomp_test_kr210_moveit_config)/config/stomp_config.yaml" />
+  <node name="stomp_benchmarking_node" pkg="industrial_moveit_benchmarking" type="stomp_benchmarking_node" launch-prefix="$(arg launch_prefix)"/>
+</launch>

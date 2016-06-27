@@ -1,6 +1,7 @@
 /**
 * @file constrained_ik_utils.h
 * @brief Utility package
+*
 * @author Levi Armstrong
 * @date October 21, 2015
 * @version TODO

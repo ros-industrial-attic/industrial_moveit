@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package>
+  <name>industrial_moveit_benchmarking</name>
+  <version>0.1.0</version>
+  <description>This package contains tools used to benchmark both constrianed_ik and stomp.</description>
+
+  <maintainer email="levi.armstrong@gmail.com">Levi Armstrong</maintainer>
+  <license>Apache 2.0</license>
+  <author email="levi.armstrong@gmail.com"> Levi Armstrong</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>stomp_moveit</build_depend>
+  <build_depend>moveit_core</build_depend>
+  <build_depend>moveit_ros_planning</build_depend>
+  <build_depend>pluginlib</build_depend>
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>stomp_moveit</run_depend>
+  <run_depend>moveit_core</run_depend>
+  <run_depend>moveit_ros_planning</run_depend>
+  <run_depend>industrial_collision_detection</run_depend>
+  <run_depend>pluginlib</run_depend>
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+
+</package>

@@ -47,6 +47,7 @@ namespace constraints
 {
 
 using namespace Eigen;
+using namespace collision_detection;
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using std::string;

@@ -1,7 +1,9 @@
 /**
  * @file constrained_ik_planning_context.h
  * @brief This is a virtual class that is inherited by all of the CLIK planner.
+ *
  * It containes CLIK specific functions used by each of the CLIK planners.
+ *
  * @author Levi Armstrong
  * @date May 4, 2015
  * @version TODO

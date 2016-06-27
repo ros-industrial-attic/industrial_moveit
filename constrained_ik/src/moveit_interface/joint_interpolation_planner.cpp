@@ -64,7 +64,7 @@ namespace constrained_ik
         pos[0]=request_.goal_constraints[0].joint_constraints[i].position;
         goal_state.setJointPositions(joint_names[i], pos);
 
-        ROS_DEBUG("clik","Setting joint %s from %f to position %f", request_.goal_constraints[0].joint_constraints[i].joint_name.c_str(),
+        ROS_DEBUG("Setting joint %s from %f to position %f", request_.goal_constraints[0].joint_constraints[i].joint_name.c_str(),
             *start_state.getJointPositions(joint_names[i]), request_.goal_constraints[0].joint_constraints[i].position);
       }
     }

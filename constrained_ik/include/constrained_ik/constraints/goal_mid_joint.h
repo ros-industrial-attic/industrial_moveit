@@ -1,6 +1,7 @@
 /**
  * @file goal_mid_joint.h
  * @brief Constraint to push joint to center of its range
+ *
  * @author dsolomon
  * @date Sep 23, 2013
  * @version TODO

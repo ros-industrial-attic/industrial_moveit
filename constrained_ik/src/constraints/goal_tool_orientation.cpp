@@ -1,6 +1,7 @@
 /**
 * @file goal_tool_orientation.cpp
 * @brief Constraint to specify cartesian goal tool orientation (XYZ rotation).
+*
 * @author dsolomon
 * @date Sep 23, 2013
 * @version TODO

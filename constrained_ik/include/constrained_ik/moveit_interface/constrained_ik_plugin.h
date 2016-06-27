@@ -1,6 +1,7 @@
 /**
  * @file constrained_ik_plugin.h
  * @brief Constrained inverse kinematic plugin for moveit.
+ *
  * @author dsolomon
  * @date Sep 15, 2013
  * @version TODO

@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package>
+  <name>stomp_moveit_interface</name>
+  <version>0.4.0</version>
+  <description>STOMP for MoveIt!</description>
+  <maintainer email="kalakris@usc.edu">Mrinal Kalakrishnan</maintainer>
+  <author email="kalakris@usc.edu">Mrinal Kalakrishnan</author>
+  <license>BSD</license>
+  <url>https://github.com/kalakris/stomp</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>stomp</build_depend>
+  <build_depend>moveit_core</build_depend>
+  <build_depend>cmake_modules</build_depend>
+  <build_depend>eigen</build_depend>
+  <build_depend>pluginlib</build_depend>
+  <build_depend>moveit_experimental</build_depend>
+  <build_depend>industrial_collision_detection</build_depend>
+
+  <run_depend>stomp</run_depend>
+  <run_depend>moveit_core</run_depend>
+  <run_depend>moveit_experimental</run_depend>
+  <run_depend>pluginlib</run_depend>
+  <run_depend>moveit_experimental</run_depend>
+  <run_depend>industrial_collision_detection</run_depend>
+
+  <export>
+    <moveit_core plugin="${prefix}/stomp_moveit_interface_plugin.xml"/>
+    <stomp_moveit_interface plugin="${prefix}/cost_feature_plugins.xml"/>
+  </export>
+
+</package>
