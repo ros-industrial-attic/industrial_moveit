@@ -1,6 +1,8 @@
 #include "openvdb_distance_field.h"
 #include <openvdb/tools/LevelSetSphere.h>
 #include <openvdb/tools/Composite.h>
+#include <openvdb/tools/GridOperators.h>
+#include <openvdb/tools/VolumeToSpheres.h>
 #include <ros/assert.h>
 #include <algorithm>
 #include <math.h>
@@ -297,13 +299,7 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
   }
   else
   {
-    // openvdb::tools::csgUnion(grid_, grid, true); This has compiler errors, need to find out why.
-
-    // This was the only way to get the correct distance values when combining two grids
-    grid_->tree().combine(grid->tree(), distance_field::diff);
-
-    // Clean up the grid after merge to conserve memory
-    grid_->pruneGrid();
+    openvdb::tools::csgUnion(*grid_, *grid, true);
   }
 }
 
