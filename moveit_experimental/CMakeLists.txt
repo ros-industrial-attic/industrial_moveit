@@ -46,6 +46,7 @@ catkin_package(
     ${OCTOMAP_INCLUDE_DIRS}
   LIBRARIES
     moveit_collision_distance_field
+    moveit_openvdb
     ${OCTOMAP_LIBRARIES}
   CATKIN_DEPENDS
     geometric_shapes

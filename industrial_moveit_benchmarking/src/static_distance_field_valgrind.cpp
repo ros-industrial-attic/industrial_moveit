@@ -64,7 +64,7 @@ int main (int argc, char *argv[])
   visualization_msgs::MarkerArray grad_markers;
   ros::Publisher dist_pub = pnh.advertise<visualization_msgs::Marker>("visualization_marker", 1000);
   ros::Publisher grad_pub = pnh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1000);
-  double res = 0.25;
+  double res = 0.02;
   ros::Time start;
   bool flag;
 
