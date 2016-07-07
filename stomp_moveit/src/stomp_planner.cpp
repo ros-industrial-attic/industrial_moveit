@@ -28,9 +28,12 @@
 #include <stomp_moveit/stomp_planner.h>
 #include <class_loader/class_loader.h>
 #include <stomp_core/utils.h>
+#include <moveit/trajectory_processing/iterative_time_parameterization.h>
 
 
-const std::string DESCRIPTION = "STOMP";
+static const std::string DESCRIPTION = "STOMP";
+static int const IK_ATTEMPTS = 10;
+static int const IK_TIMEOUT = 0.05;
 
 namespace stomp_moveit
 {
@@ -113,14 +116,22 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   Eigen::MatrixXd parameters;
   bool planning_success;
 
+  // local stomp config copy
+  auto config_copy = stomp_config_;
+
   // look for seed state
   trajectory_msgs::JointTrajectory seed_traj;
   bool seed_provided = extractSeedTrajectory(request_, seed_traj);
 
+
   if (seed_provided)
   {
     ROS_INFO("Seeding stomp plan");
-    auto config_copy = stomp_config_;
+
+    Eigen::MatrixXd initial_parameters;
+    jointTrajectorytoParameters(seed_traj, initial_parameters);
+
+    // updating time step in stomp configuraion
     config_copy.num_timesteps = seed_traj.points.size();
 
     // setting up up optimization task
@@ -130,22 +141,14 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
       return false;
     }
 
-    Eigen::MatrixXd initial_parameters;
-    jointTrajectorytoParameters(seed_traj, initial_parameters);
-
+    stomp_->setConfig(config_copy);
     planning_success = stomp_->solve(initial_parameters, parameters);
   }
   else
   {
-    // setting up up optimization task
-    if(!task_->setMotionPlanRequest(planning_scene_,request_, stomp_config_,res.error_code_))
-    {
-      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
-      return false;
-    }
 
     // extracting start and goal
-    std::vector<double> start, goal;
+    Eigen::VectorXd start, goal;
     if(!getStartAndGoal(start,goal))
     {
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
@@ -153,6 +156,14 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
       return false;
     }
 
+    // setting up up optimization task
+    if(!task_->setMotionPlanRequest(planning_scene_,request_, config_copy,res.error_code_))
+    {
+      res.error_code_.val = moveit_msgs::MoveItErrorCodes::FAILURE;
+      return false;
+    }
+
+    stomp_->setConfig(config_copy);
     planning_success = stomp_->solve(start,goal,parameters);
   }
 
@@ -193,43 +204,37 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   return true;
 }
 
-bool StompPlanner::parametersToJointTrajectory(Eigen::MatrixXd& parameters, trajectory_msgs::JointTrajectory& trajectory)
+bool StompPlanner::parametersToJointTrajectory(Eigen::MatrixXd& parameters,
+                                               trajectory_msgs::JointTrajectory& trajectory)
 {
-
-  // computing velocities and accelerations
-  Eigen::MatrixXd vels(parameters), accs(parameters);
-  vels.setZero();
-  accs.setZero();
-  Eigen::VectorXd array;
-  for (auto d=0u; d < parameters.rows(); ++d)
-  {
-    stomp_core::differentiate(parameters.row(d),
-                              stomp_core::DerivativeOrders::STOMP_VELOCITY,  stomp_config_.delta_t,array);
-    vels.row(d) = array;
-    stomp_core::differentiate(parameters.row(d),
-                              stomp_core::DerivativeOrders::STOMP_ACCELERATION, stomp_config_.delta_t,array);
-    accs.row(d) = array;
-  }
-
   // filling trajectory joint values
   trajectory.joint_names = robot_model_->getJointModelGroup(group_)->getActiveJointModelNames();
   trajectory.points.clear();
   trajectory.points.resize(parameters.cols());
   std::vector<double> vals(parameters.rows());
+  std::vector<double> zeros(parameters.rows(),0.0);
   for(auto t = 0u; t < parameters.cols() ; t++)
   {
     Eigen::VectorXd::Map(&vals[0],vals.size()) = parameters.col(t);
     trajectory.points[t].positions = vals;
-
-    Eigen::VectorXd::Map(&vals[0],vals.size()) = vels.col(t);
-    trajectory.points[t].velocities = vals;
-
-    Eigen::VectorXd::Map(&vals[0],vals.size()) = accs.col(t);
-    trajectory.points[t].accelerations = vals;
-
-    trajectory.points[t].time_from_start = ros::Duration(t*stomp_config_.delta_t);
+    trajectory.points[t].velocities = zeros;
+    trajectory.points[t].accelerations = zeros;
+    trajectory.points[t].time_from_start = ros::Duration(0.0);
   }
 
+  trajectory_processing::IterativeParabolicTimeParameterization time_generator;
+  robot_trajectory::RobotTrajectory traj(robot_model_,group_);
+  moveit::core::RobotState robot_state(robot_model_);
+  moveit::core::robotStateMsgToRobotState(request_.start_state,robot_state);
+  traj.setRobotTrajectoryMsg(robot_state,trajectory);
+
+  // converting to msg
+  moveit_msgs::RobotTrajectory robot_traj_msgs;
+  if(time_generator.computeTimeStamps(traj))
+  {
+    traj.getRobotTrajectoryMsg(robot_traj_msgs);
+    trajectory = robot_traj_msgs.joint_trajectory;
+  }
   return true;
 }
 
@@ -293,11 +298,12 @@ bool StompPlanner::extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& r
   return true;
 }
 
-bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<double>& goal)
+bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal)
 {
   using namespace moveit::core;
   RobotStatePtr state(new RobotState(robot_model_));
   const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_);
+  std::string tool_link = joint_group->getLinkModelNames().back();
 
   try
   {
@@ -315,18 +321,44 @@ bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<doubl
     state->enforceBounds(joint_group);
     for(auto j = 0u; j < joint_names.size(); j++)
     {
-      start[j] = state->getVariablePosition(joint_names[j]);
+      start(j) = state->getVariablePosition(joint_names[j]);
+    }
+
+    // check goal constraint
+    if(request_.goal_constraints.empty())
+    {
+      ROS_ERROR("STOMP: A goal constraint was not provided");
+      return false;
     }
 
     // extracting goal joint values
-    for(auto& gc: request_.goal_constraints)
+    auto& gc = request_.goal_constraints.front();
+    if(gc.joint_constraints.empty())
     {
-      if(gc.joint_constraints.empty())
+      // solving ik at goal
+      const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
+      const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
+
+      geometry_msgs::Pose pose;
+      pose.position = pos_constraint.constraint_region.primitive_poses[0].position;
+      pose.orientation = orient_constraint.orientation;
+
+      if(!state->setFromIK(joint_group,pose,tool_link,IK_ATTEMPTS,IK_TIMEOUT))
       {
-        ROS_ERROR_STREAM("No joint values for the goal were found");
+        ROS_ERROR("%s failed calculating ik for cartesian goal pose in the MotionPlanRequest",getName().c_str());
         return false;
       }
 
+      // copying values into goal array
+      state->enforceBounds(joint_group);
+      for(auto j = 0u; j < joint_names.size(); j++)
+      {
+        goal(j) = state->getVariablePosition(joint_names[j]);
+      }
+
+    }
+    else
+    {
       // copying goal values into state
       for(auto j = 0u; j < gc.joint_constraints.size() ; j++)
       {
@@ -338,10 +370,9 @@ bool StompPlanner::getStartAndGoal(std::vector<double>& start, std::vector<doubl
       state->enforceBounds(joint_group);
       for(auto j = 0u; j < joint_names.size(); j++)
       {
-        goal[j] = state->getVariablePosition(joint_names[j]);
+        goal(j) = state->getVariablePosition(joint_names[j]);
       }
 
-      break;
     }
 
   }

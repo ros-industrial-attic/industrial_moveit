@@ -73,7 +73,7 @@ public:
 protected:
 
   void setup();
-  bool getStartAndGoal(std::vector<double>& start, std::vector<double>& goal);
+  bool getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal);
 
   // Converts from STOMP optimization format to a joint trajectory
   bool parametersToJointTrajectory(Eigen::MatrixXd& parameters, trajectory_msgs::JointTrajectory& traj);

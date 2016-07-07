@@ -147,7 +147,6 @@ bool Stomp::parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_con
   {
 
     stomp_config.control_cost_weight = static_cast<double>(config["control_cost_weight"]);
-    stomp_config.delta_t = static_cast<double>(config["delta_t"]);
     stomp_config.initialization_method = static_cast<int>(config["initialization_method"]);
     stomp_config.max_rollouts = static_cast<int>(config["max_rollouts"]);
     stomp_config.num_dimensions = static_cast<int>(config["num_dimensions"]);
@@ -185,6 +184,12 @@ bool Stomp::clear()
   return resetVariables();
 }
 
+void Stomp::setConfig(const StompConfiguration& config)
+{
+  config_ = config;
+  resetVariables();
+}
+
 bool Stomp::solve(const std::vector<double>& first,const std::vector<double>& last,
                   Eigen::MatrixXd& parameters_optimized)
 {
@@ -195,6 +200,19 @@ bool Stomp::solve(const std::vector<double>& first,const std::vector<double>& la
   }
 
   return solve(parameters_optimized_,parameters_optimized);
+}
+
+bool Stomp::solve(const Eigen::VectorXd& first,const Eigen::VectorXd& last,
+                  Eigen::MatrixXd& parameters_optimized)
+{
+  // converting to std vectors
+  std::vector<double> start(first.size());
+  std::vector<double> end(last.size());
+
+  Eigen::VectorXd::Map(&start[0],first.size()) = first;
+  Eigen::VectorXd::Map(&end[0],last.size()) = last;
+
+  return solve(start,end,parameters_optimized);
 }
 
 bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
