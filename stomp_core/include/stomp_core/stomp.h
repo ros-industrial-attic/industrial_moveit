@@ -43,10 +43,26 @@ public:
 
   bool solve(const std::vector<double>& first,const std::vector<double>& last,
              Eigen::MatrixXd& parameters_optimized);
+  bool solve(const Eigen::VectorXd& first,const Eigen::VectorXd& last,
+             Eigen::MatrixXd& parameters_optimized);
   bool solve(const Eigen::MatrixXd& initial_parameters,
              Eigen::MatrixXd& parameters_optimized);
+
+  /**
+   * @brief Sets the configuration and resets all internal variables
+   *
+   * @param config  The configuration struct
+   */
+  void setConfig(const StompConfiguration& config);
+
+  /**
+   * @brief Cancels an optimization in progress.
+   */
   bool cancel();
 
+  /**
+   * @brief resets all internal variables
+   */
   bool clear();
 
   static bool parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_config);
@@ -57,7 +73,7 @@ protected:
   bool resetVariables();
   bool computeInitialTrajectory(const std::vector<double>& first,const std::vector<double>& last);
 
-  // optimization methods
+  // optimization steps
   bool runSingleIteration();
   bool generateNoisyRollouts();
   bool filterNoisyRollouts();

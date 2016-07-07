@@ -4,12 +4,11 @@ stomp/manipulator:
     num_timesteps: 20
     num_dimensions: 6
     num_iterations: 50
-    num_iterations_after_valid: 0
-    delta_t: 0.1
+    num_iterations_after_valid: 0    
     num_rollouts: 10
     max_rollouts: 100
     initialization_method: 1 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
-    control_cost_weight: 0.1
+    control_cost_weight: 0.0
   task:
     noise_generator:
       - class: stomp_moveit/NormalDistributionSampling
@@ -43,8 +42,7 @@ stomp/manipulator_rail:
     num_timesteps: 40
     num_dimensions: 7
     num_iterations: 40
-    num_iterations_after_valid: 0
-    delta_t: 0.1
+    num_iterations_after_valid: 0    
     num_rollouts: 10
     max_rollouts: 10 
     initialization_method: 3 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
@@ -94,8 +92,7 @@ stomp/manipulator_tool:
     num_timesteps: 40
     num_dimensions: 7
     num_iterations: 40
-    num_iterations_after_valid: 0
-    delta_t: 0.1
+    num_iterations_after_valid: 0    
     num_rollouts: 10
     max_rollouts: 10 
     initialization_method: 3 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
