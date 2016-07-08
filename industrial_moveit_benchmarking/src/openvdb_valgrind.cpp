@@ -39,6 +39,7 @@
 #include <fstream>
 #include <time.h>
 #include "openvdb_distance_field.h"
+#include "openvdb/tools/VolumeToSpheres.h"
 
 
 using namespace ros;
@@ -57,7 +58,7 @@ int main (int argc, char *argv[])
   if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug))
      ros::console::notifyLoggerLevelsChanged();
 
-  sleep(10);
+  sleep(0);
   robot_model_loader::RobotModelLoaderPtr loader;
   robot_model::RobotModelPtr robot_model;
   string urdf_file_path, srdf_file_path;
@@ -85,7 +86,7 @@ int main (int argc, char *argv[])
   moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(robot_model));
 
   ros::Time start;
-  distance_field::OpenVDBDistanceField df;
+  distance_field::OpenVDBDistanceField df(0.02);
 
   // Add sphere for testing distance
   ROS_ERROR("Adding sphere to distance field.");
@@ -105,21 +106,21 @@ int main (int argc, char *argv[])
   df.addShapeToField(sphere2, pose2, 0.5/0.01, 0.5/0.01);
   ROS_ERROR("Time Elapsed: %f (sec)",(ros::Time::now() - start).toSec());
 
-  double dist, grad_x, grad_y, grad_z, norm, t;
-  Eigen::Vector3f pick_point(4.0, 4.0, 4.9);
+  double dist, t;
+  Eigen::Vector3f pick_point(4.0, 4.0, 4.4), gradient;
 
   t=0;
-  for(int i=0; i<10; i++)
+  for(int i = 0; i < 10; ++i)
   {
     start = ros::Time::now();
+//    dist = df.getDistanceGradient(pick_point, gradient);
     dist = df.getDistance(pick_point);
     t+=(ros::Time::now() - start).toSec();
   }
 
-  norm = sqrt(grad_x*grad_x + grad_y*grad_y + grad_z*grad_z);
   ROS_ERROR("Background: %f", df.getGrid()->background());
   ROS_ERROR("Distance: %f", dist);
-  ROS_ERROR("Gradient: %f %f %f", grad_x/norm, grad_y/norm, grad_z/norm);
+  ROS_ERROR("Gradient: %f %f %f", gradient(0), gradient(1), gradient(2));
   ROS_ERROR("Average Time Elapsed: %0.8f (sec)",t/10.0);
 
   // Add Robot to distance field
@@ -127,6 +128,33 @@ int main (int argc, char *argv[])
 
   // Write distance field to file
   df.writeToFile("/home/larmstrong/test.vdb");
-  ROS_ERROR("Bytes: %i", df.getGrid()->memUsage());
+  ROS_ERROR("Bytes: %i", int(df.getGrid()->memUsage()));
+
+
+// This tests the ClosestSurfacePoint which is about 10-30 times slower
+// than just quering a distance grid, but the distace can be found when
+// requesting a point outside the bandwidth. Though this does not return
+// a negative distance when quering a point inside an object.
+  openvdb::tools::ClosestSurfacePoint<openvdb::FloatGrid> csp;
+
+  csp.initialize<openvdb::util::NullInterrupter>(*df.getGrid());
+  std::vector<openvdb::Vec3R> points;
+  std::vector<float> distance;
+
+  points.push_back(openvdb::Vec3R(pick_point[0], pick_point[1], pick_point[2]));
+
+  t=0;
+  for(int i=0; i<10; i++)
+  {
+    distance.clear();
+    start = ros::Time::now();
+    csp.search(points, distance);
+    dist = distance[0];
+    t+=(ros::Time::now() - start).toSec();
+  }
+
+  ROS_ERROR("Background: %f", df.getGrid()->background());
+  ROS_ERROR("Distance: %f", dist);
+  ROS_ERROR("Average Time Elapsed: %0.8f (sec)",t/10.0);
   return 0;
 }
