@@ -7,6 +7,49 @@
 #include <algorithm>
 #include <math.h>
 
+distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
+                                                             const float voxel_size, const float background,
+                                                             const float exBandWidth, const float inBandWidth)
+  : robot_model_(model), exBandWidth_(exBandWidth), inBandWidth_(inBandWidth)
+{
+  addRobotToField();
+}
+
+void distance_field::CollisionRobotOpenVDB::addRobotToField()
+{
+  std::vector<const moveit::core::LinkModel*> links = robot_model_->getLinkModelsWithCollisionGeometry();
+  const moveit::core::LinkModel* root_link = robot_model_->getRootLink();
+  Eigen::Affine3d root_pose;
+  OpenVDBDistanceField sdf;
+
+  root_pose.setIdentity();
+  addLinkToField(root_link, root_pose, sdf);
+
+  for (int i = 0; i < links.size(); ++i)
+  {
+
+  }
+}
+
+void distance_field::CollisionRobotOpenVDB::addLinkToField(const moveit::core::LinkModel *link, const Eigen::Affine3d &pose, OpenVDBDistanceField &sdf)
+{
+  std::vector<shapes::ShapeConstPtr> shapes = link->getShapes();
+  EigenSTL::vector_Affine3d shape_poses = link->getCollisionOriginTransforms();
+
+  for (int j = 0; j < shapes.size(); ++j)
+  {
+    sdf.addShapeToField(shapes[j].get(), pose * shape_poses[j], exBandWidth_, inBandWidth_);
+  }
+
+  const moveit::core::LinkTransformMap fixed_attached = link->getAssociatedFixedTransforms();
+
+  for (auto it = fixed_attached.begin(); it!=fixed_attached.end(); ++it)
+  {
+    addLinkToField(it->first, it->second, sdf);
+  }
+}
+
+
 distance_field::OpenVDBDistanceField::OpenVDBDistanceField(float voxel_size, float background) :
   voxel_size_(voxel_size),
   background_(background)
@@ -20,29 +63,61 @@ openvdb::FloatGrid::Ptr distance_field::OpenVDBDistanceField::getGrid() const
   return grid_;
 }
 
-double distance_field::OpenVDBDistanceField::getDistance(Eigen::Vector3f &point)
+double distance_field::OpenVDBDistanceField::getDistance(const Eigen::Vector3f &point) const
 {
-  openvdb::math::Vec3s xyz(point[0], point[1], point[2]);
-  xyz = transform_->worldToIndex(xyz);
-  openvdb::Coord c = openvdb::util::nearestCoord(xyz);
-  return grid_->getAccessor().getValue(c);
+  return getDistance(point(0), point(1), point(2));
 }
 
-void distance_field::OpenVDBDistanceField::addRobotToField(const moveit::core::RobotStatePtr robot_state, const float exBandWidth, const float inBandWidth)
+double distance_field::OpenVDBDistanceField::getDistance(const openvdb::math::Coord &coord) const
 {
-  std::vector<const moveit::core::LinkModel*> links = robot_state->getRobotModel()->getLinkModelsWithCollisionGeometry();
-  for (int i = 0; i < links.size(); ++i)
+  if (accessor_)
   {
-    std::vector<shapes::ShapeConstPtr> shapes = links[i]->getShapes();
-    EigenSTL::vector_Affine3d shape_poses = links[i]->getCollisionOriginTransforms();
-
-    Eigen::Affine3d link_pose = robot_state->getFrameTransform(links[i]->getName());
-
-    for (int j = 0; j < shapes.size(); ++j)
-    {
-      addShapeToField(shapes[j].get(), link_pose * shape_poses[j], exBandWidth, inBandWidth);
-    }
+    return accessor_->getValue(coord);
   }
+  else
+  {
+    ROS_ERROR("Tried to get distance data from and empty grid.");
+    return 0;
+  }
+}
+
+double distance_field::OpenVDBDistanceField::getDistance(const float &x, const float &y, const float &z) const
+{
+  openvdb::math::Vec3s xyz(x, y, z);
+  return getDistance(transform_->worldToIndexNodeCentered(xyz));
+}
+
+double distance_field::OpenVDBDistanceField::getDistanceGradient(const Eigen::Vector3f &point, Eigen::Vector3f &gradient) const
+{
+  return getDistanceGradient(point(0), point(1), point(2), gradient);
+}
+
+double distance_field::OpenVDBDistanceField::getDistanceGradient(const openvdb::math::Coord &coord, Eigen::Vector3f &gradient) const
+{
+  openvdb::Vec3f result;
+
+  if (accessor_)
+  {
+    result =  openvdb::math::ISGradient<openvdb::math::CD_2ND>::result(*accessor_, coord);
+  }
+  else
+  {
+    ROS_ERROR("Tried to get distance and gradient data from and empty grid.");
+    return 0;
+  }
+
+  gradient(0) = result(0);
+  gradient(1) = result(1);
+  gradient(2) = result(2);
+  gradient.normalize();
+
+  return getDistance(coord);
+}
+
+double distance_field::OpenVDBDistanceField::getDistanceGradient(const float &x, const float &y, const float &z, Eigen::Vector3f &gradient) const
+{
+  openvdb::math::Vec3s xyz(x, y, z);
+  return getDistanceGradient(transform_->worldToIndexNodeCentered(xyz), gradient);
 }
 
 void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *shape, const Eigen::Affine3d &pose, const float exBandWidth, const float inBandWidth)
@@ -96,7 +171,7 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       const shapes::Cone *cone = static_cast<const shapes::Cone *>(shape);
 
       // Number of sides
-      int sides = 30;
+      int sides = std::ceil(2 * M_PI/(voxel_size_/cone->radius));
 
       // Cone Data
       double dtheta = 2 * M_PI/sides;
@@ -155,7 +230,7 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       const shapes::Cylinder *cylinder = static_cast<const shapes::Cylinder *>(shape);
 
       // Number of sides
-      int sides = 30;
+      int sides = std::ceil(2 * M_PI/(voxel_size_/cylinder->radius));
 
       // Cylinder Precision
       double dtheta = 2 * M_PI/sides;
@@ -301,6 +376,8 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
   {
     openvdb::tools::csgUnion(*grid_, *grid, true);
   }
+
+  accessor_ = std::make_shared<openvdb::FloatGrid::ConstAccessor>(grid_->getConstAccessor());
 }
 
 void distance_field::OpenVDBDistanceField::writeToFile(const std::string file_path)

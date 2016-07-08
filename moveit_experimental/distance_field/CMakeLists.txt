@@ -2,8 +2,10 @@ set(MOVEIT_LIB_NAME moveit_openvdb)
 
 find_library(OPENVDB_LIBRARY NAMES openvdb)
 
+find_library(TBB_LIBRARY NAMES tbb)
+
 add_library(${MOVEIT_LIB_NAME} src/openvdb_distance_field.cpp)
-target_link_libraries(${MOVEIT_LIB_NAME} ${catkin_LIBRARIES} ${OPENVDB_LIBRARY})
+target_link_libraries(${MOVEIT_LIB_NAME} ${catkin_LIBRARIES} ${OPENVDB_LIBRARY} ${TBB_LIBRARY})
 
 install(TARGETS ${MOVEIT_LIB_NAME} LIBRARY DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include)
