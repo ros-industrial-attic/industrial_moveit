@@ -89,12 +89,23 @@ struct StompConfiguration
   double control_cost_weight;  /**< Percentage of the trajectory accelerations cost to be applied in the total cost calculation >*/
 };
 
+
 static const int FINITE_DIFF_RULE_LENGTH = 7;
-static const double FINITE_DIFF_COEFFS[FINITE_DIFF_RULE_LENGTH][FINITE_DIFF_RULE_LENGTH] = { {0, 0, 0, 1, 0, 0, 0}, // position
-    {0, 0, -1, 1, 0, 0, 0}, // velocity (backward difference)
+
+static const double FINITE_CENTRAL_DIFF_COEFFS[FINITE_DIFF_RULE_LENGTH][FINITE_DIFF_RULE_LENGTH] = {
+    {0, 0, 0, 1, 0, 0, 0}, // position
+    {0, 1.0/12.0, -2.0/3.0, 0, 2.0/3.0, -1.0/12.0, 0}, // velocity
     {0, -1 / 12.0, 16 / 12.0, -30 / 12.0, 16 / 12.0, -1 / 12.0, 0}, // acceleration (five point stencil)
     {0, 1 / 12.0, -17 / 12.0, 46 / 12.0, -46 / 12.0, 17 / 12.0, -1 / 12.0} // jerk
 };
+
+static const double FINITE_FORWARD_DIFF_COEFFS[FINITE_DIFF_RULE_LENGTH][FINITE_DIFF_RULE_LENGTH] = {
+    {1          , 0         , 0       ,       0,        0 ,         0 ,     0}, // position
+    {-25.0/12.0 , 4.0       , -3.0    , 4.0/3.0, -1.0/4.0 ,         0 ,     0}, // velocity
+    {15.0/4.0   , -77.0/6.0 , 107.0/6.0 , -13.0  , 61.0/12.0, -5.0/6.0  ,     0}, // acceleration (five point stencil)
+    {-49/8      ,         29,  -461/8 ,  62    ,  -307/8  ,  13       , -15/8}  // jerk
+};
+
 
 void generateFiniteDifferenceMatrix(int num_time_steps, DerivativeOrders::DerivativeOrder order, double dt,
                                     Eigen::MatrixXd& diff_matrix);
