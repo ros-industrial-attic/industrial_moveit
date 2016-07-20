@@ -36,6 +36,7 @@
 #include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <constrained_ik/moveit_interface/joint_interpolation_planner.h>
 #include <constrained_ik/ConstrainedIKPlannerDynamicReconfigureConfig.h>
+#include <industrial_collision_detection/collision_robot_industrial.h>
 #include <fstream>
 #include <time.h>
 #include "openvdb_distance_field.h"
@@ -58,7 +59,7 @@ int main (int argc, char *argv[])
   if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug))
      ros::console::notifyLoggerLevelsChanged();
 
-  sleep(0);
+  sleep(10);
   robot_model_loader::RobotModelLoaderPtr loader;
   robot_model::RobotModelPtr robot_model;
   string urdf_file_path, srdf_file_path;
@@ -81,32 +82,65 @@ int main (int argc, char *argv[])
     ROS_ERROR_STREAM("Unable to load robot model from urdf and srdf.");
     return false;
   }
+  double t;
+  ros::Time start;
+
+  // create planning scene
+  planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(robot_model));
+
+  //Now assign collision detection plugin
+  collision_detection::CollisionPluginLoader cd_loader;
+  std::string class_name = "IndustrialFCL";
+  cd_loader.activate(class_name, planning_scene, true);
+
+  // get collision robot
+  collision_detection::CollisionRobotIndustrialConstPtr collision_robot = boost::dynamic_pointer_cast<const collision_detection::CollisionRobotIndustrial>(planning_scene->getCollisionRobot());
 
   // get robot state
-  moveit::core::RobotStatePtr robot_state(new moveit::core::RobotState(robot_model));
+  moveit::core::RobotState robot_state = planning_scene->getCurrentState();
+  robot_state.updateCollisionBodyTransforms();
 
-  ros::Time start;
+
+  // get baseline fcl distance call data
+  collision_detection::DistanceRequest req;
+  collision_detection::DistanceResult res;
+  req.acm = &planning_scene->getAllowedCollisionMatrix();
+  req.group_name = "manipulator_rail";
+  t=0;
+  ROS_ERROR("FCL, Test Distance queries");
+  for(int i = 0; i < 10; ++i)
+  {
+    res.clear();
+    start = ros::Time::now();
+    collision_robot->distanceSelf(req, res, robot_state);
+    t+=(ros::Time::now() - start).toSec();
+  }
+  ROS_ERROR("FCL, Links: %s to %s", res.minimum_distance.link_name[0].c_str(), res.minimum_distance.link_name[1].c_str());
+  ROS_ERROR("FCL, Distance: %0.8f", res.minimum_distance.min_distance);
+  ROS_ERROR("FCL, Distance Average Time Elapsed: %0.8f (sec)", t/10.0);
+
+  // distance field testing
   distance_field::OpenVDBDistanceField df(0.02);
 
   // Add sphere for testing distance
-  ROS_ERROR("Adding sphere to distance field.");
+  ROS_ERROR("Add Sphere #1, to distance field.");
   start = ros::Time::now();
   shapes::Sphere *sphere1 = new shapes::Sphere(0.5);
   Eigen::Affine3d pose1 = Eigen::Affine3d::Identity();
   pose1.translation() = Eigen::Vector3d(4, 4, 4);
-  df.addShapeToField(sphere1, pose1, 0.5/0.01, 0.5/0.01);
-  ROS_ERROR("Time Elapsed: %f (sec)",(ros::Time::now() - start).toSec());
+  df.addShapeToField(sphere1, pose1, 0.5/0.02, 0.5/0.02);
+  ROS_ERROR("Add Sphere #1, Time Elapsed: %f (sec)",(ros::Time::now() - start).toSec());
 
   // Add second sphere for testing distance
-  ROS_ERROR("Adding sphere to distance field.");
+  ROS_ERROR("Add Sphere #2, to distance field.");
   start = ros::Time::now();
   shapes::Sphere *sphere2 = new shapes::Sphere(0.5);
   Eigen::Affine3d pose2 = Eigen::Affine3d::Identity();
-  pose2.translation() = Eigen::Vector3d(4, 4, 5.5);
-  df.addShapeToField(sphere2, pose2, 0.5/0.01, 0.5/0.01);
-  ROS_ERROR("Time Elapsed: %f (sec)",(ros::Time::now() - start).toSec());
+  pose2.translation() = Eigen::Vector3d(4, 4, 8.5);
+  df.addShapeToField(sphere2, pose2, 0.5/0.02, 0.5/0.02);
+  ROS_ERROR("Add Sphere #2, Time Elapsed: %f (sec)",(ros::Time::now() - start).toSec());
 
-  double dist, t;
+  double dist;
   Eigen::Vector3f pick_point(4.0, 4.0, 4.4), gradient;
 
   t=0;
@@ -118,17 +152,14 @@ int main (int argc, char *argv[])
     t+=(ros::Time::now() - start).toSec();
   }
 
-  ROS_ERROR("Background: %f", df.getGrid()->background());
-  ROS_ERROR("Distance: %f", dist);
-  ROS_ERROR("Gradient: %f %f %f", gradient(0), gradient(1), gradient(2));
-  ROS_ERROR("Average Time Elapsed: %0.8f (sec)",t/10.0);
-
-  // Add Robot to distance field
-//  df.addRobotToField(robot_state);
+  ROS_ERROR("Sphere example, Background: %f", df.getGrid()->background());
+  ROS_ERROR("Sphere example, Distance: %f", dist);
+  ROS_ERROR("Sphere example, Gradient: %f %f %f", gradient(0), gradient(1), gradient(2));
+  ROS_ERROR("Sphere example, Average Time Elapsed: %0.8f (sec)",t/10.0);
 
   // Write distance field to file
   df.writeToFile("/home/larmstrong/test.vdb");
-  ROS_ERROR("Bytes: %i", int(df.getGrid()->memUsage()));
+  ROS_ERROR("Sphere example, Bytes: %i", int(df.memUsage()));
 
 
 // This tests the ClosestSurfacePoint which is about 10-30 times slower
@@ -153,8 +184,27 @@ int main (int argc, char *argv[])
     t+=(ros::Time::now() - start).toSec();
   }
 
-  ROS_ERROR("Background: %f", df.getGrid()->background());
-  ROS_ERROR("Distance: %f", dist);
-  ROS_ERROR("Average Time Elapsed: %0.8f (sec)",t/10.0);
+  ROS_ERROR("Closest Surface Point, Background: %f", df.getGrid()->background());
+  ROS_ERROR("Closest Surface Point, Distance: %f", dist);
+  ROS_ERROR("Closest Surface Point, Average Time Elapsed: %0.8f (sec)",t/10.0);
+
+
+  // Test Openvdb Collision robot
+  ROS_ERROR("Openvdb Collision Robot Test");
+  distance_field::CollisionRobotOpenVDB openvdb_robot(robot_model,0.02, 0.5, 0.5/0.02, 0.5/0.02);
+  t=0;
+  start = ros::Time::now();
+  res.clear();
+  openvdb_robot.distanceSelf(req, res, robot_state);
+  t+=(ros::Time::now() - start).toSec();
+  ROS_ERROR("Openvdb Collision Robot, Links: %s to %s", res.minimum_distance.link_name[0].c_str(), res.minimum_distance.link_name[1].c_str());
+  ROS_ERROR("Openvdb Collision Robot, Distance: %f", res.minimum_distance.min_distance);
+  ROS_ERROR("Openvdb Collision Robot, Average Time Elapsed: %0.8f (sec)",t);
+
+  // Write robot sdf to file
+  openvdb_robot.writeToFile("/home/larmstrong/test_robot.vdb");
+
+  ROS_ERROR("Openvdb Collision Robot, Memory: %0.2f GB", openvdb_robot.memUsage()*1.0e-9);
+
   return 0;
 }

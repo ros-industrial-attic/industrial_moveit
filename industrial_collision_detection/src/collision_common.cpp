@@ -42,23 +42,21 @@ namespace collision_detection
     for (DistanceMap::const_iterator it = distance_detailed.begin(); it != distance_detailed.end(); ++it)
     {
       DistanceInfo dist_info;
-      fcl::DistanceResult dist = static_cast<const fcl::DistanceResult>(it->second);
-      const CollisionGeometryData* cd1 = static_cast<const CollisionGeometryData*>(dist.o1->getUserData());
-      const CollisionGeometryData* cd2 = static_cast<const CollisionGeometryData*>(dist.o2->getUserData());
-      if (cd1->ptr.link->getName() == it->first)
+      DistanceResultsData dist = static_cast<const DistanceResultsData>(it->second);
+      if (dist.link_name[0] == it->first)
       {
-        dist_info.nearest_obsticle = cd2->ptr.link->getName();
-        dist_info.link_point = tf * Eigen::Vector3d(dist.nearest_points[0].data.vs);
-        dist_info.obsticle_point = tf * Eigen::Vector3d(dist.nearest_points[1].data.vs);
+        dist_info.nearest_obsticle = dist.link_name[1];
+        dist_info.link_point = tf * dist.nearest_points[0];
+        dist_info.obsticle_point = tf * dist.nearest_points[1];
         dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
         dist_info.avoidance_vector.normalize();
         dist_info.distance = dist.min_distance;
       }
-      else if (cd2->ptr.link->getName() == it->first)
+      else if (dist.link_name[1] == it->first)
       {
-        dist_info.nearest_obsticle = cd1->ptr.link->getName();
-        dist_info.link_point = tf * Eigen::Vector3d(dist.nearest_points[1].data.vs);
-        dist_info.obsticle_point = tf * Eigen::Vector3d(dist.nearest_points[0].data.vs);
+        dist_info.nearest_obsticle = dist.link_name[0];
+        dist_info.link_point = tf * dist.nearest_points[1];
+        dist_info.obsticle_point = tf * dist.nearest_points[0];
         dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
         dist_info.avoidance_vector.normalize();
         dist_info.distance = dist.min_distance;
@@ -173,9 +171,10 @@ namespace collision_detection
       logDebug("Actually checking collisions between %s and %s", cd1->getID().c_str(), cd2->getID().c_str());
 
 
-    fcl::DistanceResult dist_result;
+    fcl::DistanceResult fcl_result;
+    DistanceResultsData dist_result;
     double dist_threshold = cdata->req->distance_threshold;
-    std::map<std::string, fcl::DistanceResult>::iterator it1, it2;
+    std::map<std::string, DistanceResultsData>::iterator it1, it2;
 
     if (!cdata->req->global)
     {
@@ -211,14 +210,20 @@ namespace collision_detection
         dist_threshold = cdata->res->minimum_distance.min_distance;
     }
 
-    dist_result.min_distance = dist_threshold;
-    double d = fcl::distance(o1, o2, fcl::DistanceRequest(cdata->req->detailed), dist_result);
+    fcl_result.min_distance = dist_threshold;
+    double d = fcl::distance(o1, o2, fcl::DistanceRequest(cdata->req->detailed), fcl_result);
 
     // Check if either object is already in the map. If not add it or if present
     // check to see if the new distance is closer. If closer remove the existing
     // one and add the new distance information.
     if (d < dist_threshold)
     {
+      dist_result.min_distance = fcl_result.min_distance;
+      dist_result.nearest_points[0] = Eigen::Vector3d(fcl_result.nearest_points[0].data.vs);
+      dist_result.nearest_points[1] = Eigen::Vector3d(fcl_result.nearest_points[1].data.vs);
+      dist_result.link_name[0] = cd1->ptr.obj->id_;
+      dist_result.link_name[1] = cd2->ptr.obj->id_;
+
       cdata->res->minimum_distance.update(dist_result);
 
       if (!cdata->req->global)
