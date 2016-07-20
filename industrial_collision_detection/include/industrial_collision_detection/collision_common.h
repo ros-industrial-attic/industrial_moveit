@@ -39,13 +39,12 @@
 
 namespace collision_detection
 {
-  typedef std::map<std::string, fcl::DistanceResult> DistanceMap;
+
 
   struct DistanceRequest
   {
     DistanceRequest(): detailed(false),
                        global(true),
-                       group_name(NULL),
                        active_components_only(NULL),
                        acm(NULL),
                        distance_threshold(std::numeric_limits<double>::max()),
@@ -115,6 +114,51 @@ namespace collision_detection
 
   };
 
+  struct DistanceResultsData
+  {
+    /// @brief minimum distance between two objects. if two objects are in collision, min_distance <= 0.
+    double min_distance;
+
+    /// @brief nearest points
+    Eigen::Vector3d nearest_points[2];
+
+    /// @brief object link names
+    std::string link_name[2];
+
+    /// @brief gradient
+    Eigen::Vector3d gradient;
+
+    bool hasGradient;
+
+    bool hasNearestPoints;
+
+    void clear()
+    {
+      min_distance = std::numeric_limits<double>::max();
+      nearest_points[0].setZero();
+      nearest_points[1].setZero();
+      link_name[0] = "";
+      link_name[1] = "";
+      gradient.setZero();
+      hasGradient = false;
+      hasNearestPoints = false;
+    }
+
+    void update(const DistanceResultsData &results)
+    {
+      min_distance = results.min_distance;
+      nearest_points[0] = results.nearest_points[0];
+      nearest_points[1] = results.nearest_points[1];
+      link_name[0] = results.link_name[0];
+      link_name[1] = results.link_name[1];
+      gradient = results.gradient;
+      hasGradient = results.hasGradient;
+      hasNearestPoints = results.hasNearestPoints;
+    }
+  };
+
+  typedef std::map<std::string, DistanceResultsData> DistanceMap;
+
   struct DistanceResult
   {
     DistanceResult(): collision(false) {}
@@ -122,7 +166,7 @@ namespace collision_detection
 
     bool collision;
 
-    fcl::DistanceResult minimum_distance;
+    DistanceResultsData minimum_distance;
 
     DistanceMap distance;
 

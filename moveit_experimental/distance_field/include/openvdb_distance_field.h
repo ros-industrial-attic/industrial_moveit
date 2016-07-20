@@ -8,6 +8,7 @@
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/math/Vec3.h>
+#include <industrial_collision_detection/collision_common.h>
 
 namespace distance_field
 {
@@ -25,26 +26,40 @@ class OpenVDBDistanceField
 public:
     OpenVDBDistanceField(float voxel_size = 0.01, float background = 0.5);
 
-    double getDistance(const Eigen::Vector3f &point) const;
+    double getDistance(const Eigen::Vector3f &point, bool thread_safe = true) const;
 
-    double getDistance(const openvdb::math::Coord &coord) const;
+    double getDistance(const openvdb::math::Coord &coord, bool thread_safe = true) const;
 
-    double getDistance(const float &x, const float &y, const float &z) const;
+    double getDistance(const float &x, const float &y, const float &z, bool thread_safe = true) const;
 
-    double getDistanceGradient(const Eigen::Vector3f &point, Eigen::Vector3f &gradient) const;
+    Eigen::Vector3d getGradient(const Eigen::Vector3f &point, bool thread_safe = true) const;
 
-    double getDistanceGradient(const openvdb::math::Coord &coord, Eigen::Vector3f &gradient) const;
+    Eigen::Vector3d getGradient(const openvdb::math::Coord &coord, bool thread_safe = true) const;
 
-    double getDistanceGradient(const float &x, const float &y, const float &z, Eigen::Vector3f &gradient) const;
+    Eigen::Vector3d getGradient(const float &x, const float &y, const float &z, bool thread_safe = true) const;
 
-    void addShapeToField(const shapes::Shape* shape,
+    void addShapeToField(const shapes::Shape *shape,
                          const Eigen::Affine3d &pose,
                          const float exBandWidth = openvdb::LEVEL_SET_HALF_WIDTH,
                          const float inBandWidth = openvdb::LEVEL_SET_HALF_WIDTH);
 
+    void addLinkToField(const robot_model::LinkModel *link,
+                        const Eigen::Affine3d &pose,
+                        const float exBandWidth = openvdb::LEVEL_SET_HALF_WIDTH,
+                        const float inBandWidth = openvdb::LEVEL_SET_HALF_WIDTH);
 
+
+    void fillWithSpheres(std::vector<std::pair<Eigen::Vector3d, double> > &spheres,
+                         int maxSphereCount,
+                         bool overlapping = false,
+                         float minRadius = 1.0,
+                         float maxRadius = std::numeric_limits<float>::max(),
+                         float isovalue = 0.0,
+                         int instanceCount = 10000);
 
     void writeToFile(const std::string file_path);
+
+    uint64_t memUsage() const;
 
     openvdb::FloatGrid::Ptr getGrid() const;
 
@@ -56,6 +71,9 @@ private:
     std::shared_ptr<openvdb::FloatGrid::ConstAccessor> accessor_;
     openvdb::math::Transform::Ptr transform_;
 };
+
+typedef boost::shared_ptr<OpenVDBDistanceField> OpenVDBDistanceFieldPtr;
+typedef boost::shared_ptr<const OpenVDBDistanceField> OpenVDBDistanceFieldConstPtr;
 
 static MeshData ShapeMeshToOpenVDB(const shapes::Mesh *mesh, const Eigen::Affine3d &pose);
 
@@ -75,21 +93,64 @@ public:
                         const float exBandWidth = openvdb::LEVEL_SET_HALF_WIDTH,
                         const float inBandWidth = openvdb::LEVEL_SET_HALF_WIDTH);
 
+//  double distanceSelf(const robot_state::RobotState &state) const;
+  void distanceSelf(const collision_detection::DistanceRequest &req, collision_detection::DistanceResult &res, const robot_state::RobotState &state) const;
+
   void writeToFile(const std::string file_path);
 
-private:
-  void addRobotToField();
+  uint64_t memUsage() const;
 
-  void addLinkToField(const moveit::core::LinkModel *link, const Eigen::Affine3d &pose, OpenVDBDistanceField &sdf);
+private:
+  void distanceSelfHelper(const std::vector<std::pair<Eigen::Vector3d, double> > &spheres, OpenVDBDistanceFieldConstPtr sdf, double &min_dist, int &index) const;
+
+  /**
+   * @brief Create static signed distance fields.
+   *
+   * These are links attached to the world by fixed transforms or by proxy
+   */
+  void createStaticSDFs();
+
+  /**
+   * @brief Create active signed distance fields.
+   *
+   * These are links that are associated to a move_group (joint, linear, etc.). These are
+   * the only links that get a sphere model.
+   */
+  void createActiveSDFs();
+
+  /**
+   * @brief Create dynamic signed distance fields.
+   *
+   * These are links that have the ability to move but are not associated to a move_group (joint, linear, etc.)
+   */
+  void createDynamicSDFs();
+
+  /**
+   * @brief This is a recursive helper function that creates the static signed distance field given a base link.
+   *
+   * @param link, The link to search for child links that are attached by fixed transform.
+   */
+  void addAssociatedFixedTransforms(const robot_model::LinkModel *link);
+
+  bool isCollisionAllowed(const std::string &l1, const std::string &l2, const collision_detection::AllowedCollisionMatrix *acm) const;
 
   const robot_model::RobotModelConstPtr robot_model_;
 
-  OpenVDBDistanceField static_objects; /**< A single SDF that contains all fix objects */
+  const std::vector<const robot_model::LinkModel*>& links_;
 
-  std::vector<OpenVDBDistanceField> dynamic_objects; /**< A vector of SDF that contains all dynamic objects */
+  std::vector<OpenVDBDistanceFieldConstPtr> static_sdf_;
+  std::vector<const robot_model::LinkModel*> static_links_;
 
+  std::vector<OpenVDBDistanceFieldConstPtr> dynamic_sdf_;
+  std::vector<const robot_model::LinkModel*> dynamic_links_;
+
+  std::vector<OpenVDBDistanceFieldConstPtr> active_sdf_;
+  std::vector<const robot_model::LinkModel*> active_links_;
+  std::vector<std::vector<std::pair<Eigen::Vector3d, double> > > active_spheres_;
+
+  float voxel_size_;
+  float background_;
   float exBandWidth_;
-
   float inBandWidth_;
 };
 

@@ -24,6 +24,7 @@ COMPONENTS
   roslib
   rostime
   cmake_modules
+  industrial_collision_detection
 )
 find_package(console_bridge REQUIRED)
 find_package(Eigen REQUIRED)
