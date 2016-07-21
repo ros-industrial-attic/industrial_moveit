@@ -69,15 +69,16 @@ void distance_field::CollisionRobotOpenVDB::createActiveSDFs()
 
       sdf->addLinkToField(active_links_[i], Eigen::Affine3d::Identity(), (voxel_size_/v) * exBandWidth_, (voxel_size_/v) * inBandWidth_);
 
-      sdf->fillWithSpheres(active_spheres_[i], 10);
+      active_spheres_[i] = SphereModelPtr(new SphereModel());
+      sdf->fillWithSpheres(*active_spheres_[i], 10);
 
-      if (active_spheres_[i].size() != 0)
+      if (active_spheres_[i]->size() != 0)
         break;
 
       v = v * 0.5;
     }
 
-    if (active_spheres_[i].size() == 0)
+    if (active_spheres_[i]->size() == 0)
     {
       ROS_ERROR("Unable to generate spheres for link: %s", active_links_[i]->getName().c_str());
     }
@@ -183,29 +184,48 @@ uint64_t distance_field::CollisionRobotOpenVDB::memUsage() const
 
 void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detection::DistanceRequest &req, collision_detection::DistanceResult &res, const moveit::core::RobotState &state) const
 {
-  std::vector<Eigen::Affine3d> dynamic_poses;
-  std::vector<Eigen::Affine3d> active_poses;
-  std::vector<std::pair<std::vector<std::pair<Eigen::Vector3d, double> >, OpenVDBDistanceFieldConstPtr> > dist_query;
-  std::vector<Eigen::Affine3d> dist_query_poses;
-  std::vector<std::pair<std::string, std::string> > dist_query_names;
+  std::vector<openvdb::math::Mat4d> dynamic_poses;
+  std::vector<openvdb::math::Mat4d> active_poses;
+
+  std::vector<openvdb::math::Transform::Ptr> dynamic_transform;
+  std::vector<openvdb::math::Transform::Ptr> active_transform;
+
+  std::vector<SphereModelPtr> active_spheres;
+
+  std::vector<DistanceQueryData> dist_query;
 
   int dist_size = active_links_.size() * (dynamic_links_.size() + static_links_.size() + ((active_links_.size() - 1) / 2));
-  dynamic_poses.reserve(dynamic_links_.size());
-  active_poses.reserve(active_links_.size());
-  dist_query.reserve(dist_size);
-  dist_query_poses.reserve(dist_size);
-  dist_query_names.reserve(dist_size);
+  dynamic_poses.resize(dynamic_links_.size());
+  active_poses.resize(active_links_.size());
+  dynamic_transform.resize(dynamic_links_.size());
+  active_transform.resize(active_links_.size());
 
-  // get all dynamic link pose information
+  active_spheres.reserve(active_links_.size());
+  dist_query.reserve(dist_size);
+
+  // get all dynamic link information
   for (std::size_t i = 0 ; i < dynamic_links_.size() ; ++i)
   {
-    dynamic_poses[i] = state.getGlobalLinkTransform(dynamic_links_[i]);
+    Affine3dToMat4d(state.getGlobalLinkTransform(dynamic_links_[i]), dynamic_poses[i]);
+
+    // Get SDF transformation for converting between world and index space.
+    dynamic_transform[i] = openvdb::math::Transform::createLinearTransform(dynamic_poses[i].transpose());
+    dynamic_transform[i]->preScale(dynamic_sdf_[i]->getVoxelSize());
   }
 
-  // get all active link pose information
+  // get all active link information
   for (std::size_t i = 0 ; i < active_links_.size() ; ++i)
   {
-    active_poses[i] = state.getGlobalLinkTransform(active_links_[i]);
+    Affine3dToMat4d(state.getGlobalLinkTransform(active_links_[i]), active_poses[i]);
+
+    // transform sphere origins into world coordinate system
+    active_spheres.push_back(SphereModelPtr(new SphereModel(*active_spheres_[i])));
+    std::transform(active_spheres[i]->begin(), active_spheres[i]->end(), active_spheres[i]->begin(),
+                   [&active_poses, &i](std::pair<openvdb::math::Vec3d, double> p){ p.first = (active_poses[i] * p.first); return p; });
+
+    // Get SDF transformation for converting between world and index space.
+    active_transform[i] = openvdb::math::Transform::createLinearTransform(active_poses[i].transpose());
+    active_transform[i]->preScale(active_sdf_[i]->getVoxelSize());
   }
 
   // build distance query vector
@@ -216,11 +236,16 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
     {
       if (isCollisionAllowed(active_links_[i]->getName(), static_links_[j]->getName(), req.acm))
       {
-        if (active_spheres_[i].size() != 0)
+        if (active_spheres_[i]->size() != 0)
         {
-          dist_query.push_back(std::make_pair(active_spheres_[i], static_sdf_[j]));
-          dist_query_poses.push_back(active_poses[i]);
-          dist_query_names.push_back(std::make_pair(active_links_[i]->getName(), static_links_[j]->getName()));
+          DistanceQueryData data;
+          data.link_name[0] = active_links_[i]->getName();
+          data.link_name[1] = static_links_[j]->getName();
+          data.sdf = static_sdf_[j];
+          data.spheres = active_spheres[i];
+          data.transform = static_sdf_[j]->getTransform();
+
+          dist_query.push_back(std::move(data));
           cnt += 1;
         }
         else
@@ -234,11 +259,16 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
     {
       if (isCollisionAllowed(active_links_[i]->getName(), dynamic_links_[j]->getName(), req.acm))
       {
-        if (active_spheres_[i].size() != 0)
+        if (active_spheres_[i]->size() != 0)
         {
-          dist_query.push_back(std::make_pair(active_spheres_[i], dynamic_sdf_[j]));
-          dist_query_poses.push_back(dynamic_poses[j].inverse() * active_poses[i]);
-          dist_query_names.push_back(std::make_pair(active_links_[i]->getName(), dynamic_links_[j]->getName()));
+          DistanceQueryData data;
+          data.link_name[0] = active_links_[i]->getName();
+          data.link_name[1] = dynamic_links_[j]->getName();
+          data.sdf = dynamic_sdf_[j];
+          data.spheres = active_spheres[i];
+          data.transform = dynamic_transform[j];
+
+          dist_query.push_back(std::move(data));
           cnt += 1;
         }
         else
@@ -254,11 +284,16 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
       {
         if (isCollisionAllowed(active_links_[i]->getName(), active_links_[j]->getName(), req.acm))
         {
-          if (active_spheres_[i].size() != 0)
+          if (active_spheres_[i]->size() != 0)
           {
-            dist_query.push_back(std::make_pair(active_spheres_[i], active_sdf_[j]));
-            dist_query_poses.push_back(active_poses[j].inverse() * active_poses[i]);
-            dist_query_names.push_back(std::make_pair(active_links_[i]->getName(), active_links_[j]->getName()));
+            DistanceQueryData data;
+            data.link_name[0] = active_links_[i]->getName();
+            data.link_name[1] = active_links_[j]->getName();
+            data.sdf = active_sdf_[j];
+            data.spheres = active_spheres[i];
+            data.transform = active_transform[j];
+
+            dist_query.push_back(std::move(data));
             cnt += 1;
           }
           else
@@ -271,108 +306,101 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
   }
 
   Eigen::VectorXd dist(cnt);
-  std::vector<int> sphere_index;
-  sphere_index.reserve(cnt);
+  std::vector<openvdb::math::Vec3d> world_location;
+  world_location.reserve(cnt);
 
   // Compute minimum distance
 //  #pragma omp parallel for
   for (std::size_t i = 0 ; i < cnt ; ++i)
   {
-    // transform sphere origins into correct coordinate system
-    std::transform(dist_query[i].first.begin(), dist_query[i].first.end(), dist_query[i].first.begin(),
-                   [&dist_query_poses, &i](std::pair<Eigen::Vector3d, double> p){ p.first = (dist_query_poses[i] * p.first); return p; });
-
     dist[i] = background_;
-    distanceSelfHelper(dist_query[i].first, dist_query[i].second, dist[i], sphere_index[i]);
+    distanceSelfHelper(dist_query[i], dist[i], world_location[i]);
   }
 
   int index;
   res.minimum_distance.min_distance = dist.minCoeff(&index);
   res.minimum_distance.hasNearestPoints = false;
   res.minimum_distance.hasGradient = true;
-  res.minimum_distance.link_name[0] = dist_query_names[index].first;
-  res.minimum_distance.link_name[1] = dist_query_names[index].second;
+  res.minimum_distance.link_name[0] = dist_query[index].link_name[0];
+  res.minimum_distance.link_name[1] = dist_query[index].link_name[1];
 
   // Compute gradient
-  // get all active link pose information
-  int active_index;
-  for (std::size_t i = 0 ; i < active_links_.size() ; ++i)
-  {
-    if( active_links_[i]->getName() == dist_query_names[index].first)
-    {
-      active_index = i;
-      break;
-    }
-  }
   Eigen::Vector3d grad;
-  grad.setZero();
+  std::vector<openvdb::math::Vec3d> delta(6);
+  Eigen::VectorXd grad_dist(6);
+  grad_dist.setConstant(6, background_);
+
+  delta[0] = world_location[index];
+  delta[1] = world_location[index];
+  delta[2] = world_location[index];
+  delta[3] = world_location[index];
+  delta[4] = world_location[index];
+  delta[5] = world_location[index];
+
+
+  delta[0][0] += 2*voxel_size_;
+  delta[1][0] += -2*voxel_size_;
+  delta[2][1] += 2*voxel_size_;
+  delta[3][1] += -2*voxel_size_;
+  delta[4][2] += 2*voxel_size_;
+  delta[5][2] += -2*voxel_size_;
+
   cnt = 0;
   for (std::size_t i = 0 ; i < active_links_.size() ; ++i)
   {
-    if (i != active_index)
+    if (active_links_[i]->getName() != dist_query[index].link_name[0] && isCollisionAllowed(active_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
     {
-      for (std::size_t j = 0 ; j < static_links_.size() ; ++j)
+      for (std::size_t j = 0 ; j < 6 ; ++j)
       {
-        if (isCollisionAllowed(active_links_[i]->getName(), static_links_[j]->getName(), req.acm))
+        openvdb::math::Coord ijk = active_transform[i]->worldToIndexNodeCentered(delta[j]);
+        double d = active_sdf_[i]->getDistance(ijk, true);
+        if (d < grad_dist(j))
         {
-          if (active_spheres_[i].size() != 0)
-          {
-            Eigen::Vector3d center = active_poses[i] * active_spheres_[i][sphere_index[index]].first;
-            grad += static_sdf_[j]->getGradient(center(0), center(1), center(2), false);
-            cnt += 1;
-          }
-          else
-          {
-            ROS_ERROR("Link %s has zeros spheres, unable to perform check between links %s and %s.", active_links_[i]->getName().c_str(), active_links_[i]->getName().c_str(), static_links_[j]->getName().c_str());
-          }
-        }
-      }
-
-      for (std::size_t j = 0 ; j < dynamic_links_.size() ; ++j)
-      {
-        if (isCollisionAllowed(active_links_[i]->getName(), dynamic_links_[j]->getName(), req.acm))
-        {
-          if (active_spheres_[i].size() != 0)
-          {
-            Eigen::Affine3d inv = dynamic_poses[j].inverse();
-            Eigen::Vector3d center = (inv * active_poses[i]) * active_spheres_[i][sphere_index[index]].first;
-            grad += (inv * dynamic_sdf_[j]->getGradient(center(0), center(1), center(2), false));
-            cnt += 1;
-          }
-          else
-          {
-            ROS_ERROR("Link %s has zeros spheres, unable to perform check between links %s and %s.", active_links_[i]->getName().c_str(), active_links_[i]->getName().c_str(), dynamic_links_[j]->getName().c_str());
-          }
-        }
-      }
-
-      if (i != active_links_.size())
-      {
-        for (std::size_t j = i + 1 ; j < active_links_.size(); ++j)
-        {
-          if (isCollisionAllowed(active_links_[i]->getName(), active_links_[j]->getName(), req.acm))
-          {
-            if (active_spheres_[i].size() != 0)
-            {
-              Eigen::Affine3d inv = active_poses[j].inverse();
-              Eigen::Vector3d center = (inv * active_poses[i]) * active_spheres_[i][sphere_index[index]].first;
-              grad += (inv * active_sdf_[j]->getGradient(center(0), center(1), center(2), false));
-              cnt += 1;
-            }
-            else
-            {
-              ROS_ERROR("Link %s has zeros spheres, unable to perform check between links %s and %s.", active_links_[i]->getName().c_str(), active_links_[i]->getName().c_str(), active_links_[j]->getName().c_str());
-            }
-          }
+          grad_dist(j) = d;
         }
       }
     }
   }
 
-  grad = grad/cnt;
-  ROS_ERROR("Gradient: %f, %f, %f", grad(0), grad(1), grad(2));
-}
+  for (std::size_t i = 0 ; i < dynamic_links_.size() ; ++i)
+  {
+    if (isCollisionAllowed(dynamic_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
+    {
+      for (std::size_t j = 0 ; j < 6 ; ++j)
+      {
+        openvdb::math::Coord ijk = dynamic_transform[i]->worldToIndexNodeCentered(delta[j]);
+        double d = dynamic_sdf_[i]->getDistance(ijk, true);
+        if (d < grad_dist(j))
+        {
+          grad_dist(j) = d;
+        }
+      }
+    }
+  }
 
+  for (std::size_t i = 0 ; i < static_links_.size() ; ++i)
+  {
+    if (isCollisionAllowed(static_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
+    {
+      for (std::size_t j = 0 ; j < 6 ; ++j)
+      {
+        openvdb::math::Coord ijk = static_sdf_[i]->getTransform()->worldToIndexNodeCentered(delta[j]);
+        double d = static_sdf_[i]->getDistance(ijk, true);
+        if (d < grad_dist(j))
+        {
+          grad_dist(j) = d;
+        }
+      }
+    }
+  }
+
+ grad(0) = (grad_dist(1)-grad_dist(0))/(4*voxel_size_);
+ grad(1) = (grad_dist(3)-grad_dist(2))/(4*voxel_size_);
+ grad(2) = (grad_dist(5)-grad_dist(5))/(4*voxel_size_);
+ grad.normalize();
+
+ res.minimum_distance.gradient = grad;
+}
 
 bool distance_field::CollisionRobotOpenVDB::isCollisionAllowed(const std::string &l1, const std::string &l2, const collision_detection::AllowedCollisionMatrix *acm) const
 {
@@ -394,15 +422,17 @@ bool distance_field::CollisionRobotOpenVDB::isCollisionAllowed(const std::string
     return true;
 }
 
-void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(const std::vector<std::pair<Eigen::Vector3d, double> > &spheres, OpenVDBDistanceFieldConstPtr sdf, double &min_dist, int &index) const
+void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(DistanceQueryData &data, double &min_dist, openvdb::math::Vec3d &location) const
 {
-  Eigen::VectorXf dist(spheres.size());
-  for (int i = 0; i < spheres.size(); ++i)
+  Eigen::VectorXf dist(data.spheres->size());
+  for (int i = 0; i < data.spheres->size(); ++i)
   {
-    dist[i] = sdf->getDistance(spheres[i].first(0), spheres[i].first(1), spheres[i].first(2), true) - spheres[i].second;
+    openvdb::math::Coord ijk = data.transform->worldToIndexNodeCentered((*data.spheres)[i].first);
+    dist[i] = data.sdf->getDistance(ijk, true) - (*data.spheres)[i].second;
   }
-
+  int index;
   min_dist = dist.minCoeff(&index);
+  location = (*data.spheres)[index].first;
 }
 
 distance_field::OpenVDBDistanceField::OpenVDBDistanceField(float voxel_size, float background) :
@@ -416,6 +446,16 @@ distance_field::OpenVDBDistanceField::OpenVDBDistanceField(float voxel_size, flo
 openvdb::FloatGrid::Ptr distance_field::OpenVDBDistanceField::getGrid() const
 {
   return grid_;
+}
+
+double distance_field::OpenVDBDistanceField::getVoxelSize() const
+{
+  return voxel_size_;
+}
+
+openvdb::math::Transform::Ptr distance_field::OpenVDBDistanceField::getTransform() const
+{
+  return transform_;
 }
 
 double distance_field::OpenVDBDistanceField::getDistance(const Eigen::Vector3f &point, bool thread_safe) const
@@ -447,15 +487,14 @@ double distance_field::OpenVDBDistanceField::getDistance(const float &x, const f
   return getDistance(transform_->worldToIndexNodeCentered(xyz), thread_safe);
 }
 
-Eigen::Vector3d distance_field::OpenVDBDistanceField::getGradient(const Eigen::Vector3f &point, bool thread_safe) const
+bool distance_field::OpenVDBDistanceField::getGradient(const Eigen::Vector3f &point, Eigen::Vector3d &gradient, bool thread_safe) const
 {
-  return getGradient(point(0), point(1), point(2), thread_safe);
+  return getGradient(point(0), point(1), point(2), gradient, thread_safe);
 }
 
-Eigen::Vector3d distance_field::OpenVDBDistanceField::getGradient(const openvdb::math::Coord &coord, bool thread_safe) const
+bool distance_field::OpenVDBDistanceField::getGradient(const openvdb::math::Coord &coord, Eigen::Vector3d &gradient, bool thread_safe) const
 {
   openvdb::Vec3f result;
-  Eigen::Vector3d gradient;
   if (thread_safe)
   {
     gradient(0) = (grid_->tree().getValue(coord.offsetBy(1, 0, 0)) - grid_->tree().getValue(coord.offsetBy(-1,  0,  0)))/(2*grid_->voxelSize()[0]);
@@ -471,7 +510,7 @@ Eigen::Vector3d distance_field::OpenVDBDistanceField::getGradient(const openvdb:
     else
     {
       ROS_ERROR("Tried to get distance and gradient data from and empty grid.");
-      return gradient;
+      return false;
     }
 
     gradient(0) = result(0);
@@ -479,17 +518,39 @@ Eigen::Vector3d distance_field::OpenVDBDistanceField::getGradient(const openvdb:
     gradient(2) = result(2);
   }
 
-  gradient.normalize();
-  return gradient;
+  if (gradient.norm() != 0)
+  {
+    gradient.normalize();
+    return true;
+  }
+  else
+  {
+    return false;
+  }
 }
 
-Eigen::Vector3d distance_field::OpenVDBDistanceField::getGradient(const float &x, const float &y, const float &z, bool thread_safe) const
+bool distance_field::OpenVDBDistanceField::getGradient(const float &x, const float &y, const float &z, Eigen::Vector3d &gradient, bool thread_safe) const
 {
   openvdb::math::Vec3s xyz(x, y, z);
-  return getGradient(transform_->worldToIndexNodeCentered(xyz), thread_safe);
+  return getGradient(transform_->worldToIndexNodeCentered(xyz), gradient, thread_safe);
 }
 
-void distance_field::OpenVDBDistanceField::fillWithSpheres(std::vector<std::pair<Eigen::Vector3d, double> > &spheres, int maxSphereCount, bool overlapping, float minRadius, float maxRadius, float isovalue, int instanceCount)
+//void distance_field::OpenVDBDistanceField::fillWithSpheres(SphereModel &spheres, int maxSphereCount, bool overlapping, float minRadius, float maxRadius, float isovalue, int instanceCount)
+//{
+//  std::vector<openvdb::math::Vec4s> s;
+//  openvdb::tools::fillWithSpheres<openvdb::FloatGrid>(*grid_, s, maxSphereCount, overlapping, minRadius, maxRadius, isovalue, instanceCount);
+
+//  // convert data to eigen data types
+//  for (auto it = s.begin(); it != s.end(); ++it)
+//  {
+//    spheres.push_back(std::make_pair(Eigen::Vector3d((*it)[0], (*it)[1], (*it)[2]), (*it)[3]));
+//  }
+
+//  if (spheres.size()== 0)
+//    ROS_WARN("Unable to fill grid with spheres.");
+//}
+
+void distance_field::OpenVDBDistanceField::fillWithSpheres(SphereModel &spheres, int maxSphereCount, bool overlapping, float minRadius, float maxRadius, float isovalue, int instanceCount)
 {
   std::vector<openvdb::math::Vec4s> s;
   openvdb::tools::fillWithSpheres<openvdb::FloatGrid>(*grid_, s, maxSphereCount, overlapping, minRadius, maxRadius, isovalue, instanceCount);
@@ -497,7 +558,7 @@ void distance_field::OpenVDBDistanceField::fillWithSpheres(std::vector<std::pair
   // convert data to eigen data types
   for (auto it = s.begin(); it != s.end(); ++it)
   {
-    spheres.push_back(std::make_pair(Eigen::Vector3d((*it)[0], (*it)[1], (*it)[2]), (*it)[3]));
+    spheres.push_back(std::make_pair(it->getVec3(), (*it)[3]));
   }
 
   if (spheres.size()== 0)
@@ -841,6 +902,13 @@ void distance_field::Affine3dToMat4d(const Eigen::Affine3d &input, openvdb::math
   for (int i = 0; i < 4; ++i)
     for (int j = 0; j < 4; ++j)
       output(i, j) = input(i, j);
+}
+
+void distance_field::Affine3dToMat4dAffine(const Eigen::Affine3d &input, openvdb::math::Mat4d &output)
+{
+  for (int i = 0; i < 4; ++i)
+    for (int j = 0; j < 4; ++j)
+      output(j, i) = input(i, j);
 }
 
 void distance_field::WorldToIndex(const openvdb::math::Transform::Ptr transform, std::vector<openvdb::math::Vec3s> &points)

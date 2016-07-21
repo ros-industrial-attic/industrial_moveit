@@ -13,6 +13,9 @@
 namespace distance_field
 {
 
+typedef std::vector<std::pair<openvdb::math::Vec3d, double> > SphereModel;
+typedef boost::shared_ptr<std::vector<std::pair<openvdb::math::Vec3d, double> > > SphereModelPtr;
+
 struct MeshData
 {
   std::vector<openvdb::math::Vec3s> points;
@@ -32,11 +35,11 @@ public:
 
     double getDistance(const float &x, const float &y, const float &z, bool thread_safe = true) const;
 
-    Eigen::Vector3d getGradient(const Eigen::Vector3f &point, bool thread_safe = true) const;
+    bool getGradient(const Eigen::Vector3f &point, Eigen::Vector3d &gradient, bool thread_safe = true) const;
 
-    Eigen::Vector3d getGradient(const openvdb::math::Coord &coord, bool thread_safe = true) const;
+    bool getGradient(const openvdb::math::Coord &coord, Eigen::Vector3d &gradient, bool thread_safe = true) const;
 
-    Eigen::Vector3d getGradient(const float &x, const float &y, const float &z, bool thread_safe = true) const;
+    bool getGradient(const float &x, const float &y, const float &z, Eigen::Vector3d &gradient, bool thread_safe = true) const;
 
     void addShapeToField(const shapes::Shape *shape,
                          const Eigen::Affine3d &pose,
@@ -49,7 +52,7 @@ public:
                         const float inBandWidth = openvdb::LEVEL_SET_HALF_WIDTH);
 
 
-    void fillWithSpheres(std::vector<std::pair<Eigen::Vector3d, double> > &spheres,
+    void fillWithSpheres(SphereModel &spheres,
                          int maxSphereCount,
                          bool overlapping = false,
                          float minRadius = 1.0,
@@ -60,6 +63,10 @@ public:
     void writeToFile(const std::string file_path);
 
     uint64_t memUsage() const;
+
+    double getVoxelSize() const;
+
+    openvdb::math::Transform::Ptr getTransform() const;
 
     openvdb::FloatGrid::Ptr getGrid() const;
 
@@ -75,14 +82,24 @@ private:
 typedef boost::shared_ptr<OpenVDBDistanceField> OpenVDBDistanceFieldPtr;
 typedef boost::shared_ptr<const OpenVDBDistanceField> OpenVDBDistanceFieldConstPtr;
 
-static MeshData ShapeMeshToOpenVDB(const shapes::Mesh *mesh, const Eigen::Affine3d &pose);
 
-static void Affine3dToMat4d(const Eigen::Affine3d &input, openvdb::math::Mat4d &output);
+MeshData ShapeMeshToOpenVDB(const shapes::Mesh *mesh, const Eigen::Affine3d &pose);
 
-static void WorldToIndex(const openvdb::math::Transform::Ptr transform, std::vector<openvdb::math::Vec3s> &points);
+void Affine3dToMat4d(const Eigen::Affine3d &input, openvdb::math::Mat4d &output);
 
-static void TransformVec3s(const Eigen::Affine3d &pose, std::vector<openvdb::math::Vec3s> &points);
+void Affine3dToMat4dAffine(const Eigen::Affine3d &input, openvdb::math::Mat4d &output);
 
+void WorldToIndex(const openvdb::math::Transform::Ptr transform, std::vector<openvdb::math::Vec3s> &points);
+
+void TransformVec3s(const Eigen::Affine3d &pose, std::vector<openvdb::math::Vec3s> &points);
+
+struct DistanceQueryData
+{
+  OpenVDBDistanceFieldConstPtr sdf;
+  SphereModelPtr spheres;
+  std::string link_name[2];
+  openvdb::math::Transform::Ptr transform;
+};
 
 class CollisionRobotOpenVDB
 {
@@ -101,7 +118,7 @@ public:
   uint64_t memUsage() const;
 
 private:
-  void distanceSelfHelper(const std::vector<std::pair<Eigen::Vector3d, double> > &spheres, OpenVDBDistanceFieldConstPtr sdf, double &min_dist, int &index) const;
+  void distanceSelfHelper(DistanceQueryData &data, double &min_dist, openvdb::math::Vec3d &location) const;
 
   /**
    * @brief Create static signed distance fields.
@@ -146,7 +163,7 @@ private:
 
   std::vector<OpenVDBDistanceFieldConstPtr> active_sdf_;
   std::vector<const robot_model::LinkModel*> active_links_;
-  std::vector<std::vector<std::pair<Eigen::Vector3d, double> > > active_spheres_;
+  std::vector<SphereModelPtr> active_spheres_;
 
   float voxel_size_;
   float background_;

@@ -40,7 +40,8 @@
 #include <fstream>
 #include <time.h>
 #include "openvdb_distance_field.h"
-#include "openvdb/tools/VolumeToSpheres.h"
+#include <openvdb/tools/VolumeToSpheres.h>
+#include <openvdb/math/Transform.h>
 
 
 using namespace ros;
@@ -147,7 +148,6 @@ int main (int argc, char *argv[])
   for(int i = 0; i < 10; ++i)
   {
     start = ros::Time::now();
-//    dist = df.getDistanceGradient(pick_point, gradient);
     dist = df.getDistance(pick_point);
     t+=(ros::Time::now() - start).toSec();
   }
@@ -189,6 +189,27 @@ int main (int argc, char *argv[])
   ROS_ERROR("Closest Surface Point, Average Time Elapsed: %0.8f (sec)",t/10.0);
 
 
+  // Test Openvdb Transforms
+  openvdb::math::Mat4d mat;
+  Eigen::Affine3d pose = robot_state.getGlobalLinkTransform("link_3");
+  pose.linear() = Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+
+  distance_field::Affine3dToMat4dAffine(pose, mat);
+  openvdb::math::Transform::Ptr linearTransform = openvdb::math::Transform::createLinearTransform(mat);
+  openvdb::math::Transform::Ptr linearTransform1 = openvdb::math::Transform::createLinearTransform(mat);
+  linearTransform1->preScale(0.1);
+
+  openvdb::math::Vec3d ws = linearTransform1->indexToWorld(openvdb::math::Vec3d(0, 0, 0));
+  openvdb::math::Vec3d ws2 = linearTransform1->indexToWorld(openvdb::math::Vec3d(1, 0, 0));
+
+  openvdb::math::Transform::Ptr linearTransform2 = openvdb::math::Transform::createLinearTransform(0.1);
+  openvdb::math::Transform::Ptr linearTransform3 = openvdb::math::Transform::createLinearTransform(1.0);
+  linearTransform3->preScale(0.1);
+
+  bool test = (*linearTransform2 == *linearTransform3);
+
+  linearTransform2->preRotate(M_PI, openvdb::math::X_AXIS );
+
   // Test Openvdb Collision robot
   ROS_ERROR("Openvdb Collision Robot Test");
   distance_field::CollisionRobotOpenVDB openvdb_robot(robot_model,0.02, 0.5, 0.5/0.02, 0.5/0.02);
@@ -199,6 +220,7 @@ int main (int argc, char *argv[])
   t+=(ros::Time::now() - start).toSec();
   ROS_ERROR("Openvdb Collision Robot, Links: %s to %s", res.minimum_distance.link_name[0].c_str(), res.minimum_distance.link_name[1].c_str());
   ROS_ERROR("Openvdb Collision Robot, Distance: %f", res.minimum_distance.min_distance);
+  ROS_ERROR("Gradient: %f, %f, %f", res.minimum_distance.gradient(0), res.minimum_distance.gradient(1), res.minimum_distance.gradient(2));
   ROS_ERROR("Openvdb Collision Robot, Average Time Elapsed: %0.8f (sec)",t);
 
   // Write robot sdf to file
