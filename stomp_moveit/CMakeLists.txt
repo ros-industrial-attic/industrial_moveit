@@ -55,6 +55,7 @@ add_library(${PROJECT_NAME}_cost_functions
   src/cost_functions/tool_goal_pose.cpp
   src/cost_functions/obstacle_avoidance.cpp
   src/cost_functions/collision_check.cpp
+  src/cost_functions/obstacle_distance_gradient.cpp
  )
 target_link_libraries(${PROJECT_NAME}_cost_functions ${catkin_LIBRARIES})
 
