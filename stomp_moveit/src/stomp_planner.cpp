@@ -230,7 +230,7 @@ bool StompPlanner::parametersToJointTrajectory(Eigen::MatrixXd& parameters,
 
   // converting to msg
   moveit_msgs::RobotTrajectory robot_traj_msgs;
-  if(time_generator.computeTimeStamps(traj))
+  if(time_generator.computeTimeStamps(traj,request_.max_velocity_scaling_factor))
   {
     traj.getRobotTrajectoryMsg(robot_traj_msgs);
     trajectory = robot_traj_msgs.joint_trajectory;
