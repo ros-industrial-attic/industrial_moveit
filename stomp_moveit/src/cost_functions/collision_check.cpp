@@ -294,7 +294,7 @@ bool CollisionCheck::configure(const XmlRpc::XmlRpcValue& config)
 {
 
   // check parameter presence
-  auto members = {"cost_weight","collision_penalty"};
+  auto members = {"cost_weight","collision_penalty","kernel_window_percentage"};
   for(auto& m : members)
   {
     if(!config.hasMember(m))
@@ -306,12 +306,15 @@ bool CollisionCheck::configure(const XmlRpc::XmlRpcValue& config)
 
   try
   {
-    if(!config.hasMember("cost_weight") ||
-        !config.hasMember("collision_penalty") ||
-        !config.hasMember("kernel_window_percentage"))
+    // check parameter presence
+    auto members = {"cost_weight","collision_penalty","kernel_window_percentage"};
+    for(auto& m : members)
     {
-      ROS_ERROR("%s failed to load one or more parameters",getName().c_str());
-      return false;
+      if(!config.hasMember(m))
+      {
+        ROS_ERROR("%s failed to find '%s' parameter",getName().c_str(),m);
+        return false;
+      }
     }
 
     XmlRpc::XmlRpcValue c = config;

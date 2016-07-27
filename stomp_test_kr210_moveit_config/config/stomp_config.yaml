@@ -103,15 +103,13 @@ stomp/manipulator_tool:
         stddev: [0.05, 0.4, 1.2, 0.4, 0.4, 0.1, 0.1]
     cost_functions:
       - class: stomp_moveit/CollisionCheck 
-        kernel_window_percentage: 0.2
+        kernel_window_percentage: 0.0
         collision_penalty: 1.0
         cost_weight: 1.0
-#      - class: stomp_moveit/ToolGoalPose
-#        constrained_dofs: [1, 1, 1, 1, 1, 0]
-#        position_error_range: [0.01, 0.1]     #[min, max]
-#        orientation_error_range: [0.01, 0.1]  #[min, max]
-#        position_cost_weight: 0.5
-#        orientation_cost_weight: 0.5
+      - class: stomp_moveit/ObstacleDistanceGradient
+        max_distance: 0.2
+        cost_weight: 1.0
+        voxel_size: 0.02 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
@@ -133,7 +131,7 @@ stomp/manipulator_tool:
 #        joint_update_rates: [0.05, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
 #        max_ik_iterations: 100
       - class: stomp_moveit/PolynomialSmoother
-        poly_order: 2
+        poly_order: 5
       - class: stomp_moveit/TrajectoryVisualization
         line_width: 0.02
         rgb: [0, 191, 255]

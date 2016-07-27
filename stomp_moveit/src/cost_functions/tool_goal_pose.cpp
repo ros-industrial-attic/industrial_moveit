@@ -95,6 +95,9 @@ bool ToolGoalPose::configure(const XmlRpc::XmlRpcValue& config)
 
     orientation_cost_weight_ = static_cast<double>(params["orientation_cost_weight"]);
 
+    // total weight
+    cost_weight_ = position_cost_weight_ + orientation_cost_weight_;
+
   }
   catch(XmlRpc::XmlRpcException& e)
   {

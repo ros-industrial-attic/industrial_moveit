@@ -228,13 +228,24 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
     active_transform[i]->preScale(active_sdf_[i]->getVoxelSize());
   }
 
+  // collecting group links
+  const moveit::core::JointModelGroup* group = robot_model_->getJointModelGroup(req.group_name);
+  const auto& group_links = group->getUpdatedLinkModelsWithGeometryNames();
+
   // build distance query vector
   int cnt = 0;
   for (std::size_t i = 0 ; i < active_links_.size() ; ++i)
   {
+    // skip if not in planning group
+    if(std::count(group_links.begin(),group_links.end(),active_links_[i]->getName()) <= 0)
+    {
+      continue;
+    }
+
+    // Calculate distance to fixed objects
     for (std::size_t j = 0 ; j < static_links_.size() ; ++j)
     {
-      if (isCollisionAllowed(active_links_[i]->getName(), static_links_[j]->getName(), req.acm))
+      if (!isCollisionAllowed(active_links_[i]->getName(), static_links_[j]->getName(), req.acm))
       {
         if (active_spheres_[i]->size() != 0)
         {
@@ -255,9 +266,10 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
       }
     }
 
+    // Calculate distance to objects that were added dynamically into the planning scene
     for (std::size_t j = 0 ; j < dynamic_links_.size() ; ++j)
     {
-      if (isCollisionAllowed(active_links_[i]->getName(), dynamic_links_[j]->getName(), req.acm))
+      if (!isCollisionAllowed(active_links_[i]->getName(), dynamic_links_[j]->getName(), req.acm))
       {
         if (active_spheres_[i]->size() != 0)
         {
@@ -278,28 +290,32 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
       }
     }
 
-    if (i != active_links_.size())
+    // Calculate distance to objects whose pose could have changed.
+    for (std::size_t j = i + 1 ; j < active_links_.size(); ++j)
     {
-      for (std::size_t j = i + 1 ; j < active_links_.size(); ++j)
+      // skip it's part of the same planning group
+      if(std::count(group_links.begin(),group_links.end(),active_links_[j]->getName()) > 0)
       {
-        if (isCollisionAllowed(active_links_[i]->getName(), active_links_[j]->getName(), req.acm))
-        {
-          if (active_spheres_[i]->size() != 0)
-          {
-            DistanceQueryData data;
-            data.link_name[0] = active_links_[i]->getName();
-            data.link_name[1] = active_links_[j]->getName();
-            data.sdf = active_sdf_[j];
-            data.spheres = active_spheres[i];
-            data.transform = active_transform[j];
+        continue;
+      }
 
-            dist_query.push_back(std::move(data));
-            cnt += 1;
-          }
-          else
-          {
-            ROS_ERROR("Link %s has zeros spheres, unable to perform check between links %s and %s.", active_links_[i]->getName().c_str(), active_links_[i]->getName().c_str(), active_links_[j]->getName().c_str());
-          }
+      if (!isCollisionAllowed(active_links_[i]->getName(), active_links_[j]->getName(), req.acm))
+      {
+        if (active_spheres_[i]->size() != 0)
+        {
+          DistanceQueryData data;
+          data.link_name[0] = active_links_[i]->getName();
+          data.link_name[1] = active_links_[j]->getName();
+          data.sdf = active_sdf_[j];
+          data.spheres = active_spheres[i];
+          data.transform = active_transform[j];
+
+          dist_query.push_back(std::move(data));
+          cnt += 1;
+        }
+        else
+        {
+          ROS_ERROR("Link %s has zeros spheres, unable to perform check between links %s and %s.", active_links_[i]->getName().c_str(), active_links_[i]->getName().c_str(), active_links_[j]->getName().c_str());
         }
       }
     }
@@ -348,7 +364,7 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
   cnt = 0;
   for (std::size_t i = 0 ; i < active_links_.size() ; ++i)
   {
-    if (active_links_[i]->getName() != dist_query[index].link_name[0] && isCollisionAllowed(active_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
+    if (active_links_[i]->getName() != dist_query[index].link_name[0] && !isCollisionAllowed(active_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
     {
       for (std::size_t j = 0 ; j < 6 ; ++j)
       {
@@ -364,7 +380,7 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
 
   for (std::size_t i = 0 ; i < dynamic_links_.size() ; ++i)
   {
-    if (isCollisionAllowed(dynamic_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
+    if (!isCollisionAllowed(dynamic_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
     {
       for (std::size_t j = 0 ; j < 6 ; ++j)
       {
@@ -380,7 +396,7 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
 
   for (std::size_t i = 0 ; i < static_links_.size() ; ++i)
   {
-    if (isCollisionAllowed(static_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
+    if (!isCollisionAllowed(static_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
     {
       for (std::size_t j = 0 ; j < 6 ; ++j)
       {
@@ -413,13 +429,10 @@ bool distance_field::CollisionRobotOpenVDB::isCollisionAllowed(const std::string
       if (found)
       {
         // if we have an entry in the collision matrix, we read it
-        if (type == collision_detection::AllowedCollision::ALWAYS)
-        {
-          return false;
-        }
+        return type == collision_detection::AllowedCollision::ALWAYS;
       }
     }
-    return true;
+    return false;
 }
 
 void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(DistanceQueryData &data, double &min_dist, openvdb::math::Vec3d &location) const
