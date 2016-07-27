@@ -65,7 +65,7 @@ int main (int argc, char *argv[])
   robot_model::RobotModelPtr robot_model;
   string urdf_file_path, srdf_file_path;
 
-  urdf_file_path = package::getPath("stomp_test_support") + "/urdf/test_kr210l150_500K.urdf";
+  urdf_file_path = package::getPath("stomp_test_support") + "/urdf/test_kr210l150_simple.urdf";
   srdf_file_path = package::getPath("stomp_test_kr210_moveit_config") + "/config/test_kr210.srdf";
 
   ifstream ifs1 (urdf_file_path.c_str());
@@ -119,6 +119,24 @@ int main (int argc, char *argv[])
   ROS_ERROR("FCL, Links: %s to %s", res.minimum_distance.link_name[0].c_str(), res.minimum_distance.link_name[1].c_str());
   ROS_ERROR("FCL, Distance: %0.8f", res.minimum_distance.min_distance);
   ROS_ERROR("FCL, Distance Average Time Elapsed: %0.8f (sec)", t/10.0);
+
+  // get baseline fcl collision call data
+  moveit::core::RobotState robot_state_coll = robot_state;
+  collision_detection::CollisionRequest req_coll;
+  collision_detection::CollisionResult res_coll;
+  req_coll.group_name = "manipulator_rail";
+  t=0;
+  ROS_ERROR("FCL, Test Distance queries");
+  for(int i = 0; i < 10; ++i)
+  {
+    res.clear();
+    robot_state_coll.setToRandomPositions();
+    robot_state_coll.updateCollisionBodyTransforms();
+    start = ros::Time::now();
+    collision_robot->checkSelfCollision(req_coll, res_coll, robot_state_coll, planning_scene->getAllowedCollisionMatrix());
+    t+=(ros::Time::now() - start).toSec();
+  }
+  ROS_ERROR("FCL, Collision Average Time Elapsed: %0.8f (sec)", t/10.0);
 
   // distance field testing
   distance_field::OpenVDBDistanceField df(0.02);

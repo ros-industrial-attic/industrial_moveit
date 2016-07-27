@@ -95,10 +95,12 @@ void TransformVec3s(const Eigen::Affine3d &pose, std::vector<openvdb::math::Vec3
 
 struct DistanceQueryData
 {
-  OpenVDBDistanceFieldConstPtr sdf;
-  SphereModelPtr spheres;
-  std::string link_name[2];
+  DistanceQueryData(OpenVDBDistanceFieldConstPtr sdf): accessor(sdf->getGrid()->getConstAccessor()) {}
+  std::string parent_name;
+  std::vector<SphereModelPtr> spheres;
+  std::vector<std::string> child_name;
   openvdb::math::Transform::Ptr transform;
+  openvdb::FloatGrid::ConstAccessor accessor;
 };
 
 class CollisionRobotOpenVDB
@@ -118,7 +120,7 @@ public:
   uint64_t memUsage() const;
 
 private:
-  void distanceSelfHelper(DistanceQueryData &data, double &min_dist, openvdb::math::Vec3d &location) const;
+  void distanceSelfHelper(DistanceQueryData &data, collision_detection::DistanceResultsData &res) const;
 
   /**
    * @brief Create static signed distance fields.
@@ -143,6 +145,11 @@ private:
   void createDynamicSDFs();
 
   /**
+   * @brief Generate a default distance query structure.
+   */
+  void generateDefaultDistanceQuery();
+
+  /**
    * @brief This is a recursive helper function that creates the static signed distance field given a base link.
    *
    * @param link, The link to search for child links that are attached by fixed transform.
@@ -164,6 +171,8 @@ private:
   std::vector<OpenVDBDistanceFieldConstPtr> active_sdf_;
   std::vector<const robot_model::LinkModel*> active_links_;
   std::vector<SphereModelPtr> active_spheres_;
+
+  std::vector<DistanceQueryData> dist_query;
 
   float voxel_size_;
   float background_;
