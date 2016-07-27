@@ -221,7 +221,7 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
   std::vector<collision_detection::CollisionResult> results(2);
   validity = true;
 
-  // robot state
+  // planning groups
   const JointModelGroup* joint_group = robot_model_ptr_->getJointModelGroup(group_name_);
 
   if(parameters.cols()<start_timestep + num_timesteps)
@@ -230,7 +230,7 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
     return false;
   }
 
-  // iterating through collisions
+  // check for collisions at each state
   for (auto t=start_timestep; t<start_timestep + num_timesteps; ++t)
   {
     robot_state_->setJointGroupPositions(joint_group,parameters.col(t));
@@ -267,15 +267,24 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
   // applying kernel smoothing
   if(!validity)
   {
-    int window_size = num_timesteps*kernel_window_percentage_;
-    window_size = window_size < MIN_KERNEL_WINDOW_SIZE ? MIN_KERNEL_WINDOW_SIZE : window_size;
 
-    // adding minimum cost
-    intermediate_costs_slots_ = (raw_costs_.array() < 1).cast<double>();
-    raw_costs_ += (raw_costs_.sum()/raw_costs_.size())*(intermediate_costs_slots_.matrix());
+    if(kernel_window_percentage_> 1e-6)
+    {
+      int window_size = num_timesteps*kernel_window_percentage_;
+      window_size = window_size < MIN_KERNEL_WINDOW_SIZE ? MIN_KERNEL_WINDOW_SIZE : window_size;
 
-    // smoothing
-    applyKernelSmoothing(window_size,raw_costs_,costs);
+      // adding minimum cost
+      intermediate_costs_slots_ = (raw_costs_.array() < collision_penalty_).cast<double>();
+      raw_costs_ += (raw_costs_.sum()/raw_costs_.size())*(intermediate_costs_slots_.matrix());
+
+      // smoothing
+      applyKernelSmoothing(window_size,raw_costs_,costs);
+    }
+    else
+    {
+      costs = raw_costs_;
+    }
+
   }
 
   return true;
