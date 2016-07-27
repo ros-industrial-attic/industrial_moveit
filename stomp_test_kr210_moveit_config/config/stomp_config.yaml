@@ -116,6 +116,7 @@ stomp/manipulator_tool:
       - class: stomp_moveit/ObstacleDistanceGradient
         max_distance: 0.2
         cost_weight: 1.0
+        voxel_size: 0.02 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
