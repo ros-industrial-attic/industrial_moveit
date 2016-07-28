@@ -1,8 +1,27 @@
-/*
- * obstacle_distance_gradien.cpp
+/**
+ * @file obstacle_distance_gradient.cpp
+ * @brief This defines a Robot Model for the Stomp Planner.
  *
- *  Created on: Jul 22, 2016
- *      Author: Jorge Nicho
+ * @author Jorge Nicho
+ * @date Jul 22, 2016
+ * @version TODO
+ * @bug No known bugs
+ *
+ * @copyright Copyright (c) 2016, Southwest Research Institute
+ *
+ * @license Software License Agreement (Apache License)\n
+ * \n
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at\n
+ * \n
+ * http://www.apache.org/licenses/LICENSE-2.0\n
+ * \n
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #include <stomp_moveit/cost_functions/obstacle_distance_gradient.h>
@@ -20,8 +39,7 @@ namespace cost_functions
 
 ObstacleDistanceGradient::ObstacleDistanceGradient() :
     name_("ObstacleDistanceGradient"),
-    robot_state_(),
-    collision_robot_df_()
+    robot_state_()
 {
 
 }
@@ -34,7 +52,14 @@ ObstacleDistanceGradient::~ObstacleDistanceGradient()
 bool ObstacleDistanceGradient::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                                           const std::string& group_name, XmlRpc::XmlRpcValue& config)
 {
-  robot_model_ptr_ = robot_model_ptr;
+  robot_model_ptr_ = boost::static_pointer_cast<const StompRobotModel>(robot_model_ptr);
+
+  if(!robot_model_ptr_->hasDistanceField())
+  {
+    ROS_ERROR("StompRobotModel has no Distance Field");
+    return false;
+  }
+
   group_name_ = group_name;
   return configure(config);
 }
@@ -45,7 +70,7 @@ bool ObstacleDistanceGradient::configure(const XmlRpc::XmlRpcValue& config)
   try
   {
     // check parameter presence
-    auto members = {"cost_weight" ,"voxel_size","max_distance"};
+    auto members = {"cost_weight" ,"max_distance"};
     for(auto& m : members)
     {
       if(!config.hasMember(m))
@@ -58,23 +83,11 @@ bool ObstacleDistanceGradient::configure(const XmlRpc::XmlRpcValue& config)
     XmlRpc::XmlRpcValue c = config;
     max_distance_ = static_cast<double>(c["max_distance"]);
     cost_weight_ = static_cast<double>(c["cost_weight"]);
-    voxel_size_ = static_cast<double>(c["voxel_size"]);
   }
   catch(XmlRpc::XmlRpcException& e)
   {
     ROS_ERROR("%s failed to parse configuration parameters",name_.c_str());
     return false;
-  }
-
-  // initialize distance field based Collision Robot
-  if(!collision_robot_df_)
-  {
-    ros::Time start = ros::Time::now();
-    ROS_INFO("%s creating distance field",getName().c_str());
-    double bandwidth = max_distance_/voxel_size_;
-    collision_robot_df_.reset(new distance_field::CollisionRobotOpenVDB(robot_model_ptr_,voxel_size_,max_distance_,bandwidth, bandwidth));
-    ros::Duration duration = ros::Time::now() - start;
-    ROS_INFO("%s completed distance field after %f seconds",getName().c_str(), duration.toSec());
   }
 
   return true;
@@ -90,10 +103,6 @@ bool ObstacleDistanceGradient::setMotionPlanRequest(const planning_scene::Planni
   planning_scene_ = planning_scene;
   plan_request_ = req;
   error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
-
-  // initialize distance request
-  distance_request_.group_name = group_name_;
-  distance_request_.acm = &planning_scene_->getAllowedCollisionMatrix();
 
   // storing robot state
   robot_state_.reset(new RobotState(robot_model_ptr_));
@@ -130,24 +139,25 @@ bool ObstacleDistanceGradient::computeCosts(const Eigen::MatrixXd& parameters, s
   // request the distance at each state
   collision_detection::DistanceResult res;
   double cost;
+  double dist;
   for (auto t=start_timestep; t<start_timestep + num_timesteps; ++t)
   {
     robot_state_->setJointGroupPositions(joint_group,parameters.col(t));
     robot_state_->update();
 
-    collision_robot_df_->distanceSelf(distance_request_,res,*robot_state_);
+    dist = robot_model_ptr_->distance(group_name_,planning_scene_,*robot_state_);
 
-    if(res.minimum_distance.min_distance >= max_distance_)
+    if(dist >= max_distance_)
     {
       cost = 0; // away from obstacle
     }
-    else if(res.minimum_distance.min_distance < 0)
+    else if(dist < 0)
     {
       cost = 1.0; // in collision
     }
     else
     {
-      cost = (max_distance_ - res.minimum_distance.min_distance)/max_distance_;
+      cost = (max_distance_ - dist)/max_distance_;
     }
 
     costs(t) = cost;
