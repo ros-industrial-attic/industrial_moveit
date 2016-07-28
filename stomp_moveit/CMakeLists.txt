@@ -39,6 +39,7 @@ include_directories(include
 add_library(${PROJECT_NAME}
   src/stomp_optimization_task.cpp
   src/stomp_planner.cpp
+  src/stomp_robot_model.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}

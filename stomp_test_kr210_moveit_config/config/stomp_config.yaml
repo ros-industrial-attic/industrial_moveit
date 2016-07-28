@@ -1,3 +1,7 @@
+stomp_robot:
+  distance_field:
+    background: 0.5
+    voxel_size: 0.02    
 stomp/manipulator:
   group_name: manipulator
   optimization:
@@ -18,6 +22,9 @@ stomp/manipulator:
         collision_penalty: 1.0
         cost_weight: 1.0 
         kernel_window_percentage: 0.2
+      - class: stomp_moveit/ObstacleDistanceGradient
+        max_distance: 0.2
+        cost_weight: 1.0
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
@@ -109,7 +116,6 @@ stomp/manipulator_tool:
       - class: stomp_moveit/ObstacleDistanceGradient
         max_distance: 0.2
         cost_weight: 1.0
-        voxel_size: 0.02 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
