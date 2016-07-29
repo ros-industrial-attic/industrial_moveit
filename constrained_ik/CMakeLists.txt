@@ -61,7 +61,7 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
- LIBRARIES constrained_ik moveit_clik_planner_plugin constrained_ik_plugin
+ LIBRARIES constrained_ik moveit_clik_planner_plugin constrained_ik_plugin constrained_ik_constraints
  CATKIN_DEPENDS roscpp urdf eigen_conversions tf_conversions urdf moveit_ros_planning moveit_core dynamic_reconfigure kdl_parser cmake_modules industrial_collision_detection
  DEPENDS boost eigen orocos_kdl
 )
