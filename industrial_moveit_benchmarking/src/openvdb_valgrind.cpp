@@ -232,8 +232,9 @@ int main (int argc, char *argv[])
   ROS_ERROR("Openvdb Collision Robot Test");
   distance_field::CollisionRobotOpenVDB openvdb_robot(robot_model,0.02, 0.5, 0.5/0.02, 0.5/0.02);
   t=0;
-  start = ros::Time::now();
   res.clear();
+  req.gradient = true;
+  start = ros::Time::now();
   openvdb_robot.distanceSelf(req, res, robot_state);
   t+=(ros::Time::now() - start).toSec();
   ROS_ERROR("Openvdb Collision Robot, Links: %s to %s", res.minimum_distance.link_name[0].c_str(), res.minimum_distance.link_name[1].c_str());

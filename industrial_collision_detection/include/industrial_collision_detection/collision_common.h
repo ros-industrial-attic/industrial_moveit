@@ -48,7 +48,8 @@ namespace collision_detection
                        active_components_only(NULL),
                        acm(NULL),
                        distance_threshold(std::numeric_limits<double>::max()),
-                       verbose(false) {}
+                       verbose(false),
+                       gradient(false) {}
 
     DistanceRequest(bool detailed,
                     bool global,
@@ -59,7 +60,8 @@ namespace collision_detection
                                                                                      active_components_only(active_components_only),
                                                                                      acm(acm),
                                                                                      distance_threshold(distance_threshold),
-                                                                                     verbose(false) {}
+                                                                                     verbose(false),
+                                                                                     gradient(false) {}
     DistanceRequest(bool detailed,
                     bool global,
                     const std::set<const robot_model::LinkModel*> &active_components_only,
@@ -69,7 +71,8 @@ namespace collision_detection
                                                                                      active_components_only(&active_components_only),
                                                                                      acm(&acm),
                                                                                      distance_threshold(distance_threshold),
-                                                                                     verbose(false) {}
+                                                                                     verbose(false),
+                                                                                     gradient(false) {}
     DistanceRequest(bool detailed,
                     bool global,
                     const std::string group_name,
@@ -80,7 +83,8 @@ namespace collision_detection
                                                                                      active_components_only(NULL),
                                                                                      acm(acm),
                                                                                      distance_threshold(distance_threshold),
-                                                                                     verbose(false) {}
+                                                                                     verbose(false),
+                                                                                     gradient(false) {}
     DistanceRequest(bool detailed,
                     bool global,
                     const std::string group_name,
@@ -91,7 +95,8 @@ namespace collision_detection
                                                                                      active_components_only(NULL),
                                                                                      acm(&acm),
                                                                                      distance_threshold(distance_threshold),
-                                                                                     verbose(false) {}
+                                                                                     verbose(false),
+                                                                                     gradient(false) {}
 
     virtual ~DistanceRequest() {}
 
@@ -112,10 +117,17 @@ namespace collision_detection
 
     bool verbose;
 
+    bool gradient;
+
   };
 
   struct DistanceResultsData
   {
+    DistanceResultsData()
+    {
+      clear();
+    }
+
     /// @brief minimum distance between two objects. if two objects are in collision, min_distance <= 0.
     double min_distance;
 

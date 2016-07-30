@@ -93,12 +93,34 @@ void WorldToIndex(const openvdb::math::Transform::Ptr transform, std::vector<ope
 
 void TransformVec3s(const Eigen::Affine3d &pose, std::vector<openvdb::math::Vec3s> &points);
 
+enum SDFType {Static = 0, Dynamic = 1, Active = 2};
 struct DistanceQueryData
 {
-  DistanceQueryData(OpenVDBDistanceFieldConstPtr sdf): accessor(sdf->getGrid()->getConstAccessor()) {}
+  DistanceQueryData() :
+    empty(true),
+    gradient(false) {}
+
   std::string parent_name;
-  std::vector<SphereModelPtr> spheres;
+  SphereModel spheres;
   std::vector<std::string> child_name;
+  std::vector<int> child_index;
+  std::vector<int> child_type;
+  bool gradient;
+  bool empty;
+};
+
+struct SDFData
+{
+  SDFData(openvdb::FloatGrid::Ptr sdf, openvdb::Mat4d &tf) : accessor(sdf->getConstAccessor())
+  {
+    transform = openvdb::math::Transform::createLinearTransform(tf);
+    transform->preScale(sdf->transformPtr()->voxelSize());
+  }
+
+  SDFData(openvdb::FloatGrid::Ptr sdf) :
+    accessor(sdf->getConstAccessor()),
+    transform(sdf->transformPtr()) {}
+
   openvdb::math::Transform::Ptr transform;
   openvdb::FloatGrid::ConstAccessor accessor;
 };
@@ -120,7 +142,7 @@ public:
   uint64_t memUsage() const;
 
 private:
-  void distanceSelfHelper(DistanceQueryData &data, collision_detection::DistanceResultsData &res) const;
+  void distanceSelfHelper(const DistanceQueryData &data, std::vector<std::vector<SDFData> > &sdfs_data, collision_detection::DistanceResultsData &res) const;
 
   /**
    * @brief Create static signed distance fields.
@@ -147,7 +169,12 @@ private:
   /**
    * @brief Generate a default distance query structure.
    */
-  void generateDefaultDistanceQuery();
+  void createDefaultDistanceQuery();
+
+  /**
+   * @brief generateDefaultAllowedCollisionMatrix
+   */
+  void createDefaultAllowedCollisionMatrix();
 
   /**
    * @brief This is a recursive helper function that creates the static signed distance field given a base link.
@@ -159,6 +186,7 @@ private:
   bool isCollisionAllowed(const std::string &l1, const std::string &l2, const collision_detection::AllowedCollisionMatrix *acm) const;
 
   const robot_model::RobotModelConstPtr robot_model_;
+  collision_detection::AllowedCollisionMatrixPtr acm_;
 
   const std::vector<const robot_model::LinkModel*>& links_;
 
@@ -170,9 +198,9 @@ private:
 
   std::vector<OpenVDBDistanceFieldConstPtr> active_sdf_;
   std::vector<const robot_model::LinkModel*> active_links_;
-  std::vector<SphereModelPtr> active_spheres_;
+  std::vector<SphereModel> active_spheres_;
 
-  std::vector<DistanceQueryData> dist_query;
+  std::vector<DistanceQueryData> dist_query_;
 
   float voxel_size_;
   float background_;
