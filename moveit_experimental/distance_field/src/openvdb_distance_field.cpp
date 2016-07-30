@@ -10,14 +10,21 @@
 distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
                                                              const float voxel_size, const float background,
                                                              const float exBandWidth, const float inBandWidth)
-  : robot_model_(model), voxel_size_(voxel_size), background_(background), exBandWidth_(exBandWidth), inBandWidth_(inBandWidth), links_(model->getLinkModelsWithCollisionGeometry())
+  : robot_model_(model), voxel_size_(voxel_size), background_(background),
+    exBandWidth_(exBandWidth), inBandWidth_(inBandWidth),
+    links_(model->getLinkModelsWithCollisionGeometry())
 {
+
+  createDefaultAllowedCollisionMatrix();
 
   createStaticSDFs();
 
   createActiveSDFs();
 
   createDynamicSDFs();
+
+  createDefaultDistanceQuery();
+
 }
 
 void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
@@ -69,16 +76,15 @@ void distance_field::CollisionRobotOpenVDB::createActiveSDFs()
 
       sdf->addLinkToField(active_links_[i], Eigen::Affine3d::Identity(), (voxel_size_/v) * exBandWidth_, (voxel_size_/v) * inBandWidth_);
 
-      active_spheres_[i] = SphereModelPtr(new SphereModel());
-      sdf->fillWithSpheres(*active_spheres_[i], 10);
+      sdf->fillWithSpheres(active_spheres_[i], 10);
 
-      if (active_spheres_[i]->size() != 0)
+      if (active_spheres_[i].size() != 0)
         break;
 
       v = v * 0.5;
     }
 
-    if (active_spheres_[i]->size() == 0)
+    if (active_spheres_[i].size() == 0)
     {
       ROS_ERROR("Unable to generate spheres for link: %s", active_links_[i]->getName().c_str());
     }
@@ -182,215 +188,125 @@ uint64_t distance_field::CollisionRobotOpenVDB::memUsage() const
   return mem_usage;
 }
 
+void distance_field::CollisionRobotOpenVDB::createDefaultDistanceQuery()
+{
+  // Calculate distance to objects that were added dynamically into the planning scene
+  for (std::size_t j = 0; j < active_links_.size(); ++j)
+  {
+    DistanceQueryData data;
+    data.parent_name = active_links_[j]->getName(); 
+
+    if (active_spheres_[j].size() == 0)
+    {
+      dist_query_.push_back(std::move(data));
+      continue;
+    }
+
+    data.empty = false;
+
+    // add active links
+    for (std::size_t i = 0; i < active_links_.size() ; ++i)
+    {
+      if (i != j && !isCollisionAllowed(active_links_[i]->getName(), active_links_[j]->getName(), acm_.get()))
+      {
+        data.child_name.push_back(active_links_[i]->getName());
+        data.child_index.push_back(i);
+        data.child_type.push_back(Active);
+      }
+    }
+
+    // add dynamic links
+    for (std::size_t i = 0; i < dynamic_links_.size() ; ++i)
+    {
+      if (!isCollisionAllowed(dynamic_links_[i]->getName(), active_links_[j]->getName(), acm_.get()))
+      {
+        data.child_name.push_back(dynamic_links_[i]->getName());
+        data.child_index.push_back(i);
+        data.child_type.push_back(Dynamic);
+      }
+    }
+
+    // add static links
+    for (std::size_t i = 0; i < static_links_.size() ; ++i)
+    {
+      if (!isCollisionAllowed(static_links_[i]->getName(), active_links_[j]->getName(), acm_.get()))
+      {
+        data.child_name.push_back(static_links_[i]->getName());
+        data.child_index.push_back(i);
+        data.child_type.push_back(Static);
+      }
+    }
+
+    dist_query_.push_back(std::move(data));
+  }
+}
+
 void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detection::DistanceRequest &req, collision_detection::DistanceResult &res, const moveit::core::RobotState &state) const
 {
-  std::vector<openvdb::math::Mat4d> active_poses;
-  std::vector<SphereModelPtr> active_spheres;
-  std::vector<DistanceQueryData> dist_query;
+  std::vector<DistanceQueryData> dist_query(dist_query_);
+  std::vector<std::vector<SDFData> > data(3);
 
-  int dist_size = active_links_.size() + dynamic_links_.size() + static_links_.size();
-  active_poses.resize(active_links_.size());
-  active_spheres.reserve(active_links_.size());
-  dist_query.reserve(dist_size);
-
-  // get all active link information
-  for (std::size_t i = 0 ; i < active_links_.size() ; ++i)
-  {
-    Affine3dToMat4d(state.getGlobalLinkTransform(active_links_[i]), active_poses[i]);
-
-    // transform sphere origins into world coordinate system
-    active_spheres.push_back(SphereModelPtr(new SphereModel(*active_spheres_[i])));
-    std::transform(active_spheres[i]->begin(), active_spheres[i]->end(), active_spheres[i]->begin(),
-                   [&active_poses, &i](std::pair<openvdb::math::Vec3d, double> p){ p.first = (active_poses[i] * p.first); return p; });
-  }
+  data[Static].reserve(static_links_.size());
+  data[Dynamic].reserve(dynamic_links_.size());
+  data[Active].reserve(active_links_.size());
 
   // collecting group links
   const moveit::core::JointModelGroup* group = robot_model_->getJointModelGroup(req.group_name);
   const auto& group_links = group->getUpdatedLinkModelsWithGeometryNames();
 
-  // Calculate distance to objects that were added dynamically into the planning scene
-  for (std::size_t j = 0; j < active_links_.size(); ++j)
+  for (std::size_t i = 0; i < active_links_.size(); ++i)
   {
-    DistanceQueryData data(active_sdf_[j]);
-    data.parent_name = active_links_[j]->getName();
-    data.transform = openvdb::math::Transform::createLinearTransform(active_poses[j].transpose());
-    data.transform->preScale(active_sdf_[j]->getVoxelSize());
-
-    for (std::size_t i = j + 1 ; i < active_links_.size() ; ++i)
-    {
-      if (!isCollisionAllowed(active_links_[i]->getName(), active_links_[j]->getName(), req.acm))
-      {
-        if (active_spheres_[i]->size() != 0)
-        {
-          data.spheres.push_back(active_spheres[i]);
-          data.child_name.push_back(active_links_[i]->getName());
-        }
-        else
-        {
-          ROS_ERROR("Link %s has zeros spheres, unable to perform check between links %s and %s.", active_links_[i]->getName().c_str(), active_links_[i]->getName().c_str(), active_links_[j]->getName().c_str());
-        }
-      }
-    }
-    dist_query.push_back(std::move(data));
-  }
-
-  // Calculate distance to fixed objects
-  for (std::size_t j = 0 ; j < static_links_.size() ; ++j)
-  {
-    DistanceQueryData data(static_sdf_[j]);
-    data.parent_name = static_links_[j]->getName();
-    data.transform = static_sdf_[j]->getTransform();
-    for (std::size_t i = 0 ; i < active_links_.size() ; ++i)
-    {
-      if (!isCollisionAllowed(active_links_[i]->getName(), static_links_[j]->getName(), req.acm))
-      {
-        if (active_spheres_[i]->size() != 0)
-        {
-          data.spheres.push_back(active_spheres[i]);
-          data.child_name.push_back(active_links_[i]->getName());
-        }
-        else
-        {
-          ROS_ERROR("Link %s has zeros spheres, unable to perform check between links %s and %s.", active_links_[i]->getName().c_str(), active_links_[i]->getName().c_str(), static_links_[j]->getName().c_str());
-        }
-      }
-    }
-    dist_query.push_back(std::move(data));
-  }
-
-  // Calculate distance to objects that were added dynamically into the planning scene
-  for (std::size_t j = 0 ; j < dynamic_links_.size() ; ++j)
-  {
-    DistanceQueryData data(dynamic_sdf_[j]);
-    data.parent_name = dynamic_links_[j]->getName();
-
     openvdb::Mat4d tf;
-    Affine3dToMat4d(state.getGlobalLinkTransform(dynamic_links_[j]), tf);
+    Affine3dToMat4d(state.getGlobalLinkTransform(active_links_[i]), tf);
+    dist_query[i].spheres = active_spheres_[i];
+    dist_query[i].gradient = req.gradient;
 
-    // Get SDF transformation for converting between world and index space.
-    data.transform = openvdb::math::Transform::createLinearTransform(tf.transpose());
-    data.transform->preScale(dynamic_sdf_[j]->getVoxelSize());
-    for (std::size_t i = 0 ; i < active_links_.size() ; ++i)
-    {
-      if (!isCollisionAllowed(active_links_[i]->getName(), dynamic_links_[j]->getName(), req.acm))
-      {
-        if (active_spheres_[i]->size() != 0)
-        {
-          data.spheres.push_back(active_spheres[i]);
-          data.child_name.push_back(active_links_[i]->getName());
-        }
-        else
-        {
-          ROS_ERROR("Link %s has zeros spheres, unable to perform check between links %s and %s.", active_links_[i]->getName().c_str(), active_links_[i]->getName().c_str(), dynamic_links_[j]->getName().c_str());
-        }
-      }
-    }
-    dist_query.push_back(std::move(data));
+    // transform sphere origins into world coordinate system
+    std::transform(dist_query[i].spheres.begin(), dist_query[i].spheres.end(), dist_query[i].spheres.begin(),
+                   [&tf](std::pair<openvdb::math::Vec3d, double> p){ p.first = (tf * p.first); return p; });
+
+    tf = tf.transpose();
+    SDFData d(active_sdf_[i]->getGrid(), tf);
+    data[Active].push_back(std::move(d));
   }
 
-//  std::vector<openvdb::math::Vec3d> world_location;
+  for (std::size_t i = 0; i < dynamic_links_.size(); ++i)
+  {
+    openvdb::Mat4d tf;
+    Affine3dToMat4dAffine(state.getGlobalLinkTransform(dynamic_links_[i]), tf);
 
-//  // Compute minimum distance
-//  for (std::size_t i = 0 ; i < dist_query.size() ; ++i)
-//  {
-//    if (dist_query[i].spheres.size() != 0)
-//    {
-//      collision_detection::DistanceResultsData d;
-//      distanceSelfHelper(dist_query[i], d);
-////      res.distance.insert(std::make_pair(d.link_name[0], std::move(d)));
-//    }
-//  }
+    SDFData d(dynamic_sdf_[i]->getGrid(), tf);
+    data[Dynamic].push_back(std::move(d));
+  }
 
-//  double d = background_;
-//  std::string index = res.distance.begin()->second.link_name[0];
-//  for (auto it = res.distance.begin(); it != res.distance.end(); ++it)
-//  {
-//    if (it->second.min_distance < d)
-//    {
-//      index = it->second.link_name[0];
-//      d = it->second.min_distance;
-//    }
-//  }
-//  res.minimum_distance = res.distance[index];
-//  res.minimum_distance.hasNearestPoints = false;
-//  res.minimum_distance.hasGradient = true;
+  for (std::size_t i = 0; i < static_links_.size(); ++i)
+  {
+    SDFData d(static_sdf_[i]->getGrid());
+    data[Static].push_back(std::move(d));
+  }
 
-//  // Compute gradient
-//  Eigen::Vector3d grad;
-//  std::vector<openvdb::math::Vec3d> delta(6);
-//  Eigen::VectorXd grad_dist(6);
-//  grad_dist.setConstant(6, background_);
+  // Compute minimum distance
+  for (std::size_t i = 0 ; i < dist_query.size() ; ++i)
+  {
+    if (!dist_query[i].empty)
+    {
+      collision_detection::DistanceResultsData d;
+      distanceSelfHelper(dist_query[i], data, d);
+      res.distance.insert(std::make_pair(d.link_name[0], std::move(d)));
+    }
+  }
 
-//  delta[0] = world_location[index];
-//  delta[1] = world_location[index];
-//  delta[2] = world_location[index];
-//  delta[3] = world_location[index];
-//  delta[4] = world_location[index];
-//  delta[5] = world_location[index];
-
-
-//  delta[0][0] += 2*voxel_size_;
-//  delta[1][0] += -2*voxel_size_;
-//  delta[2][1] += 2*voxel_size_;
-//  delta[3][1] += -2*voxel_size_;
-//  delta[4][2] += 2*voxel_size_;
-//  delta[5][2] += -2*voxel_size_;
-
-//  cnt = 0;
-//  for (std::size_t i = 0 ; i < active_links_.size() ; ++i)
-//  {
-//    if (active_links_[i]->getName() != dist_query[index].link_name[0] && !isCollisionAllowed(active_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
-//    {
-//      for (std::size_t j = 0 ; j < 6 ; ++j)
-//      {
-//        openvdb::math::Coord ijk = active_transform[i]->worldToIndexNodeCentered(delta[j]);
-//        double d = data.(ijk, true);
-//        if (d < grad_dist(j))
-//        {
-//          grad_dist(j) = d;
-//        }
-//      }
-//    }
-//  }
-
-//  for (std::size_t i = 0 ; i < dynamic_links_.size() ; ++i)
-//  {
-//    if (!isCollisionAllowed(dynamic_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
-//    {
-//      for (std::size_t j = 0 ; j < 6 ; ++j)
-//      {
-//        openvdb::math::Coord ijk = dynamic_transform[i]->worldToIndexNodeCentered(delta[j]);
-//        double d = dynamic_sdf_[i]->getDistance(ijk, true);
-//        if (d < grad_dist(j))
-//        {
-//          grad_dist(j) = d;
-//        }
-//      }
-//    }
-//  }
-
-//  for (std::size_t i = 0 ; i < static_links_.size() ; ++i)
-//  {
-//    if (!isCollisionAllowed(static_links_[i]->getName(), dist_query[index].link_name[0], req.acm))
-//    {
-//      for (std::size_t j = 0 ; j < 6 ; ++j)
-//      {
-//        openvdb::math::Coord ijk = static_sdf_[i]->getTransform()->worldToIndexNodeCentered(delta[j]);
-//        double d = static_sdf_[i]->getDistance(ijk, true);
-//        if (d < grad_dist(j))
-//        {
-//          grad_dist(j) = d;
-//        }
-//      }
-//    }
-//  }
-
-// grad(0) = (grad_dist(1)-grad_dist(0))/(4*voxel_size_);
-// grad(1) = (grad_dist(3)-grad_dist(2))/(4*voxel_size_);
-// grad(2) = (grad_dist(5)-grad_dist(5))/(4*voxel_size_);
-// grad.normalize();
-
-// res.minimum_distance.gradient = grad;
+  double d = background_;
+  std::string index = res.distance.begin()->second.link_name[0];
+  for (auto it = res.distance.begin(); it != res.distance.end(); ++it)
+  {
+    if (it->second.min_distance < d)
+    {
+      index = it->second.link_name[0];
+      d = it->second.min_distance;
+    }
+  }
+  res.minimum_distance = res.distance[index];
 }
 
 bool distance_field::CollisionRobotOpenVDB::isCollisionAllowed(const std::string &l1, const std::string &l2, const collision_detection::AllowedCollisionMatrix *acm) const
@@ -410,31 +326,81 @@ bool distance_field::CollisionRobotOpenVDB::isCollisionAllowed(const std::string
     return false;
 }
 
-void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(DistanceQueryData &data, collision_detection::DistanceResultsData &res) const
+void distance_field::CollisionRobotOpenVDB::createDefaultAllowedCollisionMatrix()
+{
+  acm_.reset(new collision_detection::AllowedCollisionMatrix());
+  // Use default collision operations in the SRDF to setup the acm
+  const std::vector<std::string>& collision_links = robot_model_->getLinkModelNamesWithCollisionGeometry();
+  acm_->setEntry(collision_links, collision_links, false);
+
+  // allow collisions for pairs that have been disabled
+  const std::vector<srdf::Model::DisabledCollision> &dc = robot_model_->getSRDF()->getDisabledCollisionPairs();
+  for (std::vector<srdf::Model::DisabledCollision>::const_iterator it = dc.begin(); it != dc.end(); ++it)
+    acm_->setEntry(it->link1_, it->link2_, true);
+}
+
+void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(const DistanceQueryData &data, std::vector<std::vector<SDFData> > &sdfs_data, collision_detection::DistanceResultsData &res) const
 {
   res.min_distance = background_;
   res.link_name[0] = data.parent_name;
-  int x, y;
-  for (int i = 0; i < data.spheres.size(); ++i)
+  res.hasNearestPoints = false;
+  openvdb::Vec3f gradient;
+  for (std::size_t i = 0; i < data.child_index.size(); ++i)
   {
-    for (int j = 0; j < data.spheres[i]->size(); ++j)
+    float child_min = background_;
+    openvdb::math::Coord child_min_ijk;
+    bool dist_found = false;
+    SDFData &child_data = sdfs_data[data.child_type[i]][data.child_index[i]];
+
+    for (std::size_t j = 0; j < data.spheres.size(); ++j)
     {
-      openvdb::math::Coord ijk = data.transform->worldToIndexNodeCentered((*data.spheres[i])[j].first);
-      float d = data.accessor.getValue(ijk) - (*data.spheres[i])[j].second;
-      if (d < res.min_distance)
+      openvdb::math::Coord ijk = child_data.transform->worldToIndexNodeCentered(data.spheres[j].first);
+      float child_dist = child_data.accessor.getValue(ijk);
+      if (child_dist != background_)
       {
-        res.min_distance = d;
-        x = i;
-        y = j;
+        child_dist -= data.spheres[j].second;
+        if (child_dist < child_min)
+        {
+          child_min = child_dist;
+          child_min_ijk = ijk;
+          dist_found = true;
+        }
+      }
+    }
+
+    if (dist_found)
+    {
+      // update link minimum distance
+      if (child_min < res.min_distance)
+      {
+        res.min_distance = child_min;
+        res.link_name[1] = data.child_name[i];
+      }
+
+      // compute gradient
+      if (data.gradient)
+      {
+        openvdb::Vec3f result = openvdb::math::ISGradient<openvdb::math::CD_2ND>::result(child_data.accessor, child_min_ijk);
+        result.normalize();
+
+        if (res.hasGradient)
+        {
+          gradient = 0.5 * (gradient + result);
+          gradient.normalize();
+        }
+        else
+        {
+          gradient = result;
+        }
+
+        res.hasGradient = true;
       }
     }
   }
 
-  if (res.min_distance < background_)
-  {
-    res.link_name[1] = data.child_name[x];
-    res.nearest_points[1] = Eigen::Vector3d((*data.spheres[x])[y].first.asV());
-  }
+  if (res.hasGradient)
+    res.gradient = Eigen::Vector3d(gradient(0), gradient(1), gradient(2));
+
 }
 
 distance_field::OpenVDBDistanceField::OpenVDBDistanceField(float voxel_size, float background) :
