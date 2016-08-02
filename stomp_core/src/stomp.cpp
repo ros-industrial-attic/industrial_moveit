@@ -241,6 +241,14 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
   current_iteration_ = 1;
   unsigned int valid_iterations = 0;
   current_lowest_cost_ = std::numeric_limits<double>::max();
+
+  // computing initialial trajectory cost
+  if(!computeOptimizedCost())
+  {
+    ROS_ERROR("Failed to calculate initial trajectory cost");
+    return false;
+  }
+
   while(current_iteration_ <= config_.num_iterations && runSingleIteration())
   {
 
@@ -297,10 +305,10 @@ bool Stomp::resetVariables()
   current_iteration_ = 0;
 
   // verifying configuration
-  if(config_.max_rollouts < config_.num_rollouts)
+  if(config_.max_rollouts <= config_.num_rollouts)
   {
-    ROS_WARN_STREAM("'max_rollouts' must be greater than 'num_rollouts_per_iteration'.");
-    config_.max_rollouts = config_.num_rollouts;
+    ROS_DEBUG_STREAM("'max_rollouts' must be greater than 'num_rollouts_per_iteration'.");
+    config_.max_rollouts = config_.num_rollouts + 1; // one more to accommodate optimized trajectory
   }
 
   // noisy rollouts allocation
@@ -434,10 +442,11 @@ bool Stomp::generateNoisyRollouts()
   // calculating number of rollouts to reuse from previous iteration
   std::vector< std::pair<double,int> > rollout_cost_sorter; // Used to sort noisy trajectories in ascending order wrt their total cost
   double h = EXPONENTIATED_COST_SENSITIVITY;
-  int rollouts_stored = num_active_rollouts_;
+  int rollouts_stored = num_active_rollouts_-1; // don't take the optimized rollout into account
+  rollouts_stored = rollouts_stored < 0 ? 0 : rollouts_stored;
   int rollouts_generate = config_.num_rollouts;
-  int rollouts_total = rollouts_generate + rollouts_stored;
-  int rollouts_reuse =  rollouts_total < config_.max_rollouts  ? rollouts_stored:  config_.max_rollouts - rollouts_generate ;
+  int rollouts_total = rollouts_generate + rollouts_stored +1;
+  int rollouts_reuse =  rollouts_total < config_.max_rollouts  ? rollouts_stored :  config_.max_rollouts - (rollouts_generate + 1) ; // +1 for optimized params
 
   // selecting least costly rollouts from previous iteration
   if(rollouts_reuse > 0)
@@ -486,9 +495,16 @@ bool Stomp::generateNoisyRollouts()
     // copy them back from reused_rollouts_ into rollouts_
     for (auto r = 0u; r<rollouts_reuse; ++r)
     {
-      noisy_rollouts_[rollouts_generate+r] = reused_rollouts_[r];
+      noisy_rollouts_[rollouts_generate + r ] = reused_rollouts_[r];
     }
   }
+
+  // adding optimized trajectory as the last rollout
+  noisy_rollouts_[rollouts_generate + rollouts_reuse].parameters_noise = parameters_optimized_;
+  noisy_rollouts_[rollouts_generate + rollouts_reuse].noise.setZero();
+  noisy_rollouts_[rollouts_generate + rollouts_reuse].state_costs = parameters_state_costs_;
+  noisy_rollouts_[rollouts_generate + rollouts_reuse].control_costs = parameters_control_costs_;
+
 
   // generate new noisy rollouts
   for(auto r = 0u; r < rollouts_generate; r++)
@@ -506,7 +522,7 @@ bool Stomp::generateNoisyRollouts()
   }
 
   // update total active rollouts
-  num_active_rollouts_ = rollouts_reuse + rollouts_generate;
+  num_active_rollouts_ = rollouts_reuse + rollouts_generate + 1;
 
   return true;
 }
