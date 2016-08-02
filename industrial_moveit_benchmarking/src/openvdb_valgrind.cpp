@@ -229,23 +229,56 @@ int main (int argc, char *argv[])
   linearTransform2->preRotate(M_PI, openvdb::math::X_AXIS );
 
   // Test Openvdb Collision robot
-  ROS_ERROR("Openvdb Collision Robot Test");
-  distance_field::CollisionRobotOpenVDB openvdb_robot(robot_model,0.02, 0.5, 0.5/0.02, 0.5/0.02);
+  moveit::core::RobotState robot_state_vdb = robot_state;
+  double background = 0.5;
+  double voxel_size = 0.02;
+  double exBandWidth = background/voxel_size;
+  double inBandWidth = background/voxel_size;
+  distance_field::CollisionRobotOpenVDB openvdb_robot(robot_model, voxel_size, background, exBandWidth, inBandWidth);
   t=0;
-  res.clear();
   req.gradient = true;
-  start = ros::Time::now();
-  openvdb_robot.distanceSelf(req, res, robot_state);
-  t+=(ros::Time::now() - start).toSec();
-  ROS_ERROR("Openvdb Collision Robot, Links: %s to %s", res.minimum_distance.link_name[0].c_str(), res.minimum_distance.link_name[1].c_str());
-  ROS_ERROR("Openvdb Collision Robot, Distance: %f", res.minimum_distance.min_distance);
-  ROS_ERROR("Gradient: %f, %f, %f", res.minimum_distance.gradient(0), res.minimum_distance.gradient(1), res.minimum_distance.gradient(2));
-  ROS_ERROR("Openvdb Collision Robot, Average Time Elapsed: %0.8f (sec)",t);
+
+  ROS_ERROR("***********************************************************************************************************");
+  ROS_ERROR("***************************************** Openvdb Collision Robot *****************************************");
+  ROS_ERROR("***********************************************************************************************************");
+  // For color information see: http://ascii-table.com/ansi-escape-sequences.php
+  ROS_ERROR("\033[1;31m%20s %20s %10s %10s %10s %10s %10s %10s\033[0m", "Link Name #1", "Link Name #2", "Distance", "Grad. Norm", "Gradient X", "Gradient Y", "Gradient Z", "Avg Time");
+  for(int i = 0; i < 200; ++i)
+  {
+    res.clear();
+    start = ros::Time::now();
+    openvdb_robot.distanceSelf(req, res, robot_state_vdb);
+    t+=(ros::Time::now() - start).toSec();
+
+    double norm = res.minimum_distance.gradient.norm();
+    std::string code;
+    if (norm < 0.98 && std::abs(res.minimum_distance.min_distance) < (background - 0.01))
+      code = "\033[1;32m"; //bold; green
+    else
+      code = "\033[0;31m"; //norma; red
+
+    ROS_ERROR("%s %20s %20s %10.2f %10.2f %10.2f %10.2f %10.2f %10.8f\033[0m",
+              code.c_str(),
+              res.minimum_distance.link_name[0].c_str(),
+              res.minimum_distance.link_name[1].c_str(),
+              res.minimum_distance.min_distance,
+              res.minimum_distance.gradient.norm(),
+              res.minimum_distance.gradient(0),
+              res.minimum_distance.gradient(1),
+              res.minimum_distance.gradient(2),
+              t/(i + 1.0));
+
+    robot_state_vdb.setToRandomPositions();
+    robot_state_vdb.updateCollisionBodyTransforms();
+  }
 
   // Write robot sdf to file
   openvdb_robot.writeToFile("/home/larmstrong/test_robot.vdb");
 
   ROS_ERROR("Openvdb Collision Robot, Memory: %0.2f GB", openvdb_robot.memUsage()*1.0e-9);
+  ROS_ERROR("***********************************************************************************************************");
+  ROS_ERROR("***************************************** Openvdb Collision Robot *****************************************");
+  ROS_ERROR("***********************************************************************************************************");
 
   return 0;
 }
