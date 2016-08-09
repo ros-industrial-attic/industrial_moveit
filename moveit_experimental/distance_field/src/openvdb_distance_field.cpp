@@ -3,6 +3,8 @@
 #include <openvdb/tools/Composite.h>
 #include <openvdb/tools/GridOperators.h>
 #include <openvdb/tools/VolumeToSpheres.h>
+#include <openvdb/tools/GridTransformer.h>
+#include <openvdb/tools/Interpolation.h>
 #include <ros/assert.h>
 #include <algorithm>
 #include <math.h>
@@ -14,17 +16,17 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
     exBandWidth_(exBandWidth), inBandWidth_(inBandWidth),
     links_(model->getLinkModelsWithCollisionGeometry())
 {
-
+  ROS_WARN("1");
   createDefaultAllowedCollisionMatrix();
-
+  ROS_WARN("2");
   createStaticSDFs();
-
+  ROS_WARN("3");
   createActiveSDFs();
-
+  ROS_WARN("4");
   createDynamicSDFs();
-
+  ROS_WARN("5");
   createDefaultDistanceQuery();
-
+  ROS_WARN("6");
 }
 
 void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
@@ -35,13 +37,16 @@ void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
   // because it will be world link and I don't think it will ever have geometry.
   if (std::find(links_.begin(), links_.end(), robot_model_->getRootLink()) != links_.end())
   {
+    ROS_WARN("found");
     OpenVDBDistanceFieldPtr sdf(new OpenVDBDistanceField(voxel_size_, background_));
+    ROS_WARN("Adding link");
     sdf->addLinkToField(root_link, Eigen::Affine3d::Identity(), exBandWidth_, inBandWidth_);
+    ROS_WARN("Done adding link");
     static_links_.push_back(root_link);
     static_sdf_.push_back(OpenVDBDistanceFieldConstPtr(sdf));
   }
 
-
+  ROS_WARN("create-Static-done");
   addAssociatedFixedTransforms(root_link);
 }
 
@@ -143,25 +148,76 @@ void distance_field::CollisionRobotOpenVDB::addAssociatedFixedTransforms(const r
   }
 }
 
-void distance_field::CollisionRobotOpenVDB::writeToFile(const std::string file_path)
+openvdb::math::Transform::Ptr makeOpenVDBTF(const robot_model::LinkModel* model, const moveit::core::RobotState& state)
 {
+  openvdb::math::Mat4d tf;
+  auto eigen_tf = state.getGlobalLinkTransform(model);
+  distance_field::Affine3dToMat4dAffine(eigen_tf, tf);
+  auto ptr = openvdb::math::Transform::createLinearTransform(tf);
+
+  ROS_ERROR_STREAM("EIGEN:\n" << eigen_tf.matrix());
+  ROS_ERROR_STREAM("\nOPENVDB " << *ptr);
+  ROS_ERROR_STREAM("TR: " << tf.getTranslation().x() << " " << tf.getTranslation().y() << " " << tf.getTranslation().z());
+
+//  auto t = openvdb::Mat4R::translation(openvdb::Vec3s(eigen_tf.translation()(0),
+//                                                      eigen_tf.translation()(1),
+//                                                      eigen_tf.translation()(2)));
+//  auto ptr = openvdb::math::Transform::createLinearTransform(t);
+  ptr->preScale(0.1);
+  return ptr;
+}
+
+void distance_field::CollisionRobotOpenVDB::writeToFile(const std::string file_path, const moveit::core::RobotState &state)
+{
+
+  openvdb::FloatGrid::Ptr result = static_sdf_.front()->getGrid()->deepCopy();
+  result->clear();
+
   // Create a VDB file object.
   openvdb::io::File vdbFile(file_path);
 
-  // Add the static grids to grid array
+//  // Add the static grids to grid array
   openvdb::GridPtrVec grids;
-  for (std::size_t i = 0 ; i < static_sdf_.size() ; ++i)
-  {
-    grids.push_back(static_sdf_[i]->getGrid());
-  }
 
-  // Add the dynamic grids to grid array
-  for (std::size_t i = 0 ; i < dynamic_sdf_.size() ; ++i)
+//  for (std::size_t i = 0 ; i < static_sdf_.size() ; ++i)
+//  {
+//    grids.push_back(static_sdf_[i]->getGrid());
+//  }
+
+//  // Add the dynamic grids to grid array
+//  for (std::size_t i = 0 ; i < dynamic_sdf_.size() ; ++i)
+//  {
+//    grids.push_back(dynamic_sdf_[i]->getGrid());
+//  }
+
+  for (std::size_t i = 0 ; i < active_sdf_.size() ; ++i)
   {
-    grids.push_back(dynamic_sdf_[i]->getGrid());
+    ROS_WARN_STREAM("ADDING ACTIVE LINK " << active_links_[i]->getName());
+    auto tf_ptr = makeOpenVDBTF(active_links_[i], state);
+
+    openvdb::FloatGrid::Ptr g = active_sdf_[i]->getGrid();
+    auto g_copy = g->copy(openvdb::CP_NEW);
+
+    //
+    openvdb::math::Mat4d tf;
+    auto eigen_tf = state.getGlobalLinkTransform(active_links_[i]);
+    distance_field::Affine3dToMat4dAffine(eigen_tf, tf);
+
+    auto tf_copy = g->transform().copy();
+    tf_copy->postMult(tf);
+//    tf_copy->preScale(0.1);
+
+    g_copy->setTransform(tf_copy);
+
+
+    openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*g, *g_copy);
+//    grids.push_back(active_sdf_[i]->getGrid());
+    openvdb::tools::csgUnion(*result, *g_copy, true);
+
   }
 
   // Write out the contents of the container.
+  grids.push_back(result);
   vdbFile.write(grids);
   vdbFile.close();
 }
@@ -540,6 +596,7 @@ void distance_field::OpenVDBDistanceField::addLinkToField(const moveit::core::Li
 
   for (int j = 0; j < shapes.size(); ++j)
   {
+    ROS_WARN_STREAM(link->getName() << " element " << j);
     addShapeToField(shapes[j].get(), pose * shape_poses[j], exBandWidth, inBandWidth);
   }
 }
@@ -552,6 +609,7 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
   {
     case shapes::BOX:
     {
+    ROS_WARN("Box");
       const shapes::Box *box = static_cast<const shapes::Box *>(shape);
       const openvdb::math::Vec3s pmax = openvdb::math::Vec3s(std::abs(box->size[0])/2.0, std::abs(box->size[1])/2.0, std::abs(box->size[2])/2.0);
       const openvdb::math::Vec3s pmin = -1.0*pmax;
@@ -575,22 +633,25 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       quads[5] = openvdb::Vec4I(1, 5, 6, 2); // right
 
       // Tranform point location
-      TransformVec3s(pose, points);
+      TransformVec3s(pose, points.data(), points.size());
 
       // Convert data from world to index
-      WorldToIndex(transform_, points);
+      WorldToIndex(transform_, points.data(), points.size());
 
-      openvdb::tools::MeshToVolume<openvdb::FloatGrid> voxelizer(transform_);
+//      openvdb::tools::MeshToVolume<openvdb::FloatGrid> voxelizer(transform_);
+      openvdb::tools::QuadAndTriangleDataAdapter<openvdb::Vec3s, openvdb::Vec4I> mesh (points.data(), 8, quads.data(), 6);
+      grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(mesh, *transform_, exBandWidth, inBandWidth);
 
-      voxelizer.convertToLevelSet(points, quads, exBandWidth, inBandWidth);
+//      voxelizer.convertToLevelSet(points, quads, exBandWidth, inBandWidth);
 
-      grid = voxelizer.distGridPtr()->deepCopy();
+//      grid = voxelizer.distGridPtr()->deepCopy();
 
       break;
     }
 
     case shapes::CONE:
     {
+    ROS_WARN("CONE");
       const shapes::Cone *cone = static_cast<const shapes::Cone *>(shape);
 
       // Number of sides
@@ -634,22 +695,29 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       }
 
       // Transform point location
-      TransformVec3s(pose, points);
+      TransformVec3s(pose, points.data(), points.size());
 
       // Convert data from world to index
-      WorldToIndex(transform_, points);
+      WorldToIndex(transform_, points.data(), points.size());
 
-      openvdb::tools::MeshToVolume<openvdb::FloatGrid> voxelizer(transform_);
+//      openvdb::tools::MeshToVolume<openvdb::FloatGrid> voxelizer(transform_);
 
-      voxelizer.convertToLevelSet(points, quads, exBandWidth, inBandWidth);
+//      voxelizer.convertToLevelSet(points, quads, exBandWidth, inBandWidth);
 
-      grid = voxelizer.distGridPtr()->deepCopy();
+//      grid = voxelizer.distGridPtr()->deepCopy();
 
+      grid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*transform_,
+                                                                           points,
+                                                                           std::vector<openvdb::Vec3I>(),
+                                                                           quads,
+                                                                           exBandWidth,
+                                                                           inBandWidth);
       break;
     }
 
     case shapes::CYLINDER:
     {
+    ROS_WARN("Cylinder");
       const shapes::Cylinder *cylinder = static_cast<const shapes::Cylinder *>(shape);
 
       // Number of sides
@@ -725,16 +793,21 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       }
 
       // Tranform point location
-      TransformVec3s(pose, points);
+      TransformVec3s(pose, points.data(), points.size());
 
       // Convert data from world to index
-      WorldToIndex(transform_, points);
+      WorldToIndex(transform_, points.data(), points.size());
 
-      openvdb::tools::MeshToVolume<openvdb::FloatGrid> voxelizer(transform_);
+      /*grid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*transform_,
+                                                                           points,
+                                                                           std::vector<openvdb::Vec3I>(),
+                                                                           quads,
+                                                                           exBandWidth,
+                                                                           inBandWidth);*/
+      openvdb::tools::QuadAndTriangleDataAdapter<openvdb::Vec3s, openvdb::Vec4I> mesh (points.data(), points.size(),
+                                                                                       quads.data(), quads.size());
+      grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(mesh, *transform_, exBandWidth, inBandWidth);
 
-      voxelizer.convertToLevelSet(points, quads, exBandWidth, inBandWidth);
-
-      grid = voxelizer.distGridPtr()->deepCopy();
 
       break;
     }
@@ -747,6 +820,7 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
 
     case shapes::MESH:
     {
+      ROS_WARN("addLink - MESH");
       shapes::Mesh *mesh = static_cast<shapes::Mesh *>(shape->clone());
 
       // Now need to clean verticies
@@ -756,13 +830,25 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       MeshData mesh_data = ShapeMeshToOpenVDB(mesh, pose);
 
       // Convert data from world to index
-      WorldToIndex(transform_, mesh_data.points);
+      WorldToIndex(transform_, mesh_data.points.data(), mesh_data.points.size());
 
-      openvdb::tools::MeshToVolume<openvdb::FloatGrid> voxelizer(transform_);
+      openvdb::tools::QuadAndTriangleDataAdapter<openvdb::Vec3s, openvdb::Vec3I> mesh2 (mesh_data.points.data(), mesh_data.points.size(),
+                                                                                       mesh_data.triangles.data(), mesh_data.triangles.size());
+      grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(mesh2, *transform_, exBandWidth, inBandWidth);
 
-      voxelizer.convertToLevelSet(mesh_data.points, mesh_data.quads, exBandWidth, inBandWidth);
 
-      grid = voxelizer.distGridPtr()->deepCopy();
+      /*grid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*transform_,
+                                                                           mesh_data.points,
+                                                                           mesh_data.triangles,
+                                                                           mesh_data.quads,
+                                                                           exBandWidth,
+                                                                           inBandWidth);
+*/
+//      openvdb::tools::MeshToVolume<openvdb::FloatGrid> voxelizer(transform_);
+
+//      voxelizer.convertToLevelSet(mesh_data.points, mesh_data.quads, exBandWidth, inBandWidth);
+
+//      grid = voxelizer.distGridPtr()->deepCopy();
 
       delete mesh;
       break;
@@ -777,7 +863,12 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
     case shapes::SPHERE:
     {
       const shapes::Sphere *sphere = static_cast<const shapes::Sphere *>(shape);
-      grid = openvdb::tools::createLevelSetSphere<openvdb::FloatGrid>(sphere->radius,  openvdb::Vec3f(pose.translation()(0), pose.translation()(1), pose.translation()(2)), voxel_size_, exBandWidth);
+
+      grid = openvdb::tools::createLevelSetSphere<openvdb::FloatGrid>(sphere->radius,
+                                                                      openvdb::Vec3f(pose.translation()(0),
+                                                                                     pose.translation()(1),
+                                                                                     pose.translation()(2)),
+                                                                      voxel_size_, exBandWidth);
       break;
     }
 
@@ -790,7 +881,7 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
   }
 
   // Set the default background distance
-  grid->setBackground(background_);
+//  grid->setBackground(background_);
   if (!grid_)
   {
     grid_ = grid;
@@ -870,6 +961,8 @@ void distance_field::Affine3dToMat4d(const Eigen::Affine3d &input, openvdb::math
   for (int i = 0; i < 4; ++i)
     for (int j = 0; j < 4; ++j)
       output(i, j) = input(i, j);
+
+//  input.rotation().
 }
 
 void distance_field::Affine3dToMat4dAffine(const Eigen::Affine3d &input, openvdb::math::Mat4d &output)
@@ -885,10 +978,24 @@ void distance_field::WorldToIndex(const openvdb::math::Transform::Ptr transform,
                  [&transform](openvdb::math::Vec3s point){ return transform->worldToIndex(point); });
 }
 
-void distance_field::TransformVec3s(const Eigen::Affine3d &pose, std::vector<openvdb::v2_1::math::Vec3s> &points)
+void distance_field::TransformVec3s(const Eigen::Affine3d &pose, std::vector<openvdb::math::Vec3s> &points)
 {
   openvdb::math::Mat4d tf;
   Affine3dToMat4d(pose, tf);
   std::transform(points.begin(), points.end(), points.begin(),
+                 [&tf](openvdb::math::Vec3s point){ return tf * point; });
+}
+
+void distance_field::WorldToIndex(const openvdb::math::Transform::Ptr transform, openvdb::math::Vec3s *points, std::size_t size)
+{
+  std::transform(points, points + size, points,
+                 [&transform](openvdb::math::Vec3s point){ return transform->worldToIndex(point); });
+}
+
+void distance_field::TransformVec3s(const Eigen::Affine3d &pose, openvdb::math::Vec3s *points, std::size_t size)
+{
+  openvdb::math::Mat4d tf;
+  Affine3dToMat4d(pose, tf);
+  std::transform(points, points + size, points,
                  [&tf](openvdb::math::Vec3s point){ return tf * point; });
 }
