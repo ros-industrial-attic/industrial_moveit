@@ -163,7 +163,7 @@ openvdb::math::Transform::Ptr makeOpenVDBTF(const robot_model::LinkModel* model,
 //                                                      eigen_tf.translation()(1),
 //                                                      eigen_tf.translation()(2)));
 //  auto ptr = openvdb::math::Transform::createLinearTransform(t);
-  ptr->preScale(0.1);
+  ptr->postScale(0.02);
   return ptr;
 }
 
@@ -192,22 +192,24 @@ void distance_field::CollisionRobotOpenVDB::writeToFile(const std::string file_p
 
   for (std::size_t i = 0 ; i < active_sdf_.size() ; ++i)
   {
-    ROS_WARN_STREAM("ADDING ACTIVE LINK " << active_links_[i]->getName());
-    auto tf_ptr = makeOpenVDBTF(active_links_[i], state);
+//    ROS_WARN_STREAM("ADDING ACTIVE LINK " << active_links_[i]->getName());
+//    auto tf_ptr = makeOpenVDBTF(active_links_[i], state);
+
+    auto eigen_tf = state.getGlobalLinkTransform(active_links_[i]);
+    openvdb::math::Mat4d tf;
+    distance_field::Affine3dToMat4dAffine(eigen_tf.inverse(), tf);
 
     openvdb::FloatGrid::Ptr g = active_sdf_[i]->getGrid();
+
     auto g_copy = g->copy(openvdb::CP_NEW);
-
+    g_copy->setTransform(g->transform().copy());
+    g_copy->transform().postMult(tf);
     //
-    openvdb::math::Mat4d tf;
-    auto eigen_tf = state.getGlobalLinkTransform(active_links_[i]);
-    distance_field::Affine3dToMat4dAffine(eigen_tf, tf);
-
-    auto tf_copy = g->transform().copy();
-    tf_copy->postMult(tf);
+//    auto tf_copy = g->transform().copy();
+//    tf_copy->postMult(tf);
 //    tf_copy->preScale(0.1);
 
-    g_copy->setTransform(tf_copy);
+//    g_copy->setTransform(tf_ptr);
 
 
     openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*g, *g_copy);
@@ -321,7 +323,7 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
     std::transform(dist_query[i].spheres.begin(), dist_query[i].spheres.end(), dist_query[i].spheres.begin(),
                    [&tf](std::pair<openvdb::math::Vec3d, double> p){ p.first = (tf * p.first); return p; });
 
-    tf = tf.transpose();
+    tf = tf.transpose().inverse();
     SDFData d(active_sdf_[i]->getGrid(), tf);
     data[Active].push_back(std::move(d));
   }
@@ -329,7 +331,7 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
   for (std::size_t i = 0; i < dynamic_links_.size(); ++i)
   {
     openvdb::Mat4d tf;
-    Affine3dToMat4dAffine(state.getGlobalLinkTransform(dynamic_links_[i]), tf);
+    Affine3dToMat4dAffine(state.getGlobalLinkTransform(dynamic_links_[i]).inverse(), tf);
 
     SDFData d(dynamic_sdf_[i]->getGrid(), tf);
     data[Dynamic].push_back(std::move(d));
