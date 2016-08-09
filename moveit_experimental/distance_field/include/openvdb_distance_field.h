@@ -20,7 +20,7 @@ struct MeshData
 {
   std::vector<openvdb::math::Vec3s> points;
   std::vector<openvdb::Vec3I> triangles;
-  std::vector<openvdb::v2_1::Vec4I> quads;
+  std::vector<openvdb::Vec4I> quads;
 };
 
 class OpenVDBDistanceField
@@ -91,7 +91,12 @@ void Affine3dToMat4dAffine(const Eigen::Affine3d &input, openvdb::math::Mat4d &o
 
 void WorldToIndex(const openvdb::math::Transform::Ptr transform, std::vector<openvdb::math::Vec3s> &points);
 
+void WorldToIndex(const openvdb::math::Transform::Ptr transform, openvdb::math::Vec3s* points, std::size_t size);
+
 void TransformVec3s(const Eigen::Affine3d &pose, std::vector<openvdb::math::Vec3s> &points);
+
+void TransformVec3s(const Eigen::Affine3d& pose, openvdb::math::Vec3s* points, std::size_t size);
+
 
 enum SDFType {Static = 0, Dynamic = 1, Active = 2};
 struct DistanceQueryData
@@ -137,7 +142,7 @@ public:
 //  double distanceSelf(const robot_state::RobotState &state) const;
   void distanceSelf(const collision_detection::DistanceRequest &req, collision_detection::DistanceResult &res, const robot_state::RobotState &state) const;
 
-  void writeToFile(const std::string file_path);
+  void writeToFile(const std::string file_path, const moveit::core::RobotState &state);
 
   uint64_t memUsage() const;
 

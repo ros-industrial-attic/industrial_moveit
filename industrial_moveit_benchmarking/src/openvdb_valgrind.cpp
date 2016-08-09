@@ -56,11 +56,12 @@ int main (int argc, char *argv[])
 {
   ros::init(argc, argv, "openvdb_valgrid_name");
   ros::NodeHandle pnh;
+  openvdb::initialize();
 
   if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug))
      ros::console::notifyLoggerLevelsChanged();
 
-  sleep(10);
+  sleep(1);
   robot_model_loader::RobotModelLoaderPtr loader;
   robot_model::RobotModelPtr robot_model;
   string urdf_file_path, srdf_file_path;
@@ -176,7 +177,7 @@ int main (int argc, char *argv[])
   ROS_ERROR("Sphere example, Average Time Elapsed: %0.8f (sec)",t/10.0);
 
   // Write distance field to file
-  df.writeToFile("/home/larmstrong/test.vdb");
+  df.writeToFile("/home/jon/test.vdb");
   ROS_ERROR("Sphere example, Bytes: %i", int(df.memUsage()));
 
 
@@ -273,7 +274,7 @@ int main (int argc, char *argv[])
   }
 
   // Write robot sdf to file
-  openvdb_robot.writeToFile("/home/larmstrong/test_robot.vdb");
+  openvdb_robot.writeToFile("/home/jon/test_robot.vdb", robot_state_vdb);
 
   ROS_ERROR("Openvdb Collision Robot, Memory: %0.2f GB", openvdb_robot.memUsage()*1.0e-9);
   ROS_ERROR("***********************************************************************************************************");

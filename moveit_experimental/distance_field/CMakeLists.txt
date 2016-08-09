@@ -8,7 +8,9 @@ if(OPENMP_FOUND)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 
-find_library(OPENVDB_LIBRARY NAMES openvdb)
+find_library(OPENVDB_LIBRARY NAMES openvdb
+  HINTS "/home/jon/Code/libraries/libopenvdb/lib")
+include_directories("/home/jon/Code/libraries/libopenvdb/include")
 
 find_library(TBB_LIBRARY NAMES tbb)
 
@@ -17,6 +19,7 @@ target_link_libraries(${MOVEIT_LIB_NAME} ${catkin_LIBRARIES} ${OPENVDB_LIBRARY} 
 
 install(TARGETS ${MOVEIT_LIB_NAME} LIBRARY DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include)
+
 
 if(CATKIN_ENABLE_TESTING)
   catkin_add_gtest(test_static_distance_field test/test_static_distance_field.cpp)
