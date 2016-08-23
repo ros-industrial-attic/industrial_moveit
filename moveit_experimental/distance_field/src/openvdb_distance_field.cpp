@@ -16,17 +16,16 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
     exBandWidth_(exBandWidth), inBandWidth_(inBandWidth),
     links_(model->getLinkModelsWithCollisionGeometry())
 {
-  ROS_WARN("1");
+  ros::NodeHandle nh;
+  sphere_pub_ = nh.advertise<visualization_msgs::MarkerArray>("spheres", 1);
+  in_cloud_pub_ = nh.advertise<distance_field::PointCloud>("in_distance_field", 1);
+  out_cloud_pub_ = nh.advertise<distance_field::PointCloud>("out_distance_field", 1);
+
   createDefaultAllowedCollisionMatrix();
-  ROS_WARN("2");
   createStaticSDFs();
-  ROS_WARN("3");
   createActiveSDFs();
-  ROS_WARN("4");
   createDynamicSDFs();
-  ROS_WARN("5");
   createDefaultDistanceQuery();
-  ROS_WARN("6");
 }
 
 void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
@@ -37,16 +36,12 @@ void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
   // because it will be world link and I don't think it will ever have geometry.
   if (std::find(links_.begin(), links_.end(), robot_model_->getRootLink()) != links_.end())
   {
-    ROS_WARN("found");
     OpenVDBDistanceFieldPtr sdf(new OpenVDBDistanceField(voxel_size_, background_));
-    ROS_WARN("Adding link");
     sdf->addLinkToField(root_link, Eigen::Affine3d::Identity(), exBandWidth_, inBandWidth_);
-    ROS_WARN("Done adding link");
     static_links_.push_back(root_link);
     static_sdf_.push_back(OpenVDBDistanceFieldConstPtr(sdf));
   }
 
-  ROS_WARN("create-Static-done");
   addAssociatedFixedTransforms(root_link);
 }
 
@@ -81,12 +76,20 @@ void distance_field::CollisionRobotOpenVDB::createActiveSDFs()
 
       sdf->addLinkToField(active_links_[i], Eigen::Affine3d::Identity(), (voxel_size_/v) * exBandWidth_, (voxel_size_/v) * inBandWidth_);
 
-      sdf->fillWithSpheres(active_spheres_[i], 10);
+      const auto n_spheres = 20;
+      const auto can_overlap = true;
+      const auto min_voxel_size = 1.0f;
+      const auto max_voxel_size = std::numeric_limits<float>::max();
+      const auto iso_surface = 0.0f; // the value at which the surface exists; 0.0 for solid models (clouds are different)
+      const auto n_instances = 100000; // num of voxels to consider when fitting spheres
 
-      if (active_spheres_[i].size() != 0)
+      sdf->fillWithSpheres(active_spheres_[i], n_spheres, can_overlap, min_voxel_size,
+                           max_voxel_size, iso_surface, n_instances);
+
+      if (active_spheres_[i].size() > 1) // openvdb appears to ALWAYS insert one sphere, so we want more
         break;
 
-      v = v * 0.5;
+      v = v * 0.5; // try again with voxels of half the size
     }
 
     if (active_spheres_[i].size() == 0)
@@ -246,6 +249,21 @@ uint64_t distance_field::CollisionRobotOpenVDB::memUsage() const
   return mem_usage;
 }
 
+distance_field::PointCloud::Ptr distance_field::CollisionRobotOpenVDB::makePointCloud() const
+{
+  distance_field::PointCloud::Ptr cloud (new distance_field::PointCloud);
+
+//  for (std::size_t i = 0; i < active_links_.size() ; ++i)
+//  {
+//    auto ptr = active_sdf_[i]->getGrid();
+//    auto c = distance_field::toPointCloud(*ptr);
+
+//    cloud->insert(cloud->end(), c->begin(), c->end());
+//  }
+
+  return cloud;
+}
+
 void distance_field::CollisionRobotOpenVDB::createDefaultDistanceQuery()
 {
   // Calculate distance to objects that were added dynamically into the planning scene
@@ -312,6 +330,16 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
   const moveit::core::JointModelGroup* group = robot_model_->getJointModelGroup(req.group_name);
   const auto& group_links = group->getUpdatedLinkModelsWithGeometryNames();
 
+  // DEBUG
+//  visualization_msgs::MarkerArray ma;
+//  int marker_id = 0;
+//  distance_field::PointCloud::Ptr inside_cloud (new distance_field::PointCloud);
+//  distance_field::PointCloud::Ptr outside_cloud (new distance_field::PointCloud);
+
+//  inside_cloud->header.frame_id = "map";
+//  outside_cloud->header.frame_id = "map";
+//  // END DEBUG
+
   for (std::size_t i = 0; i < active_links_.size(); ++i)
   {
     openvdb::Mat4d tf;
@@ -323,10 +351,32 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
     std::transform(dist_query[i].spheres.begin(), dist_query[i].spheres.end(), dist_query[i].spheres.begin(),
                    [&tf](std::pair<openvdb::math::Vec3d, double> p){ p.first = (tf * p.first); return p; });
 
-    tf = tf.transpose().inverse();
+//    // DEBUG
+//    for (const auto& sphere : dist_query[i].spheres)
+//    {
+//      auto origin = sphere.first;
+//      auto radius = sphere.second;
+//      auto combined = openvdb::math::Vec4s(origin.x(), origin.y(), origin.z(), radius);
+
+//      auto m = distance_field::toSphere(combined, marker_id++);
+//      ma.markers.push_back(m);
+//    }
+
+    tf = tf.transpose();
     SDFData d(active_sdf_[i]->getGrid(), tf);
-    data[Active].push_back(std::move(d));
+    data[Active].push_back(d);
+
+    // DEBUG display cloud
+//    openvdb::FloatGrid& g = *active_sdf_[i]->getGrid();
+//    auto copy = g.deepCopy(); // hopefully a shallow copy?
+//    copy->setTransform(d.transform);
+
+//    auto f = distance_field::toInsideOutsidePointCloud(*copy);
+//    inside_cloud->insert(inside_cloud->end(), f.first->begin(), f.first->end());
+//    outside_cloud->insert(outside_cloud->end(), f.second->begin(), f.second->end());
+////    cloud->insert(cloud->end(), f->begin(), f->end());
   }
+
 
   for (std::size_t i = 0; i < dynamic_links_.size(); ++i)
   {
@@ -334,13 +384,13 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
     Affine3dToMat4dAffine(state.getGlobalLinkTransform(dynamic_links_[i]).inverse(), tf);
 
     SDFData d(dynamic_sdf_[i]->getGrid(), tf);
-    data[Dynamic].push_back(std::move(d));
+    data[Dynamic].push_back(d);
   }
 
   for (std::size_t i = 0; i < static_links_.size(); ++i)
   {
     SDFData d(static_sdf_[i]->getGrid());
-    data[Static].push_back(std::move(d));
+    data[Static].push_back(d);
   }
 
   // Compute minimum distance
@@ -350,7 +400,7 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
     {
       collision_detection::DistanceResultsData d;
       distanceSelfHelper(dist_query[i], data, d);
-      res.distance.insert(std::make_pair(d.link_name[0], std::move(d)));
+      res.distance.insert(std::make_pair(d.link_name[0], d));
     }
   }
 
@@ -397,12 +447,22 @@ void distance_field::CollisionRobotOpenVDB::createDefaultAllowedCollisionMatrix(
     acm_->setEntry(it->link1_, it->link2_, true);
 }
 
+template <typename T>
+static bool approxEqual(T a, T b, const T eps = 0.00001)
+{
+  return std::abs(a - b) < eps;
+}
+
 void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(const DistanceQueryData &data, std::vector<std::vector<SDFData> > &sdfs_data, collision_detection::DistanceResultsData &res) const
 {
   res.min_distance = background_;
   res.link_name[0] = data.parent_name;
   res.hasNearestPoints = false;
-  openvdb::Vec3f gradient;
+
+  // Variables to keep track of gradient information, if requested
+  openvdb::Vec3f gradient = openvdb::Vec3f::zero();
+  float total_weights = 0.0f;
+
   for (std::size_t i = 0; i < data.child_index.size(); ++i)
   {
     float child_min = background_;
@@ -414,7 +474,8 @@ void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(const DistanceQue
     {
       openvdb::math::Coord ijk = child_data.transform->worldToIndexNodeCentered(data.spheres[j].first);
       float child_dist = child_data.accessor.getValue(ijk);
-      if (child_dist != background_)
+
+      if (!approxEqual(child_dist, background_))
       {
         child_dist -= data.spheres[j].second;
         if (child_dist < child_min)
@@ -438,18 +499,16 @@ void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(const DistanceQue
       // compute gradient
       if (data.gradient)
       {
-        openvdb::Vec3f result = openvdb::math::ISGradient<openvdb::math::CD_2ND>::result(child_data.accessor, child_min_ijk);
-        result.normalize();
+        // First determine the relative 'weight' of this gradient based on the distance
+        float weight = background_ - child_min;
+        total_weights += weight;
 
-        if (res.hasGradient)
-        {
-          gradient = 0.5 * (gradient + result);
-          gradient.normalize();
-        }
-        else
-        {
-          gradient = result;
-        }
+        // Compute gradient
+        openvdb::Vec3f result = openvdb::math::ISGradient<openvdb::math::CD_2ND>::result(child_data.accessor, child_min_ijk);
+        result = child_data.transform->baseMap()->applyIJT(result);
+        result.normalize();
+        result = result * weight;
+        gradient += result;
 
         res.hasGradient = true;
       }
@@ -457,8 +516,17 @@ void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(const DistanceQue
   }
 
   if (res.hasGradient)
-    res.gradient = Eigen::Vector3d(gradient(0), gradient(1), gradient(2));
-
+  {
+    if (total_weights == 0.0)
+    {
+      res.gradient = Eigen::Vector3d(0, 0, 0);
+    }
+    else
+    {
+      res.gradient = Eigen::Vector3d(gradient(0) / total_weights, gradient(1) / total_weights, gradient(2) / total_weights);
+      res.gradient.normalize();
+    }
+  }
 }
 
 distance_field::OpenVDBDistanceField::OpenVDBDistanceField(float voxel_size, float background) :
@@ -561,21 +629,6 @@ bool distance_field::OpenVDBDistanceField::getGradient(const float &x, const flo
   return getGradient(transform_->worldToIndexNodeCentered(xyz), gradient, thread_safe);
 }
 
-//void distance_field::OpenVDBDistanceField::fillWithSpheres(SphereModel &spheres, int maxSphereCount, bool overlapping, float minRadius, float maxRadius, float isovalue, int instanceCount)
-//{
-//  std::vector<openvdb::math::Vec4s> s;
-//  openvdb::tools::fillWithSpheres<openvdb::FloatGrid>(*grid_, s, maxSphereCount, overlapping, minRadius, maxRadius, isovalue, instanceCount);
-
-//  // convert data to eigen data types
-//  for (auto it = s.begin(); it != s.end(); ++it)
-//  {
-//    spheres.push_back(std::make_pair(Eigen::Vector3d((*it)[0], (*it)[1], (*it)[2]), (*it)[3]));
-//  }
-
-//  if (spheres.size()== 0)
-//    ROS_WARN("Unable to fill grid with spheres.");
-//}
-
 void distance_field::OpenVDBDistanceField::fillWithSpheres(SphereModel &spheres, int maxSphereCount, bool overlapping, float minRadius, float maxRadius, float isovalue, int instanceCount)
 {
   std::vector<openvdb::math::Vec4s> s;
@@ -598,7 +651,6 @@ void distance_field::OpenVDBDistanceField::addLinkToField(const moveit::core::Li
 
   for (int j = 0; j < shapes.size(); ++j)
   {
-    ROS_WARN_STREAM(link->getName() << " element " << j);
     addShapeToField(shapes[j].get(), pose * shape_poses[j], exBandWidth, inBandWidth);
   }
 }
@@ -611,7 +663,6 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
   {
     case shapes::BOX:
     {
-    ROS_WARN("Box");
       const shapes::Box *box = static_cast<const shapes::Box *>(shape);
       const openvdb::math::Vec3s pmax = openvdb::math::Vec3s(std::abs(box->size[0])/2.0, std::abs(box->size[1])/2.0, std::abs(box->size[2])/2.0);
       const openvdb::math::Vec3s pmin = -1.0*pmax;
@@ -640,20 +691,14 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       // Convert data from world to index
       WorldToIndex(transform_, points.data(), points.size());
 
-//      openvdb::tools::MeshToVolume<openvdb::FloatGrid> voxelizer(transform_);
-      openvdb::tools::QuadAndTriangleDataAdapter<openvdb::Vec3s, openvdb::Vec4I> mesh (points.data(), 8, quads.data(), 6);
+      openvdb::tools::QuadAndTriangleDataAdapter<openvdb::Vec3s, openvdb::Vec4I> mesh (points.data(), points.size(),
+                                                                                       quads.data(), quads.size());
       grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(mesh, *transform_, exBandWidth, inBandWidth);
-
-//      voxelizer.convertToLevelSet(points, quads, exBandWidth, inBandWidth);
-
-//      grid = voxelizer.distGridPtr()->deepCopy();
-
       break;
     }
 
     case shapes::CONE:
     {
-    ROS_WARN("CONE");
       const shapes::Cone *cone = static_cast<const shapes::Cone *>(shape);
 
       // Number of sides
@@ -702,12 +747,6 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       // Convert data from world to index
       WorldToIndex(transform_, points.data(), points.size());
 
-//      openvdb::tools::MeshToVolume<openvdb::FloatGrid> voxelizer(transform_);
-
-//      voxelizer.convertToLevelSet(points, quads, exBandWidth, inBandWidth);
-
-//      grid = voxelizer.distGridPtr()->deepCopy();
-
       grid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*transform_,
                                                                            points,
                                                                            std::vector<openvdb::Vec3I>(),
@@ -719,7 +758,6 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
 
     case shapes::CYLINDER:
     {
-    ROS_WARN("Cylinder");
       const shapes::Cylinder *cylinder = static_cast<const shapes::Cylinder *>(shape);
 
       // Number of sides
@@ -800,16 +838,9 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       // Convert data from world to index
       WorldToIndex(transform_, points.data(), points.size());
 
-      /*grid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*transform_,
-                                                                           points,
-                                                                           std::vector<openvdb::Vec3I>(),
-                                                                           quads,
-                                                                           exBandWidth,
-                                                                           inBandWidth);*/
       openvdb::tools::QuadAndTriangleDataAdapter<openvdb::Vec3s, openvdb::Vec4I> mesh (points.data(), points.size(),
                                                                                        quads.data(), quads.size());
       grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(mesh, *transform_, exBandWidth, inBandWidth);
-
 
       break;
     }
@@ -822,7 +853,6 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
 
     case shapes::MESH:
     {
-      ROS_WARN("addLink - MESH");
       shapes::Mesh *mesh = static_cast<shapes::Mesh *>(shape->clone());
 
       // Now need to clean verticies
@@ -837,20 +867,6 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       openvdb::tools::QuadAndTriangleDataAdapter<openvdb::Vec3s, openvdb::Vec3I> mesh2 (mesh_data.points.data(), mesh_data.points.size(),
                                                                                        mesh_data.triangles.data(), mesh_data.triangles.size());
       grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(mesh2, *transform_, exBandWidth, inBandWidth);
-
-
-      /*grid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*transform_,
-                                                                           mesh_data.points,
-                                                                           mesh_data.triangles,
-                                                                           mesh_data.quads,
-                                                                           exBandWidth,
-                                                                           inBandWidth);
-*/
-//      openvdb::tools::MeshToVolume<openvdb::FloatGrid> voxelizer(transform_);
-
-//      voxelizer.convertToLevelSet(mesh_data.points, mesh_data.quads, exBandWidth, inBandWidth);
-
-//      grid = voxelizer.distGridPtr()->deepCopy();
 
       delete mesh;
       break;
@@ -882,8 +898,6 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
 
   }
 
-  // Set the default background distance
-//  grid->setBackground(background_);
   if (!grid_)
   {
     grid_ = grid;
@@ -892,7 +906,7 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
   {
     ros::Time start = ros::Time::now();
     openvdb::tools::csgUnion(*grid_, *grid, true);
-    ROS_ERROR("CSG Union Time Elapsed: %f (sec)",(ros::Time::now() - start).toSec());
+    ROS_INFO("CSG Union Time Elapsed: %f (sec)",(ros::Time::now() - start).toSec());
   }
 
   accessor_ = std::make_shared<openvdb::FloatGrid::ConstAccessor>(grid_->getConstAccessor());
@@ -964,7 +978,6 @@ void distance_field::Affine3dToMat4d(const Eigen::Affine3d &input, openvdb::math
     for (int j = 0; j < 4; ++j)
       output(i, j) = input(i, j);
 
-//  input.rotation().
 }
 
 void distance_field::Affine3dToMat4dAffine(const Eigen::Affine3d &input, openvdb::math::Mat4d &output)
