@@ -25,6 +25,7 @@ COMPONENTS
   rostime
   cmake_modules
   industrial_collision_detection
+  pcl_ros
 )
 find_package(console_bridge REQUIRED)
 find_package(Eigen REQUIRED)
@@ -63,6 +64,7 @@ catkin_package(
     moveit_msgs
     kdl_parser
     srdfdom
+    pcl_ros
   DEPENDS
     Boost
     Eigen

@@ -9,6 +9,7 @@
 #include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/math/Vec3.h>
 #include <industrial_collision_detection/collision_common.h>
+#include <openvdb_visualization.h>
 
 namespace distance_field
 {
@@ -146,6 +147,8 @@ public:
 
   uint64_t memUsage() const;
 
+  distance_field::PointCloud::Ptr makePointCloud() const;
+
 private:
   void distanceSelfHelper(const DistanceQueryData &data, std::vector<std::vector<SDFData> > &sdfs_data, collision_detection::DistanceResultsData &res) const;
 
@@ -206,6 +209,11 @@ private:
   std::vector<SphereModel> active_spheres_;
 
   std::vector<DistanceQueryData> dist_query_;
+
+  ros::Publisher sphere_pub_;
+  ros::Publisher in_cloud_pub_; // = pnh.advertise<distance_field::PointCloud>("distance_field", 1);
+  ros::Publisher out_cloud_pub_;
+
 
   float voxel_size_;
   float background_;

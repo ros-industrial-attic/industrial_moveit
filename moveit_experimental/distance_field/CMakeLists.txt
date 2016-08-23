@@ -10,11 +10,11 @@ endif()
 
 find_library(OPENVDB_LIBRARY NAMES openvdb
   HINTS "/home/jon/Code/libraries/libopenvdb/lib")
-include_directories("/home/jon/Code/libraries/libopenvdb/include")
+include_directories("/home/jon/Code/libraries/libopenvdb/include" include)
 
 find_library(TBB_LIBRARY NAMES tbb)
 
-add_library(${MOVEIT_LIB_NAME} src/openvdb_distance_field.cpp)
+add_library(${MOVEIT_LIB_NAME} src/openvdb_distance_field.cpp src/openvdb_visualization.cpp)
 target_link_libraries(${MOVEIT_LIB_NAME} ${catkin_LIBRARIES} ${OPENVDB_LIBRARY} ${TBB_LIBRARY})
 
 install(TARGETS ${MOVEIT_LIB_NAME} LIBRARY DESTINATION lib)

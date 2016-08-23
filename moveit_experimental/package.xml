@@ -49,6 +49,7 @@
   <build_depend>rostime</build_depend>
   <build_depend>cmake_modules</build_depend>
   <build_depend>industrial_collision_detection</build_depend>
+  <build_depend>pcl_ros</build_depend>
   <test_depend>angles</test_depend>
   <test_depend>tf_conversions</test_depend>
 
@@ -78,5 +79,6 @@
   <run_depend>trajectory_msgs</run_depend>
   <run_depend>visualization_msgs</run_depend>  
   <run_depend>industrial_collision_detection</run_depend>
+  <run_depend>pcl_ros</run_depend>
 
 </package>
