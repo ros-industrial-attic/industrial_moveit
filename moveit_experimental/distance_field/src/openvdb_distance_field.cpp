@@ -16,11 +16,6 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
     exBandWidth_(exBandWidth), inBandWidth_(inBandWidth),
     links_(model->getLinkModelsWithCollisionGeometry())
 {
-  ros::NodeHandle nh;
-  sphere_pub_ = nh.advertise<visualization_msgs::MarkerArray>("spheres", 1);
-  in_cloud_pub_ = nh.advertise<distance_field::PointCloud>("in_distance_field", 1);
-  out_cloud_pub_ = nh.advertise<distance_field::PointCloud>("out_distance_field", 1);
-
   createDefaultAllowedCollisionMatrix();
   createStaticSDFs();
   createActiveSDFs();
@@ -1005,16 +1000,12 @@ void distance_field::Affine3dToMat4dAffine(const Eigen::Affine3d &input, openvdb
 
 void distance_field::WorldToIndex(const openvdb::math::Transform::Ptr transform, std::vector<openvdb::math::Vec3s> &points)
 {
-  std::transform(points.begin(), points.end(), points.begin(),
-                 [&transform](openvdb::math::Vec3s point){ return transform->worldToIndex(point); });
+  WorldToIndex(transform, points.data(), points.size());
 }
 
 void distance_field::TransformVec3s(const Eigen::Affine3d &pose, std::vector<openvdb::math::Vec3s> &points)
 {
-  openvdb::math::Mat4d tf;
-  Affine3dToMat4d(pose, tf);
-  std::transform(points.begin(), points.end(), points.begin(),
-                 [&tf](openvdb::math::Vec3s point){ return tf * point; });
+  TransformVec3s(pose, points.data(), points.size());
 }
 
 void distance_field::WorldToIndex(const openvdb::math::Transform::Ptr transform, openvdb::math::Vec3s *points, std::size_t size)

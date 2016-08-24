@@ -43,7 +43,6 @@
 #include <openvdb/tools/VolumeToSpheres.h>
 #include <openvdb/math/Transform.h>
 
-#include <industrial_moveit_benchmarking/robot_state_test_cases.h>
 #include <moveit/robot_state/conversions.h>
 #include <moveit_msgs/DisplayRobotState.h>
 
@@ -205,7 +204,7 @@ int main (int argc, char *argv[])
   ROS_ERROR("Sphere example, Average Time Elapsed: %0.8f (sec)",t/10.0);
 
   // Write distance field to file
-  df.writeToFile("/home/jon/test.vdb");
+  df.writeToFile("test.vdb");
   ROS_ERROR("Sphere example, Bytes: %i", int(df.memUsage()));
 
 
@@ -320,7 +319,6 @@ int main (int argc, char *argv[])
     if (norm < 0.98 && std::abs(res.minimum_distance.min_distance) < (background - 0.01))
     {
       code = "\033[1;32m"; //bold; green
-//      test_cases.append(*robot_states[i]);
     }
     else
     {
@@ -338,15 +336,10 @@ int main (int argc, char *argv[])
               res.minimum_distance.gradient(1),
               res.minimum_distance.gradient(2),
               t/(i + 1.0));
-
-    // Request user input to continue
-//    ROS_INFO("Press any key to continue");
-//    std::cin.ignore();
   }
 
   // Write robot sdf to file
-  openvdb_robot.writeToFile("/home/jon/test_robot.vdb", robot_state);
-//  test_cases.save("/home/jon/robot_test_cases.txt");
+  openvdb_robot.writeToFile("test_robot.vdb", robot_state);
 
   ROS_ERROR("Openvdb Collision Robot, Memory: %0.2f GB", openvdb_robot.memUsage()*1.0e-9);
   ROS_ERROR("***********************************************************************************************************");

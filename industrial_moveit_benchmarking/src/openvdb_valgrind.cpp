@@ -177,7 +177,7 @@ int main (int argc, char *argv[])
   ROS_ERROR("Sphere example, Average Time Elapsed: %0.8f (sec)",t/10.0);
 
   // Write distance field to file
-  df.writeToFile("/home/jon/test.vdb");
+  df.writeToFile("test.vdb");
   ROS_ERROR("Sphere example, Bytes: %i", int(df.memUsage()));
 
 
@@ -274,7 +274,7 @@ int main (int argc, char *argv[])
   }
 
   // Write robot sdf to file
-  openvdb_robot.writeToFile("/home/jon/test_robot.vdb", robot_state_vdb);
+  openvdb_robot.writeToFile("test_robot.vdb", robot_state_vdb);
 
   ROS_ERROR("Openvdb Collision Robot, Memory: %0.2f GB", openvdb_robot.memUsage()*1.0e-9);
   ROS_ERROR("***********************************************************************************************************");
