@@ -63,8 +63,15 @@ int main (int argc, char *argv[])
   ros::AsyncSpinner spinner (1);
   spinner.start();
 
-//  ros::Publisher cloud_pub = pnh.advertise<distance_field::PointCloud>("distance_field", 1);
   ros::Publisher state_pub = pnh.advertise<moveit_msgs::DisplayRobotState>("robot_state", 1);
+  ros::Publisher sphere_pub;
+  ros::Publisher in_cloud_pub;
+  ros::Publisher out_cloud_pub;
+
+  sphere_pub = pnh.advertise<visualization_msgs::MarkerArray>("spheres", 1);
+  in_cloud_pub = pnh.advertise<distance_field::PointCloud>("in_distance_field", 1);
+  out_cloud_pub = pnh.advertise<distance_field::PointCloud>("out_distance_field", 1);
+
 
   if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug))
      ros::console::notifyLoggerLevelsChanged();
@@ -274,10 +281,9 @@ int main (int argc, char *argv[])
   double inBandWidth = background/voxel_size;
   distance_field::CollisionRobotOpenVDB openvdb_robot(robot_model, voxel_size, background, exBandWidth, inBandWidth);
   t=0;
-//  req.gradient = true;
 
-//  RobotStateTestCases test_cases (robot_model);
-
+  std::vector<std::string> exclude_cloud;
+  exclude_cloud.push_back("workcell_bounds");
 
   ROS_ERROR("***********************************************************************************************************");
   ROS_ERROR("***************************************** Openvdb Collision Robot *****************************************");
@@ -291,17 +297,22 @@ int main (int argc, char *argv[])
     openvdb_robot.distanceSelf(req, res, *robot_states[i]);
     t+=(ros::Time::now() - start).toSec();
 
-//    auto cloud = openvdb_robot.makePointCloud();
-//    cloud->header.frame_id = "map";
-//    ROS_INFO("PUB");
-//    pub.publish(cloud);
+    // PUBLISH DEBUG VISUALIZATION DATA
+    auto in_out_clouds = openvdb_robot.voxelGridToPointClouds(*robot_states[i], exclude_cloud);
+    auto spheres = openvdb_robot.spheresToVisualizationMarkers(*robot_states[i]);
 
-//    moveit_msgs::DisplayRobotState state_msg;
-//    state_msg.joint_state.h
-//    robot_state::robotStateToRobotStateMsg(*robot_states[i], state_msg.state);
-//    state_pub.publish(state_msg);
-//    ros::Duration(1.0).sleep();
+    in_out_clouds.first->header.frame_id = "map";
+    in_out_clouds.second->header.frame_id = "map";
 
+    in_cloud_pub.publish(in_out_clouds.first);
+    out_cloud_pub.publish(in_out_clouds.second);
+
+    sphere_pub.publish(spheres);
+
+    moveit_msgs::DisplayRobotState state_msg;
+    robot_state::robotStateToRobotStateMsg(*robot_states[i], state_msg.state);
+    state_pub.publish(state_msg);
+    // END VISUALIZATION
 
 
     double norm = res.minimum_distance.gradient.norm();
@@ -328,7 +339,7 @@ int main (int argc, char *argv[])
               res.minimum_distance.gradient(2),
               t/(i + 1.0));
 
-//     Request user input to continue
+    // Request user input to continue
 //    ROS_INFO("Press any key to continue");
 //    std::cin.ignore();
   }
