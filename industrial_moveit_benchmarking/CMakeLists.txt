@@ -46,6 +46,6 @@ add_executable(openvdb_benchmarking_node2 src/openvdb_valgrind2.cpp)
 target_link_libraries(stomp_benchmarking_node ${catkin_LIBRARIES})
 target_link_libraries(joint_interpolated_benchmarking_node ${catkin_LIBRARIES})
 target_link_libraries(cartesian_benchmarking_node ${catkin_LIBRARIES})
-target_link_libraries(static_distance_field_benchmarking_node ${catkin_LIBRARIES} -lIlmImf -lz -lHalf -Imath)
-target_link_libraries(openvdb_benchmarking_node ${catkin_LIBRARIES} -lIlmImf -lz -lHalf -Imath)
+target_link_libraries(static_distance_field_benchmarking_node ${catkin_LIBRARIES})
+target_link_libraries(openvdb_benchmarking_node ${catkin_LIBRARIES} -lIlmImf -lz -lHalf -Imath) #-lIlmImf -lz -lHalf -Imath
 target_link_libraries(openvdb_benchmarking_node2 ${catkin_LIBRARIES} -lIlmImf -lz -lHalf -Imath)
