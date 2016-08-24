@@ -11,5 +11,5 @@
     textfile="$(find stomp_test_kr210_moveit_config)/config/test_kr210.srdf" />
 
   <node name="openvdb_benchmarking_node" pkg="industrial_moveit_benchmarking"
-        type="openvdb_benchmarking_node2" launch-prefix="$(arg launch_prefix)"/>
+        type="openvdb_benchmarking_node2" launch-prefix="$(arg launch_prefix)" output="screen"/>
 </launch>

@@ -140,14 +140,26 @@ public:
                         const float exBandWidth = openvdb::LEVEL_SET_HALF_WIDTH,
                         const float inBandWidth = openvdb::LEVEL_SET_HALF_WIDTH);
 
-//  double distanceSelf(const robot_state::RobotState &state) const;
-  void distanceSelf(const collision_detection::DistanceRequest &req, collision_detection::DistanceResult &res, const robot_state::RobotState &state) const;
-
-  void writeToFile(const std::string file_path, const moveit::core::RobotState &state);
+  void distanceSelf(const collision_detection::DistanceRequest &req,
+                    collision_detection::DistanceResult &res, const robot_state::RobotState &state) const;
 
   uint64_t memUsage() const;
 
-  distance_field::PointCloud::Ptr makePointCloud() const;
+  void writeToFile(const std::string file_path, const moveit::core::RobotState &state);
+
+  /**
+   * @brief Returns a pair of 'inside' & 'outside' distance clouds.
+   * @param state The robot state to visualize
+   * @return Pair of inside & outside surface point clouds visualizing voxels
+   */
+  std::pair<distance_field::PointCloud::Ptr, distance_field::PointCloud::Ptr>
+  voxelGridToPointClouds(const moveit::core::RobotState& state) const;
+
+  std::pair<distance_field::PointCloud::Ptr, distance_field::PointCloud::Ptr>
+  voxelGridToPointClouds(const moveit::core::RobotState& state,
+                         const std::vector<std::string>& exclude_list) const;
+
+  visualization_msgs::MarkerArray spheresToVisualizationMarkers(const moveit::core::RobotState& state) const;
 
 private:
   void distanceSelfHelper(const DistanceQueryData &data, std::vector<std::vector<SDFData> > &sdfs_data, collision_detection::DistanceResultsData &res) const;
