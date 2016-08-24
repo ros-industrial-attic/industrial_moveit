@@ -12,8 +12,10 @@ find_library(OPENVDB_LIBRARY NAMES openvdb)
 
 find_library(TBB_LIBRARY NAMES tbb)
 
+find_library(HALF_LIBRARY NAMES Half)
+
 add_library(${MOVEIT_LIB_NAME} src/openvdb_distance_field.cpp src/openvdb_visualization.cpp)
-target_link_libraries(${MOVEIT_LIB_NAME} ${catkin_LIBRARIES} ${OPENVDB_LIBRARY} ${TBB_LIBRARY})
+target_link_libraries(${MOVEIT_LIB_NAME} ${catkin_LIBRARIES} ${OPENVDB_LIBRARY} ${TBB_LIBRARY} ${HALF_LIBRARY})
 
 install(TARGETS ${MOVEIT_LIB_NAME} LIBRARY DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include)
