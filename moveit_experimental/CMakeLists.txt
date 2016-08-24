@@ -42,13 +42,10 @@ set(THIS_PACKAGE_INCLUDE_DIRS
     distance_field/include
 )
 
-set(OPENVDB_INCLUDE_DIRS "/home/jon/Code/libraries/libopenvdb/include")
-
 catkin_package(
   INCLUDE_DIRS
     ${THIS_PACKAGE_INCLUDE_DIRS}
     ${OCTOMAP_INCLUDE_DIRS}
-    ${OPENVDB_INCLUDE_DIRS}
   LIBRARIES
     moveit_collision_distance_field
     moveit_openvdb

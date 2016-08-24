@@ -8,9 +8,7 @@ if(OPENMP_FOUND)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 
-find_library(OPENVDB_LIBRARY NAMES openvdb
-  HINTS "/home/jon/Code/libraries/libopenvdb/lib")
-include_directories("/home/jon/Code/libraries/libopenvdb/include" include)
+find_library(OPENVDB_LIBRARY NAMES openvdb)
 
 find_library(TBB_LIBRARY NAMES tbb)
 
