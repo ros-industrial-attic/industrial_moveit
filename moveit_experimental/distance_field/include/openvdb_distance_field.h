@@ -222,11 +222,6 @@ private:
 
   std::vector<DistanceQueryData> dist_query_;
 
-  ros::Publisher sphere_pub_;
-  ros::Publisher in_cloud_pub_; // = pnh.advertise<distance_field::PointCloud>("distance_field", 1);
-  ros::Publisher out_cloud_pub_;
-
-
   float voxel_size_;
   float background_;
   float exBandWidth_;
