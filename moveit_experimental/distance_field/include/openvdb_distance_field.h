@@ -201,7 +201,7 @@ private:
    *
    * @param link, The link to search for child links that are attached by fixed transform.
    */
-  void addAssociatedFixedTransforms(const robot_model::LinkModel *link);
+  void addAssociatedFixedTransforms(const robot_model::LinkModel *link, std::vector<const moveit::core::LinkModel *> &links_so_far);
 
   bool isCollisionAllowed(const std::string &l1, const std::string &l2, const collision_detection::AllowedCollisionMatrix *acm) const;
 

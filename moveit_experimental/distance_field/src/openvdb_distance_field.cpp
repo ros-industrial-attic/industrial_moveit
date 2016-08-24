@@ -37,7 +37,8 @@ void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
     static_sdf_.push_back(OpenVDBDistanceFieldConstPtr(sdf));
   }
 
-  addAssociatedFixedTransforms(root_link);
+  std::vector<const robot_model::LinkModel*> models;
+  addAssociatedFixedTransforms(root_link, models);
 }
 
 void distance_field::CollisionRobotOpenVDB::createActiveSDFs()
@@ -123,15 +124,18 @@ void distance_field::CollisionRobotOpenVDB::createDynamicSDFs()
   }
 }
 
-void distance_field::CollisionRobotOpenVDB::addAssociatedFixedTransforms(const robot_model::LinkModel *link)
+void distance_field::CollisionRobotOpenVDB::addAssociatedFixedTransforms(const robot_model::LinkModel *link,
+                                                                         std::vector<const robot_model::LinkModel*>& links_so_far)
 {
   const moveit::core::LinkTransformMap fixed_attached = link->getAssociatedFixedTransforms();
 
   for (auto it = fixed_attached.begin(); it!=fixed_attached.end(); ++it)
   {
+    const auto* p = link->getParentLinkModel();
     // only add child links
-    if (link->getParentLinkModel() != it->first)
+    if (std::find(links_so_far.begin(), links_so_far.end(), it->first) == links_so_far.end())
     {
+      links_so_far.push_back(it->first);
       // Check to make sure link has collision geometry to add
       if (std::find(links_.begin(), links_.end(), it->first) != links_.end())
       {
@@ -141,7 +145,7 @@ void distance_field::CollisionRobotOpenVDB::addAssociatedFixedTransforms(const r
         static_sdf_.push_back(OpenVDBDistanceFieldConstPtr(sdf));
       }
 
-      addAssociatedFixedTransforms(it->first);
+      addAssociatedFixedTransforms(it->first, links_so_far);
     }
   }
 }
@@ -657,6 +661,7 @@ void distance_field::OpenVDBDistanceField::fillWithSpheres(SphereModel &spheres,
 
 void distance_field::OpenVDBDistanceField::addLinkToField(const moveit::core::LinkModel *link, const Eigen::Affine3d &pose, const float exBandWidth, const float inBandWidth)
 {
+  ROS_WARN_STREAM("LOADING LINK: " << link->getName() << " with " << link->getShapes().size() << " SHAPES");
   std::vector<shapes::ShapeConstPtr> shapes = link->getShapes();
   EigenSTL::vector_Affine3d shape_poses = link->getCollisionOriginTransforms();
 
@@ -669,6 +674,7 @@ void distance_field::OpenVDBDistanceField::addLinkToField(const moveit::core::Li
 void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *shape, const Eigen::Affine3d &pose, const float exBandWidth, const float inBandWidth)
 {
   openvdb::FloatGrid::Ptr grid;
+  ROS_WARN("ADD SHAPE TO FIELD");
 
   switch(shape->type)
   {
@@ -758,12 +764,11 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       // Convert data from world to index
       WorldToIndex(transform_, points.data(), points.size());
 
-      grid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*transform_,
-                                                                           points,
-                                                                           std::vector<openvdb::Vec3I>(),
-                                                                           quads,
-                                                                           exBandWidth,
-                                                                           inBandWidth);
+      ROS_WARN("Cone");
+      openvdb::tools::QuadAndTriangleDataAdapter<openvdb::Vec3s, openvdb::Vec4I> mesh (points.data(), points.size(),
+                                                                                       quads.data(), quads.size());
+      grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(mesh, *transform_, exBandWidth, inBandWidth);
+
       break;
     }
 
@@ -891,6 +896,7 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
 
     case shapes::SPHERE:
     {
+      ROS_WARN("SHPERE");
       const shapes::Sphere *sphere = static_cast<const shapes::Sphere *>(shape);
 
       grid = openvdb::tools::createLevelSetSphere<openvdb::FloatGrid>(sphere->radius,
@@ -898,6 +904,7 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
                                                                                      pose.translation()(1),
                                                                                      pose.translation()(2)),
                                                                       voxel_size_, exBandWidth);
+      ROS_WARN("SPHERE DONE");
       break;
     }
 
