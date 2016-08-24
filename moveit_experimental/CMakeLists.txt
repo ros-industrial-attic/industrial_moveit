@@ -49,6 +49,8 @@ catkin_package(
     moveit_collision_distance_field
     moveit_openvdb
     ${OCTOMAP_LIBRARIES}
+    ${OPENVDB_LIBRARIES}
+    ${TBB_LIBRARY}
   CATKIN_DEPENDS
     geometric_shapes
     shape_tools
@@ -64,6 +66,7 @@ catkin_package(
     urdfdom
     urdfdom_headers
     console_bridge
+    openvdb
     )
 
 include_directories(SYSTEM ${EIGEN_INCLUDE_DIRS}
