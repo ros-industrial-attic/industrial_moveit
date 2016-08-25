@@ -39,7 +39,7 @@
 #include <industrial_collision_detection/collision_robot_industrial.h>
 #include <fstream>
 #include <time.h>
-#include "openvdb_distance_field.h"
+#include "collision_robot_openvdb.h"
 #include <openvdb/tools/VolumeToSpheres.h>
 #include <openvdb/math/Transform.h>
 
