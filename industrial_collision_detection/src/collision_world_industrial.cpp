@@ -312,5 +312,3 @@ double collision_detection::CollisionWorldIndustrial::distanceWorldHelper(const 
   return res.distance;
 }
 
-#include <industrial_collision_detection/collision_detector_allocator_industrial.h>
-const std::string collision_detection::CollisionDetectorAllocatorIndustrial::NAME_("IndustrialFCL");
