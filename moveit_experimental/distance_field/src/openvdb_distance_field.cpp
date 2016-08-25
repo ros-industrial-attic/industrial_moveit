@@ -23,6 +23,18 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
   createDefaultDistanceQuery();
 }
 
+distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
+                                                             const std::string &file_path)
+  : robot_model_(model), links_(model->getLinkModelsWithCollisionGeometry())
+{
+  // Step 1: Load the OpenVDB archive
+  // Step 2: Process meta-data at the file level - load nominal voxel size, background, etc...
+  // Step 3: For each static, active, & dynamic link, let's construct it's distance field
+  //         using archived data.
+  // Step 4: Perform sanity checking (e.g. do all links have an associated distance field?)
+  throw std::runtime_error("Not implemented");
+}
+
 void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
 {
   const robot_model::LinkModel *root_link = robot_model_->getRootLink();
@@ -131,7 +143,6 @@ void distance_field::CollisionRobotOpenVDB::addAssociatedFixedTransforms(const r
 
   for (auto it = fixed_attached.begin(); it!=fixed_attached.end(); ++it)
   {
-    const auto* p = link->getParentLinkModel();
     // only add child links
     if (std::find(links_so_far.begin(), links_so_far.end(), it->first) == links_so_far.end())
     {
@@ -150,7 +161,7 @@ void distance_field::CollisionRobotOpenVDB::addAssociatedFixedTransforms(const r
   }
 }
 
-void distance_field::CollisionRobotOpenVDB::writeToFile(const std::string file_path, const moveit::core::RobotState &state)
+void distance_field::CollisionRobotOpenVDB::writeToFile(const std::string& file_path)
 {
   // Create a VDB file object.
   openvdb::io::File vdbFile(file_path);
@@ -661,7 +672,6 @@ void distance_field::OpenVDBDistanceField::fillWithSpheres(SphereModel &spheres,
 
 void distance_field::OpenVDBDistanceField::addLinkToField(const moveit::core::LinkModel *link, const Eigen::Affine3d &pose, const float exBandWidth, const float inBandWidth)
 {
-  ROS_WARN_STREAM("LOADING LINK: " << link->getName() << " with " << link->getShapes().size() << " SHAPES");
   std::vector<shapes::ShapeConstPtr> shapes = link->getShapes();
   EigenSTL::vector_Affine3d shape_poses = link->getCollisionOriginTransforms();
 
@@ -674,7 +684,6 @@ void distance_field::OpenVDBDistanceField::addLinkToField(const moveit::core::Li
 void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *shape, const Eigen::Affine3d &pose, const float exBandWidth, const float inBandWidth)
 {
   openvdb::FloatGrid::Ptr grid;
-  ROS_WARN("ADD SHAPE TO FIELD");
 
   switch(shape->type)
   {

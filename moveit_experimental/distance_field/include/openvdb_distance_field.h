@@ -140,12 +140,21 @@ public:
                         const float exBandWidth = openvdb::LEVEL_SET_HALF_WIDTH,
                         const float inBandWidth = openvdb::LEVEL_SET_HALF_WIDTH);
 
+  /**
+   * @brief Alternative constructor that loads an already generated set of distance
+   * fields given a particular robot model.
+   * @param model The robot model with which to load and interpret saved fields
+   * @param file_path The .vdb file that containts the archived distance fields
+   */
+  CollisionRobotOpenVDB(const robot_model::RobotModelConstPtr& model,
+                        const std::string& file_path);
+
   void distanceSelf(const collision_detection::DistanceRequest &req,
                     collision_detection::DistanceResult &res, const robot_state::RobotState &state) const;
 
   uint64_t memUsage() const;
 
-  void writeToFile(const std::string file_path, const moveit::core::RobotState &state);
+  void writeToFile(const std::string &file_path);
 
   /**
    * @brief Returns a pair of 'inside' & 'outside' distance clouds.
