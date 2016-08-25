@@ -42,6 +42,9 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
 
   // Step 3: For each static, active, & dynamic link, let's construct it's distance field
   //         using archived data.
+  auto static_links = identifyStaticLinks();
+  auto active_links = identifyActiveLinks();
+  auto dynamic_links = identifyDynamicLinks(static_links, active_links);
 
 
   // Step 4: Perform sanity checking (e.g. do all links have an associated distance field?)
@@ -62,8 +65,17 @@ void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
     static_sdf_.push_back(OpenVDBDistanceFieldConstPtr(sdf));
   }
 
-  std::vector<const robot_model::LinkModel*> models;
-  addAssociatedFixedTransforms(root_link, models);
+  const auto& fixed_links = root_link->getAssociatedFixedTransforms();
+  for (const auto& pair : fixed_links)
+  {
+    if (hasCollisionGeometry(pair.first))
+    {
+      OpenVDBDistanceFieldPtr sdf(new OpenVDBDistanceField(voxel_size_, background_));
+      sdf->addLinkToField(pair.first, pair.second, exBandWidth_, inBandWidth_);
+      static_links_.push_back(pair.first);
+      static_sdf_.push_back(OpenVDBDistanceFieldConstPtr(sdf));
+    }
+  }
 }
 
 void distance_field::CollisionRobotOpenVDB::createActiveSDFs()
@@ -146,33 +158,6 @@ void distance_field::CollisionRobotOpenVDB::createDynamicSDFs()
     sdf->addLinkToField(dynamic_links_[i], Eigen::Affine3d::Identity(), exBandWidth_, inBandWidth_);
 
     dynamic_sdf_[i] = OpenVDBDistanceFieldConstPtr(sdf);
-  }
-}
-
-void distance_field::CollisionRobotOpenVDB::addAssociatedFixedTransforms(const robot_model::LinkModel *link,
-                                                                         std::vector<const robot_model::LinkModel*>& links_so_far)
-{
-  // TODO: Verify that these transforms are NOT relative to this particular link but rather
-  // relative to the root of the model...
-  const moveit::core::LinkTransformMap fixed_attached = link->getAssociatedFixedTransforms();
-
-  for (auto it = fixed_attached.begin(); it!=fixed_attached.end(); ++it)
-  {
-    // only add child links
-    if (std::find(links_so_far.begin(), links_so_far.end(), it->first) == links_so_far.end())
-    {
-      links_so_far.push_back(it->first);
-      // Check to make sure link has collision geometry to add
-      if (std::find(links_.begin(), links_.end(), it->first) != links_.end())
-      {
-        OpenVDBDistanceFieldPtr sdf(new OpenVDBDistanceField(voxel_size_, background_));
-        sdf->addLinkToField(it->first, it->second, exBandWidth_, inBandWidth_);
-        static_links_.push_back(it->first);
-        static_sdf_.push_back(OpenVDBDistanceFieldConstPtr(sdf));
-      }
-
-      addAssociatedFixedTransforms(it->first, links_so_far);
-    }
   }
 }
 
