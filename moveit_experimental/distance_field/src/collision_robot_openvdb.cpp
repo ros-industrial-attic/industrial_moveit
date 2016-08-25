@@ -46,6 +46,10 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
   auto active_links = identifyActiveLinks();
   auto dynamic_links = identifyDynamicLinks(static_links, active_links);
 
+  loadStaticLinks(static_links, grids, static_sdf_);
+  loadActiveLinks(active_links, grids, active_sdf_);
+  loadDynamicLinks(dynamic_links, grids, dynamic_sdf_);
+
 
   // Step 4: Perform sanity checking (e.g. do all links have an associated distance field?)
   throw std::runtime_error("Not implemented");
@@ -676,4 +680,83 @@ distance_field::CollisionRobotOpenVDB::identifyDynamicLinks(std::vector<const mo
   }
 
   return dynamic_links;
+}
+
+// LOCAL helper function
+static openvdb::FloatGrid::Ptr findGridInVec(const std::string& name, const openvdb::GridPtrVec& grids)
+{
+  for (const auto& grid : grids)
+  {
+    if (grid->getName() == name)
+    {
+      return openvdb::gridPtrCast<openvdb::FloatGrid>(grid);
+    }
+  }
+  return openvdb::FloatGrid::Ptr();
+}
+
+void distance_field::CollisionRobotOpenVDB::loadStaticLinks(std::vector<const moveit::core::LinkModel *> &static_links,
+                                                            const openvdb::GridPtrVec &grids,
+                                                            std::vector<OpenVDBDistanceFieldConstPtr>& fields)
+{
+  for (const auto link : static_links)
+  {
+    // Find the associated grid pointer
+    auto ptr = findGridInVec(link->getName(), grids);
+    if (!ptr)
+    {
+      throw std::runtime_error("No grid with name " + link->getName() + " in VDB file.");
+    }
+
+    OpenVDBDistanceFieldPtr sdf(new OpenVDBDistanceField(ptr));
+    fields.push_back(OpenVDBDistanceFieldConstPtr(sdf));
+  }
+}
+
+void distance_field::CollisionRobotOpenVDB::loadActiveLinks(std::vector<const moveit::core::LinkModel *> &active_links,
+                                                            const openvdb::GridPtrVec &grids,
+                                                            std::vector<OpenVDBDistanceFieldConstPtr>& fields)
+{
+  // for every active link we also want to generate spheres
+  active_spheres_.resize(active_links.size());
+
+  const auto n_spheres = 20;
+  const auto can_overlap = true;
+  const auto min_voxel_size = 1.0f;
+  const auto max_voxel_size = std::numeric_limits<float>::max();
+  const auto iso_surface = 0.0f; // the value at which the surface exists; 0.0 for solid models (clouds are different)
+  const auto n_instances = 100000; // num of voxels to consider when fitting spheres
+
+  for (size_t i = 0; i < active_links.size(); ++i)
+  {
+    const auto link = active_links[i];
+    // Find the associated grid pointer
+    auto ptr = findGridInVec(link->getName(), grids);
+    if (!ptr)
+    {
+      throw std::runtime_error("No grid with name " + link->getName() + " in VDB file.");
+    }
+    OpenVDBDistanceFieldPtr sdf(new OpenVDBDistanceField(ptr));
+    sdf->fillWithSpheres(active_spheres_[i], n_spheres, can_overlap, min_voxel_size,
+                         max_voxel_size, iso_surface, n_instances);
+
+    fields.push_back(OpenVDBDistanceFieldConstPtr(sdf));
+  }
+}
+
+void distance_field::CollisionRobotOpenVDB::loadDynamicLinks(std::vector<const moveit::core::LinkModel *> &dynamic_links,
+                                                             const openvdb::GridPtrVec &grids,
+                                                             std::vector<OpenVDBDistanceFieldConstPtr>& fields)
+{
+  for (const auto link : dynamic_links)
+  {
+    // Find the associated grid pointer
+    auto ptr = findGridInVec(link->getName(), grids);
+    if (!ptr)
+    {
+      throw std::runtime_error("No grid with name " + link->getName() + " in VDB file.");
+    }
+    OpenVDBDistanceFieldPtr sdf(new OpenVDBDistanceField(ptr));
+    fields.push_back(OpenVDBDistanceFieldConstPtr(sdf));
+  }
 }

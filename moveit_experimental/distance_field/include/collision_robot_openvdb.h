@@ -96,6 +96,16 @@ private:
 
   std::vector<const robot_model::LinkModel*> identifyDynamicLinks(std::vector<const moveit::core::LinkModel *> &static_links, std::vector<const moveit::core::LinkModel *> &active_links) const;
 
+  void loadStaticLinks(std::vector<const robot_model::LinkModel*>& static_links,
+                       const openvdb::GridPtrVec& grids,
+                       std::vector<OpenVDBDistanceFieldConstPtr> &fields);
+
+  void loadActiveLinks(std::vector<const robot_model::LinkModel*>& active_links,
+                       const openvdb::GridPtrVec& grids, std::vector<OpenVDBDistanceFieldConstPtr> &fields);
+
+  void loadDynamicLinks(std::vector<const robot_model::LinkModel*>& dynamic_links,
+                        const openvdb::GridPtrVec& grids, std::vector<OpenVDBDistanceFieldConstPtr> &fields);
+
   /**
    * @brief Create static signed distance fields.
    *
