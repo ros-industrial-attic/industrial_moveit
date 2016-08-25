@@ -34,6 +34,13 @@ openvdb::FloatGrid::Ptr distance_field::OpenVDBDistanceField::getGrid() const
   return grid_;
 }
 
+void distance_field::OpenVDBDistanceField::saveMetaData(const std::string &name) const
+{
+ grid_->setName(name);
+ grid_->insertMeta("voxel_size", openvdb::FloatMetadata(voxel_size_));
+ grid_->insertMeta("background", openvdb::FloatMetadata(background_));
+}
+
 double distance_field::OpenVDBDistanceField::getVoxelSize() const
 {
   return voxel_size_;

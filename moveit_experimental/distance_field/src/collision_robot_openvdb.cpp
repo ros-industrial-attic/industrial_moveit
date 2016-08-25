@@ -50,9 +50,11 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
   loadActiveLinks(active_links, grids, active_sdf_);
   loadDynamicLinks(dynamic_links, grids, dynamic_sdf_);
 
+  // Step 4:
+  createDefaultAllowedCollisionMatrix();
+  createDefaultDistanceQuery();
 
-  // Step 4: Perform sanity checking (e.g. do all links have an associated distance field?)
-  throw std::runtime_error("Not implemented");
+  // Step 5: Perform sanity checking (e.g. do all links have an associated distance field?)
 }
 
 void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
@@ -175,21 +177,31 @@ void distance_field::CollisionRobotOpenVDB::writeToFile(const std::string& file_
 
   for (std::size_t i = 0 ; i < static_sdf_.size() ; ++i)
   {
+    static_sdf_[i]->saveMetaData(static_links_[i]->getName());
     grids.push_back(static_sdf_[i]->getGrid());
   }
 
   // Add the dynamic grids to grid array
   for (std::size_t i = 0 ; i < dynamic_sdf_.size() ; ++i)
   {
+    dynamic_sdf_[i]->saveMetaData(dynamic_links_[i]->getName());
     grids.push_back(dynamic_sdf_[i]->getGrid());
   }
 
   for (std::size_t i = 0 ; i < active_sdf_.size() ; ++i)
   {
+    active_sdf_[i]->saveMetaData(active_links_[i]->getName());
     grids.push_back(active_sdf_[i]->getGrid());
   }
 
-  vdbFile.write(grids);
+  openvdb::MetaMap metadata;
+
+  metadata.insertMeta(voxel_size_meta_name, openvdb::FloatMetadata(voxel_size_));
+  metadata.insertMeta(background_meta_name, openvdb::FloatMetadata(background_));
+  metadata.insertMeta(ex_bandwidth_meta_name, openvdb::FloatMetadata(exBandWidth_));
+  metadata.insertMeta(in_bandwidth_meta_name, openvdb::FloatMetadata(inBandWidth_));
+
+  vdbFile.write(grids, metadata);
   vdbFile.close();
 }
 
