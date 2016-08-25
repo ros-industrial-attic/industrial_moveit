@@ -79,6 +79,8 @@ public:
 
     openvdb::FloatGrid::Ptr getGrid() const;
 
+    void saveMetaData(const std::string& name) const;
+
 private:
 
     float voxel_size_;

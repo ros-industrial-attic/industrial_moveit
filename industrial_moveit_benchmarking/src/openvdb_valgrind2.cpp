@@ -278,8 +278,15 @@ int main (int argc, char *argv[])
   double voxel_size = 0.02;
   double exBandWidth = background/voxel_size;
   double inBandWidth = background/voxel_size;
-  distance_field::CollisionRobotOpenVDB openvdb_robot(robot_model, voxel_size, background, exBandWidth, inBandWidth);
   t=0;
+
+  // Write robot sdf to file
+  distance_field::CollisionRobotOpenVDB robot_from_mem(robot_model, voxel_size, background, exBandWidth, inBandWidth);
+  robot_from_mem.writeToFile("test_robot.vdb");
+
+  distance_field::CollisionRobotOpenVDB robot_from_file (robot_model, "test_robot.vdb");
+
+  distance_field::CollisionRobotOpenVDB& openvdb_robot = robot_from_file;
 
   std::vector<std::string> exclude_cloud;
   exclude_cloud.push_back("workcell_bounds");
@@ -338,12 +345,23 @@ int main (int argc, char *argv[])
               t/(i + 1.0));
   }
 
-  // Write robot sdf to file
-  openvdb_robot.writeToFile("test_robot.vdb");
 
   ROS_ERROR("Openvdb Collision Robot, Memory: %0.2f GB", openvdb_robot.memUsage()*1.0e-9);
   ROS_ERROR("***********************************************************************************************************");
   ROS_ERROR("***************************************** Openvdb Collision Robot *****************************************");
   ROS_ERROR("***********************************************************************************************************");
+
+
+  auto mem1 = openvdb_robot.memUsage();
+  auto mem2 = robot_from_file.memUsage();
+
+  ROS_INFO_STREAM(mem1 << " vs " << mem2);
+
+
+
+
+
+
+
   return 0;
 }
