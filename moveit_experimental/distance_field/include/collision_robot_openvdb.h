@@ -83,6 +83,19 @@ private:
 
   void distanceSelfHelper(const DistanceQueryData &data, std::vector<std::vector<SDFData> > &sdfs_data, collision_detection::DistanceResultsData &res) const;
 
+
+  bool hasCollisionGeometry(const robot_model::LinkModel* link) const;
+
+  std::vector<const robot_model::LinkModel*> identifyStaticLinks() const;
+  void identifyStaticLinksHelper(const robot_model::LinkModel* link,
+                                 std::vector<const robot_model::LinkModel*>& in_set,
+                                 std::vector<const robot_model::LinkModel*>& considered) const;
+
+
+  std::vector<const robot_model::LinkModel*> identifyActiveLinks() const;
+
+  std::vector<const robot_model::LinkModel*> identifyDynamicLinks(std::vector<const moveit::core::LinkModel *> &static_links, std::vector<const moveit::core::LinkModel *> &active_links) const;
+
   /**
    * @brief Create static signed distance fields.
    *

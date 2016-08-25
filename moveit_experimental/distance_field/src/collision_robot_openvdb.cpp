@@ -152,6 +152,8 @@ void distance_field::CollisionRobotOpenVDB::createDynamicSDFs()
 void distance_field::CollisionRobotOpenVDB::addAssociatedFixedTransforms(const robot_model::LinkModel *link,
                                                                          std::vector<const robot_model::LinkModel*>& links_so_far)
 {
+  // TODO: Verify that these transforms are NOT relative to this particular link but rather
+  // relative to the root of the model...
   const moveit::core::LinkTransformMap fixed_attached = link->getAssociatedFixedTransforms();
 
   for (auto it = fixed_attached.begin(); it!=fixed_attached.end(); ++it)
@@ -592,4 +594,101 @@ void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(const DistanceQue
       res.gradient.normalize();
     }
   }
+}
+
+bool distance_field::CollisionRobotOpenVDB::hasCollisionGeometry(const moveit::core::LinkModel *link) const
+{
+  return std::find(links_.begin(), links_.end(), link) != links_.end();
+}
+
+std::vector<const moveit::core::LinkModel *> distance_field::CollisionRobotOpenVDB::identifyStaticLinks() const
+{
+  // The purpose of this function is to walk the tree of robot links & find all of the links that are connected
+  // to one another via a static transformation chain that includes the root link.
+  const robot_model::LinkModel *root_link = robot_model_->getRootLink();
+
+  std::vector<const moveit::core::LinkModel*> static_links;
+  std::vector<const robot_model::LinkModel*> considered_set;
+  considered_set.push_back(root_link);
+
+  // Check to make sure link has collision geometry to add. I don't think this is required,
+  // because it will be world link and I don't think it will ever have geometry.
+  if (hasCollisionGeometry(root_link))
+  {
+    static_links.push_back(root_link);
+  }
+
+  identifyStaticLinksHelper(root_link, static_links, considered_set);
+  return static_links;
+}
+
+void distance_field::CollisionRobotOpenVDB::identifyStaticLinksHelper(const moveit::core::LinkModel *link,
+                                                                      std::vector<const moveit::core::LinkModel *> &in_set,
+                                                                      std::vector<const moveit::core::LinkModel *> &considered) const
+{
+  // Consider all of the links that are attached to this one
+  const moveit::core::LinkTransformMap fixed_attached = link->getAssociatedFixedTransforms();
+
+  // Helper function to test if link has already been looked at
+  auto is_in_set = [&considered] (const robot_model::LinkModel* l) {
+    return std::find(considered.begin(), considered.end(), l) != considered.end();
+  };
+
+  for (auto it = fixed_attached.begin(); it!=fixed_attached.end(); ++it)
+  {
+    if (!is_in_set(it->first))
+    {
+      considered.push_back(it->first);
+
+      if (hasCollisionGeometry(it->first))
+      {
+        in_set.push_back(it->first);
+      }
+
+      identifyStaticLinksHelper(it->first, in_set, considered);
+    }
+  } // end of associated links
+}
+
+std::vector<const moveit::core::LinkModel *> distance_field::CollisionRobotOpenVDB::identifyActiveLinks() const
+{
+  std::vector<const moveit::core::LinkModel *> active_links;
+
+  const auto& groups = robot_model_->getJointModelGroups();
+
+  for (const auto& group : groups) // for each planning group
+  {
+    const auto& links = group->getLinkModels();
+    for (const auto& link : links) // for each link inside a given group
+    {
+      bool already_added = std::find(active_links.begin(), active_links.end(), link) != active_links.end();
+      if (!already_added && hasCollisionGeometry(link))
+      {
+        active_links.push_back(link);
+      }
+    }
+  }
+
+  return active_links;
+}
+
+std::vector<const moveit::core::LinkModel *>
+distance_field::CollisionRobotOpenVDB::identifyDynamicLinks(std::vector<const moveit::core::LinkModel *>& static_links,
+                                                            std::vector<const moveit::core::LinkModel *>& active_links) const
+{
+  auto dynamic_links = links_;
+
+  // remove static links from list
+  for (std::size_t i = 0 ; i < static_links.size() ; ++i)
+  {
+    dynamic_links.erase(std::remove(dynamic_links.begin(), dynamic_links.end(), static_links[i]));
+  }
+
+  // remove active links from list
+  for (std::size_t i = 0 ; i < active_links.size() ; ++i)
+  {
+    dynamic_links.erase(std::remove(dynamic_links.begin(), dynamic_links.end(), active_links[i]));
+  }
+
+  return dynamic_links;
 }

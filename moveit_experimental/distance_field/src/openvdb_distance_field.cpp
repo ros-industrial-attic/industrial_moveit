@@ -20,7 +20,13 @@ distance_field::OpenVDBDistanceField::OpenVDBDistanceField(float voxel_size, flo
 
 distance_field::OpenVDBDistanceField::OpenVDBDistanceField(openvdb::FloatGrid::Ptr grid)
 {
+  openvdb::initialize();
+  voxel_size_ = grid->metaValue<float>("voxel_size");
+  background_ = grid->metaValue<float>("background");
 
+  transform_ = openvdb::math::Transform::createLinearTransform(voxel_size_);
+  grid_ = grid;
+  accessor_ = std::make_shared<openvdb::FloatGrid::ConstAccessor>(grid_->getConstAccessor());
 }
 
 openvdb::FloatGrid::Ptr distance_field::OpenVDBDistanceField::getGrid() const
@@ -233,7 +239,6 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
       // Convert data from world to index
       WorldToIndex(transform_, points.data(), points.size());
 
-      ROS_WARN("Cone");
       openvdb::tools::QuadAndTriangleDataAdapter<openvdb::Vec3s, openvdb::Vec4I> mesh (points.data(), points.size(),
                                                                                        quads.data(), quads.size());
       grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(mesh, *transform_, exBandWidth, inBandWidth);
@@ -365,7 +370,6 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
 
     case shapes::SPHERE:
     {
-      ROS_WARN("SHPERE");
       const shapes::Sphere *sphere = static_cast<const shapes::Sphere *>(shape);
 
       grid = openvdb::tools::createLevelSetSphere<openvdb::FloatGrid>(sphere->radius,
@@ -373,7 +377,6 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
                                                                                      pose.translation()(1),
                                                                                      pose.translation()(2)),
                                                                       voxel_size_, exBandWidth);
-      ROS_WARN("SPHERE DONE");
       break;
     }
 
