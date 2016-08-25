@@ -274,7 +274,7 @@ int main (int argc, char *argv[])
   }
 
   // Write robot sdf to file
-  openvdb_robot.writeToFile("test_robot.vdb", robot_state_vdb);
+  openvdb_robot.writeToFile("test_robot.vdb");
 
   ROS_ERROR("Openvdb Collision Robot, Memory: %0.2f GB", openvdb_robot.memUsage()*1.0e-9);
   ROS_ERROR("***********************************************************************************************************");

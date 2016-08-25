@@ -9,6 +9,11 @@
 #include <algorithm>
 #include <math.h>
 
+const static std::string voxel_size_meta_name = "voxel_size";
+const static std::string background_meta_name = "background";
+const static std::string ex_bandwidth_meta_name = "exBandWidth";
+const static std::string in_bandwidth_meta_name = "inBandWidth";
+
 distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
                                                              const float voxel_size, const float background,
                                                              const float exBandWidth, const float inBandWidth)
@@ -28,9 +33,21 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
   : robot_model_(model), links_(model->getLinkModelsWithCollisionGeometry())
 {
   // Step 1: Load the OpenVDB archive
+  auto grid_data = readFromFile(file_path);
+  const auto& grids = *grid_data.first;
+  const auto& metadata = *grid_data.second;
+
   // Step 2: Process meta-data at the file level - load nominal voxel size, background, etc...
+  voxel_size_ = metadata.metaValue<float>(voxel_size_meta_name);
+  background_ = metadata.metaValue<float>(background_meta_name);
+  exBandWidth_ = metadata.metaValue<float>(ex_bandwidth_meta_name);
+  inBandWidth_ = metadata.metaValue<float>(in_bandwidth_meta_name);
+
+
   // Step 3: For each static, active, & dynamic link, let's construct it's distance field
   //         using archived data.
+
+
   // Step 4: Perform sanity checking (e.g. do all links have an associated distance field?)
   throw std::runtime_error("Not implemented");
 }
@@ -187,6 +204,32 @@ void distance_field::CollisionRobotOpenVDB::writeToFile(const std::string& file_
 
   vdbFile.write(grids);
   vdbFile.close();
+}
+
+std::pair<openvdb::GridPtrVecPtr, openvdb::MetaMap::Ptr>
+distance_field::CollisionRobotOpenVDB::readFromFile(const std::string& file_path)
+{
+  openvdb::io::File file(file_path);
+  // Open the file.  This reads the file header, but not any grids.
+  file.open();
+
+  if (!file.isOpen())
+  {
+    const std::string error_text = "Unable to load openvdb models from file: " + file_path;
+    throw std::runtime_error(error_text);
+  }
+
+  std::pair<openvdb::GridPtrVecPtr, openvdb::MetaMap::Ptr> grid_data;
+  grid_data.first = file.getGrids();
+  grid_data.second = file.getMetadata();
+
+  // Error checking
+  if (!grid_data.first) throw std::runtime_error("Unable to load any grids from file " + file_path);
+  if (!grid_data.second) throw std::runtime_error("Unable to load meta-data from file: " + file_path);
+
+  file.close(); // RAII?
+
+  return grid_data;
 }
 
 
@@ -561,6 +604,11 @@ distance_field::OpenVDBDistanceField::OpenVDBDistanceField(float voxel_size, flo
 {
   openvdb::initialize();
   transform_ = openvdb::math::Transform::createLinearTransform(voxel_size_);
+}
+
+distance_field::OpenVDBDistanceField::OpenVDBDistanceField(openvdb::FloatGrid::Ptr grid)
+{
+
 }
 
 openvdb::FloatGrid::Ptr distance_field::OpenVDBDistanceField::getGrid() const
