@@ -53,12 +53,14 @@ catkin_package(
     ${OPENVDB_LIBRARIES}
     ${TBB_LIBRARY}
   CATKIN_DEPENDS
+    industrial_collision_detection
     geometric_shapes
     shape_tools
     eigen_stl_containers
     eigen_conversions
     random_numbers
     moveit_msgs
+    moveit_core
     kdl_parser
     srdfdom
     pcl_ros
