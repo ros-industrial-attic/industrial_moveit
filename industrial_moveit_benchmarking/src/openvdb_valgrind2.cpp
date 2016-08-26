@@ -274,7 +274,7 @@ int main (int argc, char *argv[])
 
 
   // Test Openvdb Collision robot
-  double background = 0.25;
+  double background = 0.5;
   double voxel_size = 0.02;
   double exBandWidth = background/voxel_size;
   double inBandWidth = background/voxel_size;
@@ -285,8 +285,6 @@ int main (int argc, char *argv[])
   robot_from_mem.writeToFile("test_robot.vdb");
 
   distance_field::CollisionRobotOpenVDB robot_from_file (robot_model, "test_robot.vdb");
-
-  distance_field::CollisionRobotOpenVDB& openvdb_robot = robot_from_file;
 
   std::vector<std::string> exclude_cloud;
   exclude_cloud.push_back("workcell_bounds");
@@ -300,12 +298,12 @@ int main (int argc, char *argv[])
   {
     res.clear();
     start = ros::Time::now();
-    openvdb_robot.distanceSelf(req, res, *robot_states[i]);
+    robot_from_mem.distanceSelf(req, res, *robot_states[i]);
     t+=(ros::Time::now() - start).toSec();
 
     // PUBLISH DEBUG VISUALIZATION DATA
-    auto in_out_clouds = openvdb_robot.voxelGridToPointClouds(*robot_states[i], exclude_cloud);
-    auto spheres = openvdb_robot.spheresToVisualizationMarkers(*robot_states[i]);
+    auto in_out_clouds = robot_from_mem.voxelGridToPointClouds(*robot_states[i], exclude_cloud);
+    auto spheres = robot_from_mem.spheresToVisualizationMarkers(*robot_states[i]);
 
     in_out_clouds.first->header.frame_id = "map";
     in_out_clouds.second->header.frame_id = "map";
@@ -346,22 +344,74 @@ int main (int argc, char *argv[])
   }
 
 
-  ROS_ERROR("Openvdb Collision Robot, Memory: %0.2f GB", openvdb_robot.memUsage()*1.0e-9);
+  ROS_ERROR("Openvdb Collision Robot, Memory: %0.2f GB", robot_from_mem.memUsage()*1.0e-9);
   ROS_ERROR("***********************************************************************************************************");
   ROS_ERROR("***************************************** Openvdb Collision Robot *****************************************");
   ROS_ERROR("***********************************************************************************************************");
 
-
-  auto mem1 = openvdb_robot.memUsage();
-  auto mem2 = robot_from_file.memUsage();
-
-  ROS_INFO_STREAM(mem1 << " vs " << mem2);
+  ROS_INFO("\n\n\n");
+  std::cin.ignore();
 
 
+  ROS_ERROR("***********************************************************************************************************");
+  ROS_ERROR("***************************************** Openvdb Collision COPY *****************************************");
+  ROS_ERROR("***********************************************************************************************************");
+  // For color information see: http://ascii-table.com/ansi-escape-sequences.php
+  ROS_ERROR("\033[1;31m%20s %20s %10s %10s %10s %10s %10s %10s\033[0m", "Link Name #1", "Link Name #2", "Distance", "Grad. Norm", "Gradient X", "Gradient Y", "Gradient Z", "Avg Time");
+  for(int i = 0; i < 30; ++i)
+  {
+    res.clear();
+    start = ros::Time::now();
+    robot_from_file.distanceSelf(req, res, *robot_states[i]);
+    t+=(ros::Time::now() - start).toSec();
+
+    // PUBLISH DEBUG VISUALIZATION DATA
+    auto in_out_clouds = robot_from_file.voxelGridToPointClouds(*robot_states[i], exclude_cloud);
+    auto spheres = robot_from_file.spheresToVisualizationMarkers(*robot_states[i]);
+
+    in_out_clouds.first->header.frame_id = "map";
+    in_out_clouds.second->header.frame_id = "map";
+
+    in_cloud_pub.publish(in_out_clouds.first);
+    out_cloud_pub.publish(in_out_clouds.second);
+
+    sphere_pub.publish(spheres);
+
+    moveit_msgs::DisplayRobotState state_msg;
+    robot_state::robotStateToRobotStateMsg(*robot_states[i], state_msg.state);
+    state_pub.publish(state_msg);
+    // END VISUALIZATION
 
 
+    double norm = res.minimum_distance.gradient.norm();
+    std::string code;
+    if (norm < 0.98 && std::abs(res.minimum_distance.min_distance) < (background - 0.01))
+    {
+      code = "\033[1;32m"; //bold; green
+    }
+    else
+    {
+      code = "\033[0;31m"; //norma; red
+    }
+
+    ROS_ERROR("%d: %s %20s %20s %10.2f %10.2f %10.2f %10.2f %10.2f %10.8f\033[0m",
+              i,
+              code.c_str(),
+              res.minimum_distance.link_name[0].c_str(),
+              res.minimum_distance.link_name[1].c_str(),
+              res.minimum_distance.min_distance,
+              res.minimum_distance.gradient.norm(),
+              res.minimum_distance.gradient(0),
+              res.minimum_distance.gradient(1),
+              res.minimum_distance.gradient(2),
+              t/(i + 1.0));
+  }
 
 
+  ROS_ERROR("Openvdb Collision Robot, Memory: %0.2f GB", robot_from_file.memUsage()*1.0e-9);
+  ROS_ERROR("***********************************************************************************************************");
+  ROS_ERROR("***************************************** Openvdb Collision Robot *****************************************");
+  ROS_ERROR("***********************************************************************************************************");
 
   return 0;
 }

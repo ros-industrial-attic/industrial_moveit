@@ -81,6 +81,8 @@ public:
 
     void saveMetaData(const std::string& name) const;
 
+    void display() const;
+
 private:
 
     float voxel_size_;
