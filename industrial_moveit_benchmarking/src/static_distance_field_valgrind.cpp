@@ -64,7 +64,7 @@ int main (int argc, char *argv[])
   visualization_msgs::MarkerArray grad_markers;
   ros::Publisher dist_pub = pnh.advertise<visualization_msgs::Marker>("visualization_marker", 1000);
   ros::Publisher grad_pub = pnh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1000);
-  double res = 0.25;
+  double res = 0.02;
   ros::Time start;
   bool flag;
 
@@ -78,7 +78,7 @@ int main (int argc, char *argv[])
   ROS_INFO("File Path: %s", temp_file.string().c_str());
 
   t=0;
-  flag = true;
+  flag = false;
   if (flag)
   {
     ROS_INFO("Initializing Distance Field");
@@ -195,9 +195,9 @@ int main (int argc, char *argv[])
     }
 
     norm = sqrt(grad_x*grad_x + grad_y*grad_y + grad_z*grad_z);
-    ROS_INFO("Distance: %f", dist);
-    ROS_INFO("Gradient: %f %f %f", grad_x/norm, grad_y/norm, grad_z/norm);
-    ROS_INFO("Average Time Elapsed: %0.8f (sec)",t/10.0);
+    ROS_ERROR("Distance: %f", dist);
+    ROS_ERROR("Gradient: %f %f %f", grad_x/norm, grad_y/norm, grad_z/norm);
+    ROS_ERROR("Average Time Elapsed: %0.8f (sec)",t/10.0);
 
     while(ros::ok())
     {

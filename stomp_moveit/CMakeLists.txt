@@ -22,7 +22,7 @@ add_definitions("-std=c++11")
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core cmake_modules pluginlib roscpp moveit_experimental
+  CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core cmake_modules pluginlib roscpp moveit_experimental industrial_collision_detection
   DEPENDS Eigen
 )
 
@@ -39,6 +39,7 @@ include_directories(include
 add_library(${PROJECT_NAME}
   src/stomp_optimization_task.cpp
   src/stomp_planner.cpp
+  src/stomp_robot_model.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -55,6 +56,7 @@ add_library(${PROJECT_NAME}_cost_functions
   src/cost_functions/tool_goal_pose.cpp
   src/cost_functions/obstacle_avoidance.cpp
   src/cost_functions/collision_check.cpp
+  src/cost_functions/obstacle_distance_gradient.cpp
  )
 target_link_libraries(${PROJECT_NAME}_cost_functions ${catkin_LIBRARIES})
 

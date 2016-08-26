@@ -24,6 +24,8 @@ COMPONENTS
   roslib
   rostime
   cmake_modules
+  industrial_collision_detection
+  pcl_ros
 )
 find_package(console_bridge REQUIRED)
 find_package(Eigen REQUIRED)
@@ -46,22 +48,29 @@ catkin_package(
     ${OCTOMAP_INCLUDE_DIRS}
   LIBRARIES
     moveit_collision_distance_field
+    moveit_openvdb
     ${OCTOMAP_LIBRARIES}
+    ${OPENVDB_LIBRARIES}
+    ${TBB_LIBRARY}
   CATKIN_DEPENDS
+    industrial_collision_detection
     geometric_shapes
     shape_tools
     eigen_stl_containers
     eigen_conversions
     random_numbers
     moveit_msgs
+    moveit_core
     kdl_parser
     srdfdom
+    pcl_ros
   DEPENDS
     Boost
     Eigen
     urdfdom
     urdfdom_headers
     console_bridge
+    openvdb
     )
 
 include_directories(SYSTEM ${EIGEN_INCLUDE_DIRS}

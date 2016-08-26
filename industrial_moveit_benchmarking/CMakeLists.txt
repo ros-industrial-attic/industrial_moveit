@@ -39,9 +39,13 @@ add_executable(stomp_benchmarking_node src/stomp_valgrind.cpp)
 add_executable(joint_interpolated_benchmarking_node src/joint_interpolated_valgrind.cpp)
 add_executable(cartesian_benchmarking_node src/clik_valgrind.cpp)
 add_executable(static_distance_field_benchmarking_node src/static_distance_field_valgrind.cpp)
+add_executable(openvdb_benchmarking_node src/openvdb_valgrind.cpp)
+add_executable(openvdb_benchmarking_node2 src/openvdb_valgrind2.cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(stomp_benchmarking_node ${catkin_LIBRARIES})
 target_link_libraries(joint_interpolated_benchmarking_node ${catkin_LIBRARIES})
 target_link_libraries(cartesian_benchmarking_node ${catkin_LIBRARIES})
 target_link_libraries(static_distance_field_benchmarking_node ${catkin_LIBRARIES})
+target_link_libraries(openvdb_benchmarking_node ${catkin_LIBRARIES})
+target_link_libraries(openvdb_benchmarking_node2 ${catkin_LIBRARIES})
