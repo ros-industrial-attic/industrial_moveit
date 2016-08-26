@@ -39,6 +39,7 @@ class StompRobotModel : public moveit::core::RobotModel
 public:
   StompRobotModel(moveit::core::RobotModelConstPtr robot_model,double df_voxel,double df_max_distance);
   StompRobotModel(moveit::core::RobotModelConstPtr robot_model);
+  StompRobotModel(moveit::core::RobotModelConstPtr robot_model, const std::string& saved_sdf);
   virtual ~StompRobotModel();
 
   /*
