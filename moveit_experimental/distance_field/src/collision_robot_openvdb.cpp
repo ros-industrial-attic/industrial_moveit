@@ -39,22 +39,30 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
   exBandWidth_ = metadata.metaValue<float>(ex_bandwidth_meta_name);
   inBandWidth_ = metadata.metaValue<float>(in_bandwidth_meta_name);
 
+  ROS_WARN("LOADED FIELD WITH META DATA: %f %f %f %f", voxel_size_, background_, exBandWidth_, inBandWidth_);
+
 
   // Step 3: For each static, active, & dynamic link, let's construct it's distance field
   //         using archived data.
-  auto static_links = identifyStaticLinks();
-  auto active_links = identifyActiveLinks();
-  auto dynamic_links = identifyDynamicLinks(static_links, active_links);
+  static_links_ = identifyStaticLinks();
+  active_links_ = identifyActiveLinks();
+  dynamic_links_ = identifyDynamicLinks(static_links_, active_links_);
 
-  loadStaticLinks(static_links, grids, static_sdf_);
-  loadActiveLinks(active_links, grids, active_sdf_);
-  loadDynamicLinks(dynamic_links, grids, dynamic_sdf_);
+  loadStaticLinks(static_links_, grids, static_sdf_);
+  loadActiveLinks(active_links_, grids, active_sdf_);
+  loadDynamicLinks(dynamic_links_, grids, dynamic_sdf_);
 
   // Step 4:
   createDefaultAllowedCollisionMatrix();
   createDefaultDistanceQuery();
 
   // Step 5: Perform sanity checking (e.g. do all links have an associated distance field?)
+  ROS_INFO("STATIC");
+  for (const auto& grid : static_sdf_) grid->display();
+  ROS_INFO("ACTIVE");
+  for (const auto& grid : active_sdf_) grid->display();
+  ROS_INFO("DYNAMIC");
+  for (const auto& grid : dynamic_sdf_) grid->display();
 }
 
 void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
@@ -178,6 +186,7 @@ void distance_field::CollisionRobotOpenVDB::writeToFile(const std::string& file_
   for (std::size_t i = 0 ; i < static_sdf_.size() ; ++i)
   {
     static_sdf_[i]->saveMetaData(static_links_[i]->getName());
+    static_sdf_[i]->display();
     grids.push_back(static_sdf_[i]->getGrid());
   }
 
@@ -185,12 +194,14 @@ void distance_field::CollisionRobotOpenVDB::writeToFile(const std::string& file_
   for (std::size_t i = 0 ; i < dynamic_sdf_.size() ; ++i)
   {
     dynamic_sdf_[i]->saveMetaData(dynamic_links_[i]->getName());
+    dynamic_sdf_[i]->display();
     grids.push_back(dynamic_sdf_[i]->getGrid());
   }
 
   for (std::size_t i = 0 ; i < active_sdf_.size() ; ++i)
   {
     active_sdf_[i]->saveMetaData(active_links_[i]->getName());
+    active_sdf_[i]->display();
     grids.push_back(active_sdf_[i]->getGrid());
   }
 
