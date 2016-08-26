@@ -61,6 +61,12 @@ StompRobotModel::StompRobotModel(moveit::core::RobotModelConstPtr robot_model):
   ROS_WARN("StompRobotModel has been instantiated without a distance field");
 }
 
+StompRobotModel::StompRobotModel(moveit::core::RobotModelConstPtr robot_model, const std::string &saved_sdf)
+  : moveit::core::RobotModel(*robot_model)
+{
+  collision_robot_df_.reset(new distance_field::CollisionRobotOpenVDB(robot_model, saved_sdf));
+}
+
 StompRobotModel::~StompRobotModel()
 {
   // TODO Auto-generated destructor stub
