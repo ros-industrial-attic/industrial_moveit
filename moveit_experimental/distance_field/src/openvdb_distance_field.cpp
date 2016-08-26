@@ -43,14 +43,13 @@ void distance_field::OpenVDBDistanceField::saveMetaData(const std::string &name)
 
 void distance_field::OpenVDBDistanceField::display() const
 {
-
-  ROS_INFO_STREAM("GRID: " << grid_->getName());
-  ROS_INFO_STREAM("\tSIZE: " << grid_->memUsage());
+  ROS_INFO_STREAM("Grid: " << grid_->getName());
+  ROS_INFO_STREAM("\tMem-Usage: " << grid_->memUsage());
   ROS_INFO_STREAM("\tTF: " << grid_->transform());
-  ROS_INFO_STREAM("\tN: " << grid_->tree().leafCount());
-  ROS_INFO_STREAM("\tActive: " << grid_->activeVoxelCount());
-  ROS_INFO_STREAM("\tBB: " << grid_->evalActiveVoxelBoundingBox());
-  ROS_INFO_STREAM("\bg: " << grid_->background());
+  ROS_INFO_STREAM("\tLeafs: " << grid_->tree().leafCount());
+  ROS_INFO_STREAM("\tActive Voxels: " << grid_->activeVoxelCount());
+  ROS_INFO_STREAM("\tB-Box: " << grid_->evalActiveVoxelBoundingBox());
+  ROS_INFO_STREAM("\tBackground: " << grid_->background());
 }
 
 double distance_field::OpenVDBDistanceField::getVoxelSize() const
