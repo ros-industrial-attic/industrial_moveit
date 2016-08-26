@@ -28,6 +28,10 @@
 #include <ros/time.h>
 #include <ros/duration.h>
 #include <stomp_moveit/stomp_robot_model.h>
+#include <XmlRpc.h>
+#include <ros/package.h>
+
+
 
 namespace stomp_moveit
 {
@@ -89,6 +93,66 @@ double StompRobotModel::distance(const std::string& group,planning_scene::Planni
 
   collision_robot_df_->distanceSelf(distance_request,distance_result,state);
   return distance_result.minimum_distance.min_distance;
+}
+
+boost::shared_ptr<StompRobotModel>
+loadStompRobotModel(ros::NodeHandle &nh, moveit::core::RobotModelConstPtr model)
+{
+  const std::string STOMP_ROBOT_PARAM = "stomp_robot";
+
+  // load stomp robot model parameters
+  XmlRpc::XmlRpcValue stomp_robot_param;
+  boost::shared_ptr<stomp_moveit::StompRobotModel> stomp_robot_model;
+
+  if (!nh.getParam(STOMP_ROBOT_PARAM, stomp_robot_param))
+  {
+    ROS_INFO("optional '%s' parameter not found, defaulting to moveit::core::RobotModel",STOMP_ROBOT_PARAM.c_str());
+    stomp_robot_model.reset(new stomp_moveit::StompRobotModel(model));
+    return stomp_robot_model;
+  }
+
+  if (!stomp_robot_param.hasMember("distance_field"))
+  {
+    ROS_ERROR("PlanningJobMoveitAdapter unable to parse ROS parameter:\n %s",STOMP_ROBOT_PARAM.c_str());
+    throw std::logic_error("PlanningJobMoveitAdapter failure");
+  }
+
+  XmlRpc::XmlRpcValue distance_field;
+  distance_field = stomp_robot_param["distance_field"];
+
+  // No we must determine if we have a saved distance field or need to generate a new one
+  // We do this by checking for the presence of the 'package' and 'relative_path' parameters
+
+  if (distance_field.hasMember("package"))
+  {
+    ROS_INFO("Loading STOMP robot model from existing file");
+    std::string package, relative_path;
+    package = static_cast<std::string>(distance_field["package"]);
+    relative_path = static_cast<std::string>(distance_field["relative_path"]);
+
+    ROS_INFO("VDB file package: %s\nrelative_path: %s", package.c_str(), relative_path.c_str());
+    const auto full_path = ros::package::getPath(package) + relative_path;
+    stomp_robot_model.reset(new stomp_moveit::StompRobotModel(model, full_path));
+  }
+  else
+  {
+    ROS_INFO("Generating STOMP robot model from moveit::RobotModel");
+    auto members = {"voxel_size","background"};
+    for(auto& m : members)
+    {
+      if(!distance_field.hasMember(m))
+      {
+        ROS_ERROR("PlanningJobMoveitAdapter failed to find the '%s/%s/%s' parameter",STOMP_ROBOT_PARAM.c_str(),"distance_field",m);
+        throw std::logic_error("PlanningJobMoveitAdapter failure");
+      }
+    }
+
+    double df_voxel = static_cast<double>(distance_field["voxel_size"]);
+    double df_background = static_cast<double>(distance_field["background"]);
+    stomp_robot_model.reset(new stomp_moveit::StompRobotModel(model,df_voxel,df_background));
+  }
+
+  return stomp_robot_model;
 }
 
 } /* namespace stomp_moveit */

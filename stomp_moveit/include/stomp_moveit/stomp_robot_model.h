@@ -58,6 +58,9 @@ protected:
   boost::shared_ptr<distance_field::CollisionRobotOpenVDB> collision_robot_df_;
 };
 
+// Helper function for loading stomp robot model from parameters
+boost::shared_ptr<stomp_moveit::StompRobotModel> loadStompRobotModel(ros::NodeHandle& nh, moveit::core::RobotModelConstPtr model);
+
 } /* namespace stomp_moveit */
 
 #endif /* INCLUDE_STOMP_MOVEIT_STOMP_ROBOT_MODEL_H_ */
