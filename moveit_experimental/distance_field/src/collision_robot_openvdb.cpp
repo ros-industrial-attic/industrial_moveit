@@ -28,6 +28,7 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
                                                              const std::string &file_path)
   : robot_model_(model), links_(model->getLinkModelsWithCollisionGeometry())
 {
+  openvdb::initialize();
   // Step 1: Load the OpenVDB archive
   auto grid_data = readFromFile(file_path);
   const auto& grids = *grid_data.first;
