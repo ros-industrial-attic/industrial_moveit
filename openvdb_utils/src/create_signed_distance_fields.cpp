@@ -8,12 +8,20 @@ struct DistanceFieldOptions
   std::string save_file;
 };
 
+std::ostream& operator<<(std::ostream& os, const DistanceFieldOptions& o)
+{
+  os << "Voxel size: " << o.voxel_size << " meters\n";
+  os << "Background distance: " << o.background << " meters\n";
+  os << "Save file: " << o.save_file << "\n";
+  return os;
+}
+
 void createDistanceFieldAndSave(moveit::core::RobotModelConstPtr model, const DistanceFieldOptions& options)
 {
   auto exBandWidth = options.background / options.voxel_size;
   auto inBandWidth = options.background/ options.voxel_size;
 
-  ROS_INFO_STREAM("Generating OpenVDB model for robot: " << model->getName());
+  ROS_INFO_STREAM("Generating OpenVDB model for robot: " << model->getName() << " using parameters:\n" << options);
   distance_field::CollisionRobotOpenVDB vdb_model(model, options.voxel_size, options.background, exBandWidth, inBandWidth);
   ROS_INFO_STREAM("Done generating OpenVDB model for robot: " << model->getName() << "; Saving to file");
   vdb_model.writeToFile(options.save_file);
@@ -27,6 +35,7 @@ int main(int argc, char** argv)
   ros::NodeHandle nh ("~");
 
   const std::string robot_description = "robot_description";
+  ROS_INFO("Reading robot URDF/SRDF from '%s' parameter...", robot_description.c_str());
   robot_model_loader::RobotModelLoader loader (robot_description, false);
 
   auto model = loader.getModel();
@@ -36,6 +45,8 @@ int main(int argc, char** argv)
     ROS_ERROR("Unable to load robot description from '%s' parameter.", robot_description.c_str());
     return -1;
   }
+
+  ROS_INFO("Successfully loaded robot description.");
 
   // Load parameters for options
   const auto default_voxel_size = 0.02; // m
