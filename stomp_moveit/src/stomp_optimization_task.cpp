@@ -86,6 +86,13 @@ StompOptimizationTask::StompOptimizationTask(
   update_filter_loader_.reset(new UpdateFilterLoader("stomp_moveit", "stomp_moveit::update_filters::StompUpdateFilter"));
 
 
+  // TODO: Was having issues with multiple threads failing to load plugins when they hit these
+  // functions all at once. This code forces all of the constructors to run in a serial fashion
+  // when loading plugins. This really hurts start-up performance when using multiple workers 
+  // (minutes to load) and should be removed as soon as we have a better fix.
+  static boost::mutex plugin_protector_mutex;
+  boost::mutex::scoped_lock lock (plugin_protector_mutex);
+
   // loading cost function plugins
   if(!initializeCostFunctionPlugins(config))
   {
@@ -112,7 +119,6 @@ StompOptimizationTask::StompOptimizationTask(
   {
     ROS_WARN("StompOptimizationTask/%s failed to load '%s' plugins from yaml",group_name.c_str(),UPDATE_FILTERS_FIELD.c_str());
   }
-
 }
 
 StompOptimizationTask::~StompOptimizationTask()
