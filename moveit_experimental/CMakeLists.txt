@@ -51,7 +51,9 @@ catkin_package(
     moveit_openvdb
     ${OCTOMAP_LIBRARIES}
     ${OPENVDB_LIBRARIES}
+    ${OPENVDB_LIBRARY}
     ${TBB_LIBRARY}
+    ${HALF_LIBRARY}
   CATKIN_DEPENDS
     industrial_collision_detection
     geometric_shapes
