@@ -34,7 +34,7 @@
 
 /* Author: Ioan Sucan */
 
-#include <industrial_collision_detection/collision_robot_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
 
 collision_detection::CollisionRobotIndustrial::CollisionRobotIndustrial(const robot_model::RobotModelConstPtr &model, double padding, double scale)
   : CollisionRobot(model, padding, scale)

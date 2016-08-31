@@ -40,7 +40,7 @@
 #include <moveit/collision_detection/collision_robot.h>
 #include <moveit/collision_detection_fcl/collision_common.h>
 
-#include <industrial_collision_detection/collision_common.h>
+#include <industrial_collision_detection/collision_detection/collision_common.h>
 
 namespace collision_detection
 {

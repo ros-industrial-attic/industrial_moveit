@@ -42,9 +42,9 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME}
-  src/collision_common.cpp
-  src/collision_robot_industrial.cpp
-  src/collision_world_industrial.cpp
+  src/collision_detection/collision_common.cpp
+  src/collision_detection/collision_robot_industrial.cpp
+  src/collision_detection/collision_world_industrial.cpp
 )
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${console_bridge_LIBRARIES} ${urdfdom_LIBRARIES} ${urdfdom_headers_LIBRARIES} ${LIBFCL_LIBRARIES} ${Boost_LIBRARIES})
 

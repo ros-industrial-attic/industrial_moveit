@@ -26,8 +26,8 @@
 //#include <industrial_collision_detection/industrial_collision_detection_plugin.h>
 #include <pluginlib/class_list_macros.h>
 #include <moveit/collision_detection/collision_plugin.h>
-#include <industrial_collision_detection/collision_robot_industrial.h>
-#include <industrial_collision_detection/collision_world_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_world_industrial.h>
 
 namespace collision_detection
 {
