@@ -8,8 +8,7 @@
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/math/Vec3.h>
-#include <industrial_collision_detection/collision_common.h>
-#include <openvdb_visualization.h>
+#include <industrial_collision_detection/distance_field/openvdb_visualization.h>
 
 namespace distance_field
 {

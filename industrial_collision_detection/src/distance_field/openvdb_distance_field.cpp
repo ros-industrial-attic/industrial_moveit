@@ -1,4 +1,4 @@
-#include "openvdb_distance_field.h"
+#include <industrial_collision_detection/distance_field/openvdb_distance_field.h>
 
 #include <openvdb/tools/LevelSetSphere.h>
 #include <openvdb/tools/Composite.h>

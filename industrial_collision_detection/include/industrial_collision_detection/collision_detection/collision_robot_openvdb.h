@@ -1,9 +1,10 @@
 #ifndef COLLISION_ROBOT_OPENVDB_H
 #define COLLISION_ROBOT_OPENVDB_H
 
-#include "openvdb_distance_field.h"
+#include <industrial_collision_detection/collision_detection/collision_common.h>
+#include <industrial_collision_detection/distance_field/openvdb_distance_field.h>
 
-namespace distance_field
+namespace collision_detection
 {
 
 enum SDFType {Static = 0, Dynamic = 1, Active = 2};
@@ -14,7 +15,7 @@ struct DistanceQueryData
     gradient(false) {}
 
   std::string parent_name;
-  SphereModel spheres;
+  distance_field::SphereModel spheres;
   std::vector<std::string> child_name;
   std::vector<int> child_index;
   std::vector<int> child_type;
@@ -98,13 +99,13 @@ private:
 
   void loadStaticLinks(std::vector<const robot_model::LinkModel*>& static_links,
                        const openvdb::GridPtrVec& grids,
-                       std::vector<OpenVDBDistanceFieldConstPtr> &fields);
+                       std::vector<distance_field::OpenVDBDistanceFieldConstPtr> &fields);
 
   void loadActiveLinks(std::vector<const robot_model::LinkModel*>& active_links,
-                       const openvdb::GridPtrVec& grids, std::vector<OpenVDBDistanceFieldConstPtr> &fields);
+                       const openvdb::GridPtrVec& grids, std::vector<distance_field::OpenVDBDistanceFieldConstPtr> &fields);
 
   void loadDynamicLinks(std::vector<const robot_model::LinkModel*>& dynamic_links,
-                        const openvdb::GridPtrVec& grids, std::vector<OpenVDBDistanceFieldConstPtr> &fields);
+                        const openvdb::GridPtrVec& grids, std::vector<distance_field::OpenVDBDistanceFieldConstPtr> &fields);
 
   /**
    * @brief Create static signed distance fields.
@@ -145,15 +146,15 @@ private:
 
   const std::vector<const robot_model::LinkModel*>& links_;
 
-  std::vector<OpenVDBDistanceFieldConstPtr> static_sdf_;
+  std::vector<distance_field::OpenVDBDistanceFieldConstPtr> static_sdf_;
   std::vector<const robot_model::LinkModel*> static_links_;
 
-  std::vector<OpenVDBDistanceFieldConstPtr> dynamic_sdf_;
+  std::vector<distance_field::OpenVDBDistanceFieldConstPtr> dynamic_sdf_;
   std::vector<const robot_model::LinkModel*> dynamic_links_;
 
-  std::vector<OpenVDBDistanceFieldConstPtr> active_sdf_;
+  std::vector<distance_field::OpenVDBDistanceFieldConstPtr> active_sdf_;
   std::vector<const robot_model::LinkModel*> active_links_;
-  std::vector<SphereModel> active_spheres_;
+  std::vector<distance_field::SphereModel> active_spheres_;
 
   std::vector<DistanceQueryData> dist_query_;
 
