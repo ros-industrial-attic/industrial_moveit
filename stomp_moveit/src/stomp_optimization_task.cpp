@@ -134,10 +134,10 @@ bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcVa
     for(auto& entry: plugins)
     {
       // instantiating
-      cost_functions::StompCostFunctionPtr plugin;
+      cost_functions::StompCostFunction* plugin;
       try
       {
-        plugin = cost_function_loader_->createInstance(entry.first);
+        plugin = cost_function_loader_->createUnmanagedInstance(entry.first);
       }
       catch(pluginlib::PluginlibException& ex)
       {
@@ -187,10 +187,10 @@ bool StompOptimizationTask::initializeNoisyFilterPlugins(const XmlRpc::XmlRpcVal
     for(auto& entry: plugins)
     {
       // instantiating
-      noisy_filters::StompNoisyFilterPtr plugin;
+      noisy_filters::StompNoisyFilter* plugin;
       try
       {
-        plugin = noisy_filter_loader_->createInstance(entry.first);
+        plugin = noisy_filter_loader_->createUnmanagedInstance(entry.first);
       }
       catch(pluginlib::PluginlibException& ex)
       {
@@ -229,10 +229,10 @@ bool StompOptimizationTask::initializeUpdateFilterPlugins(const XmlRpc::XmlRpcVa
     for(auto& entry: plugins)
     {
       // instantiating
-      update_filters::StompUpdateFilterPtr plugin;
+      update_filters::StompUpdateFilter* plugin;
       try
       {
-        plugin = update_filter_loader_->createInstance(entry.first);
+        plugin = update_filter_loader_->createUnmanagedInstance(entry.first);
       }
       catch(pluginlib::PluginlibException& ex)
       {
@@ -271,10 +271,10 @@ bool StompOptimizationTask::initializeNoiseGeneratorPlugins(const XmlRpc::XmlRpc
     for(auto& entry: plugins)
     {
       // instantiating
-      noise_generators::StompNoiseGeneratorPtr plugin;
+      noise_generators::StompNoiseGenerator* plugin;
       try
       {
-        plugin = noise_generator_loader_->createInstance(entry.first);
+        plugin = noise_generator_loader_->createUnmanagedInstance(entry.first);
       }
       catch(pluginlib::PluginlibException& ex)
       {
