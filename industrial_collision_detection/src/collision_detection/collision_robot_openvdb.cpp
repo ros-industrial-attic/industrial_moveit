@@ -16,10 +16,11 @@ using namespace distance_field;
 
 CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
                                                              const float voxel_size, const float background,
-                                                             const float exBandWidth, const float inBandWidth)
-  : robot_model_(model), voxel_size_(voxel_size), background_(background),
-    exBandWidth_(exBandWidth), inBandWidth_(inBandWidth),
-    links_(model->getLinkModelsWithCollisionGeometry())
+                                                             const float exBandWidth, const float inBandWidth):
+  CollisionRobotFCL(model,0.0,1.0),
+  robot_model_(model), voxel_size_(voxel_size), background_(background),
+  exBandWidth_(exBandWidth), inBandWidth_(inBandWidth),
+  links_(model->getLinkModelsWithCollisionGeometry())
 {
   createDefaultAllowedCollisionMatrix();
   createStaticSDFs();
@@ -29,8 +30,9 @@ CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConst
 }
 
 CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
-                                                             const std::string &file_path)
-  : robot_model_(model), links_(model->getLinkModelsWithCollisionGeometry())
+                                                             const std::string &file_path):
+  CollisionRobotFCL(model,0.0,1.0),
+  robot_model_(model), links_(model->getLinkModelsWithCollisionGeometry())
 {
   openvdb::initialize();
   // Step 1: Load the OpenVDB archive
@@ -415,6 +417,32 @@ void CollisionRobotOpenVDB::createDefaultDistanceQuery()
     }
 
     dist_query_.push_back(std::move(data));
+  }
+}
+
+void CollisionRobotOpenVDB::checkSelfCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state) const
+{
+  checkSelfCollision(req,res,state,*acm_.get());
+}
+
+void CollisionRobotOpenVDB::checkSelfCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state
+                                , const AllowedCollisionMatrix &acm) const
+{
+  if(req.distance)
+  {
+    // calculate distance only
+    DistanceRequest dreq;
+    DistanceResult dres;
+    dreq.group_name = req.group_name;
+    dreq.acm = &acm;
+    distanceSelf(dreq,dres,state);
+    res.collision = dres.collision;
+    res.distance = dres.minimum_distance.min_distance;
+    res.contact_count = 1;
+  }
+  else
+  {
+    CollisionRobotFCL::checkSelfCollision(req,res,state);
   }
 }
 

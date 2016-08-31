@@ -3,6 +3,7 @@
 
 #include <industrial_collision_detection/collision_detection/collision_common.h>
 #include <industrial_collision_detection/distance_field/openvdb_distance_field.h>
+#include <moveit/collision_detection_fcl/collision_robot_fcl.h>
 
 namespace collision_detection
 {
@@ -39,9 +40,14 @@ struct SDFData
   openvdb::FloatGrid::ConstAccessor accessor;
 };
 
-class CollisionRobotOpenVDB
+class CollisionRobotOpenVDB: public CollisionRobotFCL
 {
 public:
+  /**
+   * @brief CollisionRobotOpenVDB constructor which uses a distance field and spherical approximations to compute distances.
+   * Collision checks are made with the FCL library.
+   *
+   */
   CollisionRobotOpenVDB(const robot_model::RobotModelConstPtr &model,
                         const float voxel_size = 0.01,
                         const float background = 0.5,
@@ -57,6 +63,19 @@ public:
   CollisionRobotOpenVDB(const robot_model::RobotModelConstPtr& model,
                         const std::string& file_path);
 
+
+  /**
+   * @brief overloaded CollisionRobot::checkSelfCollision methods
+   */
+  virtual void checkSelfCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state) const override;
+  virtual void checkSelfCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state
+                                  , const AllowedCollisionMatrix &acm) const override;
+
+  /**
+   * @brief customized distanceSelf method.  Returns the shortest distance between a robot link in the
+   * requested planning group and any given obstacle in the environment.  This calculation relies on
+   * the distance field and the spherical approximation for each link.
+   */
   void distanceSelf(const collision_detection::DistanceRequest &req,
                     collision_detection::DistanceResult &res, const robot_state::RobotState &state) const;
 
