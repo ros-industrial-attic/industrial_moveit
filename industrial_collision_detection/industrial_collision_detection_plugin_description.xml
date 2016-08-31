@@ -4,4 +4,9 @@
       A implementation of an improved version of moveit's fcl collision detection.
     </description>
   </class>
+  <class name="CollisionOpenVDB" type="collision_detection::OpenVDBPluginLoader" base_class_type="collision_detection::CollisionPlugin">
+    <description>
+      A implementation that uses an OpenVDB distance field for distance calculations. Collision checks are still done through FCL calls.
+    </description>
+  </class>
 </library>
