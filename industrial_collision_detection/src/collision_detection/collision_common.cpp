@@ -23,7 +23,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <industrial_collision_detection/collision_common.h>
+#include <industrial_collision_detection/collision_detection/collision_common.h>
 #include <moveit/collision_detection_fcl/collision_common.h>
 #include <ros/ros.h>
 

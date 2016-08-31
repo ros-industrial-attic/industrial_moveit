@@ -34,7 +34,7 @@
 
 /* Author: Ioan Sucan */
 
-#include <industrial_collision_detection/collision_world_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_world_industrial.h>
 #include <fcl/shape/geometric_shape_to_BVH_model.h>
 #include <fcl/traversal/traversal_node_bvhs.h>
 #include <fcl/traversal/traversal_node_setup.h>
