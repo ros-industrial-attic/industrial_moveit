@@ -1,4 +1,4 @@
-#include "openvdb_visualization.h"
+#include <industrial_collision_detection/distance_field/openvdb_visualization.h>
 
 distance_field::PointCloud::Ptr distance_field::toPointCloud(const openvdb::FloatGrid &grid)
 {

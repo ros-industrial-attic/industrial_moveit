@@ -1,5 +1,4 @@
-#include "collision_robot_openvdb.h"
-
+#include <industrial_collision_detection/collision_detection/collision_robot_openvdb.h>
 #include <openvdb/tools/GridOperators.h>
 #include <ros/assert.h>
 #include <algorithm>
@@ -10,7 +9,12 @@ const static std::string background_meta_name = "background";
 const static std::string ex_bandwidth_meta_name = "exBandWidth";
 const static std::string in_bandwidth_meta_name = "inBandWidth";
 
-distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
+namespace collision_detection
+{
+
+using namespace distance_field;
+
+CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
                                                              const float voxel_size, const float background,
                                                              const float exBandWidth, const float inBandWidth)
   : robot_model_(model), voxel_size_(voxel_size), background_(background),
@@ -24,7 +28,7 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
   createDefaultDistanceQuery();
 }
 
-distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
+CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
                                                              const std::string &file_path)
   : robot_model_(model), links_(model->getLinkModelsWithCollisionGeometry())
 {
@@ -55,7 +59,7 @@ distance_field::CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core:
   createDefaultDistanceQuery();
 }
 
-void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
+void CollisionRobotOpenVDB::createStaticSDFs()
 {
   const robot_model::LinkModel *root_link = robot_model_->getRootLink();
 
@@ -82,7 +86,7 @@ void distance_field::CollisionRobotOpenVDB::createStaticSDFs()
   }
 }
 
-void distance_field::CollisionRobotOpenVDB::createActiveSDFs()
+void CollisionRobotOpenVDB::createActiveSDFs()
 {
   const std::vector<const robot_model::JointModelGroup*> groups = robot_model_->getJointModelGroups();
   for (std::size_t i = 0 ; i < groups.size() ; ++i)
@@ -138,7 +142,7 @@ void distance_field::CollisionRobotOpenVDB::createActiveSDFs()
   }
 }
 
-void distance_field::CollisionRobotOpenVDB::createDynamicSDFs()
+void CollisionRobotOpenVDB::createDynamicSDFs()
 {
   dynamic_links_ = links_;
 
@@ -165,7 +169,7 @@ void distance_field::CollisionRobotOpenVDB::createDynamicSDFs()
   }
 }
 
-void distance_field::CollisionRobotOpenVDB::writeToFile(const std::string& file_path)
+void CollisionRobotOpenVDB::writeToFile(const std::string& file_path)
 {
   // Create a VDB file object.
   openvdb::io::File vdbFile(file_path);
@@ -205,7 +209,7 @@ void distance_field::CollisionRobotOpenVDB::writeToFile(const std::string& file_
 }
 
 std::pair<openvdb::GridPtrVecPtr, openvdb::MetaMap::Ptr>
-distance_field::CollisionRobotOpenVDB::readFromFile(const std::string& file_path)
+CollisionRobotOpenVDB::readFromFile(const std::string& file_path)
 {
   openvdb::io::File file(file_path);
   // Open the file.  This reads the file header, but not any grids.
@@ -240,13 +244,13 @@ static openvdb::math::Transform::Ptr makeTransform(const openvdb::FloatGrid& gri
 
 
 std::pair<distance_field::PointCloud::Ptr, distance_field::PointCloud::Ptr>
-distance_field::CollisionRobotOpenVDB::voxelGridToPointClouds(const moveit::core::RobotState &state) const
+CollisionRobotOpenVDB::voxelGridToPointClouds(const moveit::core::RobotState &state) const
 {
   return voxelGridToPointClouds(state, std::vector<std::string>());
 }
 
 std::pair<distance_field::PointCloud::Ptr, distance_field::PointCloud::Ptr>
-distance_field::CollisionRobotOpenVDB::voxelGridToPointClouds(const moveit::core::RobotState &state,
+CollisionRobotOpenVDB::voxelGridToPointClouds(const moveit::core::RobotState &state,
                                                               const std::vector<std::string>& exclude_list) const
 {
   std::pair<distance_field::PointCloud::Ptr, distance_field::PointCloud::Ptr> pair;
@@ -308,7 +312,7 @@ distance_field::CollisionRobotOpenVDB::voxelGridToPointClouds(const moveit::core
 }
 
 visualization_msgs::MarkerArray
-distance_field::CollisionRobotOpenVDB::spheresToVisualizationMarkers(const moveit::core::RobotState &state) const
+CollisionRobotOpenVDB::spheresToVisualizationMarkers(const moveit::core::RobotState &state) const
 {
   std::vector<DistanceQueryData> dist_query(dist_query_);
 
@@ -339,7 +343,7 @@ distance_field::CollisionRobotOpenVDB::spheresToVisualizationMarkers(const movei
   return ma;
 }
 
-uint64_t distance_field::CollisionRobotOpenVDB::memUsage() const
+uint64_t CollisionRobotOpenVDB::memUsage() const
 {
   uint64_t mem_usage = 0;
 
@@ -361,7 +365,7 @@ uint64_t distance_field::CollisionRobotOpenVDB::memUsage() const
   return mem_usage;
 }
 
-void distance_field::CollisionRobotOpenVDB::createDefaultDistanceQuery()
+void CollisionRobotOpenVDB::createDefaultDistanceQuery()
 {
   // Calculate distance to objects that were added dynamically into the planning scene
   for (std::size_t j = 0; j < active_links_.size(); ++j)
@@ -414,7 +418,7 @@ void distance_field::CollisionRobotOpenVDB::createDefaultDistanceQuery()
   }
 }
 
-void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detection::DistanceRequest &req, collision_detection::DistanceResult &res, const moveit::core::RobotState &state) const
+void CollisionRobotOpenVDB::distanceSelf(const collision_detection::DistanceRequest &req, collision_detection::DistanceResult &res, const moveit::core::RobotState &state) const
 {
   std::vector<DistanceQueryData> dist_query(dist_query_);
   std::vector<std::vector<SDFData> > data(3);
@@ -484,7 +488,7 @@ void distance_field::CollisionRobotOpenVDB::distanceSelf(const collision_detecti
   res.minimum_distance = res.distance[index];
 }
 
-bool distance_field::CollisionRobotOpenVDB::isCollisionAllowed(const std::string &l1, const std::string &l2, const collision_detection::AllowedCollisionMatrix *acm) const
+bool CollisionRobotOpenVDB::isCollisionAllowed(const std::string &l1, const std::string &l2, const collision_detection::AllowedCollisionMatrix *acm) const
 {
     // use the collision matrix (if any) to avoid certain distance checks
     if (acm)
@@ -501,7 +505,7 @@ bool distance_field::CollisionRobotOpenVDB::isCollisionAllowed(const std::string
     return false;
 }
 
-void distance_field::CollisionRobotOpenVDB::createDefaultAllowedCollisionMatrix()
+void CollisionRobotOpenVDB::createDefaultAllowedCollisionMatrix()
 {
   acm_.reset(new collision_detection::AllowedCollisionMatrix());
   // Use default collision operations in the SRDF to setup the acm
@@ -520,7 +524,7 @@ static bool approxEqual(T a, T b, const T eps = 0.00001)
   return std::abs(a - b) < eps;
 }
 
-void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(const DistanceQueryData &data, std::vector<std::vector<SDFData> > &sdfs_data, collision_detection::DistanceResultsData &res) const
+void CollisionRobotOpenVDB::distanceSelfHelper(const DistanceQueryData &data, std::vector<std::vector<SDFData> > &sdfs_data, collision_detection::DistanceResultsData &res) const
 {
   res.min_distance = background_;
   res.link_name[0] = data.parent_name;
@@ -596,12 +600,12 @@ void distance_field::CollisionRobotOpenVDB::distanceSelfHelper(const DistanceQue
   }
 }
 
-bool distance_field::CollisionRobotOpenVDB::hasCollisionGeometry(const moveit::core::LinkModel *link) const
+bool CollisionRobotOpenVDB::hasCollisionGeometry(const moveit::core::LinkModel *link) const
 {
   return std::find(links_.begin(), links_.end(), link) != links_.end();
 }
 
-std::vector<const moveit::core::LinkModel *> distance_field::CollisionRobotOpenVDB::identifyStaticLinks() const
+std::vector<const moveit::core::LinkModel *> CollisionRobotOpenVDB::identifyStaticLinks() const
 {
   // The purpose of this function is to walk the tree of robot links & find all of the links that are connected
   // to one another via a static transformation chain that includes the root link.
@@ -622,7 +626,7 @@ std::vector<const moveit::core::LinkModel *> distance_field::CollisionRobotOpenV
   return static_links;
 }
 
-void distance_field::CollisionRobotOpenVDB::identifyStaticLinksHelper(const moveit::core::LinkModel *link,
+void CollisionRobotOpenVDB::identifyStaticLinksHelper(const moveit::core::LinkModel *link,
                                                                       std::vector<const moveit::core::LinkModel *> &in_set,
                                                                       std::vector<const moveit::core::LinkModel *> &considered) const
 {
@@ -650,7 +654,7 @@ void distance_field::CollisionRobotOpenVDB::identifyStaticLinksHelper(const move
   } // end of associated links
 }
 
-std::vector<const moveit::core::LinkModel *> distance_field::CollisionRobotOpenVDB::identifyActiveLinks() const
+std::vector<const moveit::core::LinkModel *> CollisionRobotOpenVDB::identifyActiveLinks() const
 {
   std::vector<const moveit::core::LinkModel *> active_links;
 
@@ -673,7 +677,7 @@ std::vector<const moveit::core::LinkModel *> distance_field::CollisionRobotOpenV
 }
 
 std::vector<const moveit::core::LinkModel *>
-distance_field::CollisionRobotOpenVDB::identifyDynamicLinks(std::vector<const moveit::core::LinkModel *>& static_links,
+CollisionRobotOpenVDB::identifyDynamicLinks(std::vector<const moveit::core::LinkModel *>& static_links,
                                                             std::vector<const moveit::core::LinkModel *>& active_links) const
 {
   auto dynamic_links = links_;
@@ -706,7 +710,7 @@ static openvdb::FloatGrid::Ptr findGridInVec(const std::string& name, const open
   return openvdb::FloatGrid::Ptr();
 }
 
-void distance_field::CollisionRobotOpenVDB::loadStaticLinks(std::vector<const moveit::core::LinkModel *> &static_links,
+void CollisionRobotOpenVDB::loadStaticLinks(std::vector<const moveit::core::LinkModel *> &static_links,
                                                             const openvdb::GridPtrVec &grids,
                                                             std::vector<OpenVDBDistanceFieldConstPtr>& fields)
 {
@@ -724,7 +728,7 @@ void distance_field::CollisionRobotOpenVDB::loadStaticLinks(std::vector<const mo
   }
 }
 
-void distance_field::CollisionRobotOpenVDB::loadActiveLinks(std::vector<const moveit::core::LinkModel *> &active_links,
+void CollisionRobotOpenVDB::loadActiveLinks(std::vector<const moveit::core::LinkModel *> &active_links,
                                                             const openvdb::GridPtrVec &grids,
                                                             std::vector<OpenVDBDistanceFieldConstPtr>& fields)
 {
@@ -755,7 +759,7 @@ void distance_field::CollisionRobotOpenVDB::loadActiveLinks(std::vector<const mo
   }
 }
 
-void distance_field::CollisionRobotOpenVDB::loadDynamicLinks(std::vector<const moveit::core::LinkModel *> &dynamic_links,
+void CollisionRobotOpenVDB::loadDynamicLinks(std::vector<const moveit::core::LinkModel *> &dynamic_links,
                                                              const openvdb::GridPtrVec &grids,
                                                              std::vector<OpenVDBDistanceFieldConstPtr>& fields)
 {
@@ -770,4 +774,6 @@ void distance_field::CollisionRobotOpenVDB::loadDynamicLinks(std::vector<const m
     OpenVDBDistanceFieldPtr sdf(new OpenVDBDistanceField(ptr));
     fields.push_back(OpenVDBDistanceFieldConstPtr(sdf));
   }
+}
+
 }
