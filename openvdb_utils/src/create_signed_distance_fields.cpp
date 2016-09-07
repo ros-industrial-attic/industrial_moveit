@@ -1,4 +1,4 @@
-#include <collision_robot_openvdb.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_openvdb.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
 
 struct DistanceFieldOptions
@@ -22,7 +22,7 @@ void createDistanceFieldAndSave(moveit::core::RobotModelConstPtr model, const Di
   auto inBandWidth = options.background/ options.voxel_size;
 
   ROS_INFO_STREAM("Generating OpenVDB model for robot: " << model->getName() << " using parameters:\n" << options);
-  distance_field::CollisionRobotOpenVDB vdb_model(model, options.voxel_size, options.background, exBandWidth, inBandWidth);
+  collision_detection::CollisionRobotOpenVDB vdb_model(model, options.voxel_size, options.background, exBandWidth, inBandWidth);
   ROS_INFO_STREAM("Done generating OpenVDB model for robot: " << model->getName() << "; Saving to file");
   vdb_model.writeToFile(options.save_file);
   ROS_INFO_STREAM("Done saving to file: " << options.save_file);

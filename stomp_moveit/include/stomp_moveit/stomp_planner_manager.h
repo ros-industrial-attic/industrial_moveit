@@ -26,7 +26,6 @@
 #ifndef STOMP_MOVEIT_STOMP_PLANNER_MANAGER_H_
 #define STOMP_MOVEIT_STOMP_PLANNER_MANAGER_H_
 
-#include <stomp_moveit/stomp_robot_model.h>
 #include <moveit/planning_interface/planning_interface.h>
 #include <ros/node_handle.h>
 
@@ -65,7 +64,7 @@ protected:
   std::map< std::string, planning_interface::PlanningContextPtr> planners_;
 
   // the robot model
-  boost::shared_ptr<StompRobotModel> stomp_robot_model_;
+  moveit::core::RobotModelConstPtr robot_model_;
 };
 
 } /* namespace stomp_moveit */

@@ -27,9 +27,7 @@
 #ifndef INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_OBSTACLE_DISTANCE_GRADIENT_H_
 #define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_OBSTACLE_DISTANCE_GRADIENT_H_
 
-#include <stomp_moveit/stomp_robot_model.h>
 #include <stomp_moveit/cost_functions/stomp_cost_function.h>
-#include <openvdb_distance_field.h>
 
 namespace stomp_moveit
 {
@@ -85,15 +83,17 @@ protected:
 
   // robot details
   std::string group_name_;
-  boost::shared_ptr<const StompRobotModel> robot_model_ptr_;
+  moveit::core::RobotModelConstPtr robot_model_ptr_;
   moveit::core::RobotStatePtr robot_state_;
 
   // planning context information
   planning_scene::PlanningSceneConstPtr planning_scene_;
   moveit_msgs::MotionPlanRequest plan_request_;
 
-  // distance field
+  // distance
   double max_distance_;
+  collision_detection::CollisionRequest collision_request_;
+  collision_detection::CollisionResult collision_result_;
 
 };
 

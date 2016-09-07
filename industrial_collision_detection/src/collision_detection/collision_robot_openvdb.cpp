@@ -17,7 +17,7 @@ using namespace distance_field;
 CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
                                                              const float voxel_size, const float background,
                                                              const float exBandWidth, const float inBandWidth):
-  CollisionRobotFCL(model,0.0,1.0),
+  CollisionRobotIndustrial(model,0.0,1.0),
   robot_model_(model), voxel_size_(voxel_size), background_(background),
   exBandWidth_(exBandWidth), inBandWidth_(inBandWidth),
   links_(model->getLinkModelsWithCollisionGeometry())
@@ -31,7 +31,7 @@ CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConst
 
 CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
                                                              const std::string &file_path):
-  CollisionRobotFCL(model,0.0,1.0),
+  CollisionRobotIndustrial(model,0.0,1.0),
   robot_model_(model), links_(model->getLinkModelsWithCollisionGeometry())
 {
   openvdb::initialize();
@@ -442,7 +442,7 @@ void CollisionRobotOpenVDB::checkSelfCollision(const CollisionRequest &req, Coll
   }
   else
   {
-    CollisionRobotFCL::checkSelfCollision(req,res,state);
+    CollisionRobotIndustrial::checkSelfCollision(req,res,state);
   }
 }
 

@@ -40,8 +40,7 @@ namespace cost_functions
 ObstacleAvoidance::ObstacleAvoidance():
     name_("ObstacleAvoidancePlugin"),
     robot_state_(),
-    collision_clearance_(0.0),
-    collision_penalty_(0.0)
+    activation_distance_(0.0)
 {
   // TODO Auto-generated constructor stub
 
@@ -165,27 +164,34 @@ bool ObstacleAvoidance::computeCosts(const Eigen::MatrixXd& parameters,
     results[0]= result_world_collision;
     results[1] = result_robot_collision;
 
-    double penalty = 0;
-    double distance = collision_clearance_;
+    double distance = activation_distance_;
     bool collision = false;
     for(std::vector<collision_detection::CollisionResult>::iterator i = results.begin(); i != results.end(); i++)
     {
       collision_detection::CollisionResult& result = *i;
 
-      // get shortest distance
-      distance = distance > result.distance ? result.distance : distance;
+      // get shortest distance and
       collision |= result.collision;
+      distance = std::abs(distance > result.distance ? result.distance : distance);
     }
 
-    if(collision)
+    // combine distance with collision check result
+    distance = collision ? -1.0*distance : distance;
+
+    // determining cost
+    if(distance >= activation_distance_)
     {
-      costs(t) = collision_penalty_;
-      validity = false;
+      costs(t) = 0;
+    }
+    else if(distance < 0)
+    {
+      costs(t) = 1.0;
     }
     else
     {
-      costs(t) = distance > collision_clearance_  ? 0 : (collision_clearance_ - distance);
+      costs(t) = (activation_distance_ - distance)/activation_distance_;
     }
+
   }
 
   // scaling cost
@@ -211,8 +217,7 @@ bool ObstacleAvoidance::configure(const XmlRpc::XmlRpcValue& config)
   try
   {
     XmlRpc::XmlRpcValue c = config;
-    collision_clearance_ = static_cast<double>(c["collision_clearance"]);
-    collision_penalty_ = static_cast<double>(c["collision_penalty"]);
+    activation_distance_ = static_cast<double>(c["activation_distance"]);
     cost_weight_ = static_cast<double>(c["cost_weight"]);
   }
   catch(XmlRpc::XmlRpcException& e)
