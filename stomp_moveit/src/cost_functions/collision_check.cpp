@@ -224,7 +224,7 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
   // planning groups
   const JointModelGroup* joint_group = robot_model_ptr_->getJointModelGroup(group_name_);
 
-  if(parameters.cols()<start_timestep + num_timesteps)
+  if(parameters.cols()< (start_timestep + num_timesteps))
   {
     ROS_ERROR_STREAM("Size in the 'parameters' matrix is less than required");
     return false;

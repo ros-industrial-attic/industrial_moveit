@@ -3,6 +3,7 @@
 
 #include <industrial_collision_detection/collision_detection/collision_common.h>
 #include <industrial_collision_detection/distance_field/openvdb_distance_field.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
 #include <moveit/collision_detection_fcl/collision_robot_fcl.h>
 
 namespace collision_detection
@@ -40,7 +41,7 @@ struct SDFData
   openvdb::FloatGrid::ConstAccessor accessor;
 };
 
-class CollisionRobotOpenVDB: public CollisionRobotFCL
+class CollisionRobotOpenVDB: public CollisionRobotIndustrial
 {
 public:
   /**

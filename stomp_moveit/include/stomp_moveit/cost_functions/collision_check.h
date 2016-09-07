@@ -28,8 +28,8 @@
 
 #include <Eigen/Sparse>
 #include <moveit/robot_model/robot_model.h>
-#include <industrial_collision_detection/collision_robot_industrial.h>
-#include <industrial_collision_detection/collision_world_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_world_industrial.h>
 #include "stomp_moveit/cost_functions/stomp_cost_function.h"
 
 namespace stomp_moveit

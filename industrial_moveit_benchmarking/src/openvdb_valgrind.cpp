@@ -36,10 +36,10 @@
 #include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <constrained_ik/moveit_interface/joint_interpolation_planner.h>
 #include <constrained_ik/ConstrainedIKPlannerDynamicReconfigureConfig.h>
-#include <industrial_collision_detection/collision_robot_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_openvdb.h>
 #include <fstream>
 #include <time.h>
-#include "collision_robot_openvdb.h"
 #include <openvdb/tools/VolumeToSpheres.h>
 #include <openvdb/math/Transform.h>
 
@@ -235,7 +235,7 @@ int main (int argc, char *argv[])
   double voxel_size = 0.02;
   double exBandWidth = background/voxel_size;
   double inBandWidth = background/voxel_size;
-  distance_field::CollisionRobotOpenVDB openvdb_robot(robot_model, voxel_size, background, exBandWidth, inBandWidth);
+  collision_detection::CollisionRobotOpenVDB openvdb_robot(robot_model, voxel_size, background, exBandWidth, inBandWidth);
   t=0;
   req.gradient = true;
 

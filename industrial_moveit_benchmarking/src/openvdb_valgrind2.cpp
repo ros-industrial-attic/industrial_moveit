@@ -36,10 +36,10 @@
 #include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <constrained_ik/moveit_interface/joint_interpolation_planner.h>
 #include <constrained_ik/ConstrainedIKPlannerDynamicReconfigureConfig.h>
-#include <industrial_collision_detection/collision_robot_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
 #include <fstream>
 #include <time.h>
-#include "collision_robot_openvdb.h"
+#include <industrial_collision_detection/collision_detection/collision_robot_openvdb.h>
 #include <openvdb/tools/VolumeToSpheres.h>
 #include <openvdb/math/Transform.h>
 
@@ -281,10 +281,10 @@ int main (int argc, char *argv[])
   t=0;
 
   // Write robot sdf to file
-  distance_field::CollisionRobotOpenVDB robot_from_mem(robot_model, voxel_size, background, exBandWidth, inBandWidth);
+  collision_detection::CollisionRobotOpenVDB robot_from_mem(robot_model, voxel_size, background, exBandWidth, inBandWidth);
   robot_from_mem.writeToFile("test_robot.vdb");
 
-  distance_field::CollisionRobotOpenVDB robot_from_file (robot_model, "test_robot.vdb");
+  collision_detection::CollisionRobotOpenVDB robot_from_file (robot_model, "test_robot.vdb");
 
   std::vector<std::string> exclude_cloud;
   exclude_cloud.push_back("workcell_bounds");

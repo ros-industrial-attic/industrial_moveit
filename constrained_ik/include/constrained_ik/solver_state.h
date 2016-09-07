@@ -31,8 +31,8 @@
 #include <Eigen/Geometry>
 #include <constrained_ik/enum_types.h>
 #include <moveit/planning_scene/planning_scene.h>
-#include <industrial_collision_detection/collision_robot_industrial.h>
-#include <industrial_collision_detection/collision_world_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_world_industrial.h>
 
 namespace constrained_ik
 {
