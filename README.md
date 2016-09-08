@@ -1,5 +1,17 @@
 # Industrial MoveIt
 
+#### Prerequisites
+- The latest version of `industrial_moveit` uses [OpenVDB](http://www.openvdb.org/) to generate space-efficient distance fields used for robot navigation (but not currently collision checking). 
+  - Due to bugs in the mainline version of OpenVDB found in Ubuntu's trusty repository, we need to use a [PPA](https://launchpad.net/~levi-armstrong/+archive/ubuntu/openvdb)
+
+```
+sudo add-apt-repository ppa:levi-armstrong/openvdb
+sudo apt-get update
+
+sudo apt-get install libopenvdb-dev libopenvdb-tools
+```
+
+
 #### Stomp Core
 - Build the workspace:
   - Cd into the catkin workspace directory and type the following command:
