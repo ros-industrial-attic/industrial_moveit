@@ -414,7 +414,7 @@ void distance_field::OpenVDBDistanceField::addShapeToField(const shapes::Shape *
   {
     ros::Time start = ros::Time::now();
     openvdb::tools::csgUnion(*grid_, *grid, true);
-    ROS_INFO("CSG Union Time Elapsed: %f (sec)",(ros::Time::now() - start).toSec());
+    ROS_DEBUG("CSG Union Time Elapsed: %f (sec)",(ros::Time::now() - start).toSec());
   }
 
   accessor_ = std::make_shared<openvdb::FloatGrid::ConstAccessor>(grid_->getConstAccessor());

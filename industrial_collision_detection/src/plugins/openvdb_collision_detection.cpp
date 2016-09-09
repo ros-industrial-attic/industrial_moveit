@@ -52,7 +52,7 @@ namespace collision_detection
       XmlRpc::XmlRpcValue param;
       if(!nh.getParam(COLLISION_ROBOT_PARAM,param))
       {
-        ROS_WARN("%s was not found, CollisionRobotOpenVDB will use default values",COLLISION_ROBOT_PARAM.c_str());
+        ROS_WARN("the '%s' parameter was not found, CollisionRobotOpenVDB will use default values",COLLISION_ROBOT_PARAM.c_str());
         col_robot.reset(new CollisionRobotOpenVDB(robot_model));
       }
       else
@@ -108,9 +108,19 @@ namespace collision_detection
       return col_robot;
     }
 
+    virtual CollisionRobotPtr allocateRobot(const CollisionRobotConstPtr& orig) const
+    {
+      return CollisionRobotPtr(new CollisionRobotOpenVDB(dynamic_cast<const CollisionRobotOpenVDB&>(*orig)));
+    }
+
+
   public:
     static const std::string NAME_; // defined in collision_world_industrial.cpp
+
+
   };
+
+
 
   const std::string OpenVDBCollisionDetectorAllocator::NAME_ = "CollisionDetectionOpenVDB";
 
