@@ -42,7 +42,7 @@ struct SDFData
   openvdb::FloatGrid::ConstAccessor accessor;
 };
 
-class DistanceFieldCache
+class CollisionRobotOpenVDB: public CollisionRobotIndustrial
 {
 public:
   /**
@@ -50,7 +50,7 @@ public:
    * Collision checks are made with the FCL library.
    *
    */
-  DistanceFieldCache(const robot_model::RobotModelConstPtr &model,
+  CollisionRobotOpenVDB(const robot_model::RobotModelConstPtr &model,
                         const float voxel_size = 0.01,
                         const float background = 0.5,
                         const float exBandWidth = openvdb::LEVEL_SET_HALF_WIDTH,
@@ -62,8 +62,15 @@ public:
    * @param model The robot model with which to load and interpret saved fields
    * @param file_path The .vdb file that containts the archived distance fields
    */
-  DistanceFieldCache(const robot_model::RobotModelConstPtr& model,
+  CollisionRobotOpenVDB(const robot_model::RobotModelConstPtr& model,
                         const std::string& file_path);
+
+  /**
+   * @brief overloaded CollisionRobot::checkSelfCollision methods
+   */
+  virtual void checkSelfCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state) const override;
+  virtual void checkSelfCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state
+                                  , const AllowedCollisionMatrix &acm) const override;
 
   /**
    * @brief customized distanceSelf method.  Returns the shortest distance between a robot link in the
@@ -154,7 +161,6 @@ private:
 
   bool isCollisionAllowed(const std::string &l1, const std::string &l2, const collision_detection::AllowedCollisionMatrix *acm) const;
 
-  const robot_model::RobotModelConstPtr robot_model_;
   collision_detection::AllowedCollisionMatrixPtr acm_;
 
   const std::vector<const robot_model::LinkModel*>& links_;
@@ -176,45 +182,6 @@ private:
   float exBandWidth_;
   float inBandWidth_;
 };
-
-class CollisionRobotOpenVDB: public CollisionRobotIndustrial
-{
-public:
-  /**
-   * @brief CollisionRobotOpenVDB constructor which uses a distance field and spherical approximations to compute distances.
-   * Collision checks are made with the FCL library.
-   *
-   */
-  CollisionRobotOpenVDB(const robot_model::RobotModelConstPtr &model,
-                        const float voxel_size = 0.01,
-                        const float background = 0.5,
-                        const float exBandWidth = openvdb::LEVEL_SET_HALF_WIDTH,
-                        const float inBandWidth = openvdb::LEVEL_SET_HALF_WIDTH);
-
-  /**
-   * @brief Alternative constructor that loads an already generated set of distance
-   * fields given a particular robot model.
-   * @param model The robot model with which to load and interpret saved fields
-   * @param file_path The .vdb file that containts the archived distance fields
-   */
-  CollisionRobotOpenVDB(const robot_model::RobotModelConstPtr& model,
-                        const std::string& file_path);
-
-
-  /**
-   * @brief overloaded CollisionRobot::checkSelfCollision methods
-   */
-  virtual void checkSelfCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state) const override;
-  virtual void checkSelfCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state
-                                  , const AllowedCollisionMatrix &acm) const override;
-
-protected:
-
-  std::shared_ptr<DistanceFieldCache> distance_field_cache_;
-};
-
-
-
 
 }
 

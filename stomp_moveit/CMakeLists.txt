@@ -4,7 +4,6 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   moveit_core
   moveit_ros_planning
-  moveit_experimental
   stomp_core
   cmake_modules
   pluginlib
@@ -22,7 +21,7 @@ add_definitions("-std=c++11")
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core cmake_modules pluginlib roscpp moveit_experimental industrial_collision_detection
+  CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core cmake_modules pluginlib roscpp
   DEPENDS Eigen
 )
 
@@ -53,7 +52,6 @@ target_link_libraries(${PROJECT_NAME}_planner_manager ${PROJECT_NAME} ${catkin_L
 # cost function plugin(s)
 add_library(${PROJECT_NAME}_cost_functions
   src/cost_functions/tool_goal_pose.cpp
-  src/cost_functions/obstacle_avoidance.cpp
   src/cost_functions/collision_check.cpp
   src/cost_functions/obstacle_distance_gradient.cpp
  )
