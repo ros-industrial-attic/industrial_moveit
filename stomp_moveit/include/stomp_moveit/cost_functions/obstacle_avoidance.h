@@ -27,8 +27,6 @@
 #define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_OBSTACLE_AVOIDANCE_H_
 
 #include <moveit/robot_model/robot_model.h>
-#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
-#include <industrial_collision_detection/collision_detection/collision_world_industrial.h>
 #include "stomp_moveit/cost_functions/stomp_cost_function.h"
 
 namespace stomp_moveit
@@ -103,8 +101,8 @@ protected:
 
   // collision
   collision_detection::CollisionRequest collision_request_;
-  collision_detection::CollisionRobotIndustrialConstPtr collision_robot_;
-  collision_detection::CollisionWorldIndustrialConstPtr collision_world_;
+  collision_detection::CollisionRobotConstPtr collision_robot_;
+  collision_detection::CollisionWorldConstPtr collision_world_;
 
 };
 

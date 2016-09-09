@@ -30,7 +30,6 @@
 
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::CollisionCheck,stomp_moveit::cost_functions::StompCostFunction)
 
-static const std::string DEFAULT_COLLISION_DETECTOR = "IndustrialFCL";
 static const int MIN_KERNEL_WINDOW_SIZE = 3;
 
 
@@ -161,16 +160,8 @@ bool CollisionCheck::setMotionPlanRequest(const planning_scene::PlanningSceneCon
   collision_request_.contacts = true;
   collision_request_.verbose = false;
 
-  //Check and make sure the correct collision detector is loaded.
-  if (planning_scene->getActiveCollisionDetectorName() != DEFAULT_COLLISION_DETECTOR)
-  {
-    throw std::runtime_error("STOMP Moveit Interface requires the use of collision detector \"" + DEFAULT_COLLISION_DETECTOR + "\"\n"
-                             "To resolve the issue add the ros parameter collision_detector = " + DEFAULT_COLLISION_DETECTOR +
-                             ".\nIt is recommend to added it where the move_group node is launched, usually in the in the "
-                             "(robot_name)_moveit_config/launch/move_group.launch");
-  }
-  collision_robot_ = boost::dynamic_pointer_cast<const collision_detection::CollisionRobotIndustrial>(planning_scene->getCollisionRobot());
-  collision_world_ = boost::dynamic_pointer_cast<const collision_detection::CollisionWorldIndustrial>(planning_scene->getCollisionWorld());
+  collision_robot_ = planning_scene->getCollisionRobot();
+  collision_world_ = planning_scene->getCollisionWorld();
 
   // storing robot state
   robot_state_.reset(new RobotState(robot_model_ptr_));
