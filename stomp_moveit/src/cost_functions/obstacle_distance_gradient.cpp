@@ -133,22 +133,15 @@ bool ObstacleDistanceGradient::computeCosts(const Eigen::MatrixXd& parameters, s
 
   // request the distance at each state
   double cost;
-  double dist = max_distance_;
+  double dist;
   for (auto t=start_timestep; t<start_timestep + num_timesteps; ++t)
   {
     robot_state_->setJointGroupPositions(joint_group,parameters.col(t));
     robot_state_->update();
     collision_result_.distance = max_distance_;
 
-    planning_scene_->getCollisionRobot()->checkSelfCollision(collision_request_,collision_result_,*robot_state_,planning_scene_->getAllowedCollisionMatrix());
-    dist = collision_result_.distance;
-
-    planning_scene_->getCollisionWorld()->checkRobotCollision(collision_request_,
-                                                              collision_result_,
-                                          *planning_scene_->getCollisionRobot(),
-                                          *robot_state_,
-                                          planning_scene_->getAllowedCollisionMatrix());
-    dist = dist > collision_result_.distance ? collision_result_.distance : dist;
+    planning_scene_->checkSelfCollision(collision_request_,collision_result_,*robot_state_,planning_scene_->getAllowedCollisionMatrix());
+    dist = max_distance_ > collision_result_.distance ? max_distance_ : collision_result_.distance;
 
     if(dist >= max_distance_)
     {

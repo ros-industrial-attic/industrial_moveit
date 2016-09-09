@@ -31,6 +31,8 @@
 #include <moveit/collision_detection/collision_plugin.h>
 #include <industrial_collision_detection/collision_detection/collision_robot_openvdb.h>
 #include <industrial_collision_detection/collision_detection/collision_world_industrial.h>
+#include <mutex>
+#include <memory>
 
 static const std::string COLLISION_ROBOT_PARAM = "collision_robot_openvdb";
 
@@ -41,11 +43,17 @@ namespace collision_detection
       public collision_detection::CollisionDetectorAllocatorTemplate< CollisionWorldIndustrial,
       CollisionRobotOpenVDB, OpenVDBCollisionDetectorAllocator >
   {
-
   public:
     virtual CollisionRobotPtr allocateRobot(const robot_model::RobotModelConstPtr& robot_model) const override
     {
-      CollisionRobotPtr col_robot;
+      static CollisionRobotPtr col_robot;
+      std::lock_guard<std::mutex> guard(mtx_);
+
+      if(col_robot)
+      {
+        ROS_DEBUG("CollisionRobotOpenVDB instance for robot '%s' already exists, skipping creation",robot_model->getName().c_str());
+        return col_robot;
+      }
 
       // loading parameters
       ros::NodeHandle nh("~");
@@ -117,19 +125,20 @@ namespace collision_detection
   public:
     static const std::string NAME_; // defined in collision_world_industrial.cpp
 
+  protected:
+    mutable std::mutex mtx_;
 
   };
 
-
-
   const std::string OpenVDBCollisionDetectorAllocator::NAME_ = "CollisionDetectionOpenVDB";
+  static CollisionDetectorAllocatorPtr g_allocator(new OpenVDBCollisionDetectorAllocator());
 
   class OpenVDBPluginLoader : public CollisionPlugin
   {
   public:
     virtual bool initialize(const planning_scene::PlanningScenePtr& scene, bool exclusive) const
     {
-      scene->setActiveCollisionDetector(OpenVDBCollisionDetectorAllocator::create(), exclusive);
+      scene->setActiveCollisionDetector(g_allocator, exclusive);
       return true;
     }
 

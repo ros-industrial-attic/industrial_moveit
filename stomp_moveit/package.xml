@@ -13,20 +13,16 @@
   <build_depend>roscpp</build_depend>
   <build_depend>moveit_ros_planning</build_depend>
   <build_depend>moveit_core</build_depend>
-  <build_depend>moveit_experimental</build_depend>
   <build_depend>stomp_core</build_depend>
   <build_depend>pluginlib</build_depend>
   <build_depend>cmake_modules</build_depend>
-  <build_depend>industrial_collision_detection</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>moveit_ros_planning</run_depend>
   <run_depend>moveit_core</run_depend>
-  <run_depend>moveit_experimental</run_depend>
   <run_depend>stomp_core</run_depend>
   <run_depend>pluginlib</run_depend>
   <run_depend>cmake_modules</run_depend>
-  <run_depend>industrial_collision_detection</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

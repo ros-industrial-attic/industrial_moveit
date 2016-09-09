@@ -10,86 +10,18 @@ const static std::string background_meta_name = "background";
 const static std::string ex_bandwidth_meta_name = "exBandWidth";
 const static std::string in_bandwidth_meta_name = "inBandWidth";
 
-typedef std::map<std::string,std::shared_ptr<collision_detection::DistanceFieldCache> > DistanceFieldCacheMap;
+typedef std::map<std::string,std::shared_ptr<collision_detection::CollisionRobotOpenVDB> > DistanceFieldCacheMap;
 
 namespace collision_detection
 {
 
 using namespace distance_field;
 
-class DFManager
-{
-public:
-
-  DistanceFieldCacheMap& getDistanceFieldCacheMap()
-  {
-    static DistanceFieldCacheMap cache;
-    return cache;
-  }
-
-  void registerDistanceFieldCache(const moveit::core::RobotModelConstPtr &model,
-                                                               const float voxel_size, const float background,
-                                                               const float exBandWidth, const float inBandWidth)
-  {
-    std::lock_guard<std::mutex> guard(mtx_);
-    DistanceFieldCacheMap& cache = getDistanceFieldCacheMap();
-    if(cache.count(model->getName()) == 0)
-    {
-      std::shared_ptr<collision_detection::DistanceFieldCache> dfc(new DistanceFieldCache(model,voxel_size,background,exBandWidth,inBandWidth));
-      cache[model->getName()] = dfc;
-    }
-    else
-    {
-      ROS_DEBUG("Distance Fields for robot '%s' already exists, skipping registration",model->getName().c_str());
-    }
-  }
-
-  void registerDistanceFieldCache(const moveit::core::RobotModelConstPtr &model,const std::string &file_path)
-  {
-    std::lock_guard<std::mutex> guard(mtx_);
-    DistanceFieldCacheMap& cache = getDistanceFieldCacheMap();
-    if(cache.count(model->getName()) == 0)
-    {
-      std::shared_ptr<collision_detection::DistanceFieldCache> dfc(new DistanceFieldCache(model,file_path));
-      cache[model->getName()] = dfc;
-    }
-    else
-    {
-      ROS_DEBUG("Distance Field Cache for robot '%s' already exists, skipping registration",model->getName().c_str());
-    }
-  }
-
-  std::shared_ptr<collision_detection::DistanceFieldCache> getDistanceFieldCacheEntry(const moveit::core::RobotModelConstPtr &model)
-  {
-    std::lock_guard<std::mutex> guard(mtx_);
-    DistanceFieldCacheMap& cache = getDistanceFieldCacheMap();
-    std::shared_ptr<collision_detection::DistanceFieldCache> dfc;
-    if(cache.count(model->getName()) > 0)
-    {
-      dfc  = cache[model->getName()];
-    }
-    else
-    {
-      auto msg = "Distance Field Cache for robot '" + model->getName() + "' was not found";
-      ROS_ERROR_STREAM(msg);
-      throw std::runtime_error(msg);
-    }
-
-    return dfc;
-  }
-
-public:
-  std::mutex mtx_;
-
-};
-
-static DFManager DistanceFieldManager;
-
-
-DistanceFieldCache::DistanceFieldCache(const moveit::core::RobotModelConstPtr &model,
+CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
                                                              const float voxel_size, const float background,
                                                              const float exBandWidth, const float inBandWidth):
-  robot_model_(model), voxel_size_(voxel_size), background_(background),
+  CollisionRobotIndustrial(model,0.0,1.0),
+  voxel_size_(voxel_size), background_(background),
   exBandWidth_(exBandWidth), inBandWidth_(inBandWidth),
   links_(model->getLinkModelsWithCollisionGeometry())
 {
@@ -101,9 +33,10 @@ DistanceFieldCache::DistanceFieldCache(const moveit::core::RobotModelConstPtr &m
   createDefaultDistanceQuery();
 }
 
-DistanceFieldCache::DistanceFieldCache(const moveit::core::RobotModelConstPtr &model,
+CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
                                                              const std::string &file_path):
-  robot_model_(model), links_(model->getLinkModelsWithCollisionGeometry())
+  CollisionRobotIndustrial(model,0.0,1.0),
+  links_(model->getLinkModelsWithCollisionGeometry())
 {
   ROS_DEBUG("Creating Distance Fields for robot %s",model->getName().c_str());
 
@@ -134,7 +67,7 @@ DistanceFieldCache::DistanceFieldCache(const moveit::core::RobotModelConstPtr &m
   createDefaultDistanceQuery();
 }
 
-void DistanceFieldCache::createStaticSDFs()
+void CollisionRobotOpenVDB::createStaticSDFs()
 {
   const robot_model::LinkModel *root_link = robot_model_->getRootLink();
 
@@ -161,7 +94,7 @@ void DistanceFieldCache::createStaticSDFs()
   }
 }
 
-void DistanceFieldCache::createActiveSDFs()
+void CollisionRobotOpenVDB::createActiveSDFs()
 {
   const std::vector<const robot_model::JointModelGroup*> groups = robot_model_->getJointModelGroups();
   for (std::size_t i = 0 ; i < groups.size() ; ++i)
@@ -217,7 +150,7 @@ void DistanceFieldCache::createActiveSDFs()
   }
 }
 
-void DistanceFieldCache::createDynamicSDFs()
+void CollisionRobotOpenVDB::createDynamicSDFs()
 {
   dynamic_links_ = links_;
 
@@ -244,7 +177,7 @@ void DistanceFieldCache::createDynamicSDFs()
   }
 }
 
-void DistanceFieldCache::writeToFile(const std::string& file_path)
+void CollisionRobotOpenVDB::writeToFile(const std::string& file_path)
 {
   // Create a VDB file object.
   openvdb::io::File vdbFile(file_path);
@@ -284,7 +217,7 @@ void DistanceFieldCache::writeToFile(const std::string& file_path)
 }
 
 std::pair<openvdb::GridPtrVecPtr, openvdb::MetaMap::Ptr>
-DistanceFieldCache::readFromFile(const std::string& file_path)
+CollisionRobotOpenVDB::readFromFile(const std::string& file_path)
 {
   openvdb::io::File file(file_path);
   // Open the file.  This reads the file header, but not any grids.
@@ -319,13 +252,13 @@ static openvdb::math::Transform::Ptr makeTransform(const openvdb::FloatGrid& gri
 
 
 std::pair<distance_field::PointCloud::Ptr, distance_field::PointCloud::Ptr>
-DistanceFieldCache::voxelGridToPointClouds(const moveit::core::RobotState &state) const
+CollisionRobotOpenVDB::voxelGridToPointClouds(const moveit::core::RobotState &state) const
 {
   return voxelGridToPointClouds(state, std::vector<std::string>());
 }
 
 std::pair<distance_field::PointCloud::Ptr, distance_field::PointCloud::Ptr>
-DistanceFieldCache::voxelGridToPointClouds(const moveit::core::RobotState &state,
+CollisionRobotOpenVDB::voxelGridToPointClouds(const moveit::core::RobotState &state,
                                                               const std::vector<std::string>& exclude_list) const
 {
   std::pair<distance_field::PointCloud::Ptr, distance_field::PointCloud::Ptr> pair;
@@ -387,7 +320,7 @@ DistanceFieldCache::voxelGridToPointClouds(const moveit::core::RobotState &state
 }
 
 visualization_msgs::MarkerArray
-DistanceFieldCache::spheresToVisualizationMarkers(const moveit::core::RobotState &state) const
+CollisionRobotOpenVDB::spheresToVisualizationMarkers(const moveit::core::RobotState &state) const
 {
   std::vector<DistanceQueryData> dist_query(dist_query_);
 
@@ -418,7 +351,7 @@ DistanceFieldCache::spheresToVisualizationMarkers(const moveit::core::RobotState
   return ma;
 }
 
-uint64_t DistanceFieldCache::memUsage() const
+uint64_t CollisionRobotOpenVDB::memUsage() const
 {
   uint64_t mem_usage = 0;
 
@@ -440,7 +373,7 @@ uint64_t DistanceFieldCache::memUsage() const
   return mem_usage;
 }
 
-void DistanceFieldCache::createDefaultDistanceQuery()
+void CollisionRobotOpenVDB::createDefaultDistanceQuery()
 {
   // Calculate distance to objects that were added dynamically into the planning scene
   for (std::size_t j = 0; j < active_links_.size(); ++j)
@@ -493,7 +426,7 @@ void DistanceFieldCache::createDefaultDistanceQuery()
   }
 }
 
-void DistanceFieldCache::distanceSelf(const collision_detection::DistanceRequest &req, collision_detection::DistanceResult &res, const moveit::core::RobotState &state) const
+void CollisionRobotOpenVDB::distanceSelf(const collision_detection::DistanceRequest &req, collision_detection::DistanceResult &res, const moveit::core::RobotState &state) const
 {
   std::vector<DistanceQueryData> dist_query(dist_query_);
   std::vector<std::vector<SDFData> > data(3);
@@ -563,7 +496,7 @@ void DistanceFieldCache::distanceSelf(const collision_detection::DistanceRequest
   res.minimum_distance = res.distance[index];
 }
 
-bool DistanceFieldCache::isCollisionAllowed(const std::string &l1, const std::string &l2, const collision_detection::AllowedCollisionMatrix *acm) const
+bool CollisionRobotOpenVDB::isCollisionAllowed(const std::string &l1, const std::string &l2, const collision_detection::AllowedCollisionMatrix *acm) const
 {
     // use the collision matrix (if any) to avoid certain distance checks
     if (acm)
@@ -580,7 +513,7 @@ bool DistanceFieldCache::isCollisionAllowed(const std::string &l1, const std::st
     return false;
 }
 
-void DistanceFieldCache::createDefaultAllowedCollisionMatrix()
+void CollisionRobotOpenVDB::createDefaultAllowedCollisionMatrix()
 {
   acm_.reset(new collision_detection::AllowedCollisionMatrix());
   // Use default collision operations in the SRDF to setup the acm
@@ -599,7 +532,7 @@ static bool approxEqual(T a, T b, const T eps = 0.00001)
   return std::abs(a - b) < eps;
 }
 
-void DistanceFieldCache::distanceSelfHelper(const DistanceQueryData &data, std::vector<std::vector<SDFData> > &sdfs_data, collision_detection::DistanceResultsData &res) const
+void CollisionRobotOpenVDB::distanceSelfHelper(const DistanceQueryData &data, std::vector<std::vector<SDFData> > &sdfs_data, collision_detection::DistanceResultsData &res) const
 {
   res.min_distance = background_;
   res.link_name[0] = data.parent_name;
@@ -675,12 +608,12 @@ void DistanceFieldCache::distanceSelfHelper(const DistanceQueryData &data, std::
   }
 }
 
-bool DistanceFieldCache::hasCollisionGeometry(const moveit::core::LinkModel *link) const
+bool CollisionRobotOpenVDB::hasCollisionGeometry(const moveit::core::LinkModel *link) const
 {
   return std::find(links_.begin(), links_.end(), link) != links_.end();
 }
 
-std::vector<const moveit::core::LinkModel *> DistanceFieldCache::identifyStaticLinks() const
+std::vector<const moveit::core::LinkModel *> CollisionRobotOpenVDB::identifyStaticLinks() const
 {
   // The purpose of this function is to walk the tree of robot links & find all of the links that are connected
   // to one another via a static transformation chain that includes the root link.
@@ -701,7 +634,7 @@ std::vector<const moveit::core::LinkModel *> DistanceFieldCache::identifyStaticL
   return static_links;
 }
 
-void DistanceFieldCache::identifyStaticLinksHelper(const moveit::core::LinkModel *link,
+void CollisionRobotOpenVDB::identifyStaticLinksHelper(const moveit::core::LinkModel *link,
                                                                       std::vector<const moveit::core::LinkModel *> &in_set,
                                                                       std::vector<const moveit::core::LinkModel *> &considered) const
 {
@@ -729,7 +662,7 @@ void DistanceFieldCache::identifyStaticLinksHelper(const moveit::core::LinkModel
   } // end of associated links
 }
 
-std::vector<const moveit::core::LinkModel *> DistanceFieldCache::identifyActiveLinks() const
+std::vector<const moveit::core::LinkModel *> CollisionRobotOpenVDB::identifyActiveLinks() const
 {
   std::vector<const moveit::core::LinkModel *> active_links;
 
@@ -752,7 +685,7 @@ std::vector<const moveit::core::LinkModel *> DistanceFieldCache::identifyActiveL
 }
 
 std::vector<const moveit::core::LinkModel *>
-DistanceFieldCache::identifyDynamicLinks(std::vector<const moveit::core::LinkModel *>& static_links,
+CollisionRobotOpenVDB::identifyDynamicLinks(std::vector<const moveit::core::LinkModel *>& static_links,
                                                             std::vector<const moveit::core::LinkModel *>& active_links) const
 {
   auto dynamic_links = links_;
@@ -785,7 +718,7 @@ static openvdb::FloatGrid::Ptr findGridInVec(const std::string& name, const open
   return openvdb::FloatGrid::Ptr();
 }
 
-void DistanceFieldCache::loadStaticLinks(std::vector<const moveit::core::LinkModel *> &static_links,
+void CollisionRobotOpenVDB::loadStaticLinks(std::vector<const moveit::core::LinkModel *> &static_links,
                                                             const openvdb::GridPtrVec &grids,
                                                             std::vector<OpenVDBDistanceFieldConstPtr>& fields)
 {
@@ -803,7 +736,7 @@ void DistanceFieldCache::loadStaticLinks(std::vector<const moveit::core::LinkMod
   }
 }
 
-void DistanceFieldCache::loadActiveLinks(std::vector<const moveit::core::LinkModel *> &active_links,
+void CollisionRobotOpenVDB::loadActiveLinks(std::vector<const moveit::core::LinkModel *> &active_links,
                                                             const openvdb::GridPtrVec &grids,
                                                             std::vector<OpenVDBDistanceFieldConstPtr>& fields)
 {
@@ -834,7 +767,7 @@ void DistanceFieldCache::loadActiveLinks(std::vector<const moveit::core::LinkMod
   }
 }
 
-void DistanceFieldCache::loadDynamicLinks(std::vector<const moveit::core::LinkModel *> &dynamic_links,
+void CollisionRobotOpenVDB::loadDynamicLinks(std::vector<const moveit::core::LinkModel *> &dynamic_links,
                                                              const openvdb::GridPtrVec &grids,
                                                              std::vector<OpenVDBDistanceFieldConstPtr>& fields)
 {
@@ -851,23 +784,6 @@ void DistanceFieldCache::loadDynamicLinks(std::vector<const moveit::core::LinkMo
   }
 }
 
-CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
-                                                             const float voxel_size, const float background,
-                                                             const float exBandWidth, const float inBandWidth):
-  CollisionRobotIndustrial(model,0.0,1.0)
-{
-  DistanceFieldManager.registerDistanceFieldCache(model,voxel_size,background,exBandWidth,inBandWidth);
-  distance_field_cache_ = DistanceFieldManager.getDistanceFieldCacheEntry(robot_model_);
-}
-
-CollisionRobotOpenVDB::CollisionRobotOpenVDB(const moveit::core::RobotModelConstPtr &model,
-                                                             const std::string &file_path):
-  CollisionRobotIndustrial(model,0.0,1.0)
-{
-  DistanceFieldManager.registerDistanceFieldCache(model,file_path);
-  distance_field_cache_ = DistanceFieldManager.getDistanceFieldCacheEntry(robot_model_);
-}
-
 void CollisionRobotOpenVDB::checkSelfCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state) const
 {
   if(req.distance)
@@ -877,7 +793,7 @@ void CollisionRobotOpenVDB::checkSelfCollision(const CollisionRequest &req, Coll
     DistanceResult dres;
     dreq.group_name = req.group_name;
     dreq.acm = NULL;
-    distance_field_cache_->distanceSelf(dreq,dres,state);
+    distanceSelf(dreq,dres,state);
     res.collision = dres.collision;
     res.distance = dres.minimum_distance.min_distance;
     res.contact_count = 1;
@@ -898,7 +814,7 @@ void CollisionRobotOpenVDB::checkSelfCollision(const CollisionRequest &req, Coll
     DistanceResult dres;
     dreq.group_name = req.group_name;
     dreq.acm = &acm;
-    distance_field_cache_->distanceSelf(dreq,dres,state);
+    distanceSelf(dreq,dres,state);
     res.collision = dres.collision;
     res.distance = dres.minimum_distance.min_distance;
     res.contact_count = 1;

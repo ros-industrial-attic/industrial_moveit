@@ -1,7 +1,3 @@
-stomp_robot:
-  distance_field:
-    background: 0.5
-    voxel_size: 0.02    
 stomp/manipulator:
   group_name: manipulator
   optimization:
@@ -21,7 +17,7 @@ stomp/manipulator:
       - class: stomp_moveit/CollisionCheck
         collision_penalty: 1.0
         cost_weight: 1.0 
-        kernel_window_percentage: 0.2
+        kernel_window_percentage: 0.0
       - class: stomp_moveit/ObstacleDistanceGradient
         max_distance: 0.2
         cost_weight: 1.0
@@ -63,10 +59,6 @@ stomp/manipulator_rail:
         collision_penalty: 1.0
         cost_weight: 1.0
         kernel_window_percentage: 0.2
-#      - class: stomp_moveit/ObstacleAvoidance
-#        collision_clearance: 0.5
-#        collision_penalty: 2.0
-#        cost_weight: 1.0
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
@@ -110,13 +102,12 @@ stomp/manipulator_tool:
         stddev: [0.05, 0.4, 1.2, 0.4, 0.4, 0.1, 0.1]
     cost_functions:
       - class: stomp_moveit/CollisionCheck 
-        kernel_window_percentage: 0.0
+        kernel_window_percentage: 0.2
         collision_penalty: 1.0
         cost_weight: 1.0
-      - class: stomp_moveit/ObstacleDistanceGradient
-        max_distance: 0.2
-        cost_weight: 1.0
-        voxel_size: 0.02 
+#      - class: stomp_moveit/ObstacleDistanceGradient
+#        max_distance: 0.2
+#        cost_weight: 1.0
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
