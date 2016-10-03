@@ -65,7 +65,6 @@ catkin_package(
     urdfdom
     urdfdom_headers
     console_bridge
-    openvdb
     )
 
 include_directories(SYSTEM ${EIGEN_INCLUDE_DIRS}
