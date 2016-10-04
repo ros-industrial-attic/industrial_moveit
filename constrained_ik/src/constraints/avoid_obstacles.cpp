@@ -274,6 +274,7 @@ bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata
 AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state, const AvoidObstacles *parent): ConstraintData(state), parent_(parent)
 {
   DistanceRequest distance_req(true, false, parent_->link_models_, state_.planning_scene->getAllowedCollisionMatrix(), parent_->distance_threshold_);
+  distance_req.group_name = state.group_name;
   distance_res_.clear();
   
   collision_detection::CollisionRequest collision_req;

@@ -21,6 +21,8 @@ find_package(orocos_kdl REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Eigen REQUIRED)
 
+add_definitions("-std=c++11")
+
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
   cfg/ConstrainedIKDynamicReconfigure.cfg
