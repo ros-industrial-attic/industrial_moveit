@@ -57,6 +57,7 @@ struct SolverState
   collision_detection::CollisionRobotIndustrialConstPtr collision_robot;
   collision_detection::CollisionWorldIndustrialConstPtr collision_world;
   moveit::core::RobotStatePtr robot_state;
+  std::string group_name;
 
   SolverState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
   SolverState(){}
