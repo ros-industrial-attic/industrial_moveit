@@ -173,12 +173,6 @@ public:
 
 protected:
 
-  bool initializeCostFunctionPlugins(const XmlRpc::XmlRpcValue& config);
-  bool initializeNoisyFilterPlugins(const XmlRpc::XmlRpcValue& config);
-  bool initializeUpdateFilterPlugins(const XmlRpc::XmlRpcValue& config);
-  bool initializeNoiseGeneratorPlugins(const XmlRpc::XmlRpcValue& config);
-protected:
-
   // robot environment
   std::string group_name_;
   moveit::core::RobotModelConstPtr robot_model_ptr_;
@@ -190,10 +184,10 @@ protected:
   UpdateFilterLoaderPtr update_filter_loader_;
   NoiseGeneratorLoaderPtr noise_generator_loader_;
 
-  std::vector<cost_functions::StompCostFunction*> cost_functions_;
-  std::vector<noisy_filters::StompNoisyFilter*> noisy_filters_;
-  std::vector<update_filters::StompUpdateFilter*> update_filters_;
-  std::vector<noise_generators::StompNoiseGenerator*> noise_generators_;
+  std::vector<cost_functions::StompCostFunctionPtr> cost_functions_;
+  std::vector<noisy_filters::StompNoisyFilterPtr> noisy_filters_;
+  std::vector<update_filters::StompUpdateFilterPtr> update_filters_;
+  std::vector<noise_generators::StompNoiseGeneratorPtr> noise_generators_;
 };
 
 

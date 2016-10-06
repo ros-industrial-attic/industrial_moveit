@@ -71,7 +71,7 @@ public:
 
   virtual std::string getName() const override
   {
-    return group_name_ + "/" + name_;
+    return name_ + "/" + group_name_  ;
   }
 
   virtual void done(bool success,int total_iterations,double final_cost) override;
