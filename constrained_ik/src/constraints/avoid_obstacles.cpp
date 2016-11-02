@@ -53,7 +53,8 @@ using Eigen::MatrixXd;
 using std::string;
 using std::vector;
 
-AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), avoidance_distance_(DEFAULT_AVOIDANCE_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL), link_name_(link_name) {}
+AvoidObstacles::LinkAvoidance::LinkAvoidance(): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), avoidance_distance_(DEFAULT_AVOIDANCE_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL) {}
+AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): LinkAvoidance() {link_name_ = link_name;}
 
 void AvoidObstacles::init(const Constrained_IK * ik)
 {

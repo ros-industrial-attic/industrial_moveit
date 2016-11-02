@@ -260,20 +260,23 @@ SolverStatus Constrained_IK::checkStatus(const constrained_ik::SolverState &stat
   {
     bool status = (primary.status && auxiliary.status);
 
-    if (!status && primary.status && state.auxiliary_at_limit && state.iter >= config_.solver_min_iterations)
+    if (state.iter > config_.solver_min_iterations)
     {
-      ROS_DEBUG("Auxiliary motion or iteration limit reached!");
-      return Converged;
-    }
-    else if(status && state.iter >= config_.solver_min_iterations)
-    {
-      return Converged;
+      if (!status && primary.status && state.auxiliary_at_limit)
+      {
+        ROS_DEBUG("Auxiliary motion or iteration limit reached!");
+        return Converged;
+      }
+      else if(status)
+      {
+        return Converged;
+      }
     }
   }
   
   if(state.condition == initialization_state::PrimaryOnly)
   {   
-    if (primary.status && state.iter >= config_.solver_min_iterations)
+    if (primary.status && state.iter > config_.solver_min_iterations)
     {
       return Converged;
     }
@@ -281,10 +284,16 @@ SolverStatus Constrained_IK::checkStatus(const constrained_ik::SolverState &stat
 
   // check for joint convergence
   //   - this is an error: joints stabilize, but goal pose not reached
-  if (config_.allow_joint_convergence && state.joints_delta.cwiseAbs().maxCoeff() < config_.joint_convergence_tol && state.iter >= config_.solver_min_iterations)
+  if (config_.allow_joint_convergence)
   {
-    ROS_DEBUG_STREAM("Joint convergence reached " << state.iter << " / " << config_.solver_max_iterations << " iterations before convergence.");
-    return Converged;
+    if (state.joints_delta.cwiseAbs().maxCoeff() < config_.joint_convergence_tol)
+    {
+      if (state.iter > config_.solver_min_iterations)
+      {
+        ROS_DEBUG_STREAM("Joint convergence reached " << state.iter << " / " << config_.solver_max_iterations << " iterations before convergence.");
+        return Converged;
+      }
+    }
   }
   
   if (state.iter > config_.solver_max_iterations || (config_.limit_primary_motion && state.primary_sum >= config_.primary_max_motion))

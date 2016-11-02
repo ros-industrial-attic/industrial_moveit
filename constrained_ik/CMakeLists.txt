@@ -169,15 +169,12 @@ install(DIRECTORY include/${PROJECT_NAME}/
 if(CATKIN_ENABLE_TESTING)
   find_package(rostest REQUIRED)
 
-  add_rostest_gtest(test_basic_kin test/test_basic_kin.launch test/test_BasicKin.cpp )
-  target_link_libraries(test_basic_kin constrained_ik)
-
-  add_rostest_gtest(test_basic_ik test/test_basic_ik.launch test/test_BasicIK.cpp )
-  target_link_libraries(test_basic_ik constrained_ik)
+  add_rostest_gtest(test_basic_kin test/test_basic_kin.launch test/test_basic_kin.cpp )
+  target_link_libraries(test_basic_kin constrained_ik constrained_ik_constraints)
 
   add_rostest_gtest(test_constrained_ik
     test/test_constrained_ik.launch
     test/test_constrained_ik.cpp )
-  target_link_libraries(test_constrained_ik constrained_ik)
+  target_link_libraries(test_constrained_ik constrained_ik constrained_ik_constraints)
 endif()
 

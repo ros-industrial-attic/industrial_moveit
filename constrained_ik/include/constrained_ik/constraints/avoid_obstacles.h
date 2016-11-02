@@ -51,7 +51,7 @@ protected:
   {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     LinkAvoidance(std::string link_name);
-    LinkAvoidance() {}
+    LinkAvoidance();
     virtual ~LinkAvoidance()
     {
       delete jac_solver_;

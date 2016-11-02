@@ -27,8 +27,9 @@
 #define GOAL_POSE_H
 
 #include "constrained_ik/constraint.h"
-#include "goal_position.h"
-#include "goal_orientation.h"
+#include "constrained_ik/constraint_group.h"
+#include "constrained_ik/constraints/goal_position.h"
+#include "constrained_ik/constraints/goal_orientation.h"
 
 namespace constrained_ik
 {

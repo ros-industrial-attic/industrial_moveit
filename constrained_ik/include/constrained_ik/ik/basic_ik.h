@@ -42,8 +42,8 @@ class Basic_IK : public Constrained_IK
 public:
   Basic_IK(): goal_pose_(new constraints::GoalPose), avoid_joint_limits_(new constraints::AvoidJointLimits)
   {
-    addConstraint(goal_pose_, constraint_types::primary);
-    addConstraint(avoid_joint_limits_, constraint_types::primary);
+    addConstraint(goal_pose_, constraint_types::Primary);
+    addConstraint(avoid_joint_limits_, constraint_types::Primary);
     avoid_joint_limits_->setDebug(false);
     Eigen::Vector3d w_ori;
     w_ori << 1,1,1;

@@ -26,14 +26,16 @@
 * limitations under the License.
 */
 #include <gtest/gtest.h>
-#include <constrained_ik/constrained_ik.h>
 #include <ros/ros.h>
+#include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_pose.h"
 #include "constrained_ik/constraints/goal_position.h"
 #include "constrained_ik/constraints/goal_orientation.h"
 #include "constrained_ik/constraints/avoid_obstacles.h"
+#include "constrained_ik/ConstrainedIKDynamicReconfigureConfig.h"
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/robot_model/joint_model_group.h>
+#include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <boost/random/uniform_int_distribution.hpp>
 
 using constrained_ik::Constrained_IK;
@@ -105,6 +107,7 @@ protected:
   BasicKin kin;
   Constrained_IK ik;
   Affine3d homePose;
+  constrained_ik::ConstrainedIKDynamicReconfigureConfig config;
 
   virtual void SetUp()
   {
@@ -117,9 +120,13 @@ protected:
     ASSERT_TRUE(kin.calcFwdKin(VectorXd::Zero(6), homePose));
     ASSERT_NO_THROW(ik.init(kin));
     ASSERT_NO_THROW(planning_scene_.reset(new planning_scene::PlanningScene(robot_model_)));
+    ASSERT_NO_THROW(config = ik.getSolverConfiguration());
+
+    //Now assign collision detection plugin
+    collision_detection::CollisionPluginLoader cd_loader;
+    std::string class_name = "IndustrialFCL";
+    ASSERT_TRUE(cd_loader.activate(class_name, planning_scene_, true));
   }
-private:
-  static const std::string urdf_file;
 };
 
 
@@ -134,20 +141,19 @@ TEST_F(init, inputValidation)
   EXPECT_ANY_THROW(Constrained_IK().init(BasicKin()));
   EXPECT_NO_THROW(Constrained_IK().init(kin));
 
-  EXPECT_FALSE(Constrained_IK().checkInitialized(constrained_ik::constraint_types::primary));
+  EXPECT_EQ(Constrained_IK().checkInitialized(), constrained_ik::initialization_state::NothingInitialized);
   constrained_ik::Constraint *goal_ptr = new  constrained_ik::constraints::GoalPosition();
-  ik.addConstraint(goal_ptr, constrained_ik::constraint_types::primary);
-  EXPECT_TRUE(ik.checkInitialized(constrained_ik::constraint_types::primary));
+  ik.addConstraint(goal_ptr, constrained_ik::constraint_types::Primary);
+  EXPECT_NE(ik.checkInitialized(), constrained_ik::initialization_state::NothingInitialized);
 }
 
 TEST_F(calcInvKin, inputValidation)
 {
   VectorXd seed = VectorXd::Zero(6);
   VectorXd joints;
-
   constrained_ik::Constraint *goal_ptr = new  constrained_ik::constraints::GoalPosition();
-  ik.addConstraint(goal_ptr, constrained_ik::constraint_types::primary);
-  EXPECT_TRUE(ik.checkInitialized(constrained_ik::constraint_types::primary));
+  ik.addConstraint(goal_ptr, constrained_ik::constraint_types::Primary);
+  EXPECT_NE(ik.checkInitialized(), constrained_ik::initialization_state::NothingInitialized);
   EXPECT_ANY_THROW(Constrained_IK().calcInvKin(Affine3d::Identity(), seed, joints));      // un-init Constrained_IK
   EXPECT_ANY_THROW(ik.calcInvKin(Affine3d(Eigen::Matrix4d::Zero()), seed, joints)); // empty Pose (zeros in matrix because unitary rotation matrix is often in memory)
   EXPECT_ANY_THROW(ik.calcInvKin(homePose, VectorXd(), joints));                    // un-init Seed
@@ -169,6 +175,8 @@ TEST_F(calcInvKin, knownPoses)
 {
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
+  config.__getDefault__();
+  ik.setSolverConfiguration(config);
 
   // seed position *at* expected solution
   expected << M_PI_2, -M_PI_2, -M_PI_2, -M_PI_2, M_PI_2, -M_PI_2;
@@ -181,7 +189,7 @@ TEST_F(calcInvKin, knownPoses)
   // adding primary constraints to move to a pose
   ik.clearConstraintList();
   constrained_ik::Constraint *goal_pose_ptr = new  constrained_ik::constraints::GoalPose();
-  ik.addConstraint(goal_pose_ptr, constrained_ik::constraint_types::primary);
+  ik.addConstraint(goal_pose_ptr, constrained_ik::constraint_types::Primary);
 
   // seed = expected, pose = fwdK(expected)
   EXPECT_NO_THROW(ik.calcInvKin(pose, seed, joints));
@@ -192,68 +200,73 @@ TEST_F(calcInvKin, knownPoses)
   seed = expected + 0.01 * VectorXd::Random(expected.size());
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*near* from expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 5e-3));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // *near* #2
   seed = expected + 0.05 * VectorXd::Random(expected.size());
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*near* from expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 5e-3));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // seed position *near* expected solution
   seed = expected + 0.1 * VectorXd::Random(expected.size());
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*near* from expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 5e-3));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // test with seed far from expected position
   expected << M_PI_2, 0, 0, 0, 0, 0;
   kin.calcFwdKin(expected, pose);
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*far1* from expected: " << expected.transpose() << std::endl;
-  ik.setPrimaryKp(.05);
-  ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 5e-3));
+  config.primary_gain = 0.5;
+  config.limit_primary_motion = false;
+  ik.setSolverConfiguration(config);
+  EXPECT_TRUE(ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // *far* #2
   expected << 0, -M_PI_2, 0, 0, 0, 0;
   kin.calcFwdKin(expected, pose);
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*far2* from expected: " << expected.transpose() << std::endl;
-  ik.setPrimaryKp(.1);
-  ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 5e-3));
+  EXPECT_TRUE(ik.calcInvKin(pose, VectorXd::Zero(expected.size()), joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // *farther*
   expected << M_PI_4, -M_PI_4, 0, 0, 0, 0;
   kin.calcFwdKin(expected, pose);
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*farther* from expected: " << expected.transpose() << std::endl;
-  ik.setPrimaryKp(.15);
-  ik.setAuxiliaryKp(.15);
   seed = VectorXd::Zero(expected.size());
-  ik.calcInvKin(pose, seed, joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 5e-3));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // *very far*
   expected << M_PI_2, -M_PI_2, 0, 0, 0, 0;
   kin.calcFwdKin(expected, pose);
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*very far* from expected: " << expected.transpose() << std::endl;
-  ik.setPrimaryKp(.05);
   seed = VectorXd::Zero(expected.size());
-  ik.calcInvKin(pose, seed, joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 5e-3));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 }
 
 TEST_F(calcInvKin, NullMotion)
@@ -261,20 +274,26 @@ TEST_F(calcInvKin, NullMotion)
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
   boost::random::mt19937 rng;  
+  config.__getDefault__();
+  config.limit_auxiliary_interations = false;
+  config.limit_auxiliary_motion = false;
+  config.limit_primary_motion = false;
+  ik.setSolverConfiguration(config);
 
   // adding primary constraints to move to a position, and auxillary constraints to move to pose
   ik.clearConstraintList();
   constrained_ik::Constraint *goal_position_ptr = new  constrained_ik::constraints::GoalPosition();
-  ik.addConstraint(goal_position_ptr, constrained_ik::constraint_types::primary);
+  ik.addConstraint(goal_position_ptr, constrained_ik::constraint_types::Primary);
   constrained_ik::Constraint *goal_orientation_ptr = new  constrained_ik::constraints::GoalOrientation();
-  ik.addConstraint(goal_orientation_ptr, constrained_ik::constraint_types::auxiliary);
+  ik.addConstraint(goal_orientation_ptr, constrained_ik::constraint_types::Auxiliary);
 
   // seed position *at* expected solution
   expected << M_PI_2, -M_PI_2, -M_PI_2, -M_PI_2, M_PI_2, -M_PI_2;
 
   kin.calcFwdKin(expected, pose);
-  ik.setPrimaryKp(.5);
-  ik.setAuxiliaryKp(.5);
+  config.primary_gain = 0.5;
+  config.auxiliary_gain = 0.5;
+  ik.setSolverConfiguration(config);
   seed = expected;
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*at* from expected: " << expected.transpose() << std::endl;
@@ -284,14 +303,13 @@ TEST_F(calcInvKin, NullMotion)
   // seed position *near* expected solution
   expected << M_PI_2, -M_PI_2, -M_PI_2, -M_PI_2, M_PI_2, -M_PI_2;
   kin.calcFwdKin(expected, pose);
-  ik.setPrimaryKp(.5);
-  ik.setAuxiliaryKp(.5);
   seed = expected + 0.01 * VectorXd::Random(expected.size());
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*near* from expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 01e-3));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // *near* #2
   for(int j=0; j<3; j++) // do 3 random examples of near starts
@@ -304,11 +322,13 @@ TEST_F(calcInvKin, NullMotion)
       seed[i] = expected[i] + small_angle_degrees(rng)*3.14/180.0;
     }
     kin.calcFwdKin(expected, pose);
-    ik.setPrimaryKp(.15);
-    ik.setAuxiliaryKp(.5); // try to make auxiliary converge first
-    ik.calcInvKin(pose, seed, joints);
-    kin.calcFwdKin(joints, rslt_pose);
-    EXPECT_TRUE(rslt_pose.isApprox(pose, 1e-3));
+    config.primary_gain = 0.15;
+    config.auxiliary_gain = 0.05;
+    ik.setSolverConfiguration(config);
+    EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+    EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+    EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+    EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
   }
 
   // *far*
@@ -323,11 +343,12 @@ TEST_F(calcInvKin, NullMotion)
       seed[i] = expected[i] + small_angle_degrees(rng)*3.14/180.0;
     }
     kin.calcFwdKin(expected, pose);
-    ik.setPrimaryKp(.15);
-    ik.setAuxiliaryKp(.5); // try to make auxiliary converge first
+    config.primary_gain = 0.15;
+    config.auxiliary_gain = 0.05;
+    ik.setSolverConfiguration(config);
     ik.calcInvKin(pose, seed, joints);
     kin.calcFwdKin(joints, rslt_pose);
-    if(rslt_pose.isApprox(pose, 1e-3)) num_success++;
+    if(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3) && rslt_pose.translation().isApprox(pose.translation(), 1e-3)) num_success++;
   }
   EXPECT_GE(num_success, 15);
   
@@ -343,11 +364,12 @@ TEST_F(calcInvKin, NullMotion)
       seed[i] = expected[i] + small_angle_degrees(rng)*3.14/180.0;
     }
     kin.calcFwdKin(expected, pose);
-    ik.setPrimaryKp(.15);
-    ik.setAuxiliaryKp(.5); // try to make auxiliary converge first
+    config.primary_gain = 0.15;
+    config.auxiliary_gain = 0.05;
+    ik.setSolverConfiguration(config);
     ik.calcInvKin(pose, seed, joints);
     kin.calcFwdKin(joints, rslt_pose);
-    if(rslt_pose.isApprox(pose, 1e-3)) num_success++;
+    if(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3) && rslt_pose.translation().isApprox(pose.translation(), 1e-3)) num_success++;
   }
   EXPECT_GE(num_success, 10);
 }
@@ -356,13 +378,15 @@ TEST_F(calcInvKin, NullMotionPose)
 {
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
+  config.__getDefault__();
+  ik.setSolverConfiguration(config);
 
   // adding primary constraints to move to an orientation, and auxillary constraints to move to position
   ik.clearConstraintList();
   constrained_ik::Constraint *goal_orientation_ptr = new  constrained_ik::constraints::GoalOrientation();
-  ik.addConstraint(goal_orientation_ptr, constrained_ik::constraint_types::primary);
+  ik.addConstraint(goal_orientation_ptr, constrained_ik::constraint_types::Primary);
   constrained_ik::Constraint *goal_position_ptr = new  constrained_ik::constraints::GoalPosition();
-  ik.addConstraint(goal_position_ptr, constrained_ik::constraint_types::auxiliary);
+  ik.addConstraint(goal_position_ptr, constrained_ik::constraint_types::Auxiliary);
 
   // seed position *at* expected solution
   expected << M_PI_2, -M_PI_2, -M_PI_2, -M_PI_2, M_PI_2, -M_PI_2;
@@ -370,85 +394,99 @@ TEST_F(calcInvKin, NullMotionPose)
   seed = expected;
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*at* from expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints, 2);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(pose.isApprox(rslt_pose, 1e-3));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // seed position *near* expected solution
   seed = expected + 0.01 * VectorXd::Random(expected.size());
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*near* expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints, 2);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 1e-3));
-
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
   // *near* #2
   seed = expected + 0.05 * VectorXd::Random(expected.size());
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*near* expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints, 2);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 1e-3));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // seed position *near* expected solution
   seed = expected + 0.1 * VectorXd::Random(expected.size());
   std::cout << "Testing seed vector " << seed.transpose() << std::endl <<
                "*near* from expected: " << expected.transpose() << std::endl;
-  ik.calcInvKin(pose, seed, joints, 2);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 1e-3));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // test with seed far from expected position
   expected << M_PI_2, 0, 0, 0, 0, 0;
   kin.calcFwdKin(expected, pose);
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*far1* from expected: " << expected.transpose() << std::endl;
-  ik.setPrimaryKp(.1);
-  ik.setAuxiliaryKp(.1);
+  config.primary_gain = 0.1;
+  config.auxiliary_gain = 0.1;
+  config.limit_auxiliary_interations = false;
+  config.limit_auxiliary_motion = false;
+  config.limit_primary_motion = false;
+  ik.setSolverConfiguration(config);
   seed = VectorXd::Zero(expected.size());
-  ik.calcInvKin(pose, seed, joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 1e-2));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // *far* #2
   expected << 0, -M_PI_2, 0, 0, 0, 0;
   kin.calcFwdKin(expected, pose);
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*far2* from expected: " << expected.transpose() << std::endl;
-  ik.setPrimaryKp(.1);
   seed = VectorXd::Zero(expected.size());
-  ik.calcInvKin(pose, seed, joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 0.01));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // *farther*
   expected << M_PI_4, -M_PI_4, 0, 0, 0, 0;
   kin.calcFwdKin(expected, pose);
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*farther* from expected: " << expected.transpose() << std::endl;
-  ik.setPrimaryKp(.15);
   seed = VectorXd::Zero(expected.size());
-  ik.calcInvKin(pose, seed, joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 0.01));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 
   // *very far*
   expected << M_PI_2, -M_PI_2, 0, 0, 0, 0;
   kin.calcFwdKin(expected, pose);
   std::cout << "Testing seed vector " << VectorXd::Zero(expected.size()).transpose() << std::endl <<
                "*very far* from expected: " << expected.transpose() << std::endl;
-  ik.setPrimaryKp(.5);
-  ik.setAuxiliaryKp(.1);
+  config.primary_gain = 0.1;
+  config.auxiliary_gain = 0.001;
+  config.solver_max_iterations = 10000;
+  ik.setSolverConfiguration(config);
   seed = VectorXd::Zero(expected.size());
-  ik.calcInvKin(pose, seed, joints);
-  kin.calcFwdKin(joints, rslt_pose);
-  EXPECT_TRUE(rslt_pose.isApprox(pose, 0.01));
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints, rslt_pose));
+  EXPECT_TRUE(rslt_pose.rotation().isApprox(pose.rotation(), 9e-3));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 }
 
 TEST_F(obstacleAvoidance, first)
 {
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
+  config.__getDefault__();
+  config.solver_min_iterations = 1;
+  ik.setSolverConfiguration(config);
 
   // adding primary constraints to move to an orientation, and auxillary constraints to move to position
   ik.clearConstraintList();
@@ -465,31 +503,38 @@ TEST_F(obstacleAvoidance, first)
   std::vector<std::string> link_names;
   ik.getLinkNames(link_names);
   int link_id = link_names.size()/2;
-  std::string obstacle_avoidance_link_name = link_names[link_id];
-  constrained_ik::Constraint *avoid_obstacles_ptr =  new constrained_ik::constraints::AvoidObstacles(obstacle_avoidance_link_name);
+  std::vector<std::string> obstacle_avoidance_link_name;
+  constrained_ik::constraints::AvoidObstacles *avoid_obstacles_ptr =  new constrained_ik::constraints::AvoidObstacles();
+
+  obstacle_avoidance_link_name.push_back(link_names[link_id]);
+  avoid_obstacles_ptr->setAvoidanceLinks(obstacle_avoidance_link_name);
+  avoid_obstacles_ptr->setMinDistance(link_names[link_id], 0.01);
+  avoid_obstacles_ptr->setAmplitude(link_names[link_id], 1.0);
+  avoid_obstacles_ptr->setAvoidanceDistance(link_names[link_id], 1.0);
 
   // add the constraints
-  ik.addConstraint(goal_position_ptr, constrained_ik::constraint_types::primary);
-  ik.addConstraint(avoid_obstacles_ptr, constrained_ik::constraint_types::auxiliary);
+  ik.addConstraint(goal_position_ptr, constrained_ik::constraint_types::Primary);
+  ik.addConstraint(avoid_obstacles_ptr, constrained_ik::constraint_types::Auxiliary);
 
   // perform inverse kinematics but the position should not change, just the orientation
   expected << M_PI_2, -M_PI_2, -M_PI_2, -M_PI_2, M_PI_2, -M_PI_2;
   kin.calcFwdKin(expected, pose);
   seed = expected;
-  ik.calcInvKin(pose, seed, planning_scene_,joints, 1);
-  kin.calcFwdKin(joints,rslt_pose);
-  EXPECT_NE(rslt_pose.translation().x(), pose.translation().x());
-  EXPECT_NE(rslt_pose.translation().y(), pose.translation().y());
-  EXPECT_NE(rslt_pose.translation().z(), pose.translation().z());
+  config.auxiliary_max_iterations = 1;
+  ik.setSolverConfiguration(config);
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, planning_scene_, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints,rslt_pose));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
+  EXPECT_NE(expected, joints);
 
   // do it again, but his time allow 100 iterations on the auxiliary constriants
   // this allows more obstacle avoidance after the position has converged
-  ik.calcInvKin(pose, seed, planning_scene_,joints, 100);
-  kin.calcFwdKin(joints,rslt_pose);
-  EXPECT_NE(rslt_pose.translation().x(), pose.translation().x());
-  EXPECT_NE(rslt_pose.translation().y(), pose.translation().y());
-  EXPECT_NE(rslt_pose.translation().z(), pose.translation().z());
-
+  config.auxiliary_max_iterations = 100;
+  ik.setSolverConfiguration(config);
+  EXPECT_TRUE(ik.calcInvKin(pose, seed, planning_scene_, joints));
+  EXPECT_TRUE(kin.calcFwdKin(joints,rslt_pose));
+  EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
+  EXPECT_NE(expected, joints);
 }
 
 /*This test checks the consistancy of the axisAngle calculations from a quaternion value,
