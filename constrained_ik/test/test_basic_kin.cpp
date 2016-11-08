@@ -87,12 +87,9 @@ protected:
       }
       return true;
   }
-
-private:
-  static const std::string urdf_file;
 };
 
-class PInvTest : public BaseTest
+class PInvTest : public RobotTest
 {
 protected:
   bool test_random(int rows, int cols)
@@ -123,8 +120,7 @@ TEST_F(init, inputValidation)
 
 TEST_F(linkTransforms, inputValidation)
 {
-  //    std::vector<std::string> link_names = boost::assign::list_of("link_1")("link_2")("link_3")("link_4")("link_5")("link_6");
-  std::vector<std::string> link_names = boost::assign::list_of("shoulder_link")("upper_arm_link")("forearm_link")("wrist_1_link")("wrist_2_link")("wrist_3_link");
+    std::vector<std::string> link_names = boost::assign::list_of("shoulder_link")("upper_arm_link")("forearm_link")("wrist_1_link")("wrist_2_link")("wrist_3_link");
     std::vector<KDL::Frame> poses;
     int n_links = link_names.size();
 
@@ -174,6 +170,8 @@ TEST_F(linkTransforms, knownPoses)
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names));  //all link names
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
+    EXPECT_GT(actual.size(), expected.size());
+    actual.pop_back(); //for comparison remove ee_link which is not in list of test links.
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
 
     //90,0,0,0,0,0
@@ -189,6 +187,8 @@ TEST_F(linkTransforms, knownPoses)
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names));  //all link names
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
+    EXPECT_GT(actual.size(), expected.size());
+    actual.pop_back(); //for comparison remove ee_link which is not in list of test links.
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
 
     //0,-90,0,0,0,0
@@ -204,6 +204,8 @@ TEST_F(linkTransforms, knownPoses)
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names));  //all link names
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));              //no link names (defaults to all)
+    EXPECT_GT(actual.size(), expected.size());
+    actual.pop_back(); //for comparison remove ee_link which is not in list of test links.
     EXPECT_TRUE(comparePoses(actual, expected, 1e-4));
 
     //joints 2-5
@@ -219,6 +221,8 @@ TEST_F(linkTransforms, knownPoses)
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual, link_names_short));    //all link names
     EXPECT_TRUE(comparePoses(actual, expected_short, 1e-4));
     EXPECT_TRUE(kin.linkTransforms(joint_angles, actual));                      //no link names (defaults to all)
+    EXPECT_GT(actual.size(), expected.size());
+    actual.pop_back(); //for comparison remove ee_link which is not in list of test links.
     EXPECT_FALSE(comparePoses(actual, expected, 1e-4));
 }
 
