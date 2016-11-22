@@ -27,8 +27,6 @@
 #include <stomp_moveit/stomp_planner_manager.h>
 #include <stomp_moveit/stomp_planner.h>
 
-static const std::string STOMP_ROBOT_PARAM = "stomp_robot";
-
 namespace stomp_moveit
 {
 
@@ -51,61 +49,33 @@ bool StompPlannerManager::initialize(const robot_model::RobotModelConstPtr &mode
     nh_ = ros::NodeHandle(ns);
   }
 
-  // initialize the robot model from the urdf and srdf and distance field parameters
-  XmlRpc::XmlRpcValue stomp_robot_param;
-  if(nh_.getParam(STOMP_ROBOT_PARAM,stomp_robot_param))
-  {
-    double df_voxel,df_background;
-    try
-    {
-      XmlRpc::XmlRpcValue distance_field;
-      distance_field = stomp_robot_param["distance_field"];
-
-      auto members = {"voxel_size","background"};
-      for(auto& m : members)
-      {
-        if(!distance_field.hasMember(m))
-        {
-          ROS_ERROR("STOMP failed to find the '%s/%s/%s' parameter",STOMP_ROBOT_PARAM.c_str(),"distance_field",m);
-          return false;
-        }
-      }
-
-      df_voxel = static_cast<double>(distance_field["voxel_size"]);
-      df_background = static_cast<double>(distance_field["background"]);
-    }
-    catch(XmlRpc::XmlRpcException& e )
-    {
-      ROS_ERROR("STOMP unable to parse ROS parameter:\n %s",STOMP_ROBOT_PARAM.c_str());
-      return false;
-    }
-
-    stomp_robot_model_.reset(new StompRobotModel(model,df_voxel,df_background));
-  }
-  else
-  {
-    ROS_WARN("optional '%s' parameter not found, defaulting to moveit::core::RobotModel",STOMP_ROBOT_PARAM.c_str());
-    stomp_robot_model_.reset(new StompRobotModel(model));
-  }
-
+  robot_model_ = model;
 
   // each element under 'stomp' should be a group name
   std::map<std::string, XmlRpc::XmlRpcValue> group_config;
 
   if (!StompPlanner::getConfigData(nh_, group_config))
+  {
     return false;
+  }
 
   for(std::map<std::string, XmlRpc::XmlRpcValue>::iterator v = group_config.begin(); v != group_config.end(); v++)
   {
     if(!model->hasJointModelGroup(v->first))
     {
-      ROS_ERROR("The robot model does not support the planning group '%s' listed by in the stomp configuration",
+      ROS_WARN("The robot model does not support the planning group '%s' in the STOMP configuration, skipping STOMP setup for this group",
                 v->first.c_str());
-      return false;
+      continue;
     }
 
-    boost::shared_ptr<StompPlanner> planner(new StompPlanner(v->first, v->second, stomp_robot_model_));
+    boost::shared_ptr<StompPlanner> planner(new StompPlanner(v->first, v->second, robot_model_));
     planners_.insert(std::make_pair(v->first, planner));
+  }
+
+  if(planners_.empty())
+  {
+    ROS_ERROR("All planning groups are invalid, STOMP could not be configured");
+    return false;
   }
 
   return true;

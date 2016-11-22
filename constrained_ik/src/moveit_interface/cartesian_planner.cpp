@@ -139,7 +139,8 @@ namespace constrained_ik
 
     // Generate Interpolated Cartesian Poses
     Eigen::Affine3d world_to_base = start_state.getGlobalLinkTransform(solver->getKin().getRobotBaseLinkName()).inverse();
-    std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > poses = interpolateCartesian(world_to_base*start_pose, world_to_base*goal_pose, config_.translational_discretization_step, config_.orientational_discretization_step);
+    std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > poses = interpolateCartesian(
+        world_to_base*start_pose, world_to_base*goal_pose, config_.translational_discretization_step, config_.orientational_discretization_step);
 
     // Generate Cartesian Trajectory
     int steps = poses.size();

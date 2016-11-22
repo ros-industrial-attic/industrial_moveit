@@ -31,7 +31,7 @@
 #include <constrained_ik/constraint_results.h>
 #include <ros/ros.h>
 
-const std::string DEFAULT_COLLISION_DETECTOR = "IndustrialFCL";
+const std::vector<std::string> SUPPORTED_COLLISION_DETECTORS = {"IndustrialFCL", "CollisionDetectionOpenVDB"};
 
 namespace constrained_ik
 {
@@ -147,6 +147,7 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   constrained_ik::SolverState state = getState(goal, joint_seed); // create state vars for this IK solve
   state.condition = checkInitialized();
   state.planning_scene = planning_scene;
+  state.group_name = kin_.getJointModelGroup()->getName();
 
   //TODO: Does this still belong here?
   if(planning_scene)
@@ -154,12 +155,18 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     state.robot_state = robot_state::RobotStatePtr(new moveit::core::RobotState(planning_scene->getCurrentState()));
 
     //Check and make sure the correct collision detector is loaded.
-    if (planning_scene->getActiveCollisionDetectorName() != DEFAULT_COLLISION_DETECTOR)
+    auto pos = std::find(SUPPORTED_COLLISION_DETECTORS.begin(),SUPPORTED_COLLISION_DETECTORS.end(),
+                         planning_scene->getActiveCollisionDetectorName());
+    if (pos == SUPPORTED_COLLISION_DETECTORS.end())
     {
-      throw std::runtime_error("Constrained IK requires the use of collision detector \"" + DEFAULT_COLLISION_DETECTOR + "\"\n"
-                               "To resolve the issue add the ros parameter collision_detector = " + DEFAULT_COLLISION_DETECTOR +
-                               ".\nIt is recommend to added it where the move_group node is launched, usually in the in the "
-                               "(robot_name)_moveit_config/launch/move_group.launch");
+      std::stringstream error_message;
+      error_message<<" Constrained IK requires the use of collision detectors: ";
+      for(auto& d : SUPPORTED_COLLISION_DETECTORS)
+      {
+        error_message<<"'"<< d<<"' ";
+      }
+      error_message<<".\nSet or add the 'collision_detector' parameter to an allowed collision detector in the move_group.launch file"<<std::endl;
+      throw std::runtime_error(error_message.str());
     }
 
     state.collision_robot = boost::dynamic_pointer_cast<const collision_detection::CollisionRobotIndustrial>(planning_scene->getCollisionRobot());

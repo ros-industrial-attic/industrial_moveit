@@ -23,16 +23,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <industrial_collision_detection/industrial_collision_detection_plugin.h>
+
 #include <pluginlib/class_list_macros.h>
+#include <moveit/collision_detection/collision_plugin.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_world_industrial.h>
 
 namespace collision_detection
 {
-  bool IndustrialFCLPluginLoader::initialize(const planning_scene::PlanningScenePtr& scene, bool exclusive) const
+  /** \brief An allocator for Industrial Moveit FCL collision detectors */
+  class CollisionDetectorAllocatorIndustrial :
+      public collision_detection::CollisionDetectorAllocatorTemplate< CollisionWorldIndustrial,
+      CollisionRobotIndustrial, CollisionDetectorAllocatorIndustrial >
   {
-    scene->setActiveCollisionDetector(CollisionDetectorAllocatorIndustrial::create(), exclusive);
-    return true;
-  }
+  public:
+    static const std::string NAME_; // defined in collision_world_industrial.cpp
+  };
+
+  const std::string CollisionDetectorAllocatorIndustrial::NAME_ = "IndustrialFCL";
+
+  class IndustrialFCLPluginLoader : public CollisionPlugin
+  {
+  public:
+    virtual bool initialize(const planning_scene::PlanningScenePtr& scene, bool exclusive) const
+    {
+      scene->setActiveCollisionDetector(CollisionDetectorAllocatorIndustrial::create(), exclusive);
+      return true;
+    }
+
+  };
+
 }
 
 PLUGINLIB_EXPORT_CLASS(collision_detection::IndustrialFCLPluginLoader, collision_detection::CollisionPlugin)

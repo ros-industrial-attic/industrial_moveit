@@ -39,7 +39,6 @@ file(MAKE_DIRECTORY "${VERSION_FILE_PATH}")
 set(THIS_PACKAGE_INCLUDE_DIRS
     ${VERSION_FILE_PATH}
     collision_distance_field/include
-    distance_field/include
 )
 
 catkin_package(
@@ -48,10 +47,6 @@ catkin_package(
     ${OCTOMAP_INCLUDE_DIRS}
   LIBRARIES
     moveit_collision_distance_field
-    moveit_openvdb
-    ${OCTOMAP_LIBRARIES}
-    ${OPENVDB_LIBRARIES}
-    ${TBB_LIBRARY}
   CATKIN_DEPENDS
     industrial_collision_detection
     geometric_shapes
@@ -70,7 +65,6 @@ catkin_package(
     urdfdom
     urdfdom_headers
     console_bridge
-    openvdb
     )
 
 include_directories(SYSTEM ${EIGEN_INCLUDE_DIRS}
@@ -88,6 +82,5 @@ include_directories(${THIS_PACKAGE_INCLUDE_DIRS}
 link_directories(${Boost_LIBRARY_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
 add_subdirectory(collision_distance_field)
-add_subdirectory(distance_field)
 
 # Generate and install version.h

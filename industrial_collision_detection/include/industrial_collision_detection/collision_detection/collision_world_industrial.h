@@ -37,7 +37,7 @@
 #ifndef COLLISION_DETECTION_COLLISION_WORLD_INDUSTRIAL_H_
 #define COLLISION_DETECTION_COLLISION_WORLD_INDUSTRIAL_H_
 
-#include <industrial_collision_detection/collision_robot_industrial.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
 #include <fcl/broadphase/broadphase.h>
 #include <boost/scoped_ptr.hpp>
 

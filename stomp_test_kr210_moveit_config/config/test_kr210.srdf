@@ -112,8 +112,5 @@
     <disable_collisions link1="link_5" link2="link_6" reason="Adjacent" />
     <disable_collisions link1="obstacle_cylinder" link2="rail" reason="Adjacent" />
     <disable_collisions link1="obstacle_cylinder" link2="workcell_bounds" reason="Adjacent" />
-    <disable_collisions link1="obstacle_cylinder" link2="obstacle_cube" reason="Adjacent" />
     <disable_collisions link1="rail" link2="workcell_bounds" reason="Adjacent" />
-    <disable_collisions link1="rail" link2="obstacle_cube" reason="Adjacent" />
-    <disable_collisions link1="obstacle_cube" link2="workcell_bounds" reason="Adjacent" />
 </robot>

@@ -173,12 +173,6 @@ public:
 
 protected:
 
-  bool initializeCostFunctionPlugins(const XmlRpc::XmlRpcValue& config);
-  bool initializeNoisyFilterPlugins(const XmlRpc::XmlRpcValue& config);
-  bool initializeUpdateFilterPlugins(const XmlRpc::XmlRpcValue& config);
-  bool initializeNoiseGeneratorPlugins(const XmlRpc::XmlRpcValue& config);
-protected:
-
   // robot environment
   std::string group_name_;
   moveit::core::RobotModelConstPtr robot_model_ptr_;

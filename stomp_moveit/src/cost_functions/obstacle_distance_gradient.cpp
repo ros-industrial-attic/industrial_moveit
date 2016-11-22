@@ -52,15 +52,10 @@ ObstacleDistanceGradient::~ObstacleDistanceGradient()
 bool ObstacleDistanceGradient::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                                           const std::string& group_name, XmlRpc::XmlRpcValue& config)
 {
-  robot_model_ptr_ = boost::static_pointer_cast<const StompRobotModel>(robot_model_ptr);
-
-  if(!robot_model_ptr_->hasDistanceField())
-  {
-    ROS_ERROR("StompRobotModel has no Distance Field");
-    return false;
-  }
-
+  robot_model_ptr_ = robot_model_ptr;
   group_name_ = group_name;
+  collision_request_.distance = true;
+  collision_request_.group_name = group_name;
   return configure(config);
 }
 
@@ -137,15 +132,16 @@ bool ObstacleDistanceGradient::computeCosts(const Eigen::MatrixXd& parameters, s
   }
 
   // request the distance at each state
-  collision_detection::DistanceResult res;
   double cost;
   double dist;
   for (auto t=start_timestep; t<start_timestep + num_timesteps; ++t)
   {
     robot_state_->setJointGroupPositions(joint_group,parameters.col(t));
     robot_state_->update();
+    collision_result_.distance = max_distance_;
 
-    dist = robot_model_ptr_->distance(group_name_,planning_scene_,*robot_state_);
+    planning_scene_->checkSelfCollision(collision_request_,collision_result_,*robot_state_,planning_scene_->getAllowedCollisionMatrix());
+    dist = max_distance_ > collision_result_.distance ? max_distance_ : collision_result_.distance;
 
     if(dist >= max_distance_)
     {
