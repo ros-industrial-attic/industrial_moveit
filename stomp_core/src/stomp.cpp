@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,12 +33,19 @@
 #include <numeric>
 #include "stomp_core/stomp.h"
 
-static const double DEFAULT_NOISY_COST_IMPORTANCE_WEIGHT = 1.0;
-static const double EXPONENTIATED_COST_SENSITIVITY = 10;
-static const double MIN_COST_DIFFERENCE = 1e-8;
-static const double MIN_CONTROL_COST_WEIGHT = 1e-8;
-static const double OPTIMIZATION_TIMESTEP = 1;
+static const double DEFAULT_NOISY_COST_IMPORTANCE_WEIGHT = 1.0; /**< Default noisy cost importance weight */
+static const double EXPONENTIATED_COST_SENSITIVITY = 10; /**< Default exponetiated cost sensitivity coefficient */
+static const double MIN_COST_DIFFERENCE = 1e-8; /**< Minimum cost difference allowed during probability calculation */
+static const double MIN_CONTROL_COST_WEIGHT = 1e-8; /**< Minimum control cost weight allowed */
+static const double OPTIMIZATION_TIMESTEP = 1; /**< Optimization timestep in seconds */
 
+/**
+ * @brief Compute a linear interpolated trajectory given a start and end state
+ * @param first             The start position
+ * @param last              The final position
+ * @param num_timesteps     The number of timesteps
+ * @param trajectory_joints The returned linear interpolated trajectory
+ */
 static void computeLinearInterpolation(const std::vector<double>& first,const std::vector<double>& last,
                          int num_timesteps,
                          Eigen::MatrixXd& trajectory_joints)
@@ -54,6 +61,14 @@ static void computeLinearInterpolation(const std::vector<double>& first,const st
   }
 }
 
+/**
+ * @brief Compute a cubic interpolated trajectory given a start and end state
+ * @param first             The start position
+ * @param last              The final position
+ * @param num_points        The number of points in the trajectory
+ * @param dt                The timestep in seconds
+ * @param trajectory_joints The returned cubic interpolated trajectory
+ */
 static void computeCubicInterpolation(const std::vector<double>& first,const std::vector<double>& last,
                          int num_points,double dt,
                          Eigen::MatrixXd& trajectory_joints)
@@ -75,6 +90,15 @@ static void computeCubicInterpolation(const std::vector<double>& first,const std
   }
 }
 
+/**
+ * @brief Compute a minimum cost trajectory given a start and end state
+ * @param first                        The start position
+ * @param last                         The final position
+ * @param control_cost_matrix_R_padded The control cost matrix with padding
+ * @param inv_control_cost_matrix_R    The inverse constrol cost matrix
+ * @param trajectory_joints            The returned minimum cost trajectory
+ * @return True if successful, otherwise false
+ */
 bool computeMinCostTrajectory(const std::vector<double>& first,
                               const std::vector<double>& last,
                               const Eigen::MatrixXd& control_cost_matrix_R_padded,
@@ -116,7 +140,14 @@ bool computeMinCostTrajectory(const std::vector<double>& first,
   return true;
 }
 
-
+/**
+ * @brief Compute the parameters control costs
+ * @param parameters            The parameters used to compute the control cost
+ * @param dt                    The timestep in seconds
+ * @param control_cost_weight   The control cost weight
+ * @param control_cost_matrix_R The control cost matrix
+ * @param control_costs returns The parameters control costs
+ */
 void computeParametersControlCosts(const Eigen::MatrixXd& parameters,
                                           double dt,
                                           double control_cost_weight,
@@ -171,11 +202,6 @@ Stomp::Stomp(const StompConfiguration& config,TaskPtr task):
 {
 
   resetVariables();
-
-}
-
-Stomp::~Stomp()
-{
 
 }
 
