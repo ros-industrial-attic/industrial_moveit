@@ -1,0 +1,8 @@
+example_yaml:
+  constraints:
+  -
+    class: constrained_ik/GoalOrientation
+    primary: true
+    weight: [1.0, 1.0, 1.0]
+    orientation_tolerance: 0.009
+    debug: true

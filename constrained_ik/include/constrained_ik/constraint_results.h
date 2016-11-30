@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2015, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,6 +31,7 @@
 
 namespace constrained_ik
 {
+  /** @brief This class is used to store a constraints results. */
   class ConstraintResults
   {
   public:
@@ -38,20 +39,28 @@ namespace constrained_ik
 
     ConstraintResults():status(true){}
 
-    Eigen::VectorXd error;
+    Eigen::VectorXd error; /**< Error of the constraint */
 
-    Eigen::MatrixXd jacobian;
+    Eigen::MatrixXd jacobian; /**< Jacobian of the constraint */
 
-    bool status;
+    bool status; /**< Current status of the constraint, True Converged, False Not Converged */
 
-    void append(const ConstraintResults &cdata)
+    /**
+     * @brief Append the provided result this result
+     * @param cdata ConstraintResults to append
+     */
+    virtual void append(const ConstraintResults &cdata)
     {
       appendError(cdata.error);
       appendJacobian(cdata.jacobian);
       status &= cdata.status;
     }
 
-    bool isEmpty()
+    /**
+     * @brief Check if empty
+     * @return True if empty, otherwise false
+     */
+    virtual bool isEmpty()
     {
       if (error.rows() == 0 || jacobian.rows() == 0)
         return true;
@@ -60,8 +69,14 @@ namespace constrained_ik
     }
 
   protected:
-    // NOTE: This method does a resize in-place, and may be inefficient if called many times
-    void appendError(const Eigen::VectorXd &addError)
+    /**
+     * @brief This append an error vector to the current
+     *
+     * This method does a resize in-place, and may be inefficient if called many times
+     *
+     * @param addError error vector to be appended
+     */
+    virtual void appendError(const Eigen::VectorXd &addError)
     {
       if (addError.rows() == 0)
       {
@@ -79,8 +94,14 @@ namespace constrained_ik
       }
     }
 
-    // NOTE: This method does a resize in-place, and may be inefficient if called many times
-    void appendJacobian(const Eigen::MatrixXd &addJacobian)
+    /**
+     * @brief This appends a Jacobian to the current
+     *
+     * This method does a resize in-place, and may be inefficient if called many times
+     *
+     * @param addJacobian Jacobian to be appended
+     */
+    virtual void appendJacobian(const Eigen::MatrixXd &addJacobian)
     {
       if(addJacobian.rows() == 0 || addJacobian.cols() == 0)
       {

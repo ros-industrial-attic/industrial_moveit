@@ -1,0 +1,11 @@
+example_yaml:
+  constraints:
+  -
+    class: constrained_ik/AvoidObstacles
+    primary: true
+    link_names:         [upper_arm_link, wrist_3_link]
+    amplitude:          [          0.01,         0.01]
+    minimum_distance:   [          0.01,         0.01]
+    avoidance_distance: [           1.0,          1.0]
+    weight:             [             1,            1]
+    debug: true

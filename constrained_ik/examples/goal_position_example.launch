@@ -1,0 +1,10 @@
+<launch>
+    <arg name="use_yaml" default="true" />
+    <rosparam param="/constrained_ik/example/goal">[0, 0, 0, 0, 0, 0]</rosparam>
+    <rosparam param="/constrained_ik/example/seed">[0.785, 0, 0, 0, 0, 0]</rosparam>
+
+    <include file="$(find constrained_ik)/examples/launch_example.launch">
+        <arg name="use_yaml" value="$(arg use_yaml)" />
+        <arg name="example" value="goal_position_example" />
+    </include>
+</launch>

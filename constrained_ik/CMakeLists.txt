@@ -1,5 +1,13 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 2.8.12)
 project(constrained_ik)
+
+if(CMAKE_VERSION VERSION_LESS 3.1)
+    add_compile_options(-std=c++11)
+else()
+    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    set(CMAKE_CXX_EXTENSIONS ON)
+endif()
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -177,4 +185,54 @@ if(CATKIN_ENABLE_TESTING)
     test/test_constrained_ik.cpp )
   target_link_libraries(test_constrained_ik constrained_ik constrained_ik_constraints)
 endif()
+
+##############
+## Examples ##
+##############
+
+## Add cpp example targets and link libraries
+SET(EXAMPLE_LIBS
+    constrained_ik
+    constrained_ik_constraints
+    ${catkin_LIBRARIES})
+
+add_executable(constraints_from_yaml_example examples/constraints_from_yaml_example.cpp examples/example_utils.h)
+target_link_libraries(constraints_from_yaml_example ${EXAMPLE_LIBS})
+
+add_executable(avoid_joint_limits_example examples/avoid_joint_limits_example.cpp examples/example_utils.h)
+target_link_libraries(avoid_joint_limits_example ${EXAMPLE_LIBS})
+
+add_executable(avoid_obstacles_example examples/avoid_obstacles_example.cpp examples/example_utils.h)
+target_link_libraries(avoid_obstacles_example ${EXAMPLE_LIBS})
+
+add_executable(avoid_singularities_example examples/avoid_singularities_example.cpp examples/example_utils.h)
+target_link_libraries(avoid_singularities_example ${EXAMPLE_LIBS})
+
+add_executable(goal_mid_joint_example examples/goal_mid_joint_example.cpp examples/example_utils.h)
+target_link_libraries(goal_mid_joint_example ${EXAMPLE_LIBS})
+
+add_executable(goal_minimize_change_example examples/goal_minimize_change_example.cpp examples/example_utils.h)
+target_link_libraries(goal_minimize_change_example ${EXAMPLE_LIBS})
+
+add_executable(goal_orientation_example examples/goal_orientation_example.cpp examples/example_utils.h)
+target_link_libraries(goal_orientation_example ${EXAMPLE_LIBS})
+
+add_executable(goal_position_example examples/goal_position_example.cpp examples/example_utils.h)
+target_link_libraries(goal_position_example ${EXAMPLE_LIBS})
+
+add_executable(goal_tool_orientation_example examples/goal_tool_orientation_example.cpp examples/example_utils.h)
+target_link_libraries(goal_tool_orientation_example ${EXAMPLE_LIBS})
+
+add_executable(goal_tool_pointing_example examples/goal_tool_pointing_example.cpp examples/example_utils.h)
+target_link_libraries(goal_tool_pointing_example ${EXAMPLE_LIBS})
+
+add_executable(goal_zero_jvel_example examples/goal_zero_jvel_example.cpp examples/example_utils.h)
+target_link_libraries(goal_zero_jvel_example ${EXAMPLE_LIBS})
+
+add_executable(avoid_joint_vel_limits_example examples/avoid_joint_vel_limits_example.cpp examples/example_utils.h)
+target_link_libraries(avoid_joint_vel_limits_example ${EXAMPLE_LIBS})
+
+add_executable(goal_tool_position_example examples/goal_tool_position_example.cpp examples/example_utils.h)
+target_link_libraries(goal_tool_position_example ${EXAMPLE_LIBS})
+
 

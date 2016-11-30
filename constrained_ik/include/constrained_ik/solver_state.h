@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -41,27 +41,36 @@ namespace constrained_ik
 struct SolverState
 {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  Eigen::Affine3d goal;
-  Eigen::VectorXd joint_seed;
+  Eigen::Affine3d goal; /**< Desired goal position to solve IK about */
+  Eigen::VectorXd joint_seed; /**< Joint position (initial guess) to seed the IK solver with */
 
-  int iter;
-  Eigen::VectorXd joints;
-  Eigen::VectorXd joints_delta;
-  Eigen::Affine3d pose_estimate;
-  std::vector<Eigen::VectorXd> iteration_path;
+  int iter; /**< Current number of solver iterations */
+  Eigen::VectorXd joints; /**< Updated joint positions */
+  Eigen::VectorXd joints_delta; /**< The joint delta between this state and the previous state */
+  Eigen::Affine3d pose_estimate; /**< The pose for the updated joint position from the solver */
+  std::vector<Eigen::VectorXd> iteration_path; /**< Store the joint position for each iteration of the solver */
   double primary_sum; /**< The absolute sum of the cumulative primary motion */
   double auxiliary_sum; /**< The absolute sum of the cumulative auxiliary motion */
   bool auxiliary_at_limit; /**< This is set if auxiliary reached motion or iteration limit. */
-  initialization_state::InitializationState condition;
-  planning_scene::PlanningSceneConstPtr planning_scene;
-  collision_detection::CollisionRobotIndustrialConstPtr collision_robot;
-  collision_detection::CollisionWorldIndustrialConstPtr collision_world;
-  moveit::core::RobotStatePtr robot_state;
-  std::string group_name;
+  initialization_state::InitializationState condition; /**< State of the IK Solver */
+  planning_scene::PlanningSceneConstPtr planning_scene; /**< Pointer to the planning scene, some constraints require it */
+  collision_detection::CollisionRobotIndustrialConstPtr collision_robot; /**< Pointer to the collision robot, some constraints require it */
+  collision_detection::CollisionWorldIndustrialConstPtr collision_world; /**< Pointer to the collision world, some constraints require it */
+  moveit::core::RobotStatePtr robot_state; /**< Pointer to the current robot state */
 
+  /**
+   * @brief SolverState Constructor
+   * @param goal desired goal position to solve IK about
+   * @param joint_seed joint position (initial guess) to seed the IK solver with
+   */
   SolverState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
   SolverState(){}
 
+  /**
+   * @brief Reset the current state to default state
+   * @param goal desired goal position to solve IK about
+   * @param joint_seed joint position (initial guess) to seed the IK solver with
+   */
   void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
 
 };

@@ -9,28 +9,28 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <constrained_ik/moveit_interface/constrained_ik_plugin.h>
-#include <ros/ros.h>
+#include "constrained_ik/moveit_interface/constrained_ik_plugin.h"
 
+#include <ros/ros.h>
 #include <kdl_parser/kdl_parser.hpp>
 #include <tf_conversions/tf_kdl.h>
 #include <eigen_conversions/eigen_kdl.h>
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(constrained_ik::ConstrainedIKPlugin, kinematics::KinematicsBase);
+PLUGINLIB_EXPORT_CLASS(constrained_ik::ConstrainedIKPlugin, kinematics::KinematicsBase)
 
 using namespace KDL;
 using namespace tf;
@@ -42,14 +42,6 @@ namespace constrained_ik
 
 ConstrainedIKPlugin::ConstrainedIKPlugin():active_(false), dimension_(0)
 {
-}
-
-bool ConstrainedIKPlugin::isActive()
-{
-  if(active_)
-    return true;
-  ROS_ERROR("kinematics not active");
-  return false;
 }
 
 bool ConstrainedIKPlugin::isActive() const
@@ -119,7 +111,8 @@ bool ConstrainedIKPlugin::initialize(const std::string& robot_description,
 
   try
   {
-    solver_.init(kin_); // inside try because it has the potential to throw and error
+    solver_.reset(new constrained_ik::MasterIK(group_name));
+    solver_->init(kin_); // inside try because it has the potential to throw and error
   }
   catch (exception &e)
   {
@@ -165,7 +158,7 @@ bool ConstrainedIKPlugin::getPositionIK(const geometry_msgs::Pose &ik_pose,
   //Do IK and report results
   try
   {
-    if(!solver_.calcInvKin(goal, seed, planning_scene_, joint_angles))
+    if(!solver_->calcInvKin(goal, seed, planning_scene_, joint_angles))
     {
       ROS_ERROR_STREAM("Unable to find IK solution.");
       error_code.val = error_code.NO_IK_SOLUTION;
@@ -260,7 +253,7 @@ bool ConstrainedIKPlugin::searchPositionIK( const geometry_msgs::Pose &ik_pose,
   bool success(true);
   try
   {
-    if(!solver_.calcInvKin(goal, seed, planning_scene_, joint_angles))
+    if(!solver_->calcInvKin(goal, seed, planning_scene_, joint_angles))
     {
       ROS_ERROR_STREAM("Unable to find IK solution.");
       error_code.val = error_code.NO_IK_SOLUTION;

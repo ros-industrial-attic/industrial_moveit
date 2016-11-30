@@ -11,14 +11,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -41,7 +41,7 @@ namespace basic_kin
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-bool BasicKin::calcFwdKin(const VectorXd &joint_angles, Eigen::Affine3d &pose) const
+bool BasicKin::calcFwdKin(const Eigen::VectorXd &joint_angles, Eigen::Affine3d &pose) const
 {
 //  int n = joint_angles.size();
   KDL::JntArray kdl_joints;
@@ -63,7 +63,7 @@ bool BasicKin::calcFwdKin(const VectorXd &joint_angles, Eigen::Affine3d &pose) c
   return true;
 }
 
-bool BasicKin::calcFwdKin(const VectorXd &joint_angles,
+bool BasicKin::calcFwdKin(const Eigen::VectorXd &joint_angles,
                           const std::string &base,
                           const std::string &tip,
                           KDL::Frame &pose) const
@@ -247,7 +247,7 @@ void BasicKin::KDLToEigen(const KDL::Frame &frame, Eigen::Affine3d &transform)
     transform(i/3, i%3) = frame.M.data[i];
 }
 
-void BasicKin::KDLToEigen(const KDL::Jacobian &jacobian, MatrixXd &matrix)
+void BasicKin::KDLToEigen(const KDL::Jacobian &jacobian, Eigen::MatrixXd &matrix)
 {
   matrix.resize(jacobian.rows(), jacobian.columns());
 

@@ -1,30 +1,30 @@
 /**
-* @file test_BasicIK.cpp
-* @brief Test Fixtures
-*
-* Consolidate variable-definitions and init functions for use by multiple tests.
-*
-* @author dsolomon
-* @date Sep 23, 2013
-* @version TODO
-* @bug No known bugs
-*
-* @copyright Copyright (c) 2013, Southwest Research Institute
-*
-* @license Software License Agreement (Apache License)\n
-* \n
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at\n
-* \n
-* http://www.apache.org/licenses/LICENSE-2.0\n
-* \n
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * @file test_constrained_ik.cpp
+ * @brief Test Fixtures
+ *
+ * Consolidate variable-definitions and init functions for use by multiple tests.
+ *
+ * @author dsolomon
+ * @date Sep 23, 2013
+ * @version TODO
+ * @bug No known bugs
+ *
+ * @copyright Copyright (c) 2013, Southwest Research Institute
+ *
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <gtest/gtest.h>
 #include <ros/ros.h>
 #include "constrained_ik/constrained_ik.h"
@@ -46,11 +46,10 @@ using Eigen::MatrixXd;
 using Eigen::JacobiSVD;
 
 
-const std::string GROUP_NAME = "manipulator";
-const std::string ROBOT_DESCRIPTION_PARAM = "robot_description";
-/**
- * @brief TEST
- */
+const std::string GROUP_NAME = "manipulator"; /**< Default group name for tests */
+const std::string ROBOT_DESCRIPTION_PARAM = "robot_description"; /**< Default ROS parameter for robot description */
+
+/** @brief This test the Constrained_IK null space project calculation */
 TEST(constrained_ik, nullspaceprojection)
 {
   int rows = 6;
@@ -94,28 +93,29 @@ TEST(constrained_ik, nullspaceprojection)
 }
 
 /**
- * @brief Test Fixtures
+ * @brief Constrained_IK Test Fixtures
  * Consolidate variable-definitions and init functions for use by multiple tests.
  */
 class BasicIKTest : public ::testing::Test
 {
 protected:
 
-  robot_model_loader::RobotModelLoaderPtr loader_;
-  moveit::core::RobotModelPtr robot_model_;
-  planning_scene::PlanningScenePtr planning_scene_; 
-  BasicKin kin;
-  Constrained_IK ik;
-  Affine3d homePose;
-  constrained_ik::ConstrainedIKDynamicReconfigureConfig config;
+  robot_model_loader::RobotModelLoaderPtr loader_;  /**< Used to load the robot model */
+  moveit::core::RobotModelPtr robot_model_; /**< Robot model */
+  planning_scene::PlanningScenePtr planning_scene_; /**< Planning scene for the current robot model */
+  BasicKin kin; /**< Basic Kinematic Model of the robot.  */
+  Constrained_IK ik; /**< The Constrained IK Solver */
+  Affine3d homePose; /**< Cartesian home position */
+  constrained_ik::ConstrainedIKDynamicReconfigureConfig config; /**< Constrained IK configuration parameters */
 
+  /** @brief See base class for documention */
   virtual void SetUp()
   {
     loader_.reset(new robot_model_loader::RobotModelLoader(ROBOT_DESCRIPTION_PARAM));
     robot_model_ = loader_->getModel();
 
 
-    ASSERT_TRUE(robot_model_);
+    ASSERT_TRUE(robot_model_ != nullptr);
     ASSERT_TRUE(kin.init(robot_model_->getJointModelGroup(GROUP_NAME)));
     ASSERT_TRUE(kin.calcFwdKin(VectorXd::Zero(6), homePose));
     ASSERT_NO_THROW(ik.init(kin));
@@ -129,14 +129,8 @@ protected:
   }
 };
 
-
-typedef BasicIKTest init;
-typedef BasicIKTest calcInvKin;
-typedef BasicIKTest axisAngleCheck;
-typedef BasicIKTest obstacleAvoidance;
-/* ---------------------------------------------------------------- */
-
-TEST_F(init, inputValidation)
+/** @brief This tests the Constrained_IK init functions */
+TEST_F(BasicIKTest, inputValidation)
 {
   EXPECT_ANY_THROW(Constrained_IK().init(BasicKin()));
   EXPECT_NO_THROW(Constrained_IK().init(kin));
@@ -147,7 +141,8 @@ TEST_F(init, inputValidation)
   EXPECT_NE(ik.checkInitialized(), constrained_ik::initialization_state::NothingInitialized);
 }
 
-TEST_F(calcInvKin, inputValidation)
+/** @brief This performs input validation test for the Constrained_IK calcInvKin function */
+TEST_F(BasicIKTest, calcInvKinInputValidation)
 {
   VectorXd seed = VectorXd::Zero(6);
   VectorXd joints;
@@ -171,7 +166,8 @@ TEST_F(calcInvKin, inputValidation)
   }
 }
 
-TEST_F(calcInvKin, knownPoses)
+/** @brief This tests the Constrained_IK calcInvKin function against known poses using only primary constraint */
+TEST_F(BasicIKTest, knownPoses)
 {
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
@@ -269,7 +265,8 @@ TEST_F(calcInvKin, knownPoses)
   EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 }
 
-TEST_F(calcInvKin, NullMotion)
+/** @brief This tests the Constrained_IK calcInvKin function null space motion */
+TEST_F(BasicIKTest, NullMotion)
 {
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
@@ -374,7 +371,8 @@ TEST_F(calcInvKin, NullMotion)
   EXPECT_GE(num_success, 10);
 }
 
-TEST_F(calcInvKin, NullMotionPose)
+/** @brief This tests the Constrained_IK calcInvKin function null space motion convergence for known poses*/
+TEST_F(BasicIKTest, NullMotionPose)
 {
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
@@ -480,26 +478,28 @@ TEST_F(calcInvKin, NullMotionPose)
   EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
 }
 
-TEST_F(obstacleAvoidance, first)
+/**
+ * @brief This test the AvoidObstacles constraint
+ * The solver is setup with a primary GoalPosition constraint and
+ * a axuiliary AvoidObstacles constraint. I then seeds the solver
+ * with it current pose with a goal position as the current position
+ * and the axuiliary constraint should move the robot in joint space
+ * away from its current joint positions while maintaining the starting
+ * position of the tcp.
+ */
+TEST_F(BasicIKTest, obstacleAvoidanceAuxiliaryConstraint)
 {
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
   config.__getDefault__();
   config.solver_min_iterations = 1;
+  config.limit_auxiliary_interations = true;
   ik.setSolverConfiguration(config);
 
-  // adding primary constraints to move to an orientation, and auxillary constraints to move to position
+  // adding primary constraints to move to an orientation, and Auxiliary constraints to move to position
   ik.clearConstraintList();
-  // create pointer to every type of constraint possible
   constrained_ik::Constraint *goal_position_ptr = new  constrained_ik::constraints::GoalPosition();
-  //  constrained_ik::Constraint *goal_orientation_ptr = new  constrained_ik::constraints::GoalOrientation();
-  //  constrained_ik::Constraint *goal_tool_orientation_ptr = new  constrained_ik::constraints::GoalToolOrientation();
-  //  constrained_ik::Constraint *avoid_joint_limits_ptr = new  constrained_ik::constraints::AvoidJointLimits();
-  //  constrained_ik::Constraint *goal_min_change_ptr = new  constrained_ik::constraints::GoalMinimizeChange();
-  //  constrained_ik::Constraint *goal_zero_Jvel_ptr = new  constrained_ik::constraints::GoalZeroJVel();
-  //  constrained_ik::Constraint *avoid_singularities_ptr = new  constrained_ik::constraints::AvoidSingularities();
-  //  constrained_ik::Constraint *joint_vel_limits_ptr= new  constrained_ik::constraints::JointVelLimits();
- 
+
   std::vector<std::string> link_names;
   ik.getLinkNames(link_names);
   int link_id = link_names.size()/2;
@@ -537,11 +537,11 @@ TEST_F(obstacleAvoidance, first)
   EXPECT_NE(expected, joints);
 }
 
-/*This test checks the consistancy of the axisAngle calculations from a quaternion value,
-  namely does it always return an angle in +/-pi range?
-  (The answer should be yes)
-  */
-TEST_F(axisAngleCheck, consistancy)
+/**
+ * @brief This test checks the consistancy of the axisAngle calculations from a quaternion value
+ * Namely does it always return an angle in +/-pi range? (The answer should be yes)
+ */
+TEST_F(BasicIKTest, consistancy)
 {
     Eigen::Vector3d k(Eigen::Vector3d::UnitZ());
     for (double theta=-7.0; theta<7.0; theta+=1.0)
@@ -569,7 +569,7 @@ TEST_F(axisAngleCheck, consistancy)
         EXPECT_TRUE(rslt.isApprox(expected, 1e-5) or rslt.isApprox(-expected, 1e-5));
     }
 }
-
+/** @brief This executes all tests for the Constraine_IK Class and its constraints */
 int main(int argc, char **argv)
 {
   testing::InitGoogleTest(&argc, argv);

@@ -1,0 +1,7 @@
+example_yaml:
+  constraints:
+  -
+    class: constrained_ik/GoalZeroJVel
+    primary: true
+    weight: 1.0
+    debug: true

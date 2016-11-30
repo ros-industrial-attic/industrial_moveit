@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2015, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,8 +39,9 @@
 namespace constrained_ik
 {
   /**
-   * @brief This class represents the CLIK planner plugin for moveit.  It
-   * manages all of the CLIK planners.
+   * @brief This class represents the CLIK planner plugin for moveit.
+   *
+   * It manages all of the CLIK planners.
    */
   class CLIKPlannerManager : public planning_interface::PlannerManager
   {
@@ -52,30 +53,35 @@ namespace constrained_ik
     {
     }
 
-    bool initialize(const robot_model::RobotModelConstPtr &model, const std::string &ns);
+    /** @brief See base clase for documentation */
+    bool initialize(const robot_model::RobotModelConstPtr &model, const std::string &ns) override;
 
-    bool canServiceRequest(const moveit_msgs::MotionPlanRequest &req) const {return req.trajectory_constraints.constraints.empty();}
+    /** @brief See base clase for documentation */
+    bool canServiceRequest(const moveit_msgs::MotionPlanRequest &req) const override {return req.trajectory_constraints.constraints.empty();}
 
-    std::string getDescription() const { return "CLIK"; }
+    /** @brief See base clase for documentation */
+    std::string getDescription() const override { return "CLIK"; }
 
-    void getPlanningAlgorithms(std::vector<std::string> &algs) const;
+    /** @brief See base clase for documentation */
+    void getPlanningAlgorithms(std::vector<std::string> &algs) const override;
 
-    void setPlannerConfigurations(const planning_interface::PlannerConfigurationMap &pcs);
+    /** @brief See base clase for documentation */
+    void setPlannerConfigurations(const planning_interface::PlannerConfigurationMap &pcs) override;
 
-    planning_interface::PlanningContextPtr getPlanningContext(const planning_scene::PlanningSceneConstPtr &planning_scene, const planning_interface::MotionPlanRequest &req, moveit_msgs::MoveItErrorCodes &error_code) const;
+    /** @brief See base clase for documentation */
+    planning_interface::PlanningContextPtr getPlanningContext(const planning_scene::PlanningSceneConstPtr &planning_scene, const planning_interface::MotionPlanRequest &req, moveit_msgs::MoveItErrorCodes &error_code) const override;
 
-    void dynamicReconfigureCallback(ConstrainedIKPlannerDynamicReconfigureConfig &config, uint32_t level);
+    /** @brief See base clase for documentation */
+    virtual void dynamicReconfigureCallback(ConstrainedIKPlannerDynamicReconfigureConfig &config, uint32_t level);
 
   protected:
-    typedef dynamic_reconfigure::Server<ConstrainedIKPlannerDynamicReconfigureConfig> DynReconfigServer;
+    typedef dynamic_reconfigure::Server<ConstrainedIKPlannerDynamicReconfigureConfig> DynReconfigServer; /**< Type definition for the CLIK dynamic reconfigure server */
 
-    ros::NodeHandle nh_;
-    ConstrainedIKPlannerDynamicReconfigureConfig config_;
-    boost::scoped_ptr<DynReconfigServer> dynamic_reconfigure_server_;
-    boost::recursive_mutex mutex_;
-
-    /** Containes all the availble CLIK planners */
-    std::map< std::string, constrained_ik::CLIKPlanningContextPtr> planners_;
+    ros::NodeHandle nh_; /**< ROS node handle */
+    ConstrainedIKPlannerDynamicReconfigureConfig config_; /**< Planner configuration parameters */
+    boost::scoped_ptr<DynReconfigServer> dynamic_reconfigure_server_; /**< Dynamic reconfigure server object */
+    boost::recursive_mutex mutex_; /**< Mutex */
+    std::map<std::string, constrained_ik::CLIKPlanningContextPtr> planners_; /**< Containes all the availble CLIK planners */
   };
 } //namespace constrained_ik
 #endif //CONSTRAINED_IK_PLANNER_PLUGIN_H

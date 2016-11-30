@@ -1,8 +1,6 @@
 /**
  * @file constrained_ik.cpp
- * @brief Basic low-level kinematics functions.
- *
- * Typically, just wrappers around the equivalent KDL calls.
+ * @brief Constrained Inverse Kinematic Solver
  *
  * @author dsolomon
  * @date Sep 15, 2013
@@ -11,14 +9,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,7 +29,7 @@
 #include <constrained_ik/constraint_results.h>
 #include <ros/ros.h>
 
-const std::vector<std::string> SUPPORTED_COLLISION_DETECTORS = {"IndustrialFCL", "CollisionDetectionOpenVDB"};
+const std::vector<std::string> SUPPORTED_COLLISION_DETECTORS = {"IndustrialFCL", "CollisionDetectionOpenVDB"}; /**< Supported collision detector */
 
 namespace constrained_ik
 {
@@ -42,6 +40,64 @@ using Eigen::Affine3d;
 Constrained_IK::Constrained_IK():nh_("~")
 {
   initialized_ = false;
+}
+
+void Constrained_IK::addConstraintsFromParamServer(const std::string &parameter_name)
+{
+  XmlRpc::XmlRpcValue constraints_xml;
+  boost::shared_ptr<pluginlib::ClassLoader<constrained_ik::Constraint> > constraint_loader;
+
+  constraint_loader.reset(new pluginlib::ClassLoader<constrained_ik::Constraint>("constrained_ik", "constrained_ik::Constraint"));
+
+  if (!nh_.getParam(parameter_name, constraints_xml))
+  {
+    ROS_ERROR("Unable to find ros parameter: %s", parameter_name.c_str());
+    ROS_BREAK();
+    return;
+  }
+
+  if(constraints_xml.getType() != XmlRpc::XmlRpcValue::TypeArray)
+  {
+    ROS_ERROR("ROS parameter %s must be an array", parameter_name.c_str());
+    ROS_BREAK();
+    return;
+  }
+
+  for (int i=0; i<constraints_xml.size(); ++i)
+  {
+    XmlRpc::XmlRpcValue constraint_xml = constraints_xml[i];
+
+    if (constraint_xml.hasMember("class") &&
+              constraint_xml["class"].getType() == XmlRpc::XmlRpcValue::TypeString &&
+              constraint_xml.hasMember("primary") &&
+              constraint_xml["primary"].getType() == XmlRpc::XmlRpcValue::TypeBoolean)
+    {
+      std::string class_name = constraint_xml["class"];
+      bool is_primary = constraint_xml["primary"];
+
+      Constraint *constraint;
+      try
+      {
+        constraint = constraint_loader->createUnmanagedInstance(class_name);
+
+        constraint->loadParameters(constraint_xml);
+        if (is_primary)
+          addConstraint(constraint, constraint_types::Primary);
+        else
+          addConstraint(constraint, constraint_types::Auxiliary);
+
+      }
+      catch (pluginlib::PluginlibException& ex)
+      {
+        ROS_ERROR("Couldn't load constraint named %s.\n Error: %s", class_name.c_str(), ex.what());
+        ROS_BREAK();
+      }
+    }
+    else
+    {
+      ROS_ERROR("Constraint must have class(string) and primary(boolean) members");
+    }
+  }
 }
 
 void Constrained_IK::dynamicReconfigureCallback(ConstrainedIKDynamicReconfigureConfig &config, uint32_t level)
@@ -191,15 +247,21 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     constrained_ik::ConstraintResults primary = evalConstraint(constraint_types::Primary, state);
     // TODO since we already have J_p = USV, use that to get null-projection too.
     // otherwise, we are repeating the expensive calculation of the SVD
-    MatrixXd Ji_p = calcDampedPseudoinverse(primary.jacobian);
-    VectorXd dJoint_p = config_.primary_gain*(Ji_p*primary.error);
-    dJoint_norm = dJoint_p.norm();
-    if(config_.allow_primary_normalization && dJoint_norm > config_.primary_norm)// limit maximum update radian/meter
+
+    VectorXd dJoint_p;
+    dJoint_p.setZero(joint_seed.size());
+    if (!primary.isEmpty()) // This is required because not all constraints always return data.
     {
-      dJoint_p = config_.primary_norm * (dJoint_p/dJoint_norm);
+      MatrixXd Ji_p = calcDampedPseudoinverse(primary.jacobian);
+      dJoint_p = config_.primary_gain*(Ji_p*primary.error);
       dJoint_norm = dJoint_p.norm();
+      if(config_.allow_primary_normalization && dJoint_norm > config_.primary_norm)// limit maximum update radian/meter
+      {
+        dJoint_p = config_.primary_norm * (dJoint_p/dJoint_norm);
+        dJoint_norm = dJoint_p.norm();
+      }
+      state.primary_sum += dJoint_norm;
     }
-    state.primary_sum += dJoint_norm;
 
     // Auxiliary Constraints
     VectorXd dJoint_a;
@@ -236,7 +298,7 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     
     if (status == Converged)
     {
-      ROS_DEBUG_STREAM("IK solution: " << joint_angles.transpose());
+      ROS_DEBUG_STREAM("Found IK solution in " << state.iter << " iterations: " << joint_angles.transpose());
       return true;
     }
     else if (status == NotConverged)

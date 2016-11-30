@@ -1,0 +1,9 @@
+example_yaml:
+  constraints:
+  -
+    class: constrained_ik/AvoidSingularities
+    primary: true
+    enable_threshold: 0.01
+    ignore_threshold: 1e-5
+    weight: 1.0
+    debug: true

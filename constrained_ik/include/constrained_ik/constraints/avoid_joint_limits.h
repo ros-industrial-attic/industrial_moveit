@@ -13,14 +13,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -39,11 +39,15 @@ namespace constraints
 {
 
 /**
+ * @class constrained_ik::constraints::AvoidJointLimits
  * @brief Constraint to avoid joint position limits
  *
  * Using cubic velocity ramp, it pushes each joint away from its limits,
  * with a maximimum velocity of 2*threshold*(joint range).
  * Only affects joints that are within theshold of joint limit.
+ *
+ * @par Examples:
+ * All examples are located here @ref avoid_joint_limits_example
  */
 class AvoidJointLimits: public Constraint
 {
@@ -79,20 +83,21 @@ protected:
     double cubicVelRamp(double angle, double limit) const;
   };
 
-  std::vector<LimitsT> limits_;
-  double weight_;
+  std::vector<LimitsT> limits_; /**< @brief vector holding joint limit data */
+  double weight_;  /**< @brief weights used to scale the jocabian and error */
   double threshold_;   /**< @brief threshold (% of range) at which to engage limit avoidance */
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
+  /** @brief This structure stores constraint data */
   struct AvoidJointLimitsData: public ConstraintData
   {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     std::vector<int> limited_joints_;  /**< @brief list of joints that will be constrained */
-    const constraints::AvoidJointLimits* parent_;
+    const constraints::AvoidJointLimits* parent_; /**< @brief pointer to parent class object */
+
+    /** @brief See base class for documentation */
     AvoidJointLimitsData(const constrained_ik::SolverState &state, const constraints::AvoidJointLimits* parent);
-    virtual ~AvoidJointLimitsData() {}
 
     /**
      * @brief Check if a given joint is near its lower limit
@@ -106,37 +111,10 @@ public:
      * @param idx Index of joint
      * @return True if joint position is within threshold of upper limit
      */
-    bool nearUpperLimit(size_t idx);
+    bool nearUpperLimit(size_t idx) const;
   };
 
-  AvoidJointLimits(): Constraint(), weight_(1.0), threshold_(0.05) {}
-  virtual ~AvoidJointLimits() {}
-
-  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
-
-  /**
-   * @brief Creates jacobian rows corresponding to joint velocity limit avoidance
-   * Each limited joint gets a 0 row with a 1 in that joint's column
-   * @param cdata, The constraint specific data
-   * @return Pseudo-Identity scaled by weight_
-   */
-  Eigen::MatrixXd calcJacobian(const AvoidJointLimitsData &cdata) const;
-
-  /**
-   * @brief Creates vector representing velocity error term
-   * corresponding to calcJacobian()
-   * @param cdata, The constraint specific data.
-   * @return VectorXd of joint velocities for joint limit avoidance
-   */
-  Eigen::VectorXd calcError(const AvoidJointLimitsData &cdata) const;
-
-  /**
-   * @brief Checks termination criteria
-   * There are no termination criteria for this constraint
-   * @param cdata, The constraint specific data.
-   * @return True
-   */
-  bool checkStatus(const AvoidJointLimitsData &cdata) const;
+  AvoidJointLimits();
 
   /**
    * @brief Initialize constraint (overrides Constraint::init)
@@ -144,37 +122,61 @@ public:
    * Should be called before using class.
    * @param ik Pointer to Constrained_IK used for base-class init
    */
-  virtual void init(const Constrained_IK* ik);
+  void init(const Constrained_IK* ik) override;
+
+  /** @brief see base class for documentation*/
+  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+
+  /** @brief see base class for documentation */
+  void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) override;
 
   /**
-   * @brief Load constraint parameters from XmlRpc::XmlRpcValue
-   * @param constraint_xml XmlRpc::XmlRpcValue
+   * @brief Creates jacobian rows corresponding to joint velocity limit avoidance
+   * Each limited joint gets a 0 row with a 1 in that joint's column
+   * @param cdata The constraint specific data
+   * @return Pseudo-Identity scaled by weight_
    */
-  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml);
+  virtual Eigen::MatrixXd calcJacobian(const AvoidJointLimitsData &cdata) const;
+
+  /**
+   * @brief Creates vector representing velocity error term
+   * corresponding to calcJacobian()
+   * @param cdata The constraint specific data.
+   * @return VectorXd of joint velocities for joint limit avoidance
+   */
+  virtual Eigen::VectorXd calcError(const AvoidJointLimitsData &cdata) const;
+
+  /**
+   * @brief Checks termination criteria
+   * There are no termination criteria for this constraint
+   * @param cdata The constraint specific data.
+   * @return True
+   */
+  virtual bool checkStatus(const AvoidJointLimitsData &cdata) const {return true;}
 
   /**
    * @brief getter for weight_
    * @return weight_
    */
-  double getWeight() {return weight_;}
+  virtual double getWeight() const {return weight_;}
 
   /**
    * @brief setter for weight_
    * @param weight Value to set weight_ to
    */
-  void setWeight(const double &weight) {weight_ = weight;}
+  virtual void setWeight(const double &weight) {weight_ = weight;}
   
   /**
    * @brief getter for threshold_
    * @return threshold_
    */
-  double getThreshold() {return threshold_;}
+  virtual double getThreshold() const {return threshold_;}
 
   /**
    * @brief setter for threshold_
-   * @param weight Value to set threshold_ to
+   * @param threshold Value to set threshold_ to
    */
-  void setThreshold(const double &threshold) {threshold_ = threshold;}
+  virtual void setThreshold(const double &threshold) {threshold_ = threshold;}
 };
 
 } /* namespace constraints */
