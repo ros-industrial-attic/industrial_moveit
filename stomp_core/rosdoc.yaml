@@ -1,0 +1,2 @@
+- builder: doxygen
+  extract_all: NO

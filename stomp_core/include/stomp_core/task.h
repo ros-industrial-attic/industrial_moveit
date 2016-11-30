@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,8 +35,9 @@ namespace stomp_core
 {
 
 class Task;
-typedef boost::shared_ptr<Task> TaskPtr;
+typedef boost::shared_ptr<Task> TaskPtr; /**< Defines a boost shared ptr for type Task */
 
+/** @brief Defines the STOMP improvement policy */
 class Task
 {
 
@@ -44,18 +45,16 @@ public:
 
     Task(){}
 
-    virtual ~Task(){};
-
     /**
      * @brief Generates a noisy trajectory from the parameters.
-     * @param parameters        [num_dimensions] x [num_parameters] the current value of the optimized parameters
-     * @param start_timestep    start index into the 'parameters' array, usually 0.
-     * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+     * @param parameters        A matrix [num_dimensions][num_parameters] of the current optimized parameters
+     * @param start_timestep    The start index into the 'parameters' array, usually 0.
+     * @param num_timesteps     The number of elements to use from 'parameters' starting from 'start_timestep'
      * @param iteration_number  The current iteration count in the optimization loop
-     * @param rollout_number    index of the noisy trajectory.
-     * @param parameters_noise  the parameters + noise
-     * @param noise             the noise applied to the parameters
-     * @return true if cost were properly computed
+     * @param rollout_number    The index of the noisy trajectory.
+     * @param parameters_noise  The parameters + noise
+     * @param noise             The noise applied to the parameters
+     * @return True if cost were properly computed, otherwise false
      */
     virtual bool generateNoisyParameters(const Eigen::MatrixXd& parameters,
                                          std::size_t start_timestep,
@@ -67,14 +66,14 @@ public:
 
     /**
      * @brief computes the state costs as a function of the noisy parameters for each time step.
-     * @param parameters [num_dimensions] num_parameters - policy parameters to execute
-     * @param start_timestep    start index into the 'parameters' array, usually 0.
-     * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+     * @param parameters        A matrix [num_dimensions][num_parameters] of the policy parameters to execute
+     * @param start_timestep    The start index into the 'parameters' array, usually 0.
+     * @param num_timesteps     The number of elements to use from 'parameters' starting from 'start_timestep'
      * @param iteration_number  The current iteration count in the optimization loop
-     * @param rollout_number index of the noisy trajectory whose cost is being evaluated.
-     * @param costs vector containing the state costs per timestep.
-     * @param validity whether or not the trajectory is valid
-     * @return true if cost were properly computed
+     * @param rollout_number    The index of the noisy trajectory whose cost is being evaluated.
+     * @param costs vector      A vector containing the state costs per timestep.
+     * @param validity          Whether or not the trajectory is valid
+     * @return True if cost were properly computed, otherwise false
      */
     virtual bool computeNoisyCosts(const Eigen::MatrixXd& parameters,
                          std::size_t start_timestep,
@@ -86,13 +85,13 @@ public:
 
     /**
      * @brief computes the state costs as a function of the optimized parameters for each time step.
-     * @param parameters        [num_dimensions] num_parameters - policy parameters to execute
-     * @param start_timestep    start index into the 'parameters' array, usually 0.
-     * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+     * @param parameters        A matrix [num_dimensions][num_parameters] of the policy parameters to execute
+     * @param start_timestep    The start index into the 'parameters' array, usually 0.
+     * @param num_timesteps     The number of elements to use from 'parameters' starting from 'start_timestep'
      * @param iteration_number  The current iteration count in the optimization loop
-     * @param costs             vector containing the state costs per timestep.
-     * @param validity          whether or not the trajectory is valid
-     * @return true if cost were properly computed
+     * @param costs             A vector containing the state costs per timestep.
+     * @param validity          Whether or not the trajectory is valid
+     * @return True if cost were properly computed, otherwise false
      */
     virtual bool computeCosts(const Eigen::MatrixXd& parameters,
                          std::size_t start_timestep,
@@ -105,13 +104,13 @@ public:
      * @brief Filters the given noisy parameters which is applied after noisy trajectory generation. It could be used for clipping
      * of joint limits or projecting into the null space of the Jacobian.
      *
-     * @param start_timestep    start index into the 'parameters' array, usually 0.
-     * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+     * @param start_timestep    The start index into the 'parameters' array, usually 0.
+     * @param num_timesteps     The number of elements to use from 'parameters' starting from 'start_timestep'
      * @param iteration_number  The current iteration count in the optimization loop
      * @param rollout_number    The rollout index for this noisy parameter set
      * @param parameters        The noisy parameters     *
      * @param filtered          False if no filtering was done
-     * @return false if no filtering was done
+     * @return False if no filtering was done, otherwise true
      */
     virtual bool filterNoisyParameters(std::size_t start_timestep,
                                        std::size_t num_timesteps,
@@ -122,18 +121,18 @@ public:
     {
       filtered = false;
       return true;
-    };
+    }
 
     /**
      * @brief Filters the given parameters which is applied after the update. It could be used for clipping of joint limits
      * or projecting into the null space of the Jacobian.
      *
-     * @param start_timestep    start index into the 'parameters' array, usually 0.
-     * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+     * @param start_timestep    The start index into the 'parameters' array, usually 0.
+     * @param num_timesteps     The number of elements to use from 'parameters' starting from 'start_timestep'
      * @param iteration_number  The current iteration count in the optimization loop
      * @param parameters        The optimized parameters
      * @param updates           The updates to the parameters
-     * @return                  False if there was a failure
+     * @return                  True if successful, otherwise false
      */
     virtual bool filterParameterUpdates(std::size_t start_timestep,
                                   std::size_t num_timesteps,
@@ -142,7 +141,7 @@ public:
                                   Eigen::MatrixXd& updates)
     {
       return true;
-    };
+    }
 
 
     /**
