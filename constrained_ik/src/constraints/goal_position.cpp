@@ -1,35 +1,35 @@
 /**
-* @file goal_position.cpp
-* @brief Constraint to specify cartesian goal position (XYZ)
-*
-* @author dsolomon
-* @date Sep 23, 2013
-* @version TODO
-* @bug No known bugs
-*
-* @copyright Copyright (c) 2013, Southwest Research Institute
-*
-* @license Software License Agreement (Apache License)\n
-* \n
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at\n
-* \n
-* http://www.apache.org/licenses/LICENSE-2.0\n
-* \n
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * @file goal_position.cpp
+ * @brief Constraint to specify cartesian goal position (XYZ)
+ *
+ * @author dsolomon
+ * @date Sep 23, 2013
+ * @version TODO
+ * @bug No known bugs
+ *
+ * @copyright Copyright (c) 2013, Southwest Research Institute
+ *
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_position.h"
 #include <ros/assert.h>
 #include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalPosition, constrained_ik::Constraint)
 
-const double DEFAULT_POSITION_TOLERANCE = 0.001;
+const double DEFAULT_POSITION_TOLERANCE = 0.001; /**< Default positional convergance criteria */
 
 namespace constrained_ik
 {
@@ -98,9 +98,14 @@ bool GoalPosition::checkStatus(const GoalPosition::GoalPositionData &cdata) cons
 void GoalPosition::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
 {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (!getParam(local_xml, "position_tolerance", pos_err_tol_))
+  double pos_tol;
+  if (getParam(local_xml, "position_tolerance", pos_tol))
   {
-    ROS_WARN("Goal Position: Unable to retrieving position_tolerance member, default parameter will be used.");
+    setTolerance(pos_tol);
+  }
+  else
+  {
+    ROS_WARN("Goal Position: Unable to retrieve position_tolerance member, default parameter will be used.");
   }
 
   Eigen::VectorXd weights;
@@ -108,7 +113,7 @@ void GoalPosition::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
   {
     if (weights.size() == 3)
     {
-      weight_ = weights;
+      setWeight(weights);
     }
     else
     {
@@ -117,7 +122,17 @@ void GoalPosition::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
   }
   else
   {
-    ROS_WARN("Gool Position: Unable to retrieving weights member, default parameter will be used.");
+    ROS_WARN("Gool Position: Unable to retrieve weights member, default parameter will be used.");
+  }
+
+  bool debug;
+  if (getParam(local_xml, "position_tolerance", debug))
+  {
+    setDebug(debug);
+  }
+  else
+  {
+    ROS_WARN("Goal Position: Unable to retrieve debug member, default parameter will be used.");
   }
 }
 

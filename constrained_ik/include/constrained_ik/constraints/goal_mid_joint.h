@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,34 +32,50 @@ namespace constrained_ik
 {
 namespace constraints
 {
-
-/** @brief Constraint to push joint to center of its range */
+/**
+ * @class constrained_ik::constraints::GoalMidJoint
+ * @brief Constraint to push joint to center of its range
+ *
+ * @par Examples:
+ * All examples are located here @ref goal_mid_joint_example
+ */
 class GoalMidJoint : public Constraint
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   GoalMidJoint();
-  virtual ~GoalMidJoint() {}
 
-  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
+  /**
+   * @brief Initialize constraint (overrides Constraint::init)
+   * Initializes internal variable representing mid-range of each joint
+   * Should be called before using class.
+   * @param ik Pointer to Constrained_IK used for base-class init
+   */
+  void init(const Constrained_IK *ik) override;
+
+  /** @brief see base class for documentation*/
+  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+
+  /** @brief see base class for documentation*/
+  void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) override;
 
   /**
    * @brief Jacobian is identity because all joints are affected
-   * @param cdata, The constraint specific data.
+   * @param cdata The constraint specific data.
    * @return Identity scaled by weight_
    */
   virtual Eigen::MatrixXd calcJacobian(const ConstraintData &cdata) const;
 
   /**
    * @brief Desired joint velocity is difference between min-range and current position
-   * @param cdata, The constraint specific data.
+   * @param cdata The constraint specific data.
    * @return difference in joint position scaled by weight
    */
   virtual Eigen::VectorXd calcError(const ConstraintData &cdata) const;
 
   /**
    * @brief Termination criteria for mid-joint constraint
-   * @param cdata, The constraint specific data.
+   * @param cdata The constraint specific data.
    * @return True always (no termination criteria)
    */
   virtual bool checkStatus(const ConstraintData &cdata) const { return true;} //always return true
@@ -68,29 +84,15 @@ public:
    * @brief Getter for weight_
    * @return weight_
    */
-  double getWeight() {return weight_;}
-
-  /**
-   * @brief Initialize constraint (overrides Constraint::init)
-   * Initializes internal variable representing mid-range of each joint
-   * Should be called before using class.
-   * @param ik Pointer to Constrained_IK used for base-class init
-   */
-  void init(const Constrained_IK *ik);
-
-  /**
-   * @brief Load constraint parameters from XmlRpc::XmlRpcValue
-   * @param constraint_xml XmlRpc::XmlRpcValue
-   */
-  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml);
+  virtual double getWeight() const {return weight_;}
 
   /**@brief setter for weight_
    * @param weight Value to set weight_ to
    */
-  void setWeight(double weight) {weight_ = weight;}
+  virtual void setWeight(double weight) {weight_ = weight;}
 
 protected:
-  double weight_;
+  double weight_; /**< @brief weights used to scale the jocabian and error */
   Eigen::VectorXd mid_range_;   /**< @brief mid-range of each joint */
 
 }; // class GoalMidJoint

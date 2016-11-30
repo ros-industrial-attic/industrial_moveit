@@ -13,14 +13,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,6 +33,9 @@
 #include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::AvoidJointLimits, constrained_ik::Constraint)
 
+const double DEFAULT_THRESHOLD = 0.05; /**< Default threshold */
+const double DEFAULT_WEIGHT = 1.0; /**< Default weight */
+
 namespace constrained_ik
 {
 namespace constraints
@@ -40,6 +43,8 @@ namespace constraints
 
 using namespace Eigen;
 using namespace std;
+
+AvoidJointLimits::AvoidJointLimits(): Constraint(), weight_(DEFAULT_WEIGHT), threshold_(DEFAULT_THRESHOLD) {}
 
 constrained_ik::ConstraintResults AvoidJointLimits::evalConstraint(const SolverState &state) const
 {
@@ -81,7 +86,7 @@ Eigen::VectorXd AvoidJointLimits::calcError(const AvoidJointLimits::AvoidJointLi
     {
         ROS_WARN_STREAM("iteration " << cdata.state_.iter << std::endl <<
                          "Joint position: " << cdata.state_.joints(jntIdx) << " / " << limit << std::endl <<
-                         "velocity error: " << error(ii) << " / " << lim.e/2.0);
+                         "velocity error: " << error(ii));
     }
   }
   return error;
@@ -105,15 +110,6 @@ Eigen::MatrixXd AvoidJointLimits::calcJacobian(const AvoidJointLimits::AvoidJoin
   return jacobian;
 }
 
-bool AvoidJointLimits::checkStatus(const AvoidJointLimits::AvoidJointLimitsData &cdata) const
-{
-    size_t n = cdata.state_.joints.size();
-    for (size_t ii = 0; ii<n; ++ii)
-        if (cdata.state_.joints[ii] > limits_[ii].max_pos || cdata.state_.joints[ii] < limits_[ii].min_pos)
-            return false;
-    return true;
-}
-
 void AvoidJointLimits::init(const Constrained_IK *ik)
 {
   Constraint::init(ik);
@@ -127,19 +123,41 @@ void AvoidJointLimits::init(const Constrained_IK *ik)
 void AvoidJointLimits::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
 {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (!getParam(local_xml, "threshold", threshold_))
+  double threshold;
+  if (getParam(local_xml, "threshold", threshold))
   {
-    ROS_WARN("Avoid Joint Limits: Unable to retrieving threshold member, default parameter will be used.");
+    setThreshold(threshold);
+  }
+  else
+  {
+    ROS_WARN("Avoid Joint Limits: Unable to retrieve threshold member, default parameter will be used.");
   }
 
-  if (!getParam(local_xml, "weight", weight_))
+  double weight;
+  if (getParam(local_xml, "weight", weight))
   {
-    ROS_WARN("Avoid Joint Limits: Unable to retrieving weight member, default parameter will be used.");
+    setWeight(weight);
+  }
+  else
+  {
+    ROS_WARN("Avoid Joint Limits: Unable to retrieve weight member, default parameter will be used.");
+  }
+
+  bool debug;
+  if (getParam(local_xml, "debug", debug))
+  {
+    setDebug(debug);
+  }
+  else
+  {
+    ROS_WARN("Avoid Joint Limits: Unable to retrieve debug member, default parameter will be used.");
   }
 }
 
-
-// TODO: Move this to a common "utils" file
+/**
+ * @brief Write std::vector to cout
+ * @todo Move this to constrained_ik_utils.h
+ */
 template<class T>
 std::ostream& operator<< (std::ostream& os, const std::vector<T>& v)
 {
@@ -174,7 +192,7 @@ bool AvoidJointLimits::AvoidJointLimitsData::nearLowerLimit(size_t idx) const
   return state_.joints(idx) < parent_->limits_[idx].lower_thresh;
 }
 
-bool AvoidJointLimits::AvoidJointLimitsData::nearUpperLimit(size_t idx)
+bool AvoidJointLimits::AvoidJointLimitsData::nearUpperLimit(size_t idx) const
 {
   if (idx >= state_.joints.size() || idx >= parent_->limits_.size() )
     return false;

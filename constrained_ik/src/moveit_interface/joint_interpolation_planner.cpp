@@ -15,14 +15,14 @@
  *
  * @copyright Copyright (c) 2015, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,6 +38,20 @@
 
 namespace constrained_ik
 {
+  bool JointInterpolationPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
+  {
+    planning_interface::MotionPlanResponse response;
+    bool success = solve(response);
+
+    // construct the compact response from the detailed one
+    res.trajectory_.push_back(response.trajectory_);
+    res.processing_time_.push_back(response.planning_time_);
+    res.description_.push_back("Joint interpolation Planner");
+    res.error_code_ = response.error_code_;
+
+    return success;
+  }
+
   bool JointInterpolationPlanner::solve(planning_interface::MotionPlanResponse &res)
   {
     ros::WallTime start_time = ros::WallTime::now();

@@ -1,30 +1,30 @@
 /**
-* @file test_BasicKin.cpp
-* @brief Test Fixtures
-*
-* Consolidate variable-definitions and init functions for use by multiple tests.
-*
-* @author dsolomon
-* @date Sep 23, 2013
-* @version TODO
-* @bug No known bugs
-*
-* @copyright Copyright (c) 2013, Southwest Research Institute
-*
-* @license Software License Agreement (Apache License)\n
-* \n
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at\n
-* \n
-* http://www.apache.org/licenses/LICENSE-2.0\n
-* \n
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * @file test_basic_kin.cpp
+ * @brief Test Fixtures
+ *
+ * Consolidate variable-definitions and init functions for use by multiple tests.
+ *
+ * @author dsolomon
+ * @date Sep 23, 2013
+ * @version TODO
+ * @bug No known bugs
+ *
+ * @copyright Copyright (c) 2013, Southwest Research Institute
+ *
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <gtest/gtest.h>
 #include <ros/ros.h>
 #include <constrained_ik/basic_kin.h>
@@ -38,8 +38,8 @@ using constrained_ik::basic_kin::BasicKin;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-const std::string GROUP_NAME = "manipulator";
-const std::string ROBOT_DESCRIPTION_PARAM = "robot_description";
+const std::string GROUP_NAME = "manipulator"; /**< Default group name for tests */
+const std::string ROBOT_DESCRIPTION_PARAM = "robot_description"; /**< Default ROS parameter for robot description */
 
 /**
  * @brief Test Fixtures
@@ -48,26 +48,35 @@ const std::string ROBOT_DESCRIPTION_PARAM = "robot_description";
 class BaseTest : public :: testing::Test
 {
 protected:
-  BasicKin kin;
+  BasicKin kin; /**< Basic Kinematic Model of the robot.  */
 };
 
+/** @brief The RobotTest Test Fixture Class*/
 class RobotTest : public BaseTest
 {
 protected:
 
-  robot_model_loader::RobotModelLoaderPtr loader_;
-  moveit::core::RobotModelPtr robot_model_;
+  robot_model_loader::RobotModelLoaderPtr loader_; /**< Used to load the robot model */
+  moveit::core::RobotModelPtr robot_model_; /**< Robot model */
 
+  /** @brief See base class for documention */
   virtual void SetUp()
   {
 
     loader_.reset(new robot_model_loader::RobotModelLoader(ROBOT_DESCRIPTION_PARAM));
     robot_model_ = loader_->getModel();
 
-    ASSERT_TRUE(robot_model_);
+    ASSERT_TRUE(robot_model_ != nullptr);
     ASSERT_TRUE(kin.init(robot_model_->getJointModelGroup(GROUP_NAME)));
   }
 
+  /**
+   * @brief Compares two poses to see if they are with in the provided tolerance
+   * @param actual pose
+   * @param expected pose
+   * @param tol tolerance allowed
+   * @return True if the difference is smaller than the tolerance, otherwise false
+   */
   bool comparePoses(const std::vector<KDL::Frame> &actual, const std::vector<KDL::Frame> &expected, const double tol = 1e-6)
   {
       bool rtn;
@@ -89,9 +98,16 @@ protected:
   }
 };
 
+/** @brief The PInvTest Test Fixture Class */
 class PInvTest : public RobotTest
 {
 protected:
+  /**
+   * @brief Used to test basic kin damped pseudo inverse function
+   * @param rows number of rows
+   * @param cols number of columns
+   * @return True if correct, otherwise false
+   */
   bool test_random(int rows, int cols)
   {
     MatrixXd A = MatrixXd::Random(rows, cols);
@@ -104,21 +120,15 @@ protected:
   }
 };
 
-typedef RobotTest init;
-typedef RobotTest calcFwdKin;
-typedef RobotTest calcJacobian;
-typedef RobotTest linkTransforms;
-typedef PInvTest  solvePInv;
-/* ---------------------------------------------------------------- */
-
-TEST_F(init, inputValidation)
+/** @brief This tests the BasicKin init function */
+TEST_F(RobotTest, inputValidation)
 {
   EXPECT_FALSE(kin.init(NULL));
   EXPECT_TRUE(kin.init(robot_model_->getJointModelGroup(GROUP_NAME)));
 }
 
-
-TEST_F(linkTransforms, inputValidation)
+/** @brief This performs input validation test for the BasicKin linkTransforms function */
+TEST_F(RobotTest, linkTransformsInputValidation)
 {
     std::vector<std::string> link_names = boost::assign::list_of("shoulder_link")("upper_arm_link")("forearm_link")("wrist_1_link")("wrist_2_link")("wrist_3_link");
     std::vector<KDL::Frame> poses;
@@ -146,8 +156,8 @@ TEST_F(linkTransforms, inputValidation)
     EXPECT_FALSE(kin.linkTransforms(VectorXd::Zero(6), poses, link_names_short));                   // invalid & short link list
 }
 
-
-TEST_F(linkTransforms, knownPoses)
+/** @brief This tests the BasicKin linkTransforms function against known poses */
+TEST_F(RobotTest, linkTransformsKnownPoses)
 {
     using KDL::Rotation;
     using KDL::Vector;
@@ -226,8 +236,8 @@ TEST_F(linkTransforms, knownPoses)
     EXPECT_FALSE(comparePoses(actual, expected, 1e-4));
 }
 
-
-TEST_F(calcFwdKin, inputValidation)
+/** @brief This performs input validation for the BasicKin calcFwdKin function */
+TEST_F(RobotTest, calcFwdKinInputValidation)
 {
   //test for calcFwdKin(joints, pose)
   Eigen::Affine3d pose;
@@ -241,8 +251,8 @@ TEST_F(calcFwdKin, inputValidation)
   EXPECT_TRUE(kin.calcFwdKin(VectorXd::Zero(6), pose));             // valid input
 }
 
-
-TEST_F(calcFwdKin, knownPoses)
+/** @brief This tests the BasicKin calcFwdKin function against known poses */
+TEST_F(RobotTest, calcFwdKinKnownPoses)
 {
   VectorXd joints = VectorXd::Zero(6);
   Eigen::Affine3d expected, result;
@@ -276,8 +286,8 @@ TEST_F(calcFwdKin, knownPoses)
 
 }
 
-
-TEST_F(calcJacobian, inputValidation)
+/** @brief This performs input validation for the BasicKin calcJacobian function */
+TEST_F(RobotTest, calcJacobianInputValidation)
 {
     Eigen::MatrixXd jacobian;
     EXPECT_FALSE(BasicKin().calcJacobian(VectorXd(), jacobian));            // un-init BasicKin & Jnts
@@ -289,8 +299,8 @@ TEST_F(calcJacobian, inputValidation)
     EXPECT_TRUE(kin.calcJacobian(VectorXd::Zero(6), jacobian));             // valid input
 }
 
-
-TEST_F(calcJacobian, knownPoses)
+/** @brief This tests the BasicKin calcJacobian function against known poses */
+TEST_F(RobotTest, calcJacobianKnownPoses)
 {
   VectorXd joints = VectorXd(6);
   VectorXd updated_joints = VectorXd(6);
@@ -335,8 +345,8 @@ TEST_F(calcJacobian, knownPoses)
   }
 }
 
-
-TEST_F(solvePInv, inputValidation)
+/** @brief This performs input validation for the BasicKin solvePInv function */
+TEST_F(PInvTest, solvePInvInputValidation)
 {
   VectorXd vResult;
 
@@ -347,8 +357,8 @@ TEST_F(solvePInv, inputValidation)
   EXPECT_TRUE(kin.solvePInv(MatrixXd::Zero(6,6), VectorXd::Zero(6), vResult));
 }
 
-
-TEST_F(solvePInv, randomInputs)
+/** @brief This test exercises the BasicKin solvePInv function with random inputs */
+TEST_F(PInvTest, solvePInvRandomInputs)
 {
   VectorXd vResult;
 
@@ -361,7 +371,7 @@ TEST_F(solvePInv, randomInputs)
     ASSERT_TRUE(test_random(10, 5));
 }
 
-
+/** @brief This executes all tests for the BasicKin Class */
 int main(int argc, char **argv)
 {
   testing::InitGoogleTest(&argc, argv);

@@ -1,0 +1,8 @@
+example_namespace:
+  constraints:
+  -
+    class: constrained_ik/JointVelLimits
+    primary: true
+    timestep: 0.1
+    weight: 1.0
+    debug: true

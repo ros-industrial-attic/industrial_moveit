@@ -48,5 +48,6 @@
       <moveit_core plugin="${prefix}/constrained_ik_plugin.xml"/>
       <moveit_core plugin="${prefix}/constrained_ik_planner_plugin_description.xml"/>
       <constrained_ik plugin="${prefix}/constrained_ik_constraint_plugin_description.xml"/>
+      <rosdoc config="rosdoc.yaml"/>
   </export>
 </package>

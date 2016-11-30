@@ -1,0 +1,8 @@
+example_namespace:
+  constraints:
+  -
+    class: constrained_ik/AvoidJointLimits
+    primary: true
+    threshold: 0.05
+    weight: 1.0
+    debug: true

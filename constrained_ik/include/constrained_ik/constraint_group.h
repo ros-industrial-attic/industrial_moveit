@@ -11,14 +11,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,29 +35,37 @@
 namespace constrained_ik
 {
 
-/**
- * @brief Group of constraints for use in iterative constrained_IK solver
- */
+/** @brief Group of constraints for use in iterative constrained_IK solver */
 class ConstraintGroup : public Constraint
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   ConstraintGroup();
-  virtual ~ConstraintGroup() {}
 
-  virtual ConstraintResults evalConstraint(const SolverState &state) const;
+  /** @brief See base clase for documentation */
+  ConstraintResults evalConstraint(const SolverState &state) const override;
 
-  virtual void init(const Constrained_IK* ik);
+  /** @brief See base clase for documentation */
+  void init(const Constrained_IK* ik) override;
 
+  /**
+   * @brief Add a constrainte to the group
+   * @param constraint to be added
+   */
   virtual void add(Constraint* constraint);
 
+  /** @brief Remove all constraints from the group */
   virtual void clear() { constraints_.clear(); }
 
-  bool empty() const { return constraints_.empty(); }
+  /**
+   * @brief Check if the constraint group is empty.
+   * @return True if empty, otherwise false
+   */
+  virtual bool empty() const { return constraints_.empty(); }
 
 protected:
-  boost::ptr_vector<Constraint> constraints_;
+  boost::ptr_vector<Constraint> constraints_; /**< Vector of constaints in the group */
 
 }; // class ConstraintGroup
 
