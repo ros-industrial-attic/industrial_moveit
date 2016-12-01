@@ -57,6 +57,7 @@ struct SolverState
   collision_detection::CollisionRobotIndustrialConstPtr collision_robot; /**< Pointer to the collision robot, some constraints require it */
   collision_detection::CollisionWorldIndustrialConstPtr collision_world; /**< Pointer to the collision world, some constraints require it */
   moveit::core::RobotStatePtr robot_state; /**< Pointer to the current robot state */
+  std::string group_name; /**< Move group name */
 
   /**
    * @brief SolverState Constructor

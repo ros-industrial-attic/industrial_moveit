@@ -27,7 +27,7 @@
 #define CONSTRAINED_IK_PLUGIN_H_
 
 #include "constrained_ik/basic_kin.h"
-#include "constrained_ik/ik/master_ik.h"
+#include "constrained_ik/constrained_ik.h"
 
 #include <ros/ros.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
@@ -122,7 +122,7 @@ namespace constrained_ik
     planning_scene::PlanningScenePtr planning_scene_; /**< Pointer to planning scene which is used for collision queries */
     moveit::core::RobotStatePtr robot_state_; /**< Robot State Ptr */
     robot_model::RobotModelPtr robot_model_ptr_; /**< Robot Model Ptr */
-    boost::shared_ptr<MasterIK> solver_; /**< Constrained IK Solver */
+    boost::shared_ptr<Constrained_IK> solver_; /**< Constrained IK Solver */
   };
 
 }   //namespace constrained_ik

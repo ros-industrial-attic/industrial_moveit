@@ -40,6 +40,8 @@ using Eigen::Affine3d;
 Constrained_IK::Constrained_IK():nh_("~")
 {
   initialized_ = false;
+
+  loadDefaultSolverConfiguration();
 }
 
 void Constrained_IK::addConstraintsFromParamServer(const std::string &parameter_name)
@@ -100,21 +102,34 @@ void Constrained_IK::addConstraintsFromParamServer(const std::string &parameter_
   }
 }
 
-void Constrained_IK::dynamicReconfigureCallback(ConstrainedIKDynamicReconfigureConfig &config, uint32_t level)
+void Constrained_IK::loadDefaultSolverConfiguration()
 {
-  if (config.limit_auxiliary_motion)
-  {
-    if (config.auxiliary_norm > config.auxiliary_max_motion)
-    {
-      config.auxiliary_norm = config.auxiliary_max_motion;
-    }
-    else if (config.auxiliary_norm < config.auxiliary_max_motion)
-    {
-      unsigned int divisor = floor(config.auxiliary_max_motion/config.auxiliary_norm) + 1;
-      config.auxiliary_norm = config.auxiliary_max_motion/divisor;
-    }
-  }
+  ConstrainedIKConfiguration config;
+  config.debug_mode = false;
+  config.allow_joint_convergence = false;
+  config.allow_primary_normalization = true;
+  config.allow_auxiliary_nomalization = true;
+  config.limit_primary_motion = false;
+  config.limit_auxiliary_motion = false;
+  config.limit_auxiliary_interations = false;
+  config.solver_max_iterations = 500;
+  config.solver_min_iterations = 0;
+  config.auxiliary_max_iterations = 5;
+  config.primary_max_motion = 2.0;
+  config.auxiliary_max_motion = 0.2;
+  config.primary_norm = 1.0;
+  config.auxiliary_norm = 0.2;
+  config.primary_gain = 1.0;
+  config.auxiliary_gain = 1.0;
+  config.joint_convergence_tol = 0.0001;
+
+  setSolverConfiguration(config);
+}
+
+void Constrained_IK::setSolverConfiguration(const ConstrainedIKConfiguration &config)
+{
   config_ = config;
+  validateConstrainedIKConfiguration<ConstrainedIKConfiguration>(config_);
 }
 
 constrained_ik::ConstraintResults Constrained_IK::evalConstraint(constraint_types::ConstraintTypes constraint_type, const constrained_ik::SolverState &state) const
@@ -410,8 +425,6 @@ void Constrained_IK::init(const basic_kin::BasicKin &kin)
     throw std::invalid_argument("Input argument 'BasicKin' must be initialized");
 
   kin_ = kin;
-  dynamic_reconfigure_server_.reset(new dynamic_reconfigure::Server<ConstrainedIKDynamicReconfigureConfig>(mutex_, ros::NodeHandle(nh_, "constrained_ik_solver/" + kin_.getJointModelGroup()->getName())));
-  dynamic_reconfigure_server_->setCallback(boost::bind(&Constrained_IK::dynamicReconfigureCallback, this, _1, _2));
   initialized_ = true;
   primary_constraints_.init(this);
   auxiliary_constraints_.init(this);

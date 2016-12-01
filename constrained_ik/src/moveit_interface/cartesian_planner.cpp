@@ -38,34 +38,37 @@
 
 namespace constrained_ik
 {
-
-  boost::shared_ptr<constrained_ik::MasterIK> CartesianPlanner::getSolver(std::string group_name)
+  CartesianPlanner::CartesianPlanner(const std::string &name, const std::string &group) :
+    constrained_ik::CLIKPlanningContext(name, group),
+    terminate_(false),
+    robot_description_("robot_description")
   {
-    boost::shared_ptr<constrained_ik::MasterIK> solver;
-    std::map<std::string, boost::shared_ptr<constrained_ik::MasterIK> >::iterator it;
-    it = solvers_.find(group_name);
-    if (it==solvers_.end())
-    {
-      solver.reset(new constrained_ik::MasterIK(group_name));
-      basic_kin::BasicKin kin;
+    solver_.reset(new Constrained_IK());
+    std::string constraint_param = "constrained_ik_solver/" + getGroupName() + "/constraints";
+    solver_->addConstraintsFromParamServer(constraint_param);
+  }
 
-      //initialize kinematic solver with robot info
-      bool sucess = kin.init(robot_model_->getJointModelGroup(group_name));
-      if (sucess)
-      {
-        solver->init(kin);
-        solvers_.insert(std::make_pair(group_name, solver));
-      }
-      else
-      {
-        ROS_ERROR("Cartesian planner could not load solver for move_group %s", group_name.c_str());
-      }
-    }
-    else
+  bool CartesianPlanner::initializeSolver()
+  {
+    basic_kin::BasicKin kin;
+    if (!kin.init(robot_model_->getJointModelGroup(getGroupName())))
     {
-      solver = it->second;
+      ROS_ERROR("Cartesian planner could not load solver for move_group %s", getGroupName().c_str());
+      return false;
     }
-    return solver;
+
+    solver_->init(kin);
+    return true;
+  }
+
+  void CartesianPlanner::setSolverConfiguration(const ConstrainedIKConfiguration &config)
+  {
+    solver_->setSolverConfiguration(config);
+  }
+
+  void CartesianPlanner::resetSolverConfiguration()
+  {
+    solver_->loadDefaultSolverConfiguration();
   }
 
   bool CartesianPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
@@ -88,18 +91,20 @@ namespace constrained_ik
     robot_state::RobotStatePtr mid_state;
     std::vector<std::string> joint_names, link_names;
     Eigen::Affine3d start_pose, goal_pose;
-    std::vector<double> pos(1);
 
     robot_model_ = planning_scene_->getRobotModel();
+
+    // Load solver if not already loaded
+    if(!solver_->isInitialized())
+      if (!initializeSolver())
+        return false;
 
     robot_state::RobotState start_state(robot_model_);
     robot_state::robotStateMsgToRobotState(request_.start_state, start_state);
     robot_state::RobotState goal_state = start_state;
     robot_trajectory::RobotTrajectoryPtr traj(new robot_trajectory::RobotTrajectory(robot_model_, request_.group_name));
-    boost::shared_ptr<constrained_ik::MasterIK> solver;
     const robot_model::JointModelGroup *jmg = robot_model_->getJointModelGroup(request_.group_name);
 
-    solver = getSolver(request_.group_name);
     joint_names = jmg->getActiveJointModelNames();
     link_names = jmg->getLinkModelNames();
     start_pose = start_state.getGlobalLinkTransform(link_names.back());
@@ -152,7 +157,7 @@ namespace constrained_ik
     ROS_DEBUG_NAMED("clik", "Setting Position roll  from %f to %f", start_pose.rotation().eulerAngles(3,2,1)(2),goal_pose.rotation().eulerAngles(3,2,1)(2));
 
     // Generate Interpolated Cartesian Poses
-    Eigen::Affine3d world_to_base = start_state.getGlobalLinkTransform(solver->getKin().getRobotBaseLinkName()).inverse();
+    Eigen::Affine3d world_to_base = start_state.getGlobalLinkTransform(solver_->getKin().getRobotBaseLinkName()).inverse();
     std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > poses = interpolateCartesian(
         world_to_base*start_pose, world_to_base*goal_pose, config_.translational_discretization_step, config_.orientational_discretization_step);
 
@@ -170,7 +175,7 @@ namespace constrained_ik
         //Do IK and report results
         try
         {
-          found_ik = solver->calcInvKin(poses[j], start_joints, planning_scene_, joint_angles);
+          found_ik = solver_->calcInvKin(poses[j], start_joints, planning_scene_, joint_angles);
           mid_state->setJointGroupPositions(request_.group_name, joint_angles);
           mid_state->update();
         }

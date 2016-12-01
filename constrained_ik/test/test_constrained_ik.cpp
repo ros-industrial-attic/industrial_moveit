@@ -32,7 +32,7 @@
 #include "constrained_ik/constraints/goal_position.h"
 #include "constrained_ik/constraints/goal_orientation.h"
 #include "constrained_ik/constraints/avoid_obstacles.h"
-#include "constrained_ik/ConstrainedIKDynamicReconfigureConfig.h"
+#include "constrained_ik/constrained_ik_utils.h"
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/robot_model/joint_model_group.h>
 #include <moveit/collision_plugin_loader/collision_plugin_loader.h>
@@ -171,8 +171,8 @@ TEST_F(BasicIKTest, knownPoses)
 {
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
-  config.__getDefault__();
-  ik.setSolverConfiguration(config);
+  ik.loadDefaultSolverConfiguration();
+  config = ik.getSolverConfiguration();
 
   // seed position *at* expected solution
   expected << M_PI_2, -M_PI_2, -M_PI_2, -M_PI_2, M_PI_2, -M_PI_2;
@@ -271,7 +271,8 @@ TEST_F(BasicIKTest, NullMotion)
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
   boost::random::mt19937 rng;  
-  config.__getDefault__();
+  ik.loadDefaultSolverConfiguration();
+  config = ik.getSolverConfiguration();
   config.limit_auxiliary_interations = false;
   config.limit_auxiliary_motion = false;
   config.limit_primary_motion = false;
@@ -376,8 +377,8 @@ TEST_F(BasicIKTest, NullMotionPose)
 {
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
-  config.__getDefault__();
-  ik.setSolverConfiguration(config);
+  ik.loadDefaultSolverConfiguration();
+  config = ik.getSolverConfiguration();
 
   // adding primary constraints to move to an orientation, and auxillary constraints to move to position
   ik.clearConstraintList();
@@ -491,7 +492,8 @@ TEST_F(BasicIKTest, obstacleAvoidanceAuxiliaryConstraint)
 {
   Affine3d pose, rslt_pose;
   VectorXd seed, expected(6), joints;
-  config.__getDefault__();
+  ik.loadDefaultSolverConfiguration();
+  config = ik.getSolverConfiguration();
   config.solver_min_iterations = 1;
   config.limit_auxiliary_interations = true;
   ik.setSolverConfiguration(config);

@@ -29,6 +29,7 @@
 #include "constrained_ik/basic_kin.h"
 #include "constraint_group.h"
 #include "solver_state.h"
+#include "constrained_ik/constrained_ik_utils.h"
 #include <string>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -36,9 +37,6 @@
 #include <constrained_ik/enum_types.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include <constrained_ik/constraint_results.h>
-#include <dynamic_reconfigure/server.h>
-#include <dynamic_reconfigure/Reconfigure.h>
-#include <constrained_ik/ConstrainedIKDynamicReconfigureConfig.h>
 #include <pluginlib/class_loader.h>
 
 namespace constrained_ik
@@ -181,15 +179,18 @@ public:
 
   /**
    * @brief Getter for solver configuration
-   * @return ConstrainedIKDynamicReconfigureConfig
+   * @return ConstrainedIkConfiguration
    */
-  virtual ConstrainedIKDynamicReconfigureConfig getSolverConfiguration() const {return config_;}
+  virtual ConstrainedIKConfiguration getSolverConfiguration() const {return config_;}
 
   /**
    * @brief Setter for solver configuration
    * @param config new object for config_
    */
-  virtual void setSolverConfiguration(const ConstrainedIKDynamicReconfigureConfig &config) {config_ = config;}
+  virtual void setSolverConfiguration(const ConstrainedIKConfiguration &config);
+
+  /** @brief This will load the default solver configuration parameters. */
+  virtual void loadDefaultSolverConfiguration();
 
   /**
    * @brief Initializes object with kinematic model of robot
@@ -233,18 +234,15 @@ public:
   virtual Eigen::MatrixXd calcDampedPseudoinverse(const Eigen::MatrixXd &J) const;
 
   /**
-   * @brief Dynamic Reconfigure Callback Function
-   * @param config Configuration parameters
-   * @param level
+   * @brief Check if solver has been initialized
+   * @return True if initialized, otherwise false
    */
-  void dynamicReconfigureCallback(ConstrainedIKDynamicReconfigureConfig &config, uint32_t level);
+  bool isInitialized() const { return initialized_; }
 
  protected:
   // solver configuration parameters
   ros::NodeHandle nh_; /**< ROS node handle */
-  ConstrainedIKDynamicReconfigureConfig config_; /**< Solver configuration parameters */
-  boost::scoped_ptr<dynamic_reconfigure::Server<ConstrainedIKDynamicReconfigureConfig> > dynamic_reconfigure_server_; /**< Solver dynamic reconfigure server */
-  boost::recursive_mutex mutex_; /**< Mutex */
+  ConstrainedIKConfiguration config_; /**< Solver configuration parameters */
 
   // constraints
   ConstraintGroup primary_constraints_; /**< Array of primary constraints */

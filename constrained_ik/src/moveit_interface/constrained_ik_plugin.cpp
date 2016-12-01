@@ -111,7 +111,9 @@ bool ConstrainedIKPlugin::initialize(const std::string& robot_description,
 
   try
   {
-    solver_.reset(new constrained_ik::MasterIK(group_name));
+    solver_.reset(new Constrained_IK());
+    std::string constraint_param = "constrained_ik_solver/" + group_name + "/constraints";
+    solver_->addConstraintsFromParamServer(constraint_param);
     solver_->init(kin_); // inside try because it has the potential to throw and error
   }
   catch (exception &e)

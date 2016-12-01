@@ -36,7 +36,7 @@
 #include <moveit/planning_scene/planning_scene.h>
 #include <constrained_ik/moveit_interface/constrained_ik_planning_context.h>
 #include <boost/atomic.hpp>
-#include <constrained_ik/ik/master_ik.h>
+#include <constrained_ik/constrained_ik.h>
 
 namespace constrained_ik
 {
@@ -59,13 +59,16 @@ namespace constrained_ik
      * @param name of planner
      * @param group of the planner
      */
-    CartesianPlanner(const std::string &name, const std::string &group) : constrained_ik::CLIKPlanningContext(name, group), terminate_(false), robot_description_("robot_description") {}
+    CartesianPlanner(const std::string &name, const std::string &group);
 
     /**
      * @brief CartesianPlanner Copy Constructor
      * @param other cartesian planner
      */
-    CartesianPlanner(const CartesianPlanner &other) : constrained_ik::CLIKPlanningContext(other), terminate_(false), robot_description_("robot_description") {}
+    CartesianPlanner(const CartesianPlanner &other) : constrained_ik::CLIKPlanningContext(other),
+      terminate_(false),
+      robot_description_(robot_description_),
+      solver_(solver_) {}
 
     /** @brief Clear planner data */
     void clear() override { terminate_ = false; }
@@ -95,11 +98,19 @@ namespace constrained_ik
     bool solve(planning_interface::MotionPlanDetailedResponse &res) override;
 
     /**
-     * @brief Get a solver for a given group
-     * @param group_name Name of the request group
-     * @return Constrained IK Solver
+     * @brief This will initialize the solver if it has not all ready
+     * @return True if successful, otherwise false
      */
-    virtual boost::shared_ptr<constrained_ik::MasterIK> getSolver(std::string group_name);
+    bool initializeSolver();
+
+    /**
+     * @brief Set the planners IK solver configuration
+     * @param config Constrained IK solver configuration
+     */
+    void setSolverConfiguration(const ConstrainedIKConfiguration &config);
+
+    /** @brief Reset the planners IK solver configuration to it default settings */
+    void resetSolverConfiguration();
 
   private:
     /**
@@ -116,9 +127,7 @@ namespace constrained_ik
     boost::atomic<bool> terminate_; /**< Termination flag */
     std::string robot_description_; /**< robot description value from ros param server */
     robot_model::RobotModelConstPtr robot_model_; /**< Robot model object */
-    std::map<std::string, robot_model::JointModelGroup*> joint_model_groups_; /**< Joint model group object */
-    std::vector<std::string> groups_; /**< List of available move groups */
-    std::map<std::string, boost::shared_ptr<constrained_ik::MasterIK> > solvers_; /**< Constrained IK Solver */
+    boost::shared_ptr<Constrained_IK> solver_; /**< Constrained IK Solver */
     boost::mutex mutex_; /**< Mutex */
   };
 } //namespace constrained_ik
