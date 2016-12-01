@@ -34,10 +34,8 @@
 #include "stomp_core/stomp.h"
 
 static const double DEFAULT_NOISY_COST_IMPORTANCE_WEIGHT = 1.0; /**< Default noisy cost importance weight */
-static const double EXPONENTIATED_COST_SENSITIVITY = 10; /**< Default exponetiated cost sensitivity coefficient */
 static const double MIN_COST_DIFFERENCE = 1e-8; /**< Minimum cost difference allowed during probability calculation */
 static const double MIN_CONTROL_COST_WEIGHT = 1e-8; /**< Minimum control cost weight allowed */
-static const double OPTIMIZATION_TIMESTEP = 1; /**< Optimization timestep in seconds */
 
 /**
  * @brief Compute a linear interpolated trajectory given a start and end state
@@ -173,18 +171,49 @@ namespace stomp_core {
 bool Stomp::parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_config)
 {
   using namespace XmlRpc;
+  // Set default values for optional config parameters
+  stomp_config.control_cost_weight = 0.0;
+  stomp_config.initialization_method = 1; // LINEAR_INTERPOLATION
+  stomp_config.num_timesteps = 40;
+  stomp_config.delta_t = 1.0;
+  stomp_config.num_iterations = 50;
+  stomp_config.num_iterations_after_valid = 0;
+  stomp_config.max_rollouts = 100;
+  stomp_config.num_rollouts = 10;
+  stomp_config.exponentiated_cost_sensitivity = 10.0;
 
+  // Load optional config parameters if they exist
+  if (config.hasMember("control_cost_weight"))
+    stomp_config.control_cost_weight = static_cast<double>(config["control_cost_weight"]);
+
+  if (config.hasMember("initialization_method"))
+    stomp_config.initialization_method = static_cast<int>(config["initialization_method"]);
+
+  if (config.hasMember("num_timesteps"))
+    stomp_config.num_timesteps = static_cast<int>(config["num_timesteps"]);
+
+  if (config.hasMember("delta_t"))
+    stomp_config.delta_t = static_cast<double>(config["delta_t"]);
+
+  if (config.hasMember("num_iterations"))
+    stomp_config.num_iterations = static_cast<int>(config["num_iterations"]);
+
+  if (config.hasMember("num_iterations_after_valid"))
+    stomp_config.num_iterations_after_valid = static_cast<int>(config["num_iterations_after_valid"]);
+
+  if (config.hasMember("max_rollouts"))
+    stomp_config.max_rollouts = static_cast<int>(config["max_rollouts"]);
+
+  if (config.hasMember("num_rollouts"))
+    stomp_config.num_rollouts = static_cast<int>(config["num_rollouts"]);
+
+  if (config.hasMember("exponentiated_cost_sensitivity"))
+    stomp_config.exponentiated_cost_sensitivity = static_cast<int>(config["exponentiated_cost_sensitivity"]);
+
+  // Try to load required config parameters
   try
   {
-
-    stomp_config.control_cost_weight = static_cast<double>(config["control_cost_weight"]);
-    stomp_config.initialization_method = static_cast<int>(config["initialization_method"]);
-    stomp_config.max_rollouts = static_cast<int>(config["max_rollouts"]);
     stomp_config.num_dimensions = static_cast<int>(config["num_dimensions"]);
-    stomp_config.num_iterations = static_cast<int>(config["num_iterations"]);
-    stomp_config.num_iterations_after_valid = static_cast<int>(config["num_iterations_after_valid"]);
-    stomp_config.num_rollouts = static_cast<int>(config["num_rollouts"]);
-    stomp_config.num_timesteps = static_cast<int>(config["num_timesteps"]);
   }
   catch(XmlRpc::XmlRpcException& e)
   {
@@ -394,13 +423,13 @@ bool Stomp::resetVariables()
   start_index_padded_ = FINITE_DIFF_RULE_LENGTH-1;
   num_timesteps_padded_ = config_.num_timesteps + 2*(FINITE_DIFF_RULE_LENGTH-1);
   generateFiniteDifferenceMatrix(num_timesteps_padded_,DerivativeOrders::STOMP_ACCELERATION,
-                                 OPTIMIZATION_TIMESTEP,finite_diff_matrix_A_padded_);
+                                 config_.delta_t,finite_diff_matrix_A_padded_);
 
   /* control cost matrix (R = A_transpose * A):
    * Note: Original code multiplies the A product by the time interval.  However this is not
    * what was described in the literature
    */
-  control_cost_matrix_R_padded_ = OPTIMIZATION_TIMESTEP*finite_diff_matrix_A_padded_.transpose() * finite_diff_matrix_A_padded_;
+  control_cost_matrix_R_padded_ = config_.delta_t*finite_diff_matrix_A_padded_.transpose() * finite_diff_matrix_A_padded_;
   control_cost_matrix_R_ = control_cost_matrix_R_padded_.block(
       start_index_padded_,start_index_padded_,config_.num_timesteps,config_.num_timesteps);
   inv_control_cost_matrix_R_ = control_cost_matrix_R_.fullPivLu().inverse();
@@ -467,7 +496,7 @@ bool Stomp::generateNoisyRollouts()
 {
   // calculating number of rollouts to reuse from previous iteration
   std::vector< std::pair<double,int> > rollout_cost_sorter; // Used to sort noisy trajectories in ascending order wrt their total cost
-  double h = EXPONENTIATED_COST_SENSITIVITY;
+  double h = config_.exponentiated_cost_sensitivity;
   int rollouts_stored = num_active_rollouts_-1; // don't take the optimized rollout into account
   rollouts_stored = rollouts_stored < 0 ? 0 : rollouts_stored;
   int rollouts_generate = config_.num_rollouts;
@@ -656,7 +685,7 @@ bool Stomp::computeRolloutsControlCosts()
     else
     {
       computeParametersControlCosts(rollout.parameters_noise,
-                                    OPTIMIZATION_TIMESTEP,
+                                    config_.delta_t,
                                     config_.control_cost_weight,
                                     control_cost_matrix_R_,rollout.control_costs);
     }
@@ -673,7 +702,7 @@ bool Stomp::computeProbabilities()
   double denom;
   double numerator;
   double probl_sum = 0.0; // total probability sum of all rollouts for each joint
-  const double h = EXPONENTIATED_COST_SENSITIVITY;
+  const double h = config_.exponentiated_cost_sensitivity;
   double exponent = 0;
 
   for (auto d = 0u; d<config_.num_dimensions; ++d)
@@ -699,7 +728,7 @@ bool Stomp::computeProbabilities()
       // prevent division by zero:
       if (denom < MIN_COST_DIFFERENCE)
       {
-        denom = 1;
+        denom = MIN_COST_DIFFERENCE;
       }
 
       probl_sum = 0.0;
@@ -735,7 +764,7 @@ bool Stomp::computeProbabilities()
     }
 
     denom = max_cost - min_cost;
-    denom = denom < MIN_COST_DIFFERENCE ? 1 : denom;
+    denom = denom < MIN_COST_DIFFERENCE ? MIN_COST_DIFFERENCE : denom;
 
     probl_sum = 0.0;
     for (int r=0; r<num_active_rollouts_; ++r)
@@ -789,7 +818,7 @@ bool Stomp::computeOptimizedCost()
   if(config_.control_cost_weight > MIN_CONTROL_COST_WEIGHT)
   {
     computeParametersControlCosts(parameters_optimized_,
-                                  OPTIMIZATION_TIMESTEP,
+                                  config_.delta_t,
                                   config_.control_cost_weight,
                                   control_cost_matrix_R_,
                                   parameters_control_costs_);

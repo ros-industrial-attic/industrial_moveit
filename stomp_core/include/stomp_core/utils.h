@@ -81,19 +81,22 @@ enum TrajectoryInitialization
 struct StompConfiguration
 {
   // General settings
-  int num_iterations;               /**< Maximum number of iteration allowed */
-  int num_iterations_after_valid;   /**< Stomp will stop optimizing this many iterations after finding a valid solution */
-  int num_timesteps;                /**< Number of timesteps */
-  int num_dimensions;               /**< Parameter dimensionality */
-  double delta_t;                   /**< Time change between consecutive points */
-  int initialization_method;        /**< TrajectoryInitializations::TrajectoryInitialization */
+  int num_iterations;                    /**< Maximum number of iteration allowed */
+  int num_iterations_after_valid;        /**< Stomp will stop optimizing this many iterations after finding a valid solution */
+  int num_timesteps;                     /**< Number of timesteps */
+  int num_dimensions;                    /**< Parameter dimensionality */
+  double delta_t;                        /**< Time change between consecutive points */
+  int initialization_method;             /**< TrajectoryInitializations::TrajectoryInitialization */
+
+  // Probability Calculation
+  double exponentiated_cost_sensitivity; /**< Default exponetiated cost sensitivity coefficient */
 
   // Noisy trajectory generation
-  int num_rollouts;                 /**< Number of noisy trajectories*/
-  int max_rollouts;                 /**< The combined number of new and old rollouts during each iteration shouldn't exceed this value */
+  int num_rollouts;                      /**< Number of noisy trajectories*/
+  int max_rollouts;                      /**< The combined number of new and old rollouts during each iteration shouldn't exceed this value */
 
   // Cost calculation
-  double control_cost_weight;       /**< Percentage of the trajectory accelerations cost to be applied in the total cost calculation >*/
+  double control_cost_weight;            /**< Percentage of the trajectory accelerations cost to be applied in the total cost calculation >*/
 };
 
 /** @brief The number of columns in the finite differentiation rule */
