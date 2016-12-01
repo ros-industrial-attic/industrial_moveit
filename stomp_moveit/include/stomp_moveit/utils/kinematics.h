@@ -46,17 +46,30 @@ namespace kinematics
   const static double EPSILON = 0.011;
   const static double LAMBDA = 0.01;
 
-
+/*
+ * @brief Computes the twist vector [vx vy vz wx wy wz]'  relative to the current tool coordinate system.  The rotational part is
+ *        composed of the product between the angle times the axis about which it rotates.
+ *
+ * @param p0        start tool pose in world coordinates
+ * @param pf        final tool pose in world coordinates
+ * @param nullity   array of 0's and 1's indicating which cartesian DOF's are unconstrained (0)
+ * @param twist     the twist vector in tool coordinates.
+ */
   static void computeTwist(const Eigen::Affine3d& p0,
                                           const Eigen::Affine3d& pf,
                                           const Eigen::ArrayXi& nullity,Eigen::VectorXd& twist)
   {
     twist.resize(nullity.size());
     twist.setConstant(0);
-    Eigen::Vector3d twist_pos = pf.translation() - p0.translation();
+
+    // relative transform
+    auto p0_inv = p0.inverse();
+    Eigen::Affine3d t = (p0_inv) * pf;
+
+    Eigen::Vector3d twist_pos = p0_inv.rotation()*(pf.translation() - p0.translation());
 
     // relative rotation -> R = inverse(R0) * Rf
-    Eigen::AngleAxisd relative_rot(p0.rotation().transpose() * pf.rotation());
+    Eigen::AngleAxisd relative_rot(t.rotation());
     double angle = relative_rot.angle();
     Eigen::Vector3d axis = relative_rot.axis();
 
@@ -68,7 +81,7 @@ namespace kinematics
     }
 
     // creating twist rotation relative to tool
-    Eigen::Vector3d twist_rot = axis * angle;
+    Eigen::Vector3d twist_rot = axis.normalized() * angle;
 
     // assigning into full 6dof twist vector
     twist.head(3) = twist_pos;
@@ -152,8 +165,9 @@ namespace kinematics
     tool_twist_reduced = VectorXd::Zero(indices.size());
 
     // jacobian calculation variables
-    MatrixXd identity = MatrixXd::Identity(init_joint_pose.size(),init_joint_pose.size());
+    static MatrixXd jacb_transform(6,6);
     MatrixXd jacb, jacb_reduced, jacb_pseudo_inv;
+    MatrixXd identity = MatrixXd::Identity(init_joint_pose.size(),init_joint_pose.size());
     VectorXd null_space_proj;
     bool project_into_nullspace = (null_proj_weights >1e-8).any();
 
@@ -166,7 +180,7 @@ namespace kinematics
       computeTwist(tool_current_pose,tool_goal_pose,constrained_dofs,tool_twist);
 
       // check convergence
-      if((tool_twist.cwiseAbs().array() < cartesian_convergence_thresholds).all())
+      if((tool_twist.cwiseAbs().array() <= cartesian_convergence_thresholds).all())
       {
         // converged
         converged = true;
@@ -187,8 +201,12 @@ namespace kinematics
         return false;
       }
 
-      // transform jacobian rotational part to tool coordinates
-      jacb.bottomRows(3) = tool_current_pose.rotation().transpose()*jacb.bottomRows(3);
+      // transform jacobian to tool coordinates
+      auto rot = tool_current_pose.inverse().rotation();
+      jacb_transform.setZero();
+      jacb_transform.block(0,0,3,3) = rot;
+      jacb_transform.block(3,3,3,3) = rot;
+      jacb = jacb_transform*jacb;
 
       // reduce jacobian and compute its pseudo inverse
       reduceJacobian(jacb,indices,jacb_reduced);
@@ -213,6 +231,7 @@ namespace kinematics
 
       // updating tool pose
       robot_state->setJointGroupPositions(joint_group,joint_pose);
+      robot_state->updateLinkTransforms();
       tool_current_pose = robot_state->getGlobalLinkTransform(tool_link);
 
       iteration_count++;
@@ -236,7 +255,9 @@ namespace kinematics
     Affine3d tool_pose = state->getGlobalLinkTransform(tool_link);
 
     // jacobian calculations
+    static MatrixXd jacb_transform(6,6);
     MatrixXd jacb, jacb_reduced, jacb_pseudo_inv;
+    jacb_transform.setZero();
 
     if(!state->getJacobian(joint_group,state->getLinkModel(tool_link),Vector3d::Zero(),jacb))
     {
@@ -245,7 +266,11 @@ namespace kinematics
     }
 
     // transform jacobian rotational part to tool coordinates
-    jacb.bottomRows(3) = tool_pose.rotation().transpose()*jacb.bottomRows(3);
+    auto rot = tool_pose.inverse().rotation();
+    jacb_transform.setZero();
+    jacb_transform.block(0,0,3,3) = rot;
+    jacb_transform.block(3,3,3,3) = rot;
+    jacb = jacb_transform*jacb;
 
     // reduce jacobian and compute its pseudo inverse
     std::vector<int> indices;

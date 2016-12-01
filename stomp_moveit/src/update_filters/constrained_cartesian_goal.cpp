@@ -216,22 +216,20 @@ bool ConstrainedCartesianGoal::filter(std::size_t start_timestep,
     ROS_WARN("%s failed to project into the nullspace of the jacobian",getName().c_str());
   }
 
-
-  if(!kinematics::solveIK(state_,group_name_,dof_nullity_,joint_update_rates_,cartesian_convergence_thresholds_,
+  if(kinematics::solveIK(state_,group_name_,dof_nullity_,joint_update_rates_,cartesian_convergence_thresholds_,
                           ArrayXd::Zero(init_joint_pose.size()),updates.rightCols(1),max_iterations_,
               tool_goal_pose_,init_joint_pose,joint_pose))
-  {
-    ROS_DEBUG("%s failed to find valid ik pose close to current goal pose, canceling goal update",getName().c_str());
-
-    filtered = true;
-    updates.rightCols(1) = Eigen::VectorXd::Zero(updates.rows());
-
-  }
-  else
   {
     filtered = true;
     updates.rightCols(1) = joint_pose - parameters.rightCols(1);
   }
+  else
+  {
+    ROS_DEBUG("%s failed to update under-constrained tool goal pose due to ik error",getName().c_str());
+    filtered = true;
+    updates.rightCols(1) = Eigen::VectorXd::Zero(updates.rows());
+  }
+
 
   return true;
 }

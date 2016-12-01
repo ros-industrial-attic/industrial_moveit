@@ -186,7 +186,7 @@ bool ToolGoalPose::computeCosts(const Eigen::MatrixXd& parameters,
   using namespace utils::kinematics;
   validity = true;
 
-  auto compute_scaled_error = [](double& raw_cost, std::pair<double,double>& range,bool& below_min)
+  auto compute_scaled_error = [](const double& raw_cost,const std::pair<double,double>& range,bool& below_min)
   {
     below_min = false;
 
@@ -199,7 +199,7 @@ bool ToolGoalPose::computeCosts(const Eigen::MatrixXd& parameters,
     // error in range
     if(raw_cost >= range.first)
     {
-      return raw_cost/range.second;
+      return raw_cost/(range.second - range.first);
     }
 
     // error below range
