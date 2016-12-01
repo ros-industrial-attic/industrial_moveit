@@ -28,6 +28,29 @@
 
 namespace constrained_ik
 {
+  ConstrainedIKConfiguration convertToConstrainedIKConfiguration(CLIKDynamicConfig &config)
+  {
+    ConstrainedIKConfiguration c;
+    c.debug_mode = config.debug_mode;
+    c.allow_joint_convergence = config.allow_joint_convergence;
+    c.allow_primary_normalization = config.allow_primary_normalization;
+    c.allow_auxiliary_nomalization = config.allow_auxiliary_nomalization;
+    c.limit_primary_motion = config.limit_primary_motion;
+    c.limit_auxiliary_motion = config.limit_auxiliary_motion;
+    c.limit_auxiliary_interations = config.limit_auxiliary_interations;
+    c.solver_max_iterations = config.solver_max_iterations;
+    c.solver_min_iterations = config.solver_min_iterations;
+    c.auxiliary_max_iterations = config.auxiliary_max_iterations;
+    c.primary_max_motion = config.primary_max_motion;
+    c.auxiliary_max_motion = config.auxiliary_max_motion;
+    c.primary_norm = config.primary_norm;
+    c.auxiliary_norm = config.auxiliary_norm;
+    c.primary_gain = config.primary_gain;
+    c.auxiliary_gain = config.auxiliary_gain;
+    c.joint_convergence_tol = config.joint_convergence_tol;
+    return c;
+  }
+
   bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, double& value)
   {
     if (!config.hasMember(key))

@@ -30,7 +30,7 @@
 
 #include <moveit/planning_interface/planning_interface.h>
 #include <constrained_ik/moveit_interface/constrained_ik_planner_parameters.h>
-#include <constrained_ik/ConstrainedIKPlannerDynamicReconfigureConfig.h>
+#include <constrained_ik/CLIKPlannerDynamicConfig.h>
 
 namespace constrained_ik
 {
@@ -77,13 +77,13 @@ namespace constrained_ik
      * @brief setConfiguration - Sets/Updates planner parameters.
      * @param config - Parameters used by the CLIK planners
      */
-    virtual void setConfiguration(const ConstrainedIKPlannerDynamicReconfigureConfig &config) { config_ = config; }
+    virtual void setPlannerConfiguration(const CLIKPlannerDynamicConfig &config) { config_ = config; }
 
     /** @brief resetConfiguration - Resets configuration parameters to their default values. */
-    virtual void resetConfiguration() { config_.__getDefault__(); }
+    virtual void resetPlannerConfiguration() { config_.__getDefault__(); }
 
   protected:
-    ConstrainedIKPlannerDynamicReconfigureConfig config_; /**< Store the parameters for the CLIK planners. */
+    CLIKPlannerDynamicConfig config_; /**< Store the parameters for the CLIK planners. */
 
 
   };

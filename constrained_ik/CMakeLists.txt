@@ -33,8 +33,8 @@ add_definitions("-std=c++11")
 
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
-  cfg/ConstrainedIKDynamicReconfigure.cfg
-  cfg/ConstrainedIKPlannerDynamicReconfigure.cfg
+  cfg/CLIKDynamic.cfg
+  cfg/CLIKPlannerDynamic.cfg
 )
 
 #######################################

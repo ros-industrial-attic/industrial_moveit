@@ -2,7 +2,7 @@
 #define EXAMPLE_UTILS_H
 #include "constrained_ik/basic_kin.h"
 #include "constrained_ik/constrained_ik.h"
-#include "constrained_ik/ConstrainedIKDynamicReconfigureConfig.h"
+#include "constrained_ik/constrained_ik_utils.h"
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <ros/package.h>
@@ -60,7 +60,7 @@ static bool evaluteExampleIK(constrained_ik::basic_kin::BasicKin &kin, constrain
   Eigen::VectorXd goal = Eigen::VectorXd::Map(goal_vector.data(), goal_vector.size());
   Eigen::VectorXd seed = Eigen::VectorXd::Map(seed_vector.data(), seed_vector.size());
 
-  constrained_ik::ConstrainedIKDynamicReconfigureConfig config;
+  constrained_ik::ConstrainedIKConfiguration config;
   config = ik.getSolverConfiguration();
   config.solver_min_iterations = 5;
   ik.setSolverConfiguration(config);

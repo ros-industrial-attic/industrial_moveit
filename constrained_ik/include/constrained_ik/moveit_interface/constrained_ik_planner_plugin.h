@@ -34,7 +34,8 @@
 #include <constrained_ik/moveit_interface/constrained_ik_planner_parameters.h>
 #include <dynamic_reconfigure/server.h>
 #include <dynamic_reconfigure/Reconfigure.h>
-#include <constrained_ik/ConstrainedIKPlannerDynamicReconfigureConfig.h>
+#include <constrained_ik/CLIKPlannerDynamicConfig.h>
+#include <constrained_ik/CLIKDynamicConfig.h>
 
 namespace constrained_ik
 {
@@ -72,16 +73,28 @@ namespace constrained_ik
     planning_interface::PlanningContextPtr getPlanningContext(const planning_scene::PlanningSceneConstPtr &planning_scene, const planning_interface::MotionPlanRequest &req, moveit_msgs::MoveItErrorCodes &error_code) const override;
 
     /** @brief See base clase for documentation */
-    virtual void dynamicReconfigureCallback(ConstrainedIKPlannerDynamicReconfigureConfig &config, uint32_t level);
+    virtual void managerDynamicReconfigureCallback(CLIKPlannerDynamicConfig &config, uint32_t level);
+
+    /**
+     * @brief A callback function for the cartesian planners solver dynamic reconfigure server
+     * @param config Cartesian planner dynamic reconfigure parameters
+     * @param level  The level setting
+     * @param group_name The joint model group name
+     */
+    virtual void cartesianDynamicReconfigureCallback(CLIKDynamicConfig &config, uint32_t level, std::string group_name);
 
   protected:
-    typedef dynamic_reconfigure::Server<ConstrainedIKPlannerDynamicReconfigureConfig> DynReconfigServer; /**< Type definition for the CLIK dynamic reconfigure server */
+    typedef dynamic_reconfigure::Server<CLIKPlannerDynamicConfig> ManagerDynReconfigServer; /**< Type definition for the planning manager dynamic reconfigure server */
+    typedef dynamic_reconfigure::Server<CLIKDynamicConfig> CartesianDynReconfigServer;      /**< Type definition for the cartesian planner dynamic reconfigure server */
+    typedef boost::shared_ptr<ManagerDynReconfigServer> ManagerDynReconfigServerPtr;                            /**< Type definition for the planning manager dynamic reconfigure server shared pointer*/
+    typedef boost::shared_ptr<CartesianDynReconfigServer> CartesianDynReconfigServerPtr;                        /**< Type definition for the cartesian planner dynamic reconfigure server shared pointer*/
 
     ros::NodeHandle nh_; /**< ROS node handle */
-    ConstrainedIKPlannerDynamicReconfigureConfig config_; /**< Planner configuration parameters */
-    boost::scoped_ptr<DynReconfigServer> dynamic_reconfigure_server_; /**< Dynamic reconfigure server object */
+    CLIKPlannerDynamicConfig config_; /**< Planner configuration parameters */
+    ManagerDynReconfigServerPtr dynamic_reconfigure_server_; /**< Planner dynamic reconfigure server object */
+    std::map<std::string, CartesianDynReconfigServerPtr> cartesian_dynamic_reconfigure_server_; /**< Cartesian constrianed ik solver dynamic reconfigure server */
     boost::recursive_mutex mutex_; /**< Mutex */
-    std::map<std::string, constrained_ik::CLIKPlanningContextPtr> planners_; /**< Containes all the availble CLIK planners */
+    std::map<std::pair<std::string, std::string>, constrained_ik::CLIKPlanningContextPtr> planners_; /**< Containes all the availble CLIK planners */
   };
 } //namespace constrained_ik
 #endif //CONSTRAINED_IK_PLANNER_PLUGIN_H

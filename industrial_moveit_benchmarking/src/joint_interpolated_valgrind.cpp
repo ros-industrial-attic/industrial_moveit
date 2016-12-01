@@ -35,7 +35,7 @@
 #include <moveit/kinematic_constraints/utils.h>
 #include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <constrained_ik/moveit_interface/joint_interpolation_planner.h>
-#include <constrained_ik/ConstrainedIKPlannerDynamicReconfigureConfig.h>
+#include <constrained_ik/CLIKPlannerDynamicConfig.h>
 #include <fstream>
 #include <time.h>
 
@@ -81,7 +81,7 @@ int main (int argc, char *argv[])
     return false;
   }
 
-  ConstrainedIKPlannerDynamicReconfigureConfig config;
+  CLIKPlannerDynamicConfig config;
   config.joint_discretization_step = 0.02;
   planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(robot_model));
 
@@ -94,7 +94,7 @@ int main (int argc, char *argv[])
   planning_interface::MotionPlanResponse res;
   string group_name = "manipulator_rail";
   JointInterpolationPlanner joint_interp("", group_name);
-  joint_interp.setConfiguration(config);
+  joint_interp.setPlannerConfiguration(config);
 
   req.allowed_planning_time = 10;
   req.num_planning_attempts = 1;
