@@ -81,9 +81,9 @@ void GoalMidJoint::init(const Constrained_IK *ik)
 void GoalMidJoint::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
 {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (!getParam(local_xml, "weight", weight_))
+  if (!getParam(local_xml, "weights", weight_))
   {
-    ROS_WARN("Goal Mid Joint: Unable to retrieve weight member, default parameter will be used.");
+    ROS_WARN("Goal Mid Joint: Unable to retrieve weights member, default parameter will be used.");
   }
 
   if (!getParam(local_xml, "debug", debug_))

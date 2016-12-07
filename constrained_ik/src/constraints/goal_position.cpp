@@ -126,7 +126,7 @@ void GoalPosition::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
   }
 
   bool debug;
-  if (getParam(local_xml, "position_tolerance", debug))
+  if (getParam(local_xml, "debug", debug))
   {
     setDebug(debug);
   }
