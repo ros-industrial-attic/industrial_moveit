@@ -56,6 +56,11 @@ bool ObstacleDistanceGradient::initialize(moveit::core::RobotModelConstPtr robot
   group_name_ = group_name;
   collision_request_.distance = true;
   collision_request_.group_name = group_name;
+  collision_request_.cost = false;
+  collision_request_.max_contacts = 1;
+  collision_request_.max_contacts_per_pair = 1;
+  collision_request_.contacts = false;
+  collision_request_.verbose = false;
   return configure(config);
 }
 
@@ -134,14 +139,16 @@ bool ObstacleDistanceGradient::computeCosts(const Eigen::MatrixXd& parameters, s
   // request the distance at each state
   double cost;
   double dist;
+  validity = true;
   for (auto t=start_timestep; t<start_timestep + num_timesteps; ++t)
   {
+    collision_result_.clear();
     robot_state_->setJointGroupPositions(joint_group,parameters.col(t));
     robot_state_->update();
     collision_result_.distance = max_distance_;
 
     planning_scene_->checkSelfCollision(collision_request_,collision_result_,*robot_state_,planning_scene_->getAllowedCollisionMatrix());
-    dist = max_distance_ > collision_result_.distance ? max_distance_ : collision_result_.distance;
+    dist = collision_result_.collision ? -1.0 :collision_result_.distance ;
 
     if(dist >= max_distance_)
     {
@@ -150,6 +157,7 @@ bool ObstacleDistanceGradient::computeCosts(const Eigen::MatrixXd& parameters, s
     else if(dist < 0)
     {
       cost = 1.0; // in collision
+      validity = false;
     }
     else
     {
@@ -159,7 +167,6 @@ bool ObstacleDistanceGradient::computeCosts(const Eigen::MatrixXd& parameters, s
     costs(t) = cost;
   }
 
-  validity = true;
   return true;
 }
 
