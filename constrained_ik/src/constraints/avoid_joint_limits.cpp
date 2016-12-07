@@ -134,13 +134,13 @@ void AvoidJointLimits::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
   }
 
   double weight;
-  if (getParam(local_xml, "weight", weight))
+  if (getParam(local_xml, "weights", weight))
   {
     setWeight(weight);
   }
   else
   {
-    ROS_WARN("Avoid Joint Limits: Unable to retrieve weight member, default parameter will be used.");
+    ROS_WARN("Avoid Joint Limits: Unable to retrieve weights member, default parameter will be used.");
   }
 
   bool debug;

@@ -110,9 +110,9 @@ void JointVelLimits::init(const Constrained_IK *ik)
 void JointVelLimits::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
 {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (!getParam(local_xml, "weight", weight_))
+  if (!getParam(local_xml, "weights", weight_))
   {
-    ROS_WARN("Avoid Joint Velocity Limits: Unable to retrieve weight member, default parameter will be used.");
+    ROS_WARN("Avoid Joint Velocity Limits: Unable to retrieve weights member, default parameter will be used.");
   }
 
   if (!getParam(local_xml, "timestep", timestep_))

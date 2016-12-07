@@ -116,9 +116,9 @@ void AvoidSingularities::loadParameters(const XmlRpc::XmlRpcValue &constraint_xm
     ROS_WARN("Avoid Singularities: Unable to retrieve ignore_threshold member, default parameter will be used.");
   }
 
-  if (!getParam(local_xml, "weight", weight_))
+  if (!getParam(local_xml, "weights", weight_))
   {
-    ROS_WARN("Avoid Singularities: Unable to retrieve weight member, default parameter will be used.");
+    ROS_WARN("Avoid Singularities: Unable to retrieve weights member, default parameter will be used.");
   }
 
   if (!getParam(local_xml, "debug", debug_))

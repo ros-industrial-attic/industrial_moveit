@@ -136,11 +136,11 @@ void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
       ROS_WARN("Abstacle Avoidance: Unable to retrieve avoidance_distance member, default parameter will be used.");
     }
 
-    if (getParam(local_xml, "weight", weight))
+    if (getParam(local_xml, "weights", weight))
     {
       if (link_names.size()!=weight.size())
       {
-        ROS_WARN("Abstacle Avoidance: weight memebr must be same size array as link_names member, default parameters will be used.");
+        ROS_WARN("Abstacle Avoidance: weights member must be same size array as link_names member, default parameters will be used.");
         weight.clear();
       }
     }
