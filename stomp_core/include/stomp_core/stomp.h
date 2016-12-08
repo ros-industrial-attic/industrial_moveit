@@ -93,13 +93,6 @@ public:
    */
   bool clear();
 
-  /**
-   * @brief Parses a XmlRpcValue and populates a StompComfiguration structure.
-   * @param config The XmlRpcValue of stomp configuration parameters
-   * @param stomp_config The stomp configuration structure
-   * @return True if sucessfully parsed, otherwise false.
-   */
-  static bool parseConfig(XmlRpc::XmlRpcValue config, StompConfiguration& stomp_config);
 
 protected:
 

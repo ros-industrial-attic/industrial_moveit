@@ -168,62 +168,6 @@ void computeParametersControlCosts(const Eigen::MatrixXd& parameters,
 
 namespace stomp_core {
 
-bool Stomp::parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_config)
-{
-  using namespace XmlRpc;
-  // Set default values for optional config parameters
-  stomp_config.control_cost_weight = 0.0;
-  stomp_config.initialization_method = 1; // LINEAR_INTERPOLATION
-  stomp_config.num_timesteps = 40;
-  stomp_config.delta_t = 1.0;
-  stomp_config.num_iterations = 50;
-  stomp_config.num_iterations_after_valid = 0;
-  stomp_config.max_rollouts = 100;
-  stomp_config.num_rollouts = 10;
-  stomp_config.exponentiated_cost_sensitivity = 10.0;
-
-  // Load optional config parameters if they exist
-  if (config.hasMember("control_cost_weight"))
-    stomp_config.control_cost_weight = static_cast<double>(config["control_cost_weight"]);
-
-  if (config.hasMember("initialization_method"))
-    stomp_config.initialization_method = static_cast<int>(config["initialization_method"]);
-
-  if (config.hasMember("num_timesteps"))
-    stomp_config.num_timesteps = static_cast<int>(config["num_timesteps"]);
-
-  if (config.hasMember("delta_t"))
-    stomp_config.delta_t = static_cast<double>(config["delta_t"]);
-
-  if (config.hasMember("num_iterations"))
-    stomp_config.num_iterations = static_cast<int>(config["num_iterations"]);
-
-  if (config.hasMember("num_iterations_after_valid"))
-    stomp_config.num_iterations_after_valid = static_cast<int>(config["num_iterations_after_valid"]);
-
-  if (config.hasMember("max_rollouts"))
-    stomp_config.max_rollouts = static_cast<int>(config["max_rollouts"]);
-
-  if (config.hasMember("num_rollouts"))
-    stomp_config.num_rollouts = static_cast<int>(config["num_rollouts"]);
-
-  if (config.hasMember("exponentiated_cost_sensitivity"))
-    stomp_config.exponentiated_cost_sensitivity = static_cast<int>(config["exponentiated_cost_sensitivity"]);
-
-  // Try to load required config parameters
-  try
-  {
-    stomp_config.num_dimensions = static_cast<int>(config["num_dimensions"]);
-  }
-  catch(XmlRpc::XmlRpcException& e)
-  {
-    ROS_ERROR("Failed to parse Stomp configuration ");
-    return false;
-  }
-
-  return true;
-}
-
 
 Stomp::Stomp(const StompConfiguration& config,TaskPtr task):
     config_(config),

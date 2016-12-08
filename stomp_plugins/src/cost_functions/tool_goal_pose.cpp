@@ -23,7 +23,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <stomp_moveit/cost_functions/tool_goal_pose.h>
+#include <stomp_plugins/cost_functions/tool_goal_pose.h>
 #include <XmlRpcException.h>
 #include <pluginlib/class_list_macros.h>
 #include <stomp_moveit/utils/kinematics.h>

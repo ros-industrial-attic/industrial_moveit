@@ -2,7 +2,6 @@ stomp/manipulator:
   group_name: manipulator
   optimization:
     num_timesteps: 20
-    num_dimensions: 6
     num_iterations: 50
     num_iterations_after_valid: 0    
     num_rollouts: 10
@@ -43,7 +42,6 @@ stomp/manipulator_rail:
   group_name: manipulator_rail
   optimization:
     num_timesteps: 40
-    num_dimensions: 7
     num_iterations: 40
     num_iterations_after_valid: 0    
     num_rollouts: 10
@@ -89,7 +87,6 @@ stomp/manipulator_tool:
   group_name: manipulator_tool
   optimization:
     num_timesteps: 40
-    num_dimensions: 7
     num_iterations: 40
     num_iterations_after_valid: 0    
     num_rollouts: 10

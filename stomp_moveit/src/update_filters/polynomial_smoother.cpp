@@ -25,7 +25,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <stomp_moveit/update_filters/constrained_cartesian_goal.h>
 #include <ros/console.h>
 #include <Eigen/Geometry>
 #include <eigen_conversions/eigen_msg.h>

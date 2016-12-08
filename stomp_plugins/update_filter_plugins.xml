@@ -1,0 +1,7 @@
+<library path="libstomp_plugins_update_filters">
+  <class name="stomp_moveit/ConstrainedCartesianGoal" type="stomp_moveit::update_filters::ConstrainedCartesianGoal" base_class_type="stomp_moveit::update_filters::StompUpdateFilter">
+    <description>
+      Forces the goal into the tool task space. 
+    </description>
+  </class>
+</library>
