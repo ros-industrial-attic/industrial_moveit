@@ -34,7 +34,7 @@
 #include <stomp_moveit/update_filters/polynomial_smoother.h>
 #include <XmlRpcException.h>
 
-PLUGINLIB_EXPORT_CLASS(stomp_moveit::update_filters::PolynomialSmoother,stomp_moveit::update_filters::StompUpdateFilter);
+PLUGINLIB_EXPORT_CLASS(stomp_moveit::update_filters::PolynomialSmoother,stomp_moveit::update_filters::StompUpdateFilter)
 
 namespace stomp_moveit
 {
@@ -90,11 +90,47 @@ bool PolynomialSmoother::setMotionPlanRequest(const planning_scene::PlanningScen
 
   const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_name_);
   int num_joints = joint_group->getActiveJointModels().size();
-  smoothed_parameters_.resize(config.num_timesteps);
-  domain_vals_ = ArrayXd::LinSpaced(config.num_timesteps,0,config.num_timesteps-1);
-  fillVandermondeMatrix(poly_order_,domain_vals_,X_matrix_);
-  X_pseudo_inv_ = ((X_matrix_.transpose() * X_matrix_).inverse()) * X_matrix_.transpose();
 
+  int num_r = poly_order_ + 1;
+  int num_fixed = 2;
+
+  /*
+   * For the purpose of speed a portion of the equation shown in the class brief is cached.
+   *
+   * |p| - | 2*A*A', C |^-1 * | 2*A*b |
+   * |z| - |     C', 0 |      |     d |
+   *
+   * Cached portion:
+   *
+   * | 2*A*A', C |^-1
+   * |     C', 0 |
+   *
+   * Class Members:
+   *   x_matrix_    (A) - Is the Vandermonde matrix of all (constrained and unconstrained) domain values
+   *   xf_matrix_   (C) - Is the Vandermonde matrix of the constrained domain values
+   *   full_matrix_     - Is the full matrix shown above
+   *   full_inv_matrix_ - Is the inverse of the full matrix.
+   */
+  domain_vals_ = ArrayXd::LinSpaced(config.num_timesteps, 0, config.num_timesteps-1);
+
+  domain_fvals_.resize(num_fixed);
+  domain_fvals_[0] = domain_vals_.head(1)[0];
+  domain_fvals_[1] = domain_vals_.tail(1)[0];
+
+  fillVandermondeMatrix(domain_vals_, x_matrix_);
+  fillVandermondeMatrix(domain_fvals_, xf_matrix_);
+  x_matrix_t_ = x_matrix_.transpose();
+
+  Eigen::MatrixXd top(num_r, num_r + num_fixed);
+  Eigen::MatrixXd bot(num_fixed, num_r + num_fixed);
+  top << 2.0*x_matrix_*x_matrix_t_, xf_matrix_;
+  bot << xf_matrix_.transpose(), Eigen::MatrixXd::Zero(num_fixed, num_fixed);
+
+  full_matrix_.resize(num_r + num_fixed, num_r + num_fixed);
+  full_matrix_ << top,
+                  bot;
+
+  full_inv_matrix_ = full_matrix_.inverse();
 
   error_code.val = error_code.SUCCESS;
   return true;
@@ -111,54 +147,46 @@ bool PolynomialSmoother::filter(std::size_t start_timestep,
   using namespace moveit::core;
 
   // updating local parameters
-  double start_offset;
-  double scale_factor;
-  double x_range, smoothed_range, update_range;
-  double angle, angle_smoothed, angle_update;
-  x_range = num_timesteps - 1;
+  int num_r = poly_order_ + 1;
+  int num_fixed = 2;
+  Eigen::VectorXd yf(num_fixed), poly_params(num_r);
+  Eigen::VectorXd vec(num_r + num_fixed);
+  Eigen::VectorXd y(domain_vals_.size());
 
+  /*
+   * For each of the noisy trajectories we need to solve the constrained
+   * least-squares equation. See class brief for full description.
+   *
+   * |p| - | 2*A*A', C |^-1 * | 2*A*b |
+   * |z| - |     C', 0 |      |     d |
+   *
+   * Where:
+   *   x_matrix_   (A) - Is the Vandermonde matrix of all (constrained and unconstrained) domain values
+   *   xf_matrix_  (C) - Is the Vandermonde matrix of the constrained domain values
+   *   y           (b) - An array of the values to perform the fit on
+   *   yf          (d) - An array of the values corresponding to the constrained domain values
+   *   poly_params (p) - An array of the polynomial coefficients solved for.
+   */
   for(auto r = 0; r < parameters.rows(); r++)
   {
-    smoothed_parameters_ = X_matrix_ * (X_pseudo_inv_ * updates.row(r).transpose());
+    y = updates.row(r);
+    yf[0] = y.head(1)[0];
+    yf[1] = y.tail(1)[0];
 
-    // shifting parameters
-    start_offset = updates.row(r)(0)  -   smoothed_parameters_(0);
-    smoothed_parameters_ = smoothed_parameters_ + start_offset * VectorXd::Ones(smoothed_parameters_.size());
-
-    // rotating and scaling
-    update_range = updates.row(r)(updates.cols()-1) - updates.row(r)(0);
-    smoothed_range = smoothed_parameters_(smoothed_parameters_.size()-1) - smoothed_parameters_(0);
-
-    angle_update = std::atan2(update_range,x_range);
-    angle_smoothed = std::atan2(smoothed_range,x_range);
-    angle = angle_update - angle_smoothed;
-
-    // scale factor using hypotenuse ratio
-    scale_factor = std::sqrt(std::pow(x_range,2) + std::pow(update_range,2))/std::sqrt(std::pow(x_range,2) + std::pow(smoothed_range,2));
-
-    // applying rotation and scale
-    smoothed_parameters_ = scale_factor*(std::cos(angle)*smoothed_parameters_ + std::sin(angle)*domain_vals_.matrix());
-
-    updates.row(r) = smoothed_parameters_.transpose();
-
+    vec << 2*x_matrix_*y, yf;
+    poly_params = (full_inv_matrix_ * vec).head(num_r);
+    updates.row(r) = (x_matrix_t_ * poly_params).transpose();
   }
 
   filtered = true;
-
-  return true;
+  return filtered;
 }
 
-void PolynomialSmoother::fillVandermondeMatrix(double poly_order,
-                                                const Eigen::ArrayXd& domain_vals,
-                                                Eigen::MatrixXd& X)
+void PolynomialSmoother::fillVandermondeMatrix(const Eigen::ArrayXd &domain_vals, Eigen::MatrixXd& v) const
 {
-
-  Eigen::ArrayXd scaled_domain_vals = domain_vals/(domain_vals.maxCoeff());
-  X = Eigen::MatrixXd::Ones(domain_vals.size(),poly_order+1);
-  for(auto p = 1u; p <=  poly_order; p++)
-  {
-    X.col(p) = scaled_domain_vals * X.col(p-1).array();
-  }
+  v = Eigen::MatrixXd::Ones(poly_order_+1, domain_vals.size());
+  for(auto p = 1u; p <=  poly_order_; p++)
+    v.row(p) = domain_vals.pow(p);
 }
 
 } /* namespace update_filters */

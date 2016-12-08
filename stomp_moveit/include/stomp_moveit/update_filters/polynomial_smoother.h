@@ -35,6 +35,22 @@ namespace stomp_moveit
 namespace update_filters
 {
 
+/**
+ * @brief This is a constrained polynomial trajectory smoother.
+ *
+ * It uses the constrained least-squares technique shown below.
+ *
+ * |p| - | 2*A*A', C |^-1 * | 2*A*b |
+ * |z| - |     C', 0 |      |     d |
+ *
+ * Where:
+ *   p - An array of the polynomial coefficients solved for.
+ *   z - An array of Lagrange mulitipliers
+ *   A - Is the Vandermonde matrix of all (constrained and unconstrained) domain values
+ *   C - Is the Vandermonde matrix of the constrained domain values
+ *   b - An array of the values to perform the fit on
+ *   d - An array of the values corresponding to the constrained domain values
+ */
 class PolynomialSmoother : public StompUpdateFilter
 {
 public:
@@ -80,8 +96,7 @@ public:
   }
 
 protected:
-
-  void fillVandermondeMatrix(double poly_order,const Eigen::ArrayXd& domain_vals,Eigen::MatrixXd& X);
+  void fillVandermondeMatrix(const Eigen::ArrayXd& domain_vals, Eigen::MatrixXd& v) const;
 
 protected:
 
@@ -93,9 +108,12 @@ protected:
 
   // temp
   Eigen::ArrayXd domain_vals_;
-  Eigen::MatrixXd X_matrix_;
-  Eigen::MatrixXd X_pseudo_inv_;
-  Eigen::VectorXd smoothed_parameters_;
+  Eigen::ArrayXd domain_fvals_;
+  Eigen::MatrixXd x_matrix_;
+  Eigen::MatrixXd x_matrix_t_; /**< Transpose of x_matrix_ */
+  Eigen::MatrixXd xf_matrix_;
+  Eigen::MatrixXd full_matrix_;
+  Eigen::MatrixXd full_inv_matrix_;
 
   // robot
   moveit::core::RobotModelConstPtr robot_model_;
