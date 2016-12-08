@@ -55,6 +55,7 @@ namespace constrained_ik
   {
     if (!config.hasMember(key))
     {
+      ROS_ERROR("XmlRpcValue does not contain key %s.", key.c_str());
       return false;
     }
     XmlRpc::XmlRpcValue param = config[key];
@@ -110,27 +111,26 @@ namespace constrained_ik
   bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, Eigen::VectorXd& eigen_vector)
   {
     std::vector<double> double_array;
-    if(getParam(config, key, double_array))
-    {
-      eigen_vector = Eigen::VectorXd::Map(double_array.data(), double_array.size());
-    }
-    else
-    {
+
+    if(!getParam(config, key, double_array))
       return false;
-    }
+
+    eigen_vector = Eigen::VectorXd::Map(double_array.data(), double_array.size());
+    return true;
   }
 
   bool getParam(XmlRpc::XmlRpcValue& config, const std::string& key, bool& value)
   {
     if (!config.hasMember(key))
-      {
-        return false;
-      }
-    XmlRpc::XmlRpcValue param = config[key];
-    if (param.getType() != XmlRpc::XmlRpcValue::TypeBoolean)
     {
+      ROS_ERROR("XmlRpcValue does not contain key %s.", key.c_str());
       return false;
     }
+
+    XmlRpc::XmlRpcValue param = config[key];
+    if (param.getType() != XmlRpc::XmlRpcValue::TypeBoolean)
+      return false;
+
     value = param;
     return true;
   }
