@@ -179,6 +179,46 @@ std::string toString(const Eigen::VectorXd& data)
   return ss.str();
 }
 
+Eigen::VectorXd polyFitWithFixedPoints(const int d,
+                                       const Eigen::VectorXd &x,
+                                       const Eigen::VectorXd &y,
+                                       const Eigen::VectorXi &fixed_indices,
+                                       Eigen::VectorXd &poly_params)
+{
+  int num_r = d + 1;
+  int num_fixed = fixed_indices.size();
+  Eigen::MatrixXd x_t(num_r, x.size());
+  Eigen::MatrixXd a_t(num_r, num_fixed);
+  Eigen::VectorXd xf(num_fixed), yf(num_fixed);
+
+  // Get fixed position data
+  for (auto i = 0; i < num_fixed; i++)
+  {
+    xf[i] = x[fixed_indices[i]];
+    yf[i] = y[fixed_indices[i]];
+  }
+
+
+  for (auto r = 0; r < num_r; r++)
+  {
+    x_t.row(r) = x.array().pow(r);
+    a_t.row(r) = xf.array().pow(r);
+  }
+
+  Eigen::MatrixXd top(num_r, num_r + num_fixed);
+  Eigen::MatrixXd bot(num_fixed, num_r + num_fixed);
+  Eigen::MatrixXd mat(num_r + num_fixed, num_r + num_fixed);
+  Eigen::VectorXd vec(num_r + num_fixed);
+  vec << 2*x_t*y, yf;
+  top << 2*x_t*x_t.transpose(), a_t;
+  bot << a_t.transpose(), Eigen::MatrixXd::Zero(num_fixed, num_fixed);
+  mat << top,
+         bot;
+
+  poly_params = mat.lu().solve(vec).head(num_r);
+  return x_t.transpose() * poly_params;
+}
+
 }
 
 

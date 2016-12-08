@@ -176,7 +176,20 @@ std::string toString(const Eigen::VectorXd& data);
  */
 std::string toString(const Eigen::MatrixXd& data);
 
-
+/**
+ * @brief Fit a polynomial with fixed indices
+ * @param d Degree of the polynomial
+ * @param x The domain values
+ * @param y Fit values
+ * @param fixed_indices Indicies of the input data to remain fixed during fit.
+ * @param poly_params Polynomial parameters found during the fit
+ * @return The new fitted values.
+ */
+Eigen::VectorXd polyFitWithFixedPoints(const int d,
+                                       const Eigen::VectorXd &x,
+                                       const Eigen::VectorXd &y,
+                                       const Eigen::VectorXi &fixed_indices,
+                                       Eigen::VectorXd &poly_params);
 
 } /* namespace stomp */
 
