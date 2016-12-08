@@ -51,7 +51,6 @@ target_link_libraries(${PROJECT_NAME}_planner_manager ${PROJECT_NAME} ${catkin_L
 
 # cost function plugin(s)
 add_library(${PROJECT_NAME}_cost_functions
-  src/cost_functions/tool_goal_pose.cpp
   src/cost_functions/collision_check.cpp
   src/cost_functions/obstacle_distance_gradient.cpp
  )
@@ -61,7 +60,6 @@ target_link_libraries(${PROJECT_NAME}_cost_functions ${catkin_LIBRARIES})
 add_library(${PROJECT_NAME}_noisy_filters
   src/noisy_filters/joint_limits.cpp  
   src/noisy_filters/multi_trajectory_visualization.cpp
-  src/noisy_filters/underconstrained_goal.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_noisy_filters ${catkin_LIBRARIES})
@@ -69,7 +67,6 @@ target_link_libraries(${PROJECT_NAME}_noisy_filters ${catkin_LIBRARIES})
 # update plugin(s)
 add_library(${PROJECT_NAME}_update_filters
   src/update_filters/polynomial_smoother.cpp
-  src/update_filters/constrained_cartesian_goal.cpp
   src/update_filters/trajectory_visualization.cpp
   src/update_filters/control_cost_projection.cpp
   src/update_filters/update_logger.cpp

@@ -1,0 +1,7 @@
+<library path="libstomp_plugins_noise_generators">
+  <class name="stomp_moveit/GoalGuidedMultivariateGaussian" type="stomp_moveit::noise_generators::GoalGuidedMultivariateGaussian" base_class_type="stomp_moveit::noise_generators::StompNoiseGenerator">
+    <description>
+      Regenerates random noise to a goal pose within the task space 
+    </description>
+  </class>
+</library>
