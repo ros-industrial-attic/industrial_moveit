@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,6 +33,13 @@ static const std::string NOISY_FILTERS_FIELD = "noisy_filters";
 static const std::string UPDATE_FILTERS_FIELD = "update_filters";
 static const std::string NOISE_GENERATOR_FIELD = "noise_generator";
 
+/**
+ * @brief Convenience method to load an array of STOMP plugins
+ * @param config      The parameter value
+ * @param param_name  The parameter name that contains the plugin
+ * @param plugins     An array of found plugins and their corresponding parameter value
+ * @return true if succeeded, false otherwise.
+ */
 bool parsePluginConfigs(XmlRpc::XmlRpcValue config,
                       std::string param_name,
                       PluginConfigs& plugins)
@@ -68,6 +75,17 @@ bool parsePluginConfigs(XmlRpc::XmlRpcValue config,
   return !plugins.empty();
 }
 
+/**
+ * @struct PluginData
+ * @brief   Packs plugin information into a single struct
+ * @param config          The configuration data in XmlRPC format
+ * @param param_key       The lookup key which should have an entry in "config"
+ * @param critical        Whether this plugin is required
+ * @param single_instance Whether only one plugin is expected
+ * @param plugin_desc     A brief description of the plugin
+ * @param robot_model     A pointer  to the robot mdel
+ * @param group_name      The specified group name
+ */
 struct PluginData
 {
   XmlRpc::XmlRpcValue config;

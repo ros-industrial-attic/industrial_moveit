@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,17 +35,44 @@ namespace stomp_moveit
 namespace cost_functions
 {
 
+/**
+ * @class stomp_moveit::cost_functions::CollisionCheck
+ * @brief Assigns a cost value to  each robot state by evaluating if the robot is in collision.
+ *
+ * @par Examples:
+ * All examples are located here @ref examples
+ */
 class CollisionCheck : public StompCostFunction
 {
 public:
   CollisionCheck();
   virtual ~CollisionCheck();
 
+  /**
+   * @brief Initializes and configures the Cost Function.  Calls the configure method and passes the 'config' value.
+   * @param robot_model_ptr A pointer to the robot model.
+   * @param group_name      The designated planning group.
+   * @param config          The configuration data.  Usually loaded from the ros parameter server
+   * @return true if succeeded, false otherwise.
+   */
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,XmlRpc::XmlRpcValue& config) override;
 
+  /**
+   * @brief Sets internal members of the plugin from the configuration data.
+   * @param config  The configuration data.  Usually loaded from the ros parameter server
+   * @return  true if succeeded, false otherwise.
+   */
   virtual bool configure(const XmlRpc::XmlRpcValue& config) override;
 
+  /**
+   * @brief Stores the planning details which will be used during the costs calculations.
+   * @param planning_scene      A smart pointer to the planning scene
+   * @param req                 The motion planning request
+   * @param config              The  Stomp configuration.
+   * @param error_code          Moveit error code.
+   * @return  true if succeeded, false otherwise.
+   */
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
@@ -53,15 +80,15 @@ public:
 
 
   /**
-   * @brief computes the state costs as a function of the parameters for each time step.
-   * @param parameters [num_dimensions] num_parameters - policy parameters to execute
+   * @brief computes the state costs by checking whether the robot is in collision at each time step.
+   * @param parameters        The parameter values to evaluate for state costs [num_dimensions x num_parameters]
    * @param start_timestep    start index into the 'parameters' array, usually 0.
    * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'   *
    * @param iteration_number  The current iteration count in the optimization loop
    * @param rollout_number    index of the noisy trajectory whose cost is being evaluated.   *
-   * @param costs             vector containing the state costs per timestep.
-   * @param validity          whether or not the trajectory is valid
-   * @return true if cost were properly computed
+   * @param costs             vector containing the state costs per timestep.  Sets '0' to all collision-free states.
+   * @param validity          whether or not the trajectory is valid.
+   * @return false if there was an irrecoverable failure, true otherwise.
    */
   virtual bool computeCosts(const Eigen::MatrixXd& parameters,
                             std::size_t start_timestep,

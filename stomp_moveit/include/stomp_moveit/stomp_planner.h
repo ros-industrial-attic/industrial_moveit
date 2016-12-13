@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+  * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,52 +37,103 @@ namespace stomp_moveit
 
 using StompOptimizationTaskPtr = boost::shared_ptr<StompOptimizationTask>;
 
+/**
+ * @brief The PlanningContext specialization that wraps the STOMP algorithm.
+ *
+ * @par Examples:
+ * All examples are located here @ref examples
+ *
+ */
 class StompPlanner: public planning_interface::PlanningContext
 {
 public:
+  /**
+   * @brief StompPlanner constructor.
+   * @param group   The planning group for which this instance will plan.
+   * @param config  The parameter containing the configuration data for this planning group, includes plugins specifications.
+   * @param model   A pointer to the robot model.
+   */
   StompPlanner(const std::string& group,const XmlRpc::XmlRpcValue& config,const moveit::core::RobotModelConstPtr& model);
   virtual ~StompPlanner();
 
   /**
-   * @brief Solve the motion planning problem and store the result in \e res
+   * @brief Solve the motion planning problem as defined in the motion request passed before hand.
+   * @param res Contains the solved planned path.
+   * @return true if succeeded, false otherwise.
    */
   virtual bool solve(planning_interface::MotionPlanResponse &res) override;
 
   /**
-   * @brief Solve the motion planning problem and store the detailed result in \e res
+   * @brief Solve the motion planning problem as defined in the motion request passed before hand.
+   * @param res Contains the solved planned path.
+   * @return true if succeeded, false otherwise.
    */
   virtual bool solve(planning_interface::MotionPlanDetailedResponse &res) override;
 
   /**
-   * @brief Request termination, if a solve() function is currently computing plans
+   * @brief Thread-safe method that request early termination, if a solve() function is currently computing plans.
+   * @return true if succeeded, false otherwise.
    */
   virtual bool terminate() override;
 
   /**
-   * @brief Clears results from previous plan
+   * @brief Clears results from previous plan.
    */
   virtual void clear() override;
 
+  /**
+   * @brief Convenience method to load extract the parameters for each supported planning group.
+   * @param nh      A ros node handle.
+   * @param config  A map containing the configuration data for each planning group found.
+   * @param param   The parameter name containing the confuration data for all planning groups.
+   * @return  true if succeeded, false otherwise.
+   */
   static bool getConfigData(ros::NodeHandle &nh, std::map<std::string, XmlRpc::XmlRpcValue> &config, std::string param = std::string("stomp"));
 
   /**
-   * @brief Determine whether this plugin instance is able to represent this planning request
+   * @brief Checks some conditions to determine whether it is able to plan given for this planning request.
+   * @return  true if succeeded, false otherwise.
    */
   bool canServiceRequest(const moveit_msgs::MotionPlanRequest &req)  const;
 
 protected:
 
+  /**
+   * @brief planner setup
+   */
   void setup();
+
+  /**
+   * @brief Gets the start and goal joint values from the motion plan request passed.
+   * @param start The start joint values
+   * @param goal  The goal joint values
+   * @return  true if succeeded, false otherwise.
+   */
   bool getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal);
 
-  // Converts from STOMP optimization format to a joint trajectory
-  bool parametersToJointTrajectory(Eigen::MatrixXd& parameters, trajectory_msgs::JointTrajectory& traj);
+  /**
+   * @brief Converts from an Eigen Matrix to to a joint trajectory
+   * @param parameters  The input matrix of size [num joints][num_timesteps] containing the trajectory joint values.
+   * @param traj        A trajectory in joint space.
+   * @return  true if succeeded, false otherwise.
+   */
+  bool parametersToJointTrajectory(const Eigen::MatrixXd& parameters, trajectory_msgs::JointTrajectory& traj);
 
-  // Converts from a joint trajectory to STOMP optimization format
+  /**
+   * @brief Converts from a joint trajectory to an Eigen Matrix.
+   * @param traj        The input trajectory in joint space.
+   * @param parameters  The matrix of size [num joints][num_timesteps] containing the trajectory joint values.
+   * @return  true if succeeded, false otherwise.
+   */
   bool jointTrajectorytoParameters(const trajectory_msgs::JointTrajectory& traj, Eigen::MatrixXd& parameters) const;
 
-  // Attempts to parse a seed trajectory out of the 'trajectory_constraints' field of the motion planning
-  // request. If successful, returns true and sets 'seed' to the seed trajectory.
+  /**
+   * @brief Populates a seed joint trajectory from the 'trajectory_constraints' moveit_msgs::Constraints[] array.
+   *  each entry in the array is considered to be joint values for that time step.
+   * @param req   The motion plan request containing the seed trajectory in the 'trajectory_constraints' field.
+   * @param seed  The output seed trajectory which is used to initialize the STOMP optimization
+   * @return true if succeeded, false otherwise.
+   */
   bool extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const;
 
 protected:
@@ -97,13 +148,6 @@ protected:
   moveit::core::RobotModelConstPtr robot_model_;
 };
 
-/**
- * @brief A hack to encode seed trajectories directly into a set of constraints. Only position is currently
- * encoded.
- *
- * Assumes that the seed's joint_names & values match the corresponding moveit planning group.
- */
-moveit_msgs::TrajectoryConstraints encodeSeedTrajectory(const trajectory_msgs::JointTrajectory& seed);
 
 } /* namespace stomp_moveit */
 #endif /* STOMP_MOVEIT_STOMP_PLANNER_H_ */
