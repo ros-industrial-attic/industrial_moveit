@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -40,20 +40,25 @@ namespace stomp_moveit
 {
 namespace utils
 {
+
+/**
+ * @namespace stomp_moveit::utils::kinematics
+ * @brief Utility functions related to finding Inverse Kinematics solutions
+ */
 namespace kinematics
 {
 
-  const static double EPSILON = 0.011;
-  const static double LAMBDA = 0.01;
+  const static double EPSILON = 0.011;  /**< @brief Used in dampening the matrix pseudo inverse calculation */
+  const static double LAMBDA = 0.01;    /**< @brief Used in dampening the matrix pseudo inverse calculation */
 
-/*
+/**
  * @brief Computes the twist vector [vx vy vz wx wy wz]'  relative to the current tool coordinate system.  The rotational part is
  *        composed of the product between the angle times the axis about which it rotates.
  *
  * @param p0        start tool pose in world coordinates
  * @param pf        final tool pose in world coordinates
  * @param nullity   array of 0's and 1's indicating which cartesian DOF's are unconstrained (0)
- * @param twist     the twist vector in tool coordinates.
+ * @param twist     the twist vector in tool coordinates (change from p0 to pf) [6 x 1].
  */
   static void computeTwist(const Eigen::Affine3d& p0,
                                           const Eigen::Affine3d& pf,
@@ -91,6 +96,12 @@ namespace kinematics
     twist = (nullity == 0).select(0,twist);
   }
 
+  /**
+   * @brief Convenience function to remove entire rows of the Jacobian matrix.
+   * @param jacb          The jacobian matrix of size [num_dimensions x 6]
+   * @param indices       An indices vector where each entry indicates an row index of the jacobian that will be kept.
+   * @param jacb_reduced  The reduced jacobian containing the only the rows indicated by the 'indices' array.
+   */
   static void reduceJacobian(const Eigen::MatrixXd& jacb,
                                             const std::vector<int>& indices,Eigen::MatrixXd& jacb_reduced)
   {
@@ -101,6 +112,13 @@ namespace kinematics
     }
   }
 
+  /**
+   * @brief Calculates the damped pseudo inverse of a matrix using singular value decomposition
+   * @param jacb              The jacobian matrix
+   * @param jacb_pseudo_inv   The pseudo inverse of the matrix
+   * @param eps               Used to threshold the singular values
+   * @param lambda            Used in preventing division by small singular values from generating large numbers.
+   */
   static void calculateDampedPseudoInverse(const Eigen::MatrixXd &jacb, Eigen::MatrixXd &jacb_pseudo_inv,
                                            double eps = 0.011, double lambda = 0.01)
   {
@@ -133,6 +151,22 @@ namespace kinematics
     jacb_pseudo_inv = V * inv_Sv.asDiagonal() * U.transpose();
   }
 
+  /**
+   * @brief Solves the inverse kinematics for a given tool pose using a gradient descent method.  It can handle under constrained DOFs for
+   *  the cartesian tool pose and can also apply a vector onto the null space of the jacobian in order to each a secondary objective
+   * @param robot_state                       A pointer to the robot state.
+   * @param group_name                        The name of the kinematic group. The tool link name is assumed to be the last link in this group.
+   * @param constrained_dofs                  A vector of the form [x y z rx ry rz] filled with 0's and 1's to indicate an unconstrained or fully constrained DOF.
+   * @param joint_update_rates                The weights to be applied to each update during every iteration [num_dimensions x 1].
+   * @param cartesian_convergence_thresholds  The error margin for each dimension of the twist vector [6 x 1].
+   * @param null_proj_weights                 The weights to be multiplied to the null space vector [num_dimension x 1].
+   * @param null_space_vector                 The null space vector which is applied into the jacobians null space when the pose is under constrained [6 x 1].
+   * @param max_iterations                    The maximum number of iterations that the algorithm will run until convergence is reached.
+   * @param tool_goal_pose                    The desired tool pose.
+   * @param init_joint_pose                   Seed joint pose [num_dimension x 1].
+   * @param joint_pose                        IK joint solution [num_dimension x 1].
+   * @return  True if a solution was found, false otherwise.
+   */
   static bool solveIK(moveit::core::RobotStatePtr robot_state, const std::string& group_name,
                       const Eigen::ArrayXi& constrained_dofs, const Eigen::ArrayXd& joint_update_rates,
                       const Eigen::ArrayXd& cartesian_convergence_thresholds, const Eigen::ArrayXd& null_proj_weights,
@@ -184,7 +218,6 @@ namespace kinematics
       {
         // converged
         converged = true;
-        //ROS_DEBUG("Found numeric ik solution after %i iterations",iteration_count);
         break;
       }
 
@@ -242,6 +275,16 @@ namespace kinematics
     return converged;
   }
 
+  /**
+   * @brief Convenience function to calculate the Jacobian's null space matrix for an under constrained tool cartesian pose.
+   * @param state             A pointer to the robot state.
+   * @param group             The name of the kinematic group.
+   * @param tool_link         The tool link name
+   * @param constrained_dofs  A vector of the form [x y z rx ry rz] filled with 0's and 1's to indicate an unconstrained or fully constrained DOF.
+   * @param joint_pose        The joint pose at which to compute the jacobian matrix.
+   * @param jacb_nullspace    The jacobian null space matrix [num_dimensions x num_dimensions]
+   * @return True if a solution was found, false otherwise.
+   */
   static bool computeJacobianNullSpace(moveit::core::RobotStatePtr state,std::string group,std::string tool_link,
                                        const Eigen::ArrayXi& constrained_dofs,const Eigen::VectorXd& joint_pose,
                                        Eigen::MatrixXd& jacb_nullspace)
@@ -290,6 +333,21 @@ namespace kinematics
     return true;
   }
 
+  /**
+   * @brief Solves the inverse kinematics for a given tool pose using a gradient descent method.  It can handle under constrained DOFs for
+   *  the cartesian tool pose.
+   * @param robot_state                       A pointer to the robot state.
+   * @param group_name                        The name of the kinematic group. The tool link name is assumed to be the last link in this group.
+   * @param constrained_dofs                  A vector of the form [x y z rx ry rz] filled with 0's and 1's to indicate an unconstrained or fully constrained DOF.
+   * @param joint_update_rates                The weights to be applied to each update during every iteration [num_dimensions x 1].
+   * @param cartesian_convergence_thresholds  The error margin for each dimension of the twist vector [6 x 1].
+   * @param max_iterations                    The maximum number of iterations that the algorithm will run to reach convergence.
+   * @param tool_goal_pose                    The cartesian pose of the tool relative to the world.
+   * @param init_joint_pose                   Seed joint pose [num_dimension x 1].
+   * @param joint_pose                        IK joint solution [num_dimension x 1].
+   * @return  True if a solution was found, false otherwise.
+   * @return
+   */
   static bool solveIK(moveit::core::RobotStatePtr robot_state, const std::string& group_name, const Eigen::ArrayXi& constrained_dofs,
                const Eigen::ArrayXd& joint_update_rates,const Eigen::ArrayXd& cartesian_convergence_thresholds, int max_iterations,
                const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,

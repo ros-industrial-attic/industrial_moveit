@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -270,7 +270,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   return true;
 }
 
-bool StompPlanner::parametersToJointTrajectory(Eigen::MatrixXd& parameters,
+bool StompPlanner::parametersToJointTrajectory(const Eigen::MatrixXd& parameters,
                                                trajectory_msgs::JointTrajectory& trajectory)
 {
   // filling trajectory joint values
@@ -523,33 +523,6 @@ bool StompPlanner::getConfigData(ros::NodeHandle &nh, std::map<std::string, XmlR
     ROS_ERROR("Unable to parse ROS parameter:\n %s",stomp_config.toXml().c_str());
     return false;
   }
-}
-
-moveit_msgs::TrajectoryConstraints encodeSeedTrajectory(const trajectory_msgs::JointTrajectory& seed)
-{
-  moveit_msgs::TrajectoryConstraints res;
-
-  const auto dof = seed.joint_names.size();
-
-  for (size_t i = 0; i < seed.points.size(); ++i) // for each time step
-  {
-    moveit_msgs::Constraints c;
-
-    if (seed.points[i].positions.size() != dof)
-      throw std::runtime_error("All trajectory position fields must have same dimensions as joint_names");
-
-    for (size_t j = 0; j < dof; ++j) // for each joint
-    {
-      moveit_msgs::JointConstraint jc;
-      jc.joint_name = seed.joint_names[j];
-      jc.position = seed.points[i].positions[j];
-
-      c.joint_constraints.push_back(jc);
-    }
-
-    res.constraints.push_back(std::move(c));
-  }
-  return res;
 }
 
 

@@ -55,7 +55,7 @@ class MultivariateGaussian;
 typedef boost::shared_ptr<MultivariateGaussian> MultivariateGaussianPtr;
 
 /**
- * \brief Generates samples from a multivariate gaussian distribution
+ * @brief Generates samples from a multivariate gaussian distribution
  */
 class MultivariateGaussian
 {
@@ -63,6 +63,11 @@ public:
   template <typename Derived1, typename Derived2>
   MultivariateGaussian(const Eigen::MatrixBase<Derived1>& mean, const Eigen::MatrixBase<Derived2>& covariance);
 
+  /**
+   * @brief generates random values using a normal distribution.
+   * @param output          The random values
+   * @param use_covariance  True to apply the covariance matrix onto the random values, false otherwise
+   */
   template <typename Derived>
   void sample(Eigen::MatrixBase<Derived>& output,bool use_covariance = true);
 
