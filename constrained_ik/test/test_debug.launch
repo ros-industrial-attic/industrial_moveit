@@ -1,8 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-
-  <include file="$(find constrained_ik)/test/resources/load_ur10.launch" />
-  <test test-name="constrained_ik" pkg="constrained_ik" type="test_constrained_ik" />
-  <!--node name="rviz" pkg="rviz" type="rviz" args="-d $(find constrained_ik)/config/test.rviz" required="true" /-->
-
-</launch>

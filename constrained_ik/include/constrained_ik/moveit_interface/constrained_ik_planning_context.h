@@ -29,7 +29,6 @@
 #define CONSTRAINED_IK_PLANNING_CONTEXT_H
 
 #include <moveit/planning_interface/planning_interface.h>
-#include <constrained_ik/moveit_interface/constrained_ik_planner_parameters.h>
 #include <constrained_ik/CLIKPlannerDynamicConfig.h>
 
 namespace constrained_ik

@@ -96,8 +96,8 @@ public:
   void setDebug(bool debug = true) {debug_= debug;}
 
 protected:
-  bool initialized_; /**< True if solver is intialized, otherwise false */
-  bool debug_; /**< Provide control over if certain print statements are output */
+  bool initialized_;         /**< True if solver is intialized, otherwise false */
+  bool debug_;               /**< Provide control over if certain print statements are output */
   const Constrained_IK* ik_; /**< Pointer to parent solver */
 
   /**

@@ -41,23 +41,23 @@ namespace constrained_ik
 struct SolverState
 {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  Eigen::Affine3d goal; /**< Desired goal position to solve IK about */
-  Eigen::VectorXd joint_seed; /**< Joint position (initial guess) to seed the IK solver with */
+  Eigen::Affine3d goal;                                                  /**< Desired goal position to solve IK about */
+  Eigen::VectorXd joint_seed;                                            /**< Joint position (initial guess) to seed the IK solver with */
 
-  int iter; /**< Current number of solver iterations */
-  Eigen::VectorXd joints; /**< Updated joint positions */
-  Eigen::VectorXd joints_delta; /**< The joint delta between this state and the previous state */
-  Eigen::Affine3d pose_estimate; /**< The pose for the updated joint position from the solver */
-  std::vector<Eigen::VectorXd> iteration_path; /**< Store the joint position for each iteration of the solver */
-  double primary_sum; /**< The absolute sum of the cumulative primary motion */
-  double auxiliary_sum; /**< The absolute sum of the cumulative auxiliary motion */
-  bool auxiliary_at_limit; /**< This is set if auxiliary reached motion or iteration limit. */
-  initialization_state::InitializationState condition; /**< State of the IK Solver */
-  planning_scene::PlanningSceneConstPtr planning_scene; /**< Pointer to the planning scene, some constraints require it */
+  int iter;                                                              /**< Current number of solver iterations */
+  Eigen::VectorXd joints;                                                /**< Updated joint positions */
+  Eigen::VectorXd joints_delta;                                          /**< The joint delta between this state and the previous state */
+  Eigen::Affine3d pose_estimate;                                         /**< The pose for the updated joint position from the solver */
+  std::vector<Eigen::VectorXd> iteration_path;                           /**< Store the joint position for each iteration of the solver */
+  double primary_sum;                                                    /**< The absolute sum of the cumulative primary motion */
+  double auxiliary_sum;                                                  /**< The absolute sum of the cumulative auxiliary motion */
+  bool auxiliary_at_limit;                                               /**< This is set if auxiliary reached motion or iteration limit. */
+  initialization_state::InitializationState condition;                   /**< State of the IK Solver */
+  planning_scene::PlanningSceneConstPtr planning_scene;                  /**< Pointer to the planning scene, some constraints require it */
   collision_detection::CollisionRobotIndustrialConstPtr collision_robot; /**< Pointer to the collision robot, some constraints require it */
   collision_detection::CollisionWorldIndustrialConstPtr collision_world; /**< Pointer to the collision world, some constraints require it */
-  moveit::core::RobotStatePtr robot_state; /**< Pointer to the current robot state */
-  std::string group_name; /**< Move group name */
+  moveit::core::RobotStatePtr robot_state;                               /**< Pointer to the current robot state */
+  std::string group_name;                                                /**< Move group name */
 
   /**
    * @brief SolverState Constructor

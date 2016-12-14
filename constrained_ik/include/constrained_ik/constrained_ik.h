@@ -241,15 +241,15 @@ public:
 
  protected:
   // solver configuration parameters
-  ros::NodeHandle nh_; /**< ROS node handle */
+  ros::NodeHandle nh_;                /**< ROS node handle */
   ConstrainedIKConfiguration config_; /**< Solver configuration parameters */
 
   // constraints
-  ConstraintGroup primary_constraints_; /**< Array of primary constraints */
+  ConstraintGroup primary_constraints_;   /**< Array of primary constraints */
   ConstraintGroup auxiliary_constraints_; /**< Array of auxiliary constraints */
 
   // state/counter data
-  bool initialized_; /**< True if solver is intialized, otherwise false */
+  bool initialized_;        /**< True if solver is intialized, otherwise false */
   basic_kin::BasicKin kin_; /**< Solver kinematic model */
 
   /**

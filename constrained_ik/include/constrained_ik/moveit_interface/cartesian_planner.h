@@ -124,11 +124,11 @@ namespace constrained_ik
     std::vector<Eigen::Affine3d,Eigen::aligned_allocator<Eigen::Affine3d> >
     interpolateCartesian(const Eigen::Affine3d& start, const Eigen::Affine3d& stop, double ds, double dt) const;
 
-    boost::atomic<bool> terminate_; /**< Termination flag */
-    std::string robot_description_; /**< robot description value from ros param server */
+    boost::atomic<bool> terminate_;               /**< Termination flag */
+    std::string robot_description_;               /**< robot description value from ros param server */
     robot_model::RobotModelConstPtr robot_model_; /**< Robot model object */
-    boost::shared_ptr<Constrained_IK> solver_; /**< Constrained IK Solver */
-    boost::mutex mutex_; /**< Mutex */
+    boost::shared_ptr<Constrained_IK> solver_;    /**< Constrained IK Solver */
+    boost::mutex mutex_;                          /**< Mutex */
   };
 } //namespace constrained_ik
 

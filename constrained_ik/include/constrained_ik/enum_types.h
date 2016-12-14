@@ -107,14 +107,14 @@ namespace constrained_ik
     /** @brief Enum that identifies the state of the solver. */
     enum InitializationState
     {
-      PrimaryOnly, /**< Solver is initialized and only contains primary constraints */
-      AuxiliaryOnly, /**< Solver is initialized and only contains auxiliary constraints */
+      PrimaryOnly,         /**< Solver is initialized and only contains primary constraints */
+      AuxiliaryOnly,       /**< Solver is initialized and only contains auxiliary constraints */
       PrimaryAndAuxiliary, /**< Solver is initialized and contain both primary and auxiliary constraints */
-      NothingInitialized, /**< Solver is not initialized */
+      NothingInitialized,  /**< Solver is not initialized */
     };
   }// namespace initialization_state
 
-  typedef constraint_types::ConstraintTypes ConstraintTypes; /**< Typedef for ConstraintTypes in constrained_ik namespace */
+  typedef constraint_types::ConstraintTypes ConstraintTypes;             /**< Typedef for ConstraintTypes in constrained_ik namespace */
   typedef initialization_state::InitializationState InitializationState; /**< Typedef for InitializationState in constrained_ik namespace */
 }// namespace constrained_ik
 #endif // ENUM_TYPES_H
