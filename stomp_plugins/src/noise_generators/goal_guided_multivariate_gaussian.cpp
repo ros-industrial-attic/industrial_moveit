@@ -1,8 +1,27 @@
-/*
- * goal_guided_multivariate_gaussian.cpp
+/**
+ * @file goal_guided_multivariate_gaussian.cpp
+ * @brief This class generates noisy trajectories to an under-constrained cartesian goal pose
  *
- *  Created on: Jun 14, 2016
- *      Author: Jorge Nicho
+ * @author Jorge Nicho
+ * @date Jun 14, 2016
+ * @version TODO
+ * @bug No known bugs
+ *
+ * @copyright Copyright (c) 2016, Southwest Research Institute
+ *
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #include "stomp_plugins/noise_generators/goal_guided_multivariate_gaussian.h"

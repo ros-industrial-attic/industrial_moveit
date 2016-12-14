@@ -1,5 +1,0 @@
-parent_ns/config2:
-  param1: 7
-  param2: none
-  param3: False
-  param4: default/Threading

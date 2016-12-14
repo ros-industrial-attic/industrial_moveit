@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,17 +37,45 @@ namespace stomp_moveit
 namespace cost_functions
 {
 
+/**
+ * @class stomp_moveit::cost_functions::ToolGoalPose
+ * @brief Evaluates the cost of the goal pose by determining how far the Cartesian tool pose
+ *        is from the desired under-constrained task manifold
+ *
+ * @par Examples:
+ * All examples are located here @ref examples
+ */
 class ToolGoalPose: public StompCostFunction
 {
 public:
   ToolGoalPose();
   virtual ~ToolGoalPose();
 
+  /**
+   * @brief Initializes and configures the Cost Function.
+   * @param robot_model_ptr A pointer to the robot model.
+   * @param group_name      The designated planning group.
+   * @param config          The configuration data.  Usually loaded from the ros parameter server
+   * @return true if succeeded, false otherwise.
+   */
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,XmlRpc::XmlRpcValue& config) override;
 
+  /**
+   * @brief Sets internal members of the plugin from the configuration data.
+   * @param config  The configuration data .  Usually loaded from the ros parameter server
+   * @return  true if succeeded, false otherwise.
+   */
   virtual bool configure(const XmlRpc::XmlRpcValue& config) override;
 
+  /**
+   * @brief Stores the planning details which will be used during the costs calculations.
+   * @param planning_scene  A smart pointer to the planning scene
+   * @param req                 The motion planning request
+   * @param config              The  Stomp configuration.
+   * @param error_code          Moveit error code.
+   * @return  true if succeeded, false otherwise.
+   */
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
@@ -55,13 +83,13 @@ public:
 
 
   /**
-   * @brief computes the state costs as a function of the parameters for each time step.
-   * @param parameters [num_dimensions] num_parameters - policy parameters to execute
+   * @brief computes the goal state costs as a function of the distance from the desired task manifold.
+   * @param parameters        The parameter values to evaluate for state costs [num_dimensions x num_parameters]
    * @param start_timestep    start index into the 'parameters' array, usually 0.
    * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'   *
    * @param iteration_number  The current iteration count in the optimization loop
    * @param rollout_number    index of the noisy trajectory whose cost is being evaluated.   *
-   * @param costs             vector containing the state costs per timestep.
+   * @param costs             vector containing the state costs per timestep.  Only the array's last entry is set. [num_parameters x 1]
    * @param validity          whether or not the trajectory is valid
    * @return true if cost were properly computed
    */
@@ -84,6 +112,13 @@ public:
     return name_ + "/" + group_name_;
   }
 
+  /**
+   * @brief Called by the Stomp Task at the end of the optimization process
+   *
+   * @param success           Whether the optimization succeeded
+   * @param total_iterations  Number of iterations used
+   * @param final_cost        The cost value after optimizing.
+   */
   virtual void done(bool success,int total_iterations,double final_cost) override{}
 
 protected:
@@ -101,14 +136,14 @@ protected:
   moveit_msgs::MotionPlanRequest plan_request_;
 
   // goal pose
-  Eigen::Affine3d tool_goal_pose_;
+  Eigen::Affine3d tool_goal_pose_;                    /**< @brief The desired goal pose for the active plan request **/
 
   // ros parameters
-  Eigen::ArrayXi dof_nullity_;
-  std::pair<double,double> position_error_range_;
-  std::pair<double,double> orientation_error_range_;
-  double position_cost_weight_;
-  double orientation_cost_weight_;
+  Eigen::ArrayXi dof_nullity_;                        /**< @brief Indicates which cartesian DOF's are unconstrained (0) and fully constrained (1)*/
+  std::pair<double,double> position_error_range_;     /**< @brief The allowed position error range, [2 x 1] */
+  std::pair<double,double> orientation_error_range_;  /**< @brief The allowed orientation error range as euler angles, [2 x 1] **/
+  double position_cost_weight_;                       /**< @brief factor multiplied to the scaled position error **/
+  double orientation_cost_weight_;                    /**< @brief factor multiplied to the scaled orientation error **/
 
   // support variables
   Eigen::VectorXd last_joint_pose_;
