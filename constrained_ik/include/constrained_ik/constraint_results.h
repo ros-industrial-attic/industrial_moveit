@@ -39,11 +39,11 @@ namespace constrained_ik
 
     ConstraintResults():status(true){}
 
-    Eigen::VectorXd error; /**< Error of the constraint */
+    Eigen::VectorXd error;    /**< Error of the constraint */
 
     Eigen::MatrixXd jacobian; /**< Jacobian of the constraint */
 
-    bool status; /**< Current status of the constraint, True Converged, False Not Converged */
+    bool status;              /**< Current status of the constraint, True Converged, False Not Converged */
 
     /**
      * @brief Append the provided result this result

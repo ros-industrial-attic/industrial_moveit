@@ -114,15 +114,15 @@ namespace constrained_ik
 
   protected:
 
-    bool active_; /**< Indicates status of the kinematic solver */
-    basic_kin::BasicKin kin_; /**< Constrained IK kinematics object */
-    int dimension_; /**< Number of joints */
-    std::vector<std::string> link_names_; /**< List of link names */
-    std::vector<std::string> joint_names_; /**< list of joint names */
+    bool active_;                                     /**< Indicates status of the kinematic solver */
+    basic_kin::BasicKin kin_;                         /**< Constrained IK kinematics object */
+    int dimension_;                                   /**< Number of joints */
+    std::vector<std::string> link_names_;             /**< List of link names */
+    std::vector<std::string> joint_names_;            /**< list of joint names */
     planning_scene::PlanningScenePtr planning_scene_; /**< Pointer to planning scene which is used for collision queries */
-    moveit::core::RobotStatePtr robot_state_; /**< Robot State Ptr */
-    robot_model::RobotModelPtr robot_model_ptr_; /**< Robot Model Ptr */
-    boost::shared_ptr<Constrained_IK> solver_; /**< Constrained IK Solver */
+    moveit::core::RobotStatePtr robot_state_;         /**< Robot State Ptr */
+    robot_model::RobotModelPtr robot_model_ptr_;      /**< Robot Model Ptr */
+    boost::shared_ptr<Constrained_IK> solver_;        /**< Constrained IK Solver */
   };
 
 }   //namespace constrained_ik

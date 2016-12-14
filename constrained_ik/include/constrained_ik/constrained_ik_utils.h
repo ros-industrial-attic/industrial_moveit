@@ -38,7 +38,7 @@ namespace constrained_ik
     bool debug_mode;                   /**< Set the solver to a debug state. */
     bool allow_joint_convergence;      /**< Allow the solver to converge based on joint convergence. */
     bool allow_primary_normalization;  /**< Allow the solver to normalize primary motion. */
-    bool allow_auxiliary_nomalization; /**< Allow the solver to normalize auxiliary motion */
+    bool allow_auxiliary_nomalization; /**< Allow the solver to normalize auxiliary motion. */
     bool limit_primary_motion;         /**< Allow the solver to limit the primary motion. */
     bool limit_auxiliary_motion;       /**< Allow the solver to limit the auxiliary motion. */
     bool limit_auxiliary_interations;  /**< Allow the solver to limit the number of auxiliary interation. */
