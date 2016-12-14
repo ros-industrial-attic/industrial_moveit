@@ -1,8 +1,27 @@
-/*
- * goal_guided_multivariate_gaussian.h
+/**
+ * @file goal_guided_multivariate_gaussian.h
+ * @brief This class generates noisy trajectories to an under-constrained cartesian goal pose
  *
- *  Created on: Jun 14, 2016
- *      Author: Jorge Nicho
+ * @author Jorge Nicho
+ * @date Jun 14, 2016
+ * @version TODO
+ * @bug No known bugs
+ *
+ * @copyright Copyright (c) 2016, Southwest Research Institute
+ *
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #ifndef STOMP_PLUGINS_INCLUDE_STOMP_PLUGINS_NOISE_GENERATORS_GOAL_GUIDED_MULTIVARIATE_GAUSSIAN_H_
@@ -21,17 +40,45 @@ namespace noise_generators
 typedef boost::mt19937 RGNType;
 typedef boost::variate_generator< RGNType, boost::uniform_real<> > RandomGenerator;
 
+/**
+ * @class stomp_moveit::noise_generators::GoalGuidedMultivariateGaussian
+ * @brief This class generates noisy trajectories to an under-constrained cartesian goal pose.
+ *
+ * @par Examples:
+ * All examples are located here @ref examples
+ *
+ */
 class GoalGuidedMultivariateGaussian: public StompNoiseGenerator
 {
 public:
   GoalGuidedMultivariateGaussian();
   virtual ~GoalGuidedMultivariateGaussian();
 
+  /**
+   * @brief Initializes and configures.
+   * @param robot_model_ptr A pointer to the robot model.
+   * @param group_name      The designated planning group.
+   * @param config          The configuration data.  Usually loaded from the ros parameter server
+   * @return true if succeeded, false otherwise.
+   */
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,const XmlRpc::XmlRpcValue& config) override;
 
+  /**
+   * @brief Sets internal members of the plugin from the configuration data.
+   * @param config  The configuration data.  Usually loaded from the ros parameter server
+   * @return  true if succeeded, false otherwise.
+   */
   virtual bool configure(const XmlRpc::XmlRpcValue& config) override;
 
+  /**
+   * @brief Stores the planning details.
+   * @param planning_scene      A smart pointer to the planning scene
+   * @param req                 The motion planning request
+   * @param config              The  Stomp configuration.
+   * @param error_code          Moveit error code.
+   * @return  true if succeeded, false otherwise.
+   */
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
@@ -39,14 +86,14 @@ public:
 
   /**
    * @brief Generates a noisy trajectory from the parameters.
-   * @param parameters        [num_dimensions] x [num_parameters] the current value of the optimized parameters
-   * @param start_timestep    start index into the 'parameters' array, usually 0.
-   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
+   * @param parameters        The current value of the optimized parameters [num_dimensions x num_parameters]
+   * @param start_timestep    Start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     The number of elements to use from 'parameters' starting from 'start_timestep'
    * @param iteration_number  The current iteration count in the optimization loop
-   * @param rollout_number    index of the noisy trajectory.
-   * @param parameters_noise  the parameters + noise
-   * @param noise             the noise applied to the parameters
-   * @return true if cost were properly computed
+   * @param rollout_number    The index of the noisy trajectory.
+   * @param parameters_noise  The parameters + noise
+   * @param noise             The noise applied to the parameters
+   * @return true if cost were properly computed, false otherwise.
    */
   virtual bool generateNoise(const Eigen::MatrixXd& parameters,
                                        std::size_t start_timestep,
@@ -101,18 +148,20 @@ protected:
   std::string tool_link_;
 
   // ros parameters
-  Eigen::ArrayXi dof_nullity_;
+  Eigen::ArrayXi dof_nullity_;                                        /**< @brief Indicates which tool goal cartesian DOF's are unconstrained (0) and
+                                                                           fully constrained (1), [x y z rx ry rz] */
 
   // noisy trajectory generation
-  std::vector<utils::MultivariateGaussianPtr> traj_noise_generators_;
-  Eigen::VectorXd raw_noise_;
-  std::vector<double> stddev_;
-  std::vector<double> goal_stddev_;
+  std::vector<utils::MultivariateGaussianPtr> traj_noise_generators_; /**< @brief Randomized numerical distribution generators, [6 x 1] **/
+  Eigen::VectorXd raw_noise_;                                         /**< @brief The noise vector **/
+  std::vector<double> stddev_;                                        /**< @brief The standard deviations applied to each joint, [num_dimensions x 1 **/
+  std::vector<double> goal_stddev_;                                   /**< @brief The standard deviations applied to each cartesian dimension at the goal, [6 x 1] **/
 
   // random goal generation
-  boost::shared_ptr<RandomGenerator> goal_rand_generator_;
-  Eigen::VectorXd joint_update_rates_;
-  Eigen::VectorXd cartesian_convergence_thresholds_;
+  boost::shared_ptr<RandomGenerator> goal_rand_generator_;            /**< @brief Random generator for the tool goal pose **/
+  Eigen::VectorXd joint_update_rates_;                                /**< @brief Used to control the joint update rate during numerical ik calculations,
+                                                                           [num_dimensions x 1]**/
+  Eigen::VectorXd cartesian_convergence_thresholds_;                  /**< @brief Convergence values for numerica ik calculations, [vx vy vz wx wy wz] **/
 
   // robot
   moveit::core::RobotModelConstPtr robot_model_;
