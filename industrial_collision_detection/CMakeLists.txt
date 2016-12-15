@@ -56,7 +56,7 @@ target_link_libraries(${PROJECT_NAME}
   ${Boost_LIBRARIES})
 
 add_library(${PROJECT_NAME}_plugin
-  src/plugins/industrial_collision_detection.cpp
+  src/industrial_collision_detection_plugin.cpp
 )
 target_link_libraries(${PROJECT_NAME}_plugin ${PROJECT_NAME} ${catkin_LIBRARIES})
 
