@@ -103,6 +103,7 @@ namespace constrained_ik
       else
       {
         ROS_ERROR("No constraint was passed with request!");
+        res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_GOAL_CONSTRAINTS;
         return false;
       }
 
@@ -110,6 +111,7 @@ namespace constrained_ik
       if(!goal_state.setFromIK(group_model, goal_pose, link_names.back()))
       {
         ROS_ERROR("Joint Interpolated Planner goal pose is out of reach");
+        res.error_code_.val = moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
         return false;
       }
     }
