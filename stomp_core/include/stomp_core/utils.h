@@ -36,20 +36,20 @@ namespace stomp_core
 /** @brief The data structure used to store information about a single rollout. */
 struct Rollout
 {
-  Eigen::MatrixXd noise;                   /**< A matrix [num_dimensions][num_time_steps] of random noise applied to the parameters*/
-  Eigen::MatrixXd parameters_noise;        /**< A matrix [num_dimensions][num_time_steps] of the sum of parameters + noise */
+  Eigen::MatrixXd noise;                   /**< @brief A matrix [num_dimensions][num_time_steps] of random noise applied to the parameters*/
+  Eigen::MatrixXd parameters_noise;        /**< @brief A matrix [num_dimensions][num_time_steps] of the sum of parameters + noise */
 
-  Eigen::VectorXd state_costs;             /**< A vector [num_time_steps] of the cost at each timestep */
-  Eigen::MatrixXd control_costs;           /**< A matrix [num_dimensions][num_time_steps] of the control cost for each parameter at every timestep */
-  Eigen::MatrixXd total_costs;             /**< A matrix [num_dimensions][num_time_steps] of the total cost, where total_cost[d] = state_costs_ + control_costs_[d]*/
-  Eigen::MatrixXd probabilities;           /**< A matrix [num_dimensions][num_time_steps] of the probability for each parameter at every timestep */
+  Eigen::VectorXd state_costs;             /**< @brief A vector [num_time_steps] of the cost at each timestep */
+  Eigen::MatrixXd control_costs;           /**< @brief A matrix [num_dimensions][num_time_steps] of the control cost for each parameter at every timestep */
+  Eigen::MatrixXd total_costs;             /**< @brief A matrix [num_dimensions][num_time_steps] of the total cost, where total_cost[d] = state_costs_ + control_costs_[d]*/
+  Eigen::MatrixXd probabilities;           /**< @brief A matrix [num_dimensions][num_time_steps] of the probability for each parameter at every timestep */
 
-  std::vector<double> full_probabilities; /**< A vector [num_dimensions] of the probabilities for the full trajectory */
-  std::vector<double> full_costs;         /**< A vector [num_dimensions] of the full coss, state_cost + control_cost for each joint over the entire trajectory
+  std::vector<double> full_probabilities; /**< @brief A vector [num_dimensions] of the probabilities for the full trajectory */
+  std::vector<double> full_costs;         /**< @brief A vector [num_dimensions] of the full coss, state_cost + control_cost for each joint over the entire trajectory
                                                full_costs_[d] = state_cost.sum() + control_cost[d].sum() */
 
-  double importance_weight;               /**< importance sampling weight */
-  double total_cost;                      /**< combined state + control cost over the entire trajectory for all joints */
+  double importance_weight;               /**< @brief importance sampling weight */
+  double total_cost;                      /**< @brief combined state + control cost over the entire trajectory for all joints */
 
 };
 
@@ -81,22 +81,22 @@ enum TrajectoryInitialization
 struct StompConfiguration
 {
   // General settings
-  int num_iterations;                    /**< Maximum number of iteration allowed */
-  int num_iterations_after_valid;        /**< Stomp will stop optimizing this many iterations after finding a valid solution */
-  int num_timesteps;                     /**< Number of timesteps */
-  int num_dimensions;                    /**< Parameter dimensionality */
-  double delta_t;                        /**< Time change between consecutive points */
-  int initialization_method;             /**< TrajectoryInitializations::TrajectoryInitialization */
+  int num_iterations;                    /**< @brief Maximum number of iteration allowed */
+  int num_iterations_after_valid;        /**< @brief Stomp will stop optimizing this many iterations after finding a valid solution */
+  int num_timesteps;                     /**< @brief Number of timesteps */
+  int num_dimensions;                    /**< @brief Parameter dimensionality */
+  double delta_t;                        /**< @brief Time change between consecutive points */
+  int initialization_method;             /**< @brief TrajectoryInitializations::TrajectoryInitialization */
 
   // Probability Calculation
-  double exponentiated_cost_sensitivity; /**< Default exponetiated cost sensitivity coefficient */
+  double exponentiated_cost_sensitivity; /**< @brief Default exponetiated cost sensitivity coefficient */
 
   // Noisy trajectory generation
-  int num_rollouts;                      /**< Number of noisy trajectories*/
-  int max_rollouts;                      /**< The combined number of new and old rollouts during each iteration shouldn't exceed this value */
+  int num_rollouts;                      /**< @brief Number of noisy trajectories*/
+  int max_rollouts;                      /**< @brief The combined number of new and old rollouts during each iteration shouldn't exceed this value */
 
   // Cost calculation
-  double control_cost_weight;            /**< Percentage of the trajectory accelerations cost to be applied in the total cost calculation >*/
+  double control_cost_weight;            /**< @brief Percentage of the trajectory accelerations cost to be applied in the total cost calculation >*/
 };
 
 /** @brief The number of columns in the finite differentiation rule */

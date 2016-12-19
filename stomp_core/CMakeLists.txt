@@ -27,6 +27,7 @@ catkin_package(
 ###########
 include_directories(
   include
+  examples
   ${catkin_INCLUDE_DIRS}
   ${EIGEN_INCLUDE_DIRS}
 )
@@ -38,6 +39,9 @@ add_library(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+
+add_executable(${PROJECT_NAME}_example examples/stomp_example.cpp)
+target_link_libraries(${PROJECT_NAME}_example ${PROJECT_NAME} ${catkin_LIBRARIES})
 
 
 #############

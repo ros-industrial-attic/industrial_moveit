@@ -175,32 +175,32 @@ protected:
 protected:
 
   // process control
-  std::atomic<bool> proceed_;                      /**< Used to determine if the optimization has been cancelled. */
-  TaskPtr task_;                                   /**< The task to be optimized. */
-  StompConfiguration config_;                      /**< Configuration parameters. */
-  unsigned int current_iteration_;                 /**< Current iteration for the optimization. */
+  std::atomic<bool> proceed_;                      /**< @brief Used to determine if the optimization has been cancelled. */
+  TaskPtr task_;                                   /**< @brief The task to be optimized. */
+  StompConfiguration config_;                      /**< @brief Configuration parameters. */
+  unsigned int current_iteration_;                 /**< @brief Current iteration for the optimization. */
 
   // optimized parameters
-  bool parameters_valid_;                          /**< whether or not the optimized parameters are valid */
-  double parameters_total_cost_;                   /**< Total cost of the optimized parameters */
-  double current_lowest_cost_;                     /**< Hold the lowest cost of the optimized parameters */
-  Eigen::MatrixXd parameters_optimized_;           /**< A matrix [Dimensions][timesteps] of the optimized parameters. */
-  Eigen::MatrixXd parameters_updates_;             /**< A matrix [Dimensions][timesteps] of the parameter updates*/
-  Eigen::VectorXd parameters_state_costs_;         /**< A vector [timesteps] of the parameters state costs */
-  Eigen::MatrixXd parameters_control_costs_;       /**< A matrix [Dimensions][timesteps] of the parameters control costs*/
+  bool parameters_valid_;                          /**< @brief whether or not the optimized parameters are valid */
+  double parameters_total_cost_;                   /**< @brief Total cost of the optimized parameters */
+  double current_lowest_cost_;                     /**< @brief Hold the lowest cost of the optimized parameters */
+  Eigen::MatrixXd parameters_optimized_;           /**< @brief A matrix [dimensions][timesteps] of the optimized parameters. */
+  Eigen::MatrixXd parameters_updates_;             /**< @brief A matrix [dimensions][timesteps] of the parameter updates*/
+  Eigen::VectorXd parameters_state_costs_;         /**< @brief A vector [timesteps] of the parameters state costs */
+  Eigen::MatrixXd parameters_control_costs_;       /**< @brief A matrix [dimensions][timesteps] of the parameters control costs*/
 
   // rollouts
-  std::vector<Rollout> noisy_rollouts_;            /**< Holds the noisy rollouts */
-  std::vector<Rollout> reused_rollouts_;           /**< Used for reordering arrays based on cost */
-  int num_active_rollouts_;                        /**< Number of active rollouts */
+  std::vector<Rollout> noisy_rollouts_;            /**< @brief Holds the noisy rollouts */
+  std::vector<Rollout> reused_rollouts_;           /**< @brief Used for reordering arrays based on cost */
+  int num_active_rollouts_;                        /**< @brief Number of active rollouts */
 
   // finite difference and optimization matrices
-  int num_timesteps_padded_;                       /**< The number of timesteps to pad the optimization with: timesteps + 2*(FINITE_DIFF_RULE_LENGTH - 1) */
-  int start_index_padded_;                         /**< The index corresponding to the start of the non-paded section in the padded arrays */
-  Eigen::MatrixXd finite_diff_matrix_A_padded_;    /**< The finite difference matrix including padding */
-  Eigen::MatrixXd control_cost_matrix_R_padded_;   /**< The control cost matrix including padding */
-  Eigen::MatrixXd control_cost_matrix_R_;          /**< A matrix [timesteps][timesteps], Referred to as 'R = A x A_transpose' in the literature */
-  Eigen::MatrixXd inv_control_cost_matrix_R_;      /**< A matrix [timesteps][timesteps], R^-1 ' matrix */
+  int num_timesteps_padded_;                       /**< @brief The number of timesteps to pad the optimization with: timesteps + 2*(FINITE_DIFF_RULE_LENGTH - 1) */
+  int start_index_padded_;                         /**< @brief The index corresponding to the start of the non-paded section in the padded arrays */
+  Eigen::MatrixXd finite_diff_matrix_A_padded_;    /**< @brief The finite difference matrix including padding */
+  Eigen::MatrixXd control_cost_matrix_R_padded_;   /**< @brief The control cost matrix including padding */
+  Eigen::MatrixXd control_cost_matrix_R_;          /**< @brief A matrix [timesteps][timesteps], Referred to as 'R = A x A_transpose' in the literature */
+  Eigen::MatrixXd inv_control_cost_matrix_R_;      /**< @brief A matrix [timesteps][timesteps], R^-1 ' matrix */
 
 
 };
