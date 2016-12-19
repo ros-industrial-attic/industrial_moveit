@@ -364,6 +364,34 @@ bool StompPlanner::extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& r
   return true;
 }
 
+moveit_msgs::TrajectoryConstraints StompPlanner::encodeSeedTrajectory(const trajectory_msgs::JointTrajectory &seed)
+{
+  moveit_msgs::TrajectoryConstraints res;
+
+  const auto dof = seed.joint_names.size();
+
+  for (size_t i = 0; i < seed.points.size(); ++i) // for each time step
+  {
+    moveit_msgs::Constraints c;
+
+    if (seed.points[i].positions.size() != dof)
+      throw std::runtime_error("All trajectory position fields must have same dimensions as joint_names");
+
+    for (size_t j = 0; j < dof; ++j) // for each joint
+    {
+      moveit_msgs::JointConstraint jc;
+      jc.joint_name = seed.joint_names[j];
+      jc.position = seed.points[i].positions[j];
+
+      c.joint_constraints.push_back(jc);
+    }
+
+    res.constraints.push_back(std::move(c));
+  }
+
+  return res;
+}
+
 bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal)
 {
   using namespace moveit::core;

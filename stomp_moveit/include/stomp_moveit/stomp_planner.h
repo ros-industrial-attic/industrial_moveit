@@ -96,6 +96,15 @@ public:
    */
   bool canServiceRequest(const moveit_msgs::MotionPlanRequest &req)  const;
 
+  /**
+   * @brief From a trajectory_msgs::JointTrajectory create a set of trajectory constraints that stomp can use later as
+   * a 'seed' for the optimization planning.
+   * @param seed The trajectory to encode into 'seed' trajectory constraints
+   * @return The encoded trajectory constraints which can be added directly to a moveit planning request. In the case
+   * of failure, may throw a std::runtime_error.
+   */
+  static moveit_msgs::TrajectoryConstraints encodeSeedTrajectory(const trajectory_msgs::JointTrajectory& seed);
+
 protected:
 
   /**
