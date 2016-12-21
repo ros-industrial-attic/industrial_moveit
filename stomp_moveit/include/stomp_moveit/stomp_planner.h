@@ -155,6 +155,9 @@ protected:
 
   // robot environment
   moveit::core::RobotModelConstPtr robot_model_;
+
+  // ros tasks
+  ros::NodeHandlePtr ph_;
 };
 
 
