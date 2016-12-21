@@ -141,48 +141,68 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
   }
 
   // storing tool goal pose
-  if(!goals.front().position_constraints.empty() &&
-      !goals.front().orientation_constraints.empty())
+  bool found_goal = false;
+  for(const auto& g: goals)
   {
-    // storing cartesian goal pose using ik
-    const moveit_msgs::PositionConstraint& pos_constraint = goals.front().position_constraints.front();
-    const moveit_msgs::OrientationConstraint& orient_constraint = goals.front().orientation_constraints.front();
 
-    geometry_msgs::Pose pose;
-    pose.position = pos_constraint.constraint_region.primitive_poses[0].position;
-    pose.orientation = orient_constraint.orientation;
-    tf::poseMsgToEigen(pose,tool_goal_pose_);
-
-    if(!state_->setFromIK(joint_group,tool_goal_pose_,tool_link_,IK_ATTEMPTS,IK_TIMEOUT))
+    if(!g.position_constraints.empty() &&
+        !g.orientation_constraints.empty()) // check cartesian pose constraints first
     {
-      ROS_WARN("%s failed calculating ik for cartesian goal pose in the MotionPlanRequest",getName().c_str());
+
+      // storing cartesian goal pose using ik
+      const moveit_msgs::PositionConstraint& pos_constraint = g.position_constraints.front();
+      const moveit_msgs::OrientationConstraint& orient_constraint = g.orientation_constraints.front();
+
+      geometry_msgs::Pose pose;
+      pose.position = pos_constraint.constraint_region.primitive_poses[0].position;
+      pose.orientation = orient_constraint.orientation;
+      tf::poseMsgToEigen(pose,tool_goal_pose_);
+
+      if(!state_->setFromIK(joint_group,tool_goal_pose_,tool_link_,IK_ATTEMPTS,IK_TIMEOUT))
+      {
+        ROS_WARN("%s failed calculating ik for cartesian goal pose in the MotionPlanRequest",getName().c_str());
+      }
+      else
+      {
+        found_goal = true;
+        break;
+      }
     }
 
+    if(!found_goal )
+    {
+      // check joint constraints
+      if(g.joint_constraints.empty())
+      {
+        ROS_WARN_STREAM("No joint values for the goal were found");
+        continue;
+      }
+
+      ROS_WARN("%s a cartesian goal pose in MotionPlanRequest was not provided,calculating it from FK",getName().c_str());
+
+      // compute FK to obtain cartesian goal pose
+      const std::vector<moveit_msgs::JointConstraint>& joint_constraints = g.joint_constraints;
+
+      // copying goal values into state
+      for(auto& jc: joint_constraints)
+      {
+        state_->setVariablePosition(jc.joint_name,jc.position);
+      }
+
+      // storing reference goal position tool and pose
+      state_->update(true);
+      tool_goal_pose_ = state_->getGlobalLinkTransform(tool_link_);
+      found_goal = true;
+      break;
+
+    }
   }
-  else
+
+  if(!found_goal)
   {
-    // check joint constraints
-    if(goals.front().joint_constraints.empty())
-    {
-      ROS_ERROR_STREAM("No joint values for the goal were found");
-      error_code.val = error_code.INVALID_GOAL_CONSTRAINTS;
-      return false;
-    }
-
-    ROS_WARN("%s a cartesian goal pose in MotionPlanRequest was not provided,calculating it from FK",getName().c_str());
-
-    // compute FK to obtain cartesian goal pose
-    const std::vector<moveit_msgs::JointConstraint>& joint_constraints = goals.front().joint_constraints;
-
-    // copying goal values into state
-    for(auto& jc: joint_constraints)
-    {
-      state_->setVariablePosition(jc.joint_name,jc.position);
-    }
-
-    // storing reference goal position tool and pose
-    state_->update(true);
-    tool_goal_pose_ = state_->getGlobalLinkTransform(tool_link_);
+    ROS_ERROR("%s No valid goal pose was found",getName().c_str());
+    error_code.val = error_code.INVALID_GOAL_CONSTRAINTS;
+    return false;
   }
 
   error_code.val = error_code.SUCCESS;

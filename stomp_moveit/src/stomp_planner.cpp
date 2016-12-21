@@ -32,6 +32,7 @@
 
 
 static const std::string DESCRIPTION = "STOMP";
+static const double TIMEOUT_INTERVAL = 0.05;
 static int const IK_ATTEMPTS = 10;
 static int const IK_TIMEOUT = 0.05;
 
@@ -102,7 +103,8 @@ StompPlanner::StompPlanner(const std::string& group,const XmlRpc::XmlRpcValue& c
                            const moveit::core::RobotModelConstPtr& model):
     PlanningContext(DESCRIPTION,group),
     config_(config),
-    robot_model_(model)
+    robot_model_(model),
+    ph_(new ros::NodeHandle("~"))
 {
   setup();
 }
@@ -189,10 +191,25 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   trajectory_msgs::JointTrajectory seed_traj;
   bool seed_provided = extractSeedTrajectory(request_, seed_traj);
 
+  // create timeout timer
+  ros::WallDuration allowed_time(request_.allowed_planning_time);
+  ROS_WARN_COND(TIMEOUT_INTERVAL > request_.allowed_planning_time,
+                "%s allowed planning time %f is less than the minimum planning time value of %f",
+                getName().c_str(),request_.allowed_planning_time,TIMEOUT_INTERVAL);
+  ros::Timer timeout_timer = ph_->createTimer(ros::Duration(TIMEOUT_INTERVAL), [&](const ros::TimerEvent& evnt)
+  {
+    if((ros::WallTime::now() - start_time) > allowed_time)
+    {
+      ROS_ERROR("%s exceeded allowed time of %f , terminating",getName().c_str(),allowed_time.toSec());
+      this->terminate();
+    }
+
+  },false);
+
 
   if (seed_provided)
   {
-    ROS_INFO("Seeding stomp plan");
+    ROS_INFO("%s Seeding trajectory from MotionPlanRequest",getName().c_str());
 
     Eigen::MatrixXd initial_parameters;
     jointTrajectorytoParameters(seed_traj, initial_parameters);
@@ -218,7 +235,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     if(!getStartAndGoal(start,goal))
     {
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
-      ROS_ERROR("Stomp failed to get the start and goal positions");
+      ROS_ERROR("STOMP failed to get the start and goal positions");
       return false;
     }
 
@@ -232,6 +249,9 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     stomp_->setConfig(config_copy);
     planning_success = stomp_->solve(start,goal,parameters);
   }
+
+  // stopping timer
+  timeout_timer.stop();
 
   // Handle results
   if(planning_success)
@@ -260,7 +280,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   {
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
     success = false;
-    ROS_ERROR_STREAM("Stomp Trajectory is in collision");
+    ROS_ERROR_STREAM("STOMP Trajectory is in collision");
   }
 
   ros::WallDuration wd = ros::WallTime::now() - start_time;
@@ -398,13 +418,14 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
   RobotStatePtr state(new RobotState(robot_model_));
   const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_);
   std::string tool_link = joint_group->getLinkModelNames().back();
+  bool found_goal = false;
 
   try
   {
     // copying start state
     if(!robotStateMsgToRobotState(request_.start_state,*state))
     {
-      ROS_ERROR_STREAM("Failed to extract start state from MotionPlanRequest");
+      ROS_ERROR("%s Failed to extract start state from MotionPlanRequest",getName().c_str());
       return false;
     }
 
@@ -421,53 +442,65 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
     // check goal constraint
     if(request_.goal_constraints.empty())
     {
-      ROS_ERROR("STOMP: A goal constraint was not provided");
+      ROS_ERROR("%s A goal constraint was not provided",getName().c_str());
       return false;
     }
 
     // extracting goal joint values
-    auto& gc = request_.goal_constraints.front();
-    if(gc.joint_constraints.empty())
+    for(const auto& gc : request_.goal_constraints)
     {
-      // solving ik at goal
-      const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
-      const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
 
-      geometry_msgs::Pose pose;
-      pose.position = pos_constraint.constraint_region.primitive_poses[0].position;
-      pose.orientation = orient_constraint.orientation;
-
-      if(!state->setFromIK(joint_group,pose,tool_link,IK_ATTEMPTS,IK_TIMEOUT))
+      //auto& gc = request_.goal_constraints.front();
+      if(gc.joint_constraints.empty())
       {
-        ROS_ERROR("%s failed calculating ik for cartesian goal pose in the MotionPlanRequest",getName().c_str());
-        return false;
-      }
+        // solving ik at goal
+        const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
+        const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
 
-      // copying values into goal array
-      state->enforceBounds(joint_group);
-      for(auto j = 0u; j < joint_names.size(); j++)
+        geometry_msgs::Pose pose;
+        pose.position = pos_constraint.constraint_region.primitive_poses[0].position;
+        pose.orientation = orient_constraint.orientation;
+
+        if(!state->setFromIK(joint_group,pose,tool_link,IK_ATTEMPTS,IK_TIMEOUT))
+        {
+          ROS_DEBUG("%s failed calculating ik for cartesian goal pose in the MotionPlanRequest",getName().c_str());
+          continue;
+        }
+
+        // copying values into goal array
+        state->enforceBounds(joint_group);
+        for(auto j = 0u; j < joint_names.size(); j++)
+        {
+          goal(j) = state->getVariablePosition(joint_names[j]);
+        }
+
+        found_goal = true;
+        break;
+
+      }
+      else
       {
-        goal(j) = state->getVariablePosition(joint_names[j]);
-      }
+        // copying goal values into state
+        for(auto j = 0u; j < gc.joint_constraints.size() ; j++)
+        {
+          auto jc = gc.joint_constraints[j];
+          state->setVariablePosition(jc.joint_name,jc.position);
+        }
 
+        // copying values into goal array
+        state->enforceBounds(joint_group);
+        for(auto j = 0u; j < joint_names.size(); j++)
+        {
+          goal(j) = state->getVariablePosition(joint_names[j]);
+        }
+
+        found_goal = true;
+        break;
+
+      }
     }
-    else
-    {
-      // copying goal values into state
-      for(auto j = 0u; j < gc.joint_constraints.size() ; j++)
-      {
-        auto jc = gc.joint_constraints[j];
-        state->setVariablePosition(jc.joint_name,jc.position);
-      }
 
-      // copying values into goal array
-      state->enforceBounds(joint_group);
-      for(auto j = 0u; j < joint_names.size(); j++)
-      {
-        goal(j) = state->getVariablePosition(joint_names[j]);
-      }
-
-    }
+    ROS_ERROR_COND(!found_goal,"%s was unable to retrieve the goal from the MotionPlanRequest",getName().c_str());
 
   }
   catch(moveit::Exception &e)
@@ -476,8 +509,7 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
     return false;
   }
 
-  return true;
-
+  return found_goal;
 }
 
 
