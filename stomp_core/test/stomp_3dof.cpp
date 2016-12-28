@@ -112,7 +112,7 @@ public:
   {
     costs.setZero(num_timesteps);
     double diff;
-    double cost = 0d;
+    double cost = 0.0;
     validity = true;
 
     for(std::size_t t = 0u; t < num_timesteps; t++)
