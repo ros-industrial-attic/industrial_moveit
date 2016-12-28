@@ -106,7 +106,7 @@ protected:
   BasicKin kin; /**< Basic Kinematic Model of the robot.  */
   Constrained_IK ik; /**< The Constrained IK Solver */
   Affine3d homePose; /**< Cartesian home position */
-  constrained_ik::ConstrainedIKDynamicReconfigureConfig config; /**< Constrained IK configuration parameters */
+  constrained_ik::ConstrainedIKConfiguration config; /**< Constrained IK configuration parameters */
 
   /** @brief See base class for documention */
   virtual void SetUp()
