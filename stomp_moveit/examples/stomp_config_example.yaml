@@ -42,6 +42,7 @@ stomp/manipulator_rail:
         collision_penalty: 1.0
         cost_weight: 1.0
         kernel_window_percentage: 0.2
+        longest_valid_joint_move: 0.05 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True

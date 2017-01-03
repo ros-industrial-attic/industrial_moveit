@@ -135,12 +135,16 @@ for a better evaluation of a trajectory as a whole. The parameters are as follow
     collision_penalty: 1.0
     cost_weight: 1.0
     kernel_window_percentage: 0.2
+    longest_valid_joint_move: 0.05 
 @endcode
   - class: The class name
   - collision_penalty: The cost value associated with each collision
   - kernel_window_percentage: The extend to which collision state costs will be propagated to adjacent points.
   - cost_weight:   A weight value multiplied onto to each state cost, it can be used to set the extent to which 
                    this collision cost affects the overall state cost. A value of 1.0 is recomended.
+  - longest_valid_joint_move: This value is used to check for collisions at intermediate poses between consecutive
+                              points in a trajectory.  A smaller value could lead to more collision checks during 
+                              large joint motions.
 */
 
 /**
@@ -151,11 +155,15 @@ distances will lead to higher costs values for that state. Collisions will be se
   - class: stomp_moveit/ObstacleDistanceGradient
     max_distance: 0.2
     cost_weight: 1.0
+    longest_valid_joint_move: 0.05 
 @endcode
   - class:        The class name
   - max_distance: Used in calculating the cost as a function of the shortest distance.  The cost equals <b>abs(max_distance - d)/max_distance]</b>
                   If the shortest distance is greater than <b>max_distance</b> then the cost is set to zero.
   - cost_weight:  A weight value multiplied onto to each state cost.
+  - longest_valid_joint_move: This value is used to check for collisions at intermediate poses between consecutive
+                              points in a trajectory.  A smaller value could lead to more collision checks during 
+                              large joint motions.
 */
 
 /**

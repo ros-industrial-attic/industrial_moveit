@@ -30,7 +30,7 @@
 #include <moveit/robot_state/conversions.h>
 
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::ObstacleDistanceGradient,stomp_moveit::cost_functions::StompCostFunction)
-
+static const double LONGEST_VALID_JOINT_MOVE = 0.01;
 
 namespace stomp_moveit
 {
@@ -83,6 +83,12 @@ bool ObstacleDistanceGradient::configure(const XmlRpc::XmlRpcValue& config)
     XmlRpc::XmlRpcValue c = config;
     max_distance_ = static_cast<double>(c["max_distance"]);
     cost_weight_ = static_cast<double>(c["cost_weight"]);
+    longest_valid_joint_move_ = c.hasMember("longest_valid_joint_move") ? static_cast<double>(c["longest_valid_joint_move"]):LONGEST_VALID_JOINT_MOVE;
+
+    if(!c.hasMember("longest_valid_joint_move"))
+    {
+      ROS_WARN("%s using default value for 'longest_valid_joint_move' of %f",getName().c_str(),longest_valid_joint_move_);
+    }
   }
   catch(XmlRpc::XmlRpcException& e)
   {
@@ -106,10 +112,17 @@ bool ObstacleDistanceGradient::setMotionPlanRequest(const planning_scene::Planni
 
   // storing robot state
   robot_state_.reset(new RobotState(robot_model_ptr_));
+
   if(!robotStateMsgToRobotState(req.start_state,*robot_state_,true))
   {
     ROS_ERROR("%s Failed to get current robot state from request",getName().c_str());
     return false;
+  }
+
+  // copying into intermediate robot states
+  for(auto& rs : intermediate_coll_states_)
+  {
+    rs.reset(new RobotState(*robot_state_));
   }
 
   return true;
@@ -126,6 +139,8 @@ bool ObstacleDistanceGradient::computeCosts(const Eigen::MatrixXd& parameters, s
     return false;
   }
 
+
+
   // allocating
   costs = Eigen::VectorXd::Zero(num_timesteps);
   const moveit::core::JointModelGroup* joint_group = robot_model_ptr_->getJointModelGroup(group_name_);
@@ -137,34 +152,101 @@ bool ObstacleDistanceGradient::computeCosts(const Eigen::MatrixXd& parameters, s
   }
 
   // request the distance at each state
-  double cost;
   double dist;
+  bool skip_next_check = false;
   validity = true;
   for (auto t=start_timestep; t<start_timestep + num_timesteps; ++t)
   {
-    collision_result_.clear();
-    robot_state_->setJointGroupPositions(joint_group,parameters.col(t));
-    robot_state_->update();
-    collision_result_.distance = max_distance_;
 
-    planning_scene_->checkSelfCollision(collision_request_,collision_result_,*robot_state_,planning_scene_->getAllowedCollisionMatrix());
-    dist = collision_result_.collision ? -1.0 :collision_result_.distance ;
+    if(!skip_next_check)
+    {
+      collision_result_.clear();
+      robot_state_->setJointGroupPositions(joint_group,parameters.col(t));
+      robot_state_->update();
+      collision_result_.distance = max_distance_;
 
-    if(dist >= max_distance_)
-    {
-      cost = 0; // away from obstacle
-    }
-    else if(dist < 0)
-    {
-      cost = 1.0; // in collision
-      validity = false;
-    }
-    else
-    {
-      cost = (max_distance_ - dist)/max_distance_;
+      planning_scene_->checkSelfCollision(collision_request_,collision_result_,*robot_state_,planning_scene_->getAllowedCollisionMatrix());
+      dist = collision_result_.collision ? -1.0 :collision_result_.distance ;
+
+      if(dist >= max_distance_)
+      {
+        costs(t) = 0; // away from obstacle
+      }
+      else if(dist < 0)
+      {
+        costs(t) = 1.0; // in collision
+        validity = false;
+      }
+      else
+      {
+        costs(t) = (max_distance_ - dist)/max_distance_;
+      }
     }
 
-    costs(t) = cost;
+    skip_next_check = false;
+
+    // check intermediate poses to the next position (skip the last one)
+    if(t  < start_timestep + num_timesteps - 1)
+    {
+      if(!checkIntermediateCollisions(parameters.col(t),parameters.col(t+1),longest_valid_joint_move_))
+      {
+        costs(t) = 1.0;
+        costs(t+1) = 1.0;
+        validity = false;
+        skip_next_check = true;
+      }
+      else
+      {
+        skip_next_check = false;
+      }
+    }
+
+  }
+
+  return true;
+}
+
+bool ObstacleDistanceGradient::checkIntermediateCollisions(const Eigen::VectorXd& start,
+                                                           const Eigen::VectorXd& end,double longest_valid_joint_move)
+{
+  Eigen::VectorXd diff = end - start;
+  int num_intermediate = std::ceil(((diff.cwiseAbs())/longest_valid_joint_move).maxCoeff()) - 1;
+  if(num_intermediate < 1.0)
+  {
+    // no interpolation needed
+    return true;
+  }
+
+  // grabbing states
+  auto& start_state = intermediate_coll_states_[0];
+  auto& mid_state = intermediate_coll_states_[1];
+  auto& end_state = intermediate_coll_states_[2];
+
+  if(!start_state || !mid_state || !end_state)
+  {
+    ROS_ERROR("%s intermediate states not initialized",getName().c_str());
+    return false;
+  }
+
+  // setting up collision
+  auto req = collision_request_;
+  req.distance = false;
+  collision_detection::CollisionResult res;
+  const moveit::core::JointModelGroup* joint_group = robot_model_ptr_->getJointModelGroup(group_name_);
+  start_state->setJointGroupPositions(joint_group,start);
+  end_state->setJointGroupPositions(joint_group,end);
+
+  // checking intermediate states
+  double dt = 1.0/static_cast<double>(num_intermediate);
+  double interval = 0.0;
+  for(std::size_t i = 1; i < num_intermediate;i++)
+  {
+    interval = i*dt;
+    start_state->interpolate(*end_state,interval,*mid_state) ;
+    if(planning_scene_->isStateColliding(*mid_state))
+    {
+      return false;
+    }
   }
 
   return true;

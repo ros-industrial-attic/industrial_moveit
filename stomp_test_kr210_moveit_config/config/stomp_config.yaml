@@ -13,13 +13,10 @@ stomp/manipulator:
       - class: stomp_moveit/NormalDistributionSampling
         stddev: [0.3, 1.0, 0.5, 0.4, 0.3, 0.3]
     cost_functions:
-      - class: stomp_moveit/CollisionCheck
-        collision_penalty: 1.0
-        cost_weight: 1.0 
-        kernel_window_percentage: 0.0
       - class: stomp_moveit/ObstacleDistanceGradient
         max_distance: 0.2
         cost_weight: 1.0
+        longest_valid_joint_move: 0.05 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
@@ -57,6 +54,7 @@ stomp/manipulator_rail:
         collision_penalty: 1.0
         cost_weight: 1.0
         kernel_window_percentage: 0.2
+        longest_valid_joint_move: 0.05 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
@@ -102,9 +100,11 @@ stomp/manipulator_tool:
         kernel_window_percentage: 0.2
         collision_penalty: 1.0
         cost_weight: 1.0
+        longest_valid_joint_move: 0.05 
 #      - class: stomp_moveit/ObstacleDistanceGradient
 #        max_distance: 0.2
 #        cost_weight: 1.0
+#        longest_valid_joint_move: 0.05 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True

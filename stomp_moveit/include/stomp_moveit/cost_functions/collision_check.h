@@ -113,6 +113,16 @@ public:
 
 protected:
 
+  /**
+   * @brief Checks for collision between consecutive points by dividing the joint move into sub-moves where the maximum joint motion
+   *        can not exceed the @e longest_valid_joint_move value.
+   * @param start                     The start joint pose
+   * @param end                       The end joint pose
+   * @param longest_valid_joint_move  The maximum distance that the joints are allowed to move before checking for collisions.
+   * @return  True if the interval is collision free, false otherwise.
+   */
+  bool checkIntermediateCollisions(const Eigen::VectorXd& start, const Eigen::VectorXd& end,double longest_valid_joint_move);
+
   std::string name_;
 
   // robot details
@@ -125,8 +135,9 @@ protected:
   moveit_msgs::MotionPlanRequest plan_request_;
 
   // parameters
-  double collision_penalty_;
-  double kernel_window_percentage_;
+  double collision_penalty_;            /**< @brief The value assigned to a collision state */
+  double kernel_window_percentage_;     /**< @brief The value assigned to a collision state */
+  double longest_valid_joint_move_;     /**< @brief how far can a joint move in between consecutive trajectory points */
 
   // cost calculation
   Eigen::VectorXd raw_costs_;
@@ -137,8 +148,8 @@ protected:
   collision_detection::CollisionRobotConstPtr collision_robot_;
   collision_detection::CollisionWorldConstPtr collision_world_;
 
-
-
+  // intermediate collision check support
+  std::array<moveit::core::RobotStatePtr,3 > intermediate_coll_states_;   /**< @brief Used in checking collisions between to consecutive poses*/
 
 };
 
