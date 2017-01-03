@@ -28,6 +28,7 @@
 #define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_COST_FUNCTIONS_OBSTACLE_DISTANCE_GRADIENT_H_
 
 #include <stomp_moveit/cost_functions/stomp_cost_function.h>
+#include <array>
 
 namespace stomp_moveit
 {
@@ -106,6 +107,17 @@ public:
 
 protected:
 
+  /**
+   * @brief Checks for collision between consecutive points by dividing the joint move into sub-moves where the maximum joint motion
+   *        can not exceed the @e longest_valid_joint_move value.
+   * @param start                     The start joint pose
+   * @param end                       The end joint pose
+   * @param longest_valid_joint_move  The maximum distance that the joints are allowed to move before checking for collisions.
+   * @return  True if the interval is collision free, false otherwise.
+   */
+  bool checkIntermediateCollisions(const Eigen::VectorXd& start, const Eigen::VectorXd& end,double longest_valid_joint_move);
+
+
   std::string name_;
 
   // robot details
@@ -113,14 +125,21 @@ protected:
   moveit::core::RobotModelConstPtr robot_model_ptr_;
   moveit::core::RobotStatePtr robot_state_;
 
+  // intermediate collision check support
+  std::array<moveit::core::RobotStatePtr,3 > intermediate_coll_states_;   /**< @brief Used in checking collisions between to consecutive poses*/
+
+
   // planning context information
   planning_scene::PlanningSceneConstPtr planning_scene_;
   moveit_msgs::MotionPlanRequest plan_request_;
 
-  // distance
-  double max_distance_;
+  // distance and collision check
   collision_detection::CollisionRequest collision_request_;
   collision_detection::CollisionResult collision_result_;
+
+  // parameters
+  double max_distance_;               /**< @brief maximum distance from at which the trajectory will be penalized */
+  double longest_valid_joint_move_;   /**< @brief how far can a joint move in between consecutive trajectory points */
 
 };
 

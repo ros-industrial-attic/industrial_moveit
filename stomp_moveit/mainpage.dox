@@ -16,22 +16,22 @@
  *  PLUGINLIB_EXPORT_CLASS macro.  This package provides the following plugins: 
  *    - Cost Function Plugins:
  *      Evaluate the state costs of trajectories.  Inherit from StompCostFunction.
- *      - CollisionCheck
- *      - ObstacleDistanceGradient
+ *      - @ref  cost_function_collision_check_example
+ *      - @ref  cost_function_obstacle_distance_example
  *    - Noise Generator Plugins:
  *      Generate random noise to explore the workspace.  Inherit from StompNoiseGenerator
- *      - NormalDistributionSampling
+ *      - @ref  normal_distribution_sampling_example
  *    - Noisy Filters:
  *      Apply filter methods to the noisy trajectories.  Inherit from StompNoisyFilter
- *      - JointLimits
- *      - MultiTrajectoryVisualization
+ *      - @ref  joint_limits_example
+ *      - @ref  multi_trajectory_visualization_example
  *    - Update Filters:
  *      Apply filtering methods to the trajectory updates before adding it to the 
  *      optimized trajectory.  Inherit from StompUpdateFilter.
- *      - ControlCostProjection
- *      - PolynomialSmoother
- *      - TrajectoryVisualization
- *      - UpdateLogger  
+ *      - @ref  control_cost_projection_example
+ *      - @ref  polynomial_smoother_example
+ *      - @ref  trajectory_visualization_example
+ *      - @ref  update_logger_example 
  * 
  * @section Examples
  * All examples are located here @ref examples

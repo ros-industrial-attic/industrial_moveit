@@ -335,6 +335,11 @@ bool StompPlanner::parametersToJointTrajectory(const Eigen::MatrixXd& parameters
     traj.getRobotTrajectoryMsg(robot_traj_msgs);
     trajectory = robot_traj_msgs.joint_trajectory;
   }
+  else
+  {
+    ROS_ERROR("%s Failed to generate timing data",getName().c_str());
+    return false;
+  }
   return true;
 }
 
