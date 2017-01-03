@@ -145,6 +145,30 @@ protected:
    */
   bool extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const;
 
+  /**
+   * @brief This function 1) checks to see if the given seed trajectory @e seed makes sense in the context
+   * of the user provided goal constraints, and 2) modifies the seed's first and last point to 'fix' it for
+   * small deviations in the goal constraints.
+   * @param seed The seed trajectory. First and last point may be modified.
+   * @return True if the seed state is deemed to be valid. False otherwise.
+   */
+  bool checkSeedTrajectory(trajectory_msgs::JointTrajectory& seed) const;
+
+  /**
+   * @brief Given a seed state packed into a matrix of parameters, @e parameters, this function
+   * fits a polynomial function of degree @e polynomial to the position trajectory followed by
+   * each motor. This polynomial is then used to resample that motors path to be smooth and the
+   * resulting path is re-inserted into @e parameters. The start and goal state are fixed and
+   * will remain unchanged for quite some time.
+   *
+   * @param parameters A nxm matrix where n is the degree-of-freedom of the robot and m is
+   * the number of 'timesteps' along the path.
+   * @param polynomial The degree of polynomial to fit the trajectory with. Consider using at
+   * least order 5 to capture complex paths.
+   * @return True if the path could be resampled.
+   */
+  bool smoothSeedTrajectory(Eigen::MatrixXd& parameters, int polynomial = 5) const;
+
 protected:
 
   // stomp optimization
