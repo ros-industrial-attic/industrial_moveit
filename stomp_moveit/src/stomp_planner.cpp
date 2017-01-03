@@ -191,6 +191,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   trajectory_msgs::JointTrajectory seed_traj;
   bool seed_provided = extractSeedTrajectory(request_, seed_traj);
 
+
   // create timeout timer
   ros::WallDuration allowed_time(request_.allowed_planning_time);
   ROS_WARN_COND(TIMEOUT_INTERVAL > request_.allowed_planning_time,
@@ -206,13 +207,26 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 
   },false);
 
-
+  //  If a seed state was provided, then we need to sanity check it.
+  bool use_seed = seed_provided;
   if (seed_provided)
+  {
+    use_seed = checkSeedTrajectory(seed_traj);
+    if (!use_seed)
+    {
+      ROS_WARN("Seed state rejected by STOMP");
+    }
+  }
+
+  if (use_seed)
   {
     ROS_INFO("%s Seeding trajectory from MotionPlanRequest",getName().c_str());
 
     Eigen::MatrixXd initial_parameters;
     jointTrajectorytoParameters(seed_traj, initial_parameters);
+
+    // smooth trajectory
+    smoothSeedTrajectory(initial_parameters);
 
     // updating time step in stomp configuraion
     config_copy.num_timesteps = seed_traj.points.size();
@@ -381,6 +395,161 @@ bool StompPlanner::extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& r
   }
 
   seed.joint_names = names;
+  return true;
+}
+
+/**
+ * @brief Checks to see if a given robot joint pose, given by names/positions, is within
+ * 'max_delta' of the given robot state.
+ * @return True if total L1 joint distance is less than max_delta
+ */
+static bool withinTolerance(const std::vector<std::string>& names, const std::vector<double>& positions,
+                            const moveit::core::RobotState& state, const double max_delta)
+{
+  double dist = 0.0;
+  for (std::size_t i = 0; i < names.size(); ++i)
+  {
+    dist += std::abs(positions[i] - state.getVariablePosition(names[i]));
+  }
+  return dist <= max_delta;
+}
+
+bool StompPlanner::checkSeedTrajectory(trajectory_msgs::JointTrajectory &seed) const
+{
+  if (seed.points.size() < 2)
+    return false;
+
+  moveit::core::RobotState state (robot_model_);
+  const auto* group = state.getJointModelGroup(group_);
+  const auto& joint_names = group->getActiveJointModelNames();
+  const auto& tool_link = group->getLinkModelNames().back();
+
+
+  // Check to see if the seed is the same DOF
+  if (joint_names.size() != seed.joint_names.size())
+  {
+    return false;
+  }
+
+  // We check to see if the start state in the request and the seed state are 'close'
+  if (!moveit::core::robotStateMsgToRobotState(request_.start_state, state))
+  {
+    return false;
+  }
+
+  const static double MAX_START_DISTANCE_THRESH = 0.5;
+
+  // Check the start state to see if we're close enough
+  auto& seed_start_pos = seed.points.front().positions;
+  if (!withinTolerance(seed.joint_names, seed_start_pos, state, MAX_START_DISTANCE_THRESH))
+  {
+    return false;
+  }
+
+  // If we've accepted the start position, then we overwrite this position in the seed trajectory
+  for (std::size_t i = 0; i < joint_names.size(); ++i)
+  {
+    seed_start_pos[i] = state.getVariablePosition(seed.joint_names[i]);
+  }
+
+  // Now we need to fix the goals. We start this by initializing our state object to the final
+  // position of the seed
+  state.setJointGroupPositions(group, seed.points.back().positions);
+
+  // extracting goal joint values
+  bool found_goal = false;
+  for(const auto& gc : request_.goal_constraints)
+  {
+    if (gc.joint_constraints.empty())
+    {
+      // cartesian goal specified - we want to search to the closest point
+      const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
+      const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
+
+      geometry_msgs::Pose pose;
+      pose.position = pos_constraint.constraint_region.primitive_poses[0].position;
+      pose.orientation = orient_constraint.orientation;
+
+      if(!state.setFromIK(group, pose, tool_link, IK_ATTEMPTS, IK_TIMEOUT) ||
+         !planning_scene_->isStateValid(state))
+      {
+        ROS_WARN("SEED %s failed calculating ik for cartesian goal pose in the MotionPlanRequest",getName().c_str());
+        continue;
+      }
+
+      // copying values into goal array
+      state.enforceBounds(group);
+
+      const static double MAX_SEED_DISTANCE_AFTER_IK = 0.5;
+      if (!withinTolerance(joint_names, seed.points.back().positions, state, MAX_SEED_DISTANCE_AFTER_IK))
+      {
+        continue;
+      }
+
+      for(auto j = 0u; j < joint_names.size(); j++)
+      {
+        seed.points.back().positions[j] = state.getVariablePosition(joint_names[j]);
+      }
+
+      found_goal = true;
+      break;
+    }
+    else
+    {
+      // Joint goal specified
+      auto& end_seed_state = seed.points.back().positions;
+      // copying goal values into state
+      moveit::core::RobotState test_state (state);
+      for(auto j = 0u; j < gc.joint_constraints.size(); j++)
+      {
+        auto jc = gc.joint_constraints[j];
+        test_state.setVariablePosition(jc.joint_name,jc.position);
+      }
+
+      if (withinTolerance(seed.joint_names, end_seed_state, test_state, MAX_START_DISTANCE_THRESH))
+      {
+        for (std::size_t i = 0; i < seed.joint_names.size(); ++i)
+        {
+          end_seed_state[i] = test_state.getVariablePosition(seed.joint_names[i]);
+        }
+        found_goal = true;
+
+        break;
+      }
+    }
+  } // end goal loop
+
+  return found_goal;
+}
+
+bool StompPlanner::smoothSeedTrajectory(Eigen::MatrixXd &parameters, int polynomial) const
+{
+  const auto n_rows = parameters.rows();
+  const auto n_samples = parameters.cols();
+
+  // We smooth with the assumption that each step is a fixed time interval?
+  Eigen::VectorXd x (n_samples);
+  for (size_t i = 0; i < n_samples; ++i)
+  {
+    x(i) = i;
+  }
+
+  // We must hold the first and last point to their target positions
+  Eigen::VectorXi fixed_points (2);
+  fixed_points(0) = 0;
+  fixed_points(1) = n_samples - 1;
+
+  // For each row, we replace the current set of joint values with 'smooth' ones built
+  // from a polynomial fit to that joint's motion.
+  for(size_t i = 0; i < n_rows; ++i)
+  {
+    Eigen::VectorXd poly_params;
+    Eigen::VectorXd new_y = stomp_core::polyFitWithFixedPoints(polynomial, x, parameters.row(i),
+                                                               fixed_points, poly_params);
+
+    parameters.row(i) = new_y;
+  }
+
   return true;
 }
 
