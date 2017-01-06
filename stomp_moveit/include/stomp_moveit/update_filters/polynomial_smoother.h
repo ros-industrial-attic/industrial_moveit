@@ -105,30 +105,12 @@ public:
 
 protected:
 
-  /**
-   * @brief Generates a Vandermonde matrix from the domain values as described here https://en.wikipedia.org/wiki/Vandermonde_matrix. It
-   * uses the <b>poly_order</b> parameter in order to set the size of the matrix.
-   * @param domain_vals The domain values
-   * @param v           The output matrix
-   */
-  void fillVandermondeMatrix(const Eigen::ArrayXd& domain_vals, Eigen::MatrixXd& v) const;
-
-protected:
-
   std::string name_;
   std::string group_name_;
 
   // parameters
   unsigned int poly_order_;
-
-  // temp
   Eigen::ArrayXd domain_vals_;
-  Eigen::ArrayXd domain_fvals_;
-  Eigen::MatrixXd x_matrix_;
-  Eigen::MatrixXd x_matrix_t_; /**< Transpose of x_matrix_ */
-  Eigen::MatrixXd xf_matrix_;
-  Eigen::MatrixXd full_matrix_;
-  Eigen::MatrixXd full_inv_matrix_;
 
   // robot
   moveit::core::RobotModelConstPtr robot_model_;
