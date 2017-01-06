@@ -102,7 +102,6 @@ bool loadPlugins(const PluginData plugin_data,
                  ClassLoaderPtr class_loader ,std::vector<PluginPtr>& plugin_array)
 {
   PluginConfigs plugins;
-  static boost::mutex plugin_protector_mutex;
 
 
   if(parsePluginConfigs(plugin_data.config,plugin_data.param_key,plugins))
@@ -113,8 +112,6 @@ bool loadPlugins(const PluginData plugin_data,
       PluginPtr plugin;
       try
       {
-
-        boost::mutex::scoped_lock lock (plugin_protector_mutex);
         plugin = class_loader->createInstance(entry.first);
       }
       catch(pluginlib::PluginlibException& ex)
