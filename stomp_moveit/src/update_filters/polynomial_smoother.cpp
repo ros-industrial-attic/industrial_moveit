@@ -32,6 +32,7 @@
 #include <moveit/robot_state/conversions.h>
 #include <pluginlib/class_list_macros.h>
 #include <stomp_moveit/update_filters/polynomial_smoother.h>
+#include <stomp_core/utils.h>
 #include <XmlRpcException.h>
 
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::update_filters::PolynomialSmoother,stomp_moveit::update_filters::StompUpdateFilter)
@@ -40,6 +41,9 @@ namespace stomp_moveit
 {
 namespace update_filters
 {
+
+const double JOINT_LIMIT_MARGIN = 0.00001;
+const int ALLOWED_SMOOTHING_ATTEMPTS = 5;
 
 PolynomialSmoother::PolynomialSmoother():
     name_("ExponentialSmoother")
@@ -88,49 +92,7 @@ bool PolynomialSmoother::setMotionPlanRequest(const planning_scene::PlanningScen
   using namespace Eigen;
   using namespace moveit::core;
 
-  const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_name_);
-  int num_joints = joint_group->getActiveJointModels().size();
-
-  int num_r = poly_order_ + 1;
-  int num_fixed = 2;
-
-  /*
-   * For the purpose of speed a portion of the equation shown in the class brief is cached.
-   *
-   * |p| - | 2*A*A', C |^-1 * | 2*A*b |
-   * |z| - |     C', 0 |      |     d |
-   *
-   * Cached portion:
-   *
-   * | 2*A*A', C |^-1
-   * |     C', 0 |
-   *
-   * Class Members:
-   *   x_matrix_    (A) - Is the Vandermonde matrix of all (constrained and unconstrained) domain values
-   *   xf_matrix_   (C) - Is the Vandermonde matrix of the constrained domain values
-   *   full_matrix_     - Is the full matrix shown above
-   *   full_inv_matrix_ - Is the inverse of the full matrix.
-   */
   domain_vals_ = ArrayXd::LinSpaced(config.num_timesteps, 0, config.num_timesteps-1);
-
-  domain_fvals_.resize(num_fixed);
-  domain_fvals_[0] = domain_vals_.head(1)[0];
-  domain_fvals_[1] = domain_vals_.tail(1)[0];
-
-  fillVandermondeMatrix(domain_vals_, x_matrix_);
-  fillVandermondeMatrix(domain_fvals_, xf_matrix_);
-  x_matrix_t_ = x_matrix_.transpose();
-
-  Eigen::MatrixXd top(num_r, num_r + num_fixed);
-  Eigen::MatrixXd bot(num_fixed, num_r + num_fixed);
-  top << 2.0*x_matrix_*x_matrix_t_, xf_matrix_;
-  bot << xf_matrix_.transpose(), Eigen::MatrixXd::Zero(num_fixed, num_fixed);
-
-  full_matrix_.resize(num_r + num_fixed, num_r + num_fixed);
-  full_matrix_ << top,
-                  bot;
-
-  full_inv_matrix_ = full_matrix_.inverse();
 
   error_code.val = error_code.SUCCESS;
   return true;
@@ -145,49 +107,72 @@ bool PolynomialSmoother::filter(std::size_t start_timestep,
 {
   using namespace Eigen;
   using namespace moveit::core;
+  filtered = true;
 
-  // updating local parameters
-  int num_r = poly_order_ + 1;
-  int num_fixed = 2;
-  Eigen::VectorXd yf(num_fixed), poly_params(num_r);
-  Eigen::VectorXd vec(num_r + num_fixed);
-  Eigen::VectorXd y(domain_vals_.size());
+  const std::vector<const JointModel*> &joint_models = robot_model_->getJointModelGroup(group_name_)->getActiveJointModels();
+  VectorXd poly_params;
+  VectorXd y;
+  std::vector<int> fixed_indices;
 
-  /*
-   * For each of the noisy trajectories we need to solve the constrained
-   * least-squares equation. See class brief for full description.
-   *
-   * |p| - | 2*A*A', C |^-1 * | 2*A*b |
-   * |z| - |     C', 0 |      |     d |
-   *
-   * Where:
-   *   x_matrix_   (A) - Is the Vandermonde matrix of all (constrained and unconstrained) domain values
-   *   xf_matrix_  (C) - Is the Vandermonde matrix of the constrained domain values
-   *   y           (b) - An array of the values to perform the fit on
-   *   yf          (d) - An array of the values corresponding to the constrained domain values
-   *   poly_params (p) - An array of the polynomial coefficients solved for.
-   */
+  fixed_indices.reserve(num_timesteps);
   for(auto r = 0; r < parameters.rows(); r++)
   {
-    y = updates.row(r);
-    yf[0] = y.head(1)[0];
-    yf[1] = y.tail(1)[0];
+    fixed_indices.resize(2);
+    fixed_indices[0] = 0;
+    fixed_indices[1] = num_timesteps - 1;
 
-    vec << 2*x_matrix_*y, yf;
-    poly_params = (full_inv_matrix_ * vec).head(num_r);
-    updates.row(r) = (x_matrix_t_ * poly_params).transpose();
+    VectorXd jv = updates.row(r) + parameters.row(r);
+    y = jv;
+    jv = stomp_core::polyFitWithFixedPoints(poly_order_, domain_vals_, y, VectorXi::Map(fixed_indices.data(), fixed_indices.size()), poly_params);
+
+    bool finished = false;
+    int attempts = 0;
+    while (!finished && attempts < ALLOWED_SMOOTHING_ATTEMPTS)
+    {
+      attempts += 1;
+
+      bool s1 = std::signbit(jv(1) - jv(0));
+      for (auto i = 2; i < parameters.cols(); ++i)
+      {
+        bool s2 = std::signbit(jv(i) - jv(i-1));
+        if (s1 != s2)
+        {
+          double val = jv(i - 1);
+          if (joint_models[r]->enforcePositionBounds(&val))
+          {
+            fixed_indices.insert(fixed_indices.end() - 1, i - 1);
+            y(i - 1) = val;
+          }
+
+          s1 = s2;
+        }
+      }
+
+
+      if (fixed_indices.size() > 2)
+      {
+        std::sort(fixed_indices.begin(), fixed_indices.end());
+        jv = stomp_core::polyFitWithFixedPoints(poly_order_, domain_vals_, y, VectorXi::Map(fixed_indices.data(), fixed_indices.size()), poly_params);
+      }
+
+      //  Now check if joint trajectory is within joint limits
+      double min = jv.minCoeff();
+      double max = jv.maxCoeff();
+      finished = joint_models[r]->satisfiesPositionBounds(&min, JOINT_LIMIT_MARGIN) &&
+                 joint_models[r]->satisfiesPositionBounds(&max, JOINT_LIMIT_MARGIN);
+    }
+
+    filtered &= finished;
+    updates.row(r) = jv.transpose() - parameters.row(r);
   }
 
-  filtered = true;
+  if (!filtered)
+    ROS_ERROR("Unable to polynomial smooth trajectory!");
+
   return filtered;
 }
 
-void PolynomialSmoother::fillVandermondeMatrix(const Eigen::ArrayXd &domain_vals, Eigen::MatrixXd& v) const
-{
-  v = Eigen::MatrixXd::Ones(poly_order_+1, domain_vals.size());
-  for(auto p = 1u; p <=  poly_order_; p++)
-    v.row(p) = domain_vals.pow(p);
-}
+
 
 } /* namespace update_filters */
 } /* namespace stomp_moveit */

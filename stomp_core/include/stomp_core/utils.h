@@ -191,6 +191,15 @@ Eigen::VectorXd polyFitWithFixedPoints(const int d,
                                        const Eigen::VectorXi &fixed_indices,
                                        Eigen::VectorXd &poly_params);
 
+/**
+ * @brief Generates a Vandermonde matrix from the domain values as described here https://en.wikipedia.org/wiki/Vandermonde_matrix. It
+ * uses the <b>poly_order</b> parameter in order to set the size of the matrix.
+ * @param domain_vals The domain values
+ * @param order       The order of the polynomial
+ * @param v           The output matrix
+ */
+void fillVandermondeMatrix(const Eigen::ArrayXd &domain_vals, const int &order, Eigen::MatrixXd &v);
+
 } /* namespace stomp */
 
 #endif /* INDUSTRIAL_MOVEIT_STOMP_CORE_INCLUDE_STOMP_CORE_STOMP_UTILS_H_ */

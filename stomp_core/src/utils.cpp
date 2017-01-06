@@ -185,6 +185,17 @@ Eigen::VectorXd polyFitWithFixedPoints(const int d,
                                        const Eigen::VectorXi &fixed_indices,
                                        Eigen::VectorXd &poly_params)
 {
+
+//  |p| - | 2*A*A', C |^-1 * | 2*A*b |
+//  |z| - |     C', 0 |      |     d |
+//
+//  Variable Description:
+//    x_t         (A) - Is the Vandermonde matrix of all (constrained and unconstrained) domain values
+//    a_t         (C) - Is the Vandermonde matrix of the constrained domain values
+//    y           (b) - An array of the values to perform the fit on
+//    yf          (d) - An array of the values corresponding to the constrained domain values
+//    poly_params (p) - An array of the polynomial coefficients solved for.
+
   int num_r = d + 1;
   int num_fixed = fixed_indices.size();
   Eigen::MatrixXd x_t(num_r, x.size());
@@ -219,6 +230,12 @@ Eigen::VectorXd polyFitWithFixedPoints(const int d,
   return x_t.transpose() * poly_params;
 }
 
+void fillVandermondeMatrix(const Eigen::ArrayXd &domain_vals, const int &order, Eigen::MatrixXd &v)
+{
+  v = Eigen::MatrixXd::Ones(order+1, domain_vals.size());
+  for(auto p = 1u; p <=  order; p++)
+    v.row(p) = domain_vals.pow(p);
+}
 }
 
 
