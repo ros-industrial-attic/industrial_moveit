@@ -33,7 +33,8 @@
 #include <moveit/robot_state/conversions.h>
 #include <pluginlib/class_list_macros.h>
 #include <XmlRpcException.h>
-
+#include <moveit_msgs/PositionConstraint.h>
+#include <moveit_msgs/OrientationConstraint.h>
 
 
 namespace stomp_moveit
@@ -50,6 +51,133 @@ namespace kinematics
 
   const static double EPSILON = 0.011;  /**< @brief Used in dampening the matrix pseudo inverse calculation */
   const static double LAMBDA = 0.01;    /**< @brief Used in dampening the matrix pseudo inverse calculation */
+
+  /**
+   * @struct stomp_moveit::utils::KinematicConfig
+   * @brief Convenience structure that contains the variables used in solving for an ik solution.
+   */
+  struct KinematicConfig
+  {
+    /** @name Constraint Parameters
+     * The constraints on the cartesian goal
+     */
+    Eigen::Array<int,6,1> constrained_dofs = Eigen::Array<int,6,1>::Ones(); /**< @brief  A vector of the form [x y z rx ry rz] filled with 0's and 1's
+                                                                                        to indicate an unconstrained or fully constrained DOF. **/
+    Eigen::Affine3d tool_goal_pose = Eigen::Affine3d::Identity();           /**< @brief  The desired tool pose. **/
+
+    /** @name Support Parameters
+     * Used at each iteration until a solution is found
+     */
+    Eigen::ArrayXd joint_update_rates = Eigen::ArrayXd::Zero(1,1);          /**< @brief The weights to be applied to each update during every iteration [num_dimensions x 1]. **/
+    Eigen::Array<double,6,1> cartesian_convergence_thresholds = Eigen::Array<double,6,1>::Zero(); /**< @brief  The error margin for each dimension of the twist vector [6 x 1]. **/
+    Eigen::VectorXd init_joint_pose = Eigen::ArrayXd::Zero(1,1);            /**< @brief  Seed joint pose [num_dimension x 1]. **/
+    int max_iterations = 100;                                               /**< @brief  The maximum number of iterations that the algorithm will run until convergence is reached. **/
+
+    /** @name Null Space Parameters
+     * Used in exploding the task manifold null space
+     */
+    Eigen::ArrayXd null_proj_weights = Eigen::ArrayXd::Zero(1,1);  /**< @brief Weights to be applied to the null space vector */
+    Eigen::VectorXd null_space_vector = Eigen::VectorXd::Zero(1);  /**< @brief Null space vector that is used to exploit the Jacobian's null space */
+
+  };
+
+  /**
+   * @brief Populates a Kinematic Config struct from the position and orientation constraints requested;
+   * @param group             A pointer to the JointModelGroup
+   * @param pc                The position constraint message
+   * @param oc                The orientation constraint message.  Absolute tolerances greater than 2PI will be considered unconstrained.
+   * @param init_joint_pose   The initial joint values
+   * @param kc                The output KinematicConfig object
+   * @return  True if succeeded, false otherwise
+   */
+  static bool createKinematicConfig(const moveit::core::JointModelGroup* group,
+                                               const moveit_msgs::PositionConstraint& pc,const moveit_msgs::OrientationConstraint& oc,
+                                               const Eigen::VectorXd& init_joint_pose,KinematicConfig& kc)
+  {
+    int num_joints = group->getActiveJointModelNames().size();
+    if(num_joints != init_joint_pose.size())
+    {
+      ROS_ERROR("Initial joint pose has an incorrect number of joints");
+      return false;
+    }
+
+    // tool pose position
+    kc.tool_goal_pose.setIdentity();
+    auto& v = pc.constraint_region.primitive_poses[0].position;
+    kc.tool_goal_pose.translation() = Eigen::Vector3d(v.x,v.y,v.z);
+
+    // tool pose orientation
+    Eigen::Quaterniond q;
+    tf::quaternionMsgToEigen(oc.orientation,q);
+    kc.tool_goal_pose.rotate(q);
+
+    // defining constraints
+    kc.constrained_dofs << 1, 1, 1, 1, 1, 1;
+
+    // position tolerance
+    const shape_msgs::SolidPrimitive& bv = pc.constraint_region.primitives[0];
+    if(bv.type != shape_msgs::SolidPrimitive::BOX || bv.dimensions.size() != 3)
+    {
+      ROS_ERROR("Position constraint incorrectly defined, a BOX region is expected");
+      return false;
+    }
+
+    using SP = shape_msgs::SolidPrimitive;
+    kc.cartesian_convergence_thresholds[0] = bv.dimensions[SP::BOX_X];
+    kc.cartesian_convergence_thresholds[1] = bv.dimensions[SP::BOX_Y];
+    kc.cartesian_convergence_thresholds[2] = bv.dimensions[SP::BOX_Z];
+
+    // orientation tolerance
+    kc.cartesian_convergence_thresholds[3] = oc.absolute_x_axis_tolerance;
+    kc.cartesian_convergence_thresholds[4] = oc.absolute_y_axis_tolerance;
+    kc.cartesian_convergence_thresholds[5] = oc.absolute_z_axis_tolerance;
+
+    // unconstraining orientation dofs that exceed 2pi
+    for(std::size_t i = 3; i < kc.cartesian_convergence_thresholds.size(); i++)
+    {
+      auto v = kc.cartesian_convergence_thresholds[i];
+      kc.constrained_dofs[i] = v >= 2*M_PI ? 0 : 1;
+    }
+
+    // additional variables
+    kc.joint_update_rates = Eigen::ArrayXd::Constant(num_joints,0.5f);
+    kc.init_joint_pose = init_joint_pose;
+    kc.max_iterations = 100;
+
+    return true;
+  }
+
+  /**
+   * @brief Populates a Kinematic Config struct from the position and orientation constraints requested;
+   * @param group         A pointer to the JointModelGroup
+   * @param pc            The position constraint message
+   * @param oc            The orientation constraint message.  Absolute tolerances greater than 2PI will be considered unconstrained.
+   * @param start_state   The start robot state message
+   * @param kc            The output KinematicConfig object
+   * @return    True if succeeded, false otherwise
+   */
+  static bool createKinematicConfig(const moveit::core::JointModelGroup* group,
+                                               const moveit_msgs::PositionConstraint& pc,const moveit_msgs::OrientationConstraint& oc,
+                                               const moveit_msgs::RobotState& start_state,KinematicConfig& kc)
+  {
+    const auto& joint_names= group->getActiveJointModelNames();
+    const auto& jstate = start_state.joint_state;
+    std::size_t ind = 0;
+    Eigen::VectorXd joint_vals = Eigen::VectorXd::Zero(joint_names.size());
+    for(std::size_t i = 0; i < joint_names.size();i ++)
+    {
+      auto pos = std::find(jstate.name.begin(),jstate.name.end(),joint_names[i]);
+      if(pos == jstate.name.end())
+      {
+        return false;
+      }
+
+      ind = std::distance(jstate.name.begin(),pos);
+      joint_vals(i) = jstate.position[ind];
+    }
+
+    return createKinematicConfig(group,pc,oc,joint_vals,kc);
+  }
 
 /**
  * @brief Computes the twist vector [vx vy vz wx wy wz]'  relative to the current tool coordinate system.  The rotational part is
@@ -153,14 +281,15 @@ namespace kinematics
 
   /**
    * @brief Solves the inverse kinematics for a given tool pose using a gradient descent method.  It can handle under constrained DOFs for
-   *  the cartesian tool pose and can also apply a vector onto the null space of the jacobian in order to each a secondary objective
+   *  the cartesian tool pose and can also apply a vector onto the null space of the jacobian in order to meet a secondary objective.  It
+   *  also checks for joint limits.
    * @param robot_state                       A pointer to the robot state.
    * @param group_name                        The name of the kinematic group. The tool link name is assumed to be the last link in this group.
    * @param constrained_dofs                  A vector of the form [x y z rx ry rz] filled with 0's and 1's to indicate an unconstrained or fully constrained DOF.
    * @param joint_update_rates                The weights to be applied to each update during every iteration [num_dimensions x 1].
    * @param cartesian_convergence_thresholds  The error margin for each dimension of the twist vector [6 x 1].
    * @param null_proj_weights                 The weights to be multiplied to the null space vector [num_dimension x 1].
-   * @param null_space_vector                 The null space vector which is applied into the jacobians null space when the pose is under constrained [6 x 1].
+   * @param null_space_vector                 The null space vector which is applied into the jacobian's null space [num_dimension x 1].
    * @param max_iterations                    The maximum number of iterations that the algorithm will run until convergence is reached.
    * @param tool_goal_pose                    The desired tool pose.
    * @param init_joint_pose                   Seed joint pose [num_dimension x 1].
@@ -168,10 +297,14 @@ namespace kinematics
    * @return  True if a solution was found, false otherwise.
    */
   static bool solveIK(moveit::core::RobotStatePtr robot_state, const std::string& group_name,
-                      const Eigen::ArrayXi& constrained_dofs, const Eigen::ArrayXd& joint_update_rates,
-                      const Eigen::ArrayXd& cartesian_convergence_thresholds, const Eigen::ArrayXd& null_proj_weights,
-                      const Eigen::VectorXd& null_space_vector,int max_iterations,
-                      const Eigen::Affine3d& tool_goal_pose,const Eigen::VectorXd& init_joint_pose,
+                      const Eigen::Array<int,6,1>& constrained_dofs,
+                      const Eigen::ArrayXd& joint_update_rates,
+                      const Eigen::Array<double,6,1>& cartesian_convergence_thresholds,
+                      const Eigen::ArrayXd& null_proj_weights,
+                      const Eigen::VectorXd& null_space_vector,
+                      int max_iterations,
+                      const Eigen::Affine3d& tool_goal_pose,
+                      const Eigen::VectorXd& init_joint_pose,
                       Eigen::VectorXd& joint_pose)
   {
 
@@ -183,8 +316,47 @@ namespace kinematics
     joint_pose = init_joint_pose;
     const JointModelGroup* joint_group = robot_state->getJointModelGroup(group_name);
     robot_state->setJointGroupPositions(joint_group,joint_pose);
+    const auto& joint_names = joint_group->getActiveJointModelNames();
     std::string tool_link = joint_group->getLinkModelNames().back();
     Affine3d tool_current_pose = robot_state->getGlobalLinkTransform(tool_link);
+
+    auto harmonize_joints = [&joint_group,&joint_names](Eigen::VectorXd& joint_vals) -> bool
+    {
+      if(joint_names.size() != joint_vals.size())
+      {
+        return false;
+      }
+
+      const double incr = 2*M_PI;
+      for(std::size_t i = 0; i < joint_names.size();i++)
+      {
+        if( joint_group->getJointModel(joint_names[i])->getType() != JointModel::REVOLUTE )
+        {
+          continue;
+        }
+
+        const JointModel::Bounds& bounds = joint_group->getJointModel(joint_names[i])->getVariableBounds();
+
+        double j = joint_vals(i);
+        for(const VariableBounds& b: bounds)
+        {
+
+          while(j > b.max_position_)
+          {
+            j-= incr;
+          }
+
+          while(j < b.min_position_)
+          {
+            j += incr;
+          }
+        }
+
+        joint_vals(i) = j;
+      }
+
+      return true;
+    };
 
     // tool twist variables
     VectorXd tool_twist, tool_twist_reduced;
@@ -203,21 +375,26 @@ namespace kinematics
     MatrixXd jacb, jacb_reduced, jacb_pseudo_inv;
     MatrixXd identity = MatrixXd::Identity(init_joint_pose.size(),init_joint_pose.size());
     VectorXd null_space_proj;
-    bool project_into_nullspace = (null_proj_weights >1e-8).any();
+    bool project_into_nullspace = (null_proj_weights.size()> 0) &&  (null_proj_weights >1e-8).any();
 
     unsigned int iteration_count = 0;
     bool converged = false;
     while(iteration_count < max_iterations)
     {
-
       // computing twist vector
       computeTwist(tool_current_pose,tool_goal_pose,constrained_dofs,tool_twist);
 
       // check convergence
       if((tool_twist.cwiseAbs().array() <= cartesian_convergence_thresholds).all())
       {
-        // converged
-        converged = true;
+        if(robot_state->satisfiesBounds(joint_group))
+        {
+          converged = true;
+        }
+        else
+        {
+          ROS_DEBUG("IK joint solution violates bounds");
+        }
         break;
       }
 
@@ -261,6 +438,7 @@ namespace kinematics
 
       // updating joint values
       joint_pose += (joint_update_rates* delta_j.array()).matrix();
+      harmonize_joints(joint_pose);
 
       // updating tool pose
       robot_state->setJointGroupPositions(joint_group,joint_pose);
@@ -273,6 +451,32 @@ namespace kinematics
     ROS_DEBUG_STREAM_COND(!converged,"Error tool twist "<<tool_twist.transpose());
 
     return converged;
+  }
+
+  /**
+   * @brief Solves the inverse kinematics for a given tool pose using a gradient descent method.  It can handle under constrained DOFs for
+   *  the cartesian tool pose and can also apply a vector onto the null space of the jacobian in order to meet a secondary objective.  It
+   *  also checks for joint limits.
+   * @param robot_state A pointer to the robot state.
+   * @param group_name  The name of the kinematic group. The tool link name is assumed to be the last link in this group.
+   * @param config      A structure containing the variables to be used in finding a solution.
+   * @param joint_pose  IK joint solution [num_dimension x 1].
+   * @return  True if a solution was found, false otherwise.
+   */
+  static bool solveIK(moveit::core::RobotStatePtr robot_state, const std::string& group_name,const KinematicConfig& config, Eigen::VectorXd& joint_pose)
+  {
+
+    return solveIK(robot_state,
+                   group_name,
+                   config.constrained_dofs,
+                   config.joint_update_rates,
+                   config.cartesian_convergence_thresholds,
+                   config.null_proj_weights,
+                   config.null_space_vector,
+                   config.max_iterations,
+                   config.tool_goal_pose,
+                   config.init_joint_pose,
+                   joint_pose);
   }
 
   /**

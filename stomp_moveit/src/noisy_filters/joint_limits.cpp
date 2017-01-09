@@ -107,8 +107,11 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
     ROS_ERROR_STREAM("Failed to save start state");
     return false;
   }
-  start_state_->enforceBounds(robot_model_->getJointModelGroup(group_name_));
 
+  if(!start_state_->satisfiesBounds(robot_model_->getJointModelGroup(group_name_)))
+  {
+    ROS_WARN("%s Requested Start State is out of bounds",getName().c_str());
+  }
 
   // saving goal state
   if(lock_goal_)
@@ -121,7 +124,12 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
         goal_state_->setVariablePosition(jc.joint_name,jc.position);
         goal_state_saved = true;
       }
-      goal_state_->enforceBounds(robot_model_->getJointModelGroup(group_name_));
+
+      if(!goal_state_->satisfiesBounds(robot_model_->getJointModelGroup(group_name_)))
+      {
+        ROS_WARN("%s Requested Goal State is out of bounds",getName().c_str());
+      }
+
       break;
     }
 

@@ -33,7 +33,6 @@
 #include <moveit/robot_state/conversions.h>
 #include <pluginlib/class_list_macros.h>
 #include <XmlRpcException.h>
-#include "stomp_moveit/utils/kinematics.h"
 
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::update_filters::ConstrainedCartesianGoal,stomp_moveit::update_filters::StompUpdateFilter);
 
@@ -89,25 +88,23 @@ bool ConstrainedCartesianGoal::configure(const XmlRpc::XmlRpcValue& config)
       return false;
     }
 
-    dof_nullity_.resize(CARTESIAN_DOF_SIZE);
     for(auto i = 0u; i < dof_nullity_param.size(); i++)
     {
-      dof_nullity_(i) = static_cast<int>(dof_nullity_param[i]);
+      kc_.constrained_dofs(i) = static_cast<int>(dof_nullity_param[i]);
     }
 
-    cartesian_convergence_thresholds_.resize(CARTESIAN_DOF_SIZE);
     for(auto i = 0u; i < dof_thresholds_param.size(); i++)
     {
-      cartesian_convergence_thresholds_(i) = static_cast<double>(dof_thresholds_param[i]);
+      kc_.cartesian_convergence_thresholds(i) = static_cast<double>(dof_thresholds_param[i]);
     }
 
-    joint_update_rates_.resize(joint_updates_param.size());
+    kc_.joint_update_rates.resize(joint_updates_param.size());
     for(auto i = 0u; i < joint_updates_param.size(); i++)
     {
-      joint_update_rates_(i) = static_cast<double>(joint_updates_param[i]);
+      kc_.joint_update_rates(i) = static_cast<double>(joint_updates_param[i]);
     }
 
-    max_iterations_ = static_cast<int>(params["max_ik_iterations"]);
+    kc_.max_iterations = static_cast<int>(params["max_ik_iterations"]);
   }
   catch(XmlRpc::XmlRpcException& e)
   {
@@ -125,6 +122,7 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
 {
   using namespace Eigen;
   using namespace moveit::core;
+  using namespace utils::kinematics;
 
   const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_name_);
   int num_joints = joint_group->getActiveJointModels().size();
@@ -153,20 +151,20 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
       const moveit_msgs::PositionConstraint& pos_constraint = g.position_constraints.front();
       const moveit_msgs::OrientationConstraint& orient_constraint = g.orientation_constraints.front();
 
-      geometry_msgs::Pose pose;
-      pose.position = pos_constraint.constraint_region.primitive_poses[0].position;
-      pose.orientation = orient_constraint.orientation;
-      tf::poseMsgToEigen(pose,tool_goal_pose_);
+      KinematicConfig kc;
+      Eigen::VectorXd joint_pose;
+      if(createKinematicConfig(joint_group,pos_constraint,orient_constraint,req.start_state,kc))
+      {
+        kc_.tool_goal_pose = kc.tool_goal_pose;
+        if(!solveIK(state_,group_name_,kc,joint_pose))
+        {
+          ROS_WARN("%s failed calculating ik for cartesian goal pose in the MotionPlanRequest",getName().c_str());
+        }
 
-      if(!state_->setFromIK(joint_group,tool_goal_pose_,tool_link_,IK_ATTEMPTS,IK_TIMEOUT))
-      {
-        ROS_WARN("%s failed calculating ik for cartesian goal pose in the MotionPlanRequest",getName().c_str());
-      }
-      else
-      {
         found_goal = true;
         break;
       }
+
     }
 
     if(!found_goal )
@@ -191,7 +189,7 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
 
       // storing reference goal position tool and pose
       state_->update(true);
-      tool_goal_pose_ = state_->getGlobalLinkTransform(tool_link_);
+      kc_.tool_goal_pose = state_->getGlobalLinkTransform(tool_link_);
       found_goal = true;
       break;
 
@@ -222,23 +220,21 @@ bool ConstrainedCartesianGoal::filter(std::size_t start_timestep,
 
 
   filtered = false;
-  VectorXd init_joint_pose = parameters.rightCols(1);
+  kc_.init_joint_pose = parameters.rightCols(1);
   VectorXd joint_pose;
   MatrixXd jacb_nullspace;
 
   // projecting update into nullspace
-  if(kinematics::computeJacobianNullSpace(state_,group_name_,tool_link_,dof_nullity_,init_joint_pose,jacb_nullspace))
+  if(kinematics::computeJacobianNullSpace(state_,group_name_,tool_link_,kc_.constrained_dofs,kc_.init_joint_pose,jacb_nullspace))
   {
-    init_joint_pose += jacb_nullspace*(updates.rightCols(1));
+    kc_.init_joint_pose  += jacb_nullspace*(updates.rightCols(1));
   }
   else
   {
     ROS_WARN("%s failed to project into the nullspace of the jacobian",getName().c_str());
   }
 
-  if(kinematics::solveIK(state_,group_name_,dof_nullity_,joint_update_rates_,cartesian_convergence_thresholds_,
-                          ArrayXd::Zero(init_joint_pose.size()),updates.rightCols(1),max_iterations_,
-              tool_goal_pose_,init_joint_pose,joint_pose))
+  if(kinematics::solveIK(state_,group_name_,kc_,joint_pose))
   {
     filtered = true;
     updates.rightCols(1) = joint_pose - parameters.rightCols(1);

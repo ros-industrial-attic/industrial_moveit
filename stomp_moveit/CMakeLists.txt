@@ -38,6 +38,7 @@ include_directories(include
 add_library(${PROJECT_NAME}
   src/stomp_optimization_task.cpp
   src/stomp_planner.cpp
+  src/utils/polynomial.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -70,6 +71,7 @@ add_library(${PROJECT_NAME}_update_filters
   src/update_filters/trajectory_visualization.cpp
   src/update_filters/control_cost_projection.cpp
   src/update_filters/update_logger.cpp
+  src/utils/polynomial.cpp
  )
 target_link_libraries(${PROJECT_NAME}_update_filters ${catkin_LIBRARIES})
 

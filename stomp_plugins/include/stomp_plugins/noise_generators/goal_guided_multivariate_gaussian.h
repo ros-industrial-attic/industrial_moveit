@@ -148,8 +148,7 @@ protected:
   std::string tool_link_;
 
   // ros parameters
-  Eigen::ArrayXi dof_nullity_;                                        /**< @brief Indicates which tool goal cartesian DOF's are unconstrained (0) and
-                                                                           fully constrained (1), [x y z rx ry rz] */
+  utils::kinematics::KinematicConfig kc_;                             /**< @brief The kinematic configuration to find valid goal poses **/
 
   // noisy trajectory generation
   std::vector<utils::MultivariateGaussianPtr> traj_noise_generators_; /**< @brief Randomized numerical distribution generators, [6 x 1] **/
@@ -159,9 +158,6 @@ protected:
 
   // random goal generation
   boost::shared_ptr<RandomGenerator> goal_rand_generator_;            /**< @brief Random generator for the tool goal pose **/
-  Eigen::VectorXd joint_update_rates_;                                /**< @brief Used to control the joint update rate during numerical ik calculations,
-                                                                           [num_dimensions x 1]**/
-  Eigen::VectorXd cartesian_convergence_thresholds_;                  /**< @brief Convergence values for numerica ik calculations, [vx vy vz wx wy wz] **/
 
   // robot
   moveit::core::RobotModelConstPtr robot_model_;
