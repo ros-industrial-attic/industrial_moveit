@@ -28,6 +28,7 @@
 #define INDUSTRIAL_MOVEIT_STOMP_MOVEIT_INCLUDE_STOMP_MOVEIT_UPDATE_FILTERS_CONSTRAINED_CARTESIAN_GOAL_H_
 
 #include <stomp_moveit/update_filters/stomp_update_filter.h>
+#include <stomp_moveit/utils/kinematics.h>
 
 namespace stomp_moveit
 {
@@ -111,14 +112,8 @@ protected:
   std::string name_;
   std::string group_name_;
 
-  // tool goal
-  Eigen::Affine3d tool_goal_pose_;
-
-  // ik
-  Eigen::ArrayXd joint_update_rates_;
-  Eigen::ArrayXi dof_nullity_;
-  Eigen::ArrayXd cartesian_convergence_thresholds_;
-  int max_iterations_;
+  // kinematics
+  utils::kinematics::KinematicConfig kc_;
 
   // robot
   moveit::core::RobotModelConstPtr robot_model_;

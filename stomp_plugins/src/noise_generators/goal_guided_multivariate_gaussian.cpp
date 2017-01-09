@@ -81,11 +81,12 @@ bool GoalGuidedMultivariateGaussian::initialize(moveit::core::RobotModelConstPtr
   stddev_.resize(joint_group->getActiveJointModelNames().size());
   goal_stddev_.resize(CARTESIAN_DOF_SIZE);
 
-  // goal ik parameters
-  joint_update_rates_ = JOINT_UPDATE_RATE*Eigen::VectorXd::Ones(stddev_.size());
-  cartesian_convergence_thresholds_.resize(CARTESIAN_DOF_SIZE);
-  cartesian_convergence_thresholds_<< CARTESIAN_POS_CONVERGENCE, CARTESIAN_POS_CONVERGENCE, CARTESIAN_POS_CONVERGENCE,
+  // goal kinematics parameters
+  kc_.joint_update_rates = JOINT_UPDATE_RATE*Eigen::VectorXd::Ones(stddev_.size());
+  kc_.cartesian_convergence_thresholds << CARTESIAN_POS_CONVERGENCE, CARTESIAN_POS_CONVERGENCE, CARTESIAN_POS_CONVERGENCE,
       CARTESIAN_ROT_CONVERGENCE, CARTESIAN_ROT_CONVERGENCE, CARTESIAN_ROT_CONVERGENCE;
+  kc_.constrained_dofs << 1, 1, 1, 1, 1, 1;
+  kc_.max_iterations = IK_ITERATIONS;
 
 
   return configure(config);
@@ -138,10 +139,9 @@ bool GoalGuidedMultivariateGaussian::configure(const XmlRpc::XmlRpcValue& config
       return false;
     }
 
-    dof_nullity_.resize(CARTESIAN_DOF_SIZE);
     for(auto i = 0u; i < dof_nullity_param.size(); i++)
     {
-      dof_nullity_(i) = static_cast<int>(dof_nullity_param[i]);
+      kc_.constrained_dofs(i) = static_cast<int>(dof_nullity_param[i]);
     }
 
   }
@@ -219,6 +219,7 @@ bool GoalGuidedMultivariateGaussian::setGoalConstraints(const planning_scene::Pl
 {
   using namespace Eigen;
   using namespace moveit::core;
+  using namespace utils::kinematics;
 
   const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_);
   int num_joints = joint_group->getActiveJointModels().size();
@@ -295,12 +296,11 @@ bool GoalGuidedMultivariateGaussian::generateRandomGoal(const Eigen::VectorXd& s
   state_->updateLinkTransforms();
   Affine3d tool_pose = state_->getGlobalLinkTransform(tool_link_);
   auto& n = noise;
-  tool_pose = tool_pose * Translation3d(Vector3d(n(0),n(1),n(2)))*
+  kc_.tool_goal_pose = tool_pose * Translation3d(Vector3d(n(0),n(1),n(2)))*
       AngleAxisd(n(3),Vector3d::UnitX())*AngleAxisd(n(4),Vector3d::UnitY())*AngleAxisd(n(5),Vector3d::UnitZ());
+  kc_.init_joint_pose = seed_joint_pose;
 
-  if(!kinematics::solveIK(state_,group_,dof_nullity_,joint_update_rates_,cartesian_convergence_thresholds_,
-                          ArrayXd::Zero(seed_joint_pose.size()),ArrayXd::Zero(seed_joint_pose.size()),IK_ITERATIONS,
-                          tool_pose,seed_joint_pose,goal_joint_pose))
+  if(!kinematics::solveIK(state_,group_,kc_,goal_joint_pose))
   {
     ROS_DEBUG("%s 'solveIK(...)' failed, returning noiseless goal pose",getName().c_str());
     goal_joint_pose= seed_joint_pose;

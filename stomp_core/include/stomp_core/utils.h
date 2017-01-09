@@ -176,30 +176,6 @@ std::string toString(const Eigen::VectorXd& data);
  */
 std::string toString(const Eigen::MatrixXd& data);
 
-/**
- * @brief Fit a polynomial with fixed indices
- * @param d Degree of the polynomial
- * @param x The domain values
- * @param y Fit values
- * @param fixed_indices Indicies of the input data to remain fixed during fit.
- * @param poly_params Polynomial parameters found during the fit
- * @return The new fitted values.
- */
-Eigen::VectorXd polyFitWithFixedPoints(const int d,
-                                       const Eigen::VectorXd &x,
-                                       const Eigen::VectorXd &y,
-                                       const Eigen::VectorXi &fixed_indices,
-                                       Eigen::VectorXd &poly_params);
-
-/**
- * @brief Generates a Vandermonde matrix from the domain values as described here https://en.wikipedia.org/wiki/Vandermonde_matrix. It
- * uses the <b>poly_order</b> parameter in order to set the size of the matrix.
- * @param domain_vals The domain values
- * @param order       The order of the polynomial
- * @param v           The output matrix
- */
-void fillVandermondeMatrix(const Eigen::ArrayXd &domain_vals, const int &order, Eigen::MatrixXd &v);
-
 } /* namespace stomp */
 
 #endif /* INDUSTRIAL_MOVEIT_STOMP_CORE_INCLUDE_STOMP_CORE_STOMP_UTILS_H_ */
