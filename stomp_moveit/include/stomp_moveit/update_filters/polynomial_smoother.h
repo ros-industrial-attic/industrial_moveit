@@ -104,13 +104,26 @@ public:
   }
 
 protected:
+  /**
+   * @brief Get the polynomial smoother domain values.
+   *
+   * The domain values is time. The time is calculated finding the joint
+   * that takes the longest given the total distance traveled and its max
+   * velocity. This is the dominating joint therefore its time is used as
+   * the domain values for the smoothing operation.
+   *
+   * @param joint_models  List of active joint models
+   * @param parameters    The parameters generated in the previous iteration [num_dimensions x num_timesteps]
+   * @param updates       The updates to be applied to the parameters [num_dimensions x num_timesteps]
+   * @param domain_values The time domain values for the trajectory [num_timesteps]
+   */
+  void getDomainValues(const std::vector<const  moveit::core::JointModel*> joint_models, const Eigen::MatrixXd &parameters, const Eigen::MatrixXd &updates, Eigen::VectorXd &domain_values) const;
 
   std::string name_;
   std::string group_name_;
 
   // parameters
   unsigned int poly_order_;
-  Eigen::ArrayXd domain_vals_;
 
   // robot
   moveit::core::RobotModelConstPtr robot_model_;

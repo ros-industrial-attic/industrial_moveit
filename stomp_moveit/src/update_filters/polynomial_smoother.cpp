@@ -89,11 +89,6 @@ bool PolynomialSmoother::setMotionPlanRequest(const planning_scene::PlanningScen
                  const stomp_core::StompConfiguration &config,
                  moveit_msgs::MoveItErrorCodes& error_code)
 {
-  using namespace Eigen;
-  using namespace moveit::core;
-
-  domain_vals_ = ArrayXd::LinSpaced(config.num_timesteps, 0, config.num_timesteps-1);
-
   error_code.val = error_code.SUCCESS;
   return true;
 }
@@ -111,8 +106,10 @@ bool PolynomialSmoother::filter(std::size_t start_timestep,
 
   const std::vector<const JointModel*> &joint_models = robot_model_->getJointModelGroup(group_name_)->getActiveJointModels();
   VectorXd poly_params;
-  VectorXd y;
+  VectorXd y, domain_vals(num_timesteps);
   std::vector<int> fixed_indices;
+
+  getDomainValues(joint_models, parameters, updates, domain_vals);
 
   fixed_indices.reserve(num_timesteps);
   for(auto r = 0; r < parameters.rows(); r++)
@@ -123,7 +120,7 @@ bool PolynomialSmoother::filter(std::size_t start_timestep,
 
     VectorXd jv = updates.row(r) + parameters.row(r);
     y = jv;
-    jv = stomp_core::polyFitWithFixedPoints(poly_order_, domain_vals_, y, VectorXi::Map(fixed_indices.data(), fixed_indices.size()), poly_params);
+    jv = stomp_core::polyFitWithFixedPoints(poly_order_, domain_vals, y, VectorXi::Map(fixed_indices.data(), fixed_indices.size()), poly_params);
 
     bool finished = false;
     int attempts = 0;
@@ -148,11 +145,10 @@ bool PolynomialSmoother::filter(std::size_t start_timestep,
         }
       }
 
-
       if (fixed_indices.size() > 2)
       {
         std::sort(fixed_indices.begin(), fixed_indices.end());
-        jv = stomp_core::polyFitWithFixedPoints(poly_order_, domain_vals_, y, VectorXi::Map(fixed_indices.data(), fixed_indices.size()), poly_params);
+        jv = stomp_core::polyFitWithFixedPoints(poly_order_, domain_vals, y, VectorXi::Map(fixed_indices.data(), fixed_indices.size()), poly_params);
       }
 
       //  Now check if joint trajectory is within joint limits
@@ -172,7 +168,35 @@ bool PolynomialSmoother::filter(std::size_t start_timestep,
   return filtered;
 }
 
+void PolynomialSmoother::getDomainValues(const std::vector<const  moveit::core::JointModel *> joint_models, const Eigen::MatrixXd &parameters, const Eigen::MatrixXd &updates, Eigen::VectorXd &domain_values) const
+{
+  Eigen::VectorXd distance(parameters.rows());
+  Eigen::VectorXd velocity(parameters.rows());
+  Eigen::VectorXd t(parameters.rows());
+  Eigen::VectorXd domain_dist(parameters.cols());
+  double max_t = 0;
 
+  domain_values.resize(parameters.cols());
+  for(auto r = 0; r < parameters.rows(); r++)
+  {
+    moveit::core::VariableBounds bound = joint_models[r]->getVariableBounds()[0];
+    velocity(r) = bound.max_velocity_;
+    distance(r) = 0.0;
+    domain_dist(0) = 0.0;
+    for(auto c = 1; c < parameters.cols(); c++)
+    {
+      distance(r) += std::abs((parameters(r, c) + updates(r, c)) - (parameters(r, c - 1) + updates(r, c - 1)));
+      domain_dist(c) = distance(r);
+    }
+
+    t(r) = distance(r)/velocity(r);
+    if (t(r) > max_t)
+    {
+      max_t = t(r);
+      domain_values = domain_dist/velocity(r);
+    }
+  }
+}
 
 } /* namespace update_filters */
 } /* namespace stomp_moveit */
