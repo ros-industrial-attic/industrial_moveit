@@ -29,8 +29,6 @@ find_package(orocos_kdl REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Eigen REQUIRED)
 
-add_definitions("-std=c++11")
-
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
   cfg/CLIKDynamic.cfg
@@ -92,7 +90,6 @@ add_library(constrained_ik
             src/solver_state.cpp
             src/enum_types.cpp
             src/constrained_ik_utils.cpp
-            src/constraints/avoid_joint_limits.cpp
             src/constraint_group.cpp
 )
 
@@ -109,6 +106,7 @@ add_library(constrained_ik_constraints
             src/constraints/avoid_singularities.cpp
             src/constraints/joint_vel_limits.cpp
             src/constraints/avoid_obstacles.cpp
+            src/constraints/avoid_joint_limits.cpp
             src/constraints/goal_tool_pointing.cpp
 )
 target_link_libraries(constrained_ik_constraints constrained_ik ${catkin_LIBRARIES})

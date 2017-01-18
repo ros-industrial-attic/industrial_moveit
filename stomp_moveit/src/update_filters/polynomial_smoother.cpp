@@ -43,7 +43,6 @@ namespace update_filters
 {
 
 const double JOINT_LIMIT_MARGIN = 0.00001;
-const int ALLOWED_SMOOTHING_ATTEMPTS = 5;
 
 PolynomialSmoother::PolynomialSmoother():
     name_("ExponentialSmoother")
@@ -106,7 +105,7 @@ bool PolynomialSmoother::filter(std::size_t start_timestep,
 
   filtered = false;
   Eigen::MatrixXd parameters_updates = parameters + updates;
-  if(applyPolynomialSmoothing(robot_model_,group_name_,parameters_updates,poly_order_,ALLOWED_SMOOTHING_ATTEMPTS,JOINT_LIMIT_MARGIN))
+  if(applyPolynomialSmoothing(robot_model_,group_name_,parameters_updates,poly_order_,JOINT_LIMIT_MARGIN))
   {
     updates = parameters_updates - parameters;
     filtered = true;

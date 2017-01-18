@@ -426,7 +426,7 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
     return false;
   }
 
-  if(!applyPolynomialSmoothing(robot_model_,group_,parameters,5,5,1e-5))
+  if(!applyPolynomialSmoothing(robot_model_,group_,parameters,5,1e-5))
   {
     return false;
   }

@@ -48,21 +48,60 @@ namespace utils
  */
 namespace polynomial
 {
+  /** @brief The Polynomial Fit request data */
+  struct PolyFitRequest
+  {
+    int d;                                          /**< @brief Degree of the polynomial */
+    Eigen::Matrix<double, 2, Eigen::Dynamic>  xy;   /**< @brief The fit data */
+    Eigen::Matrix<double, 2, Eigen::Dynamic>  xyfp; /**< @brief The position constraint data */
+    Eigen::Matrix<double, 2, Eigen::Dynamic>  xyfs; /**< @brief The slope constraint data */
+    Eigen::VectorXd output_domain;                  /**< @brief The fit output domain. If not provided it will use the input domain */
+
+    /**
+     * @brief Check if request has constraints.
+     * @return True if constraints exist, otherwise false
+     */
+    bool hasConstraints() const
+    {
+      return ((xyfp.cols() > 0) || (xyfs.cols() > 0));
+    }
+
+    /**
+     * @brief Check if request has position constraints.
+     * @return True if position constraints exist, otherwise false
+     */
+    bool hasPositionConstraints() const
+    {
+      return (xyfp.cols() > 0);
+    }
+
+    /**
+     * @brief Check if request has slope constraints.
+     * @return True if slope constraints exist, otherwise false
+     */
+    bool hasSlopeConstraints() const
+    {
+      return (xyfs.cols() > 0);
+    }
+
+  };
+
+  /** @brief The Polynomial Fit results data */
+  struct PolyFitResults
+  {
+    Eigen::VectorXd p;   /**< @brief The polynomial parameter found during fit */
+    Eigen::VectorXd x;   /**< @brief The fit domain values */
+    Eigen::VectorXd y;   /**< @brief The fit values */
+    bool successful;     /**< @brief True if polynomial fit was found, otherwise false */
+  };
+
 
   /**
    * @brief Fit a polynomial with fixed indices
-   * @param d Degree of the polynomial
-   * @param x The domain values
-   * @param y Fit values
-   * @param fixed_indices Indicies of the input data to remain fixed during fit.
-   * @param poly_params Polynomial parameters found during the fit
-   * @return The new fitted values.
+   * @param request The polynimal fit request data
+   * @return The polynomial results
    */
-  Eigen::VectorXd polyFitWithFixedPoints(const int d,
-                                         const Eigen::VectorXd &x,
-                                         const Eigen::VectorXd &y,
-                                         const Eigen::VectorXi &fixed_indices,
-                                         Eigen::VectorXd &poly_params);
+  PolyFitResults polyFit(const PolyFitRequest &request);
 
   /**
    * @brief Get the polynomial smoother domain values.
@@ -95,12 +134,11 @@ namespace polynomial
    * @param group_name
    * @param parameters
    * @param poly_order
-   * @param smoothing_attempts
    * @param joint_limit_margin
    * @return
    */
   bool applyPolynomialSmoothing(moveit::core::RobotModelConstPtr robot_model, const std::string& group_name, Eigen::MatrixXd& parameters,
-                                       int poly_order = 5, int smoothing_attempts = 5, double joint_limit_margin = 1e-5);
+                                       int poly_order = 5, double joint_limit_margin = 1e-5);
 
 } // end of namespace smoothing
 } // end of namespace utils
