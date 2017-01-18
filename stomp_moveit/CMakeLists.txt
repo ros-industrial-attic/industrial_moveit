@@ -7,7 +7,6 @@ find_package(catkin REQUIRED COMPONENTS
   stomp_core
   cmake_modules
   pluginlib
-  industrial_collision_detection
 )
 find_package(Eigen REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
