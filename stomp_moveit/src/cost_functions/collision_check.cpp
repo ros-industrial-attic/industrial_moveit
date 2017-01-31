@@ -400,7 +400,7 @@ bool CollisionCheck::configure(const XmlRpc::XmlRpcValue& config)
   return true;
 }
 
-void CollisionCheck::done(bool success,int total_iterations,double final_cost)
+void CollisionCheck::done(bool success,int total_iterations,double final_cost,const Eigen::MatrixXd& parameters)
 {
   robot_state_.reset();
 }

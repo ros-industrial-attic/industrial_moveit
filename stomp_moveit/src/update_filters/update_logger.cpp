@@ -134,7 +134,7 @@ bool UpdateLogger::filter(std::size_t start_timestep,std::size_t num_timesteps,i
   return true;
 }
 
-void UpdateLogger::done(bool success, int total_iterations,double final_cost)
+void UpdateLogger::done(bool success, int total_iterations,double final_cost,const Eigen::MatrixXd& parameters)
 {
   // creating header
   std::string header = R"(# num_iterations: @iterations

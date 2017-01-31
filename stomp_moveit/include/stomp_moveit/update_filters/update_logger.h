@@ -91,7 +91,7 @@ public:
     return name_ + "/" + group_name_;
   }
 
-  virtual void done(bool success, int total_iterations,double final_cost) override;
+  virtual void done(bool success, int total_iterations,double final_cost,const Eigen::MatrixXd& parameters) override;
 
 protected:
 

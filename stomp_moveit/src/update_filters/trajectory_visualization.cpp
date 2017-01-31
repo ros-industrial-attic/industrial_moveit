@@ -36,7 +36,6 @@ using namespace moveit::core;
 
 static const int MARKER_ID = 1;
 
-
 inline void eigenToPointsMsgs(const Eigen::MatrixXd& in,std::vector<geometry_msgs::Point>& out)
 {
   // resizing
@@ -52,6 +51,30 @@ inline void eigenToPointsMsgs(const Eigen::MatrixXd& in,std::vector<geometry_msg
     out[t].y = in(1,t);
     out[t].z = in(2,t);
   }
+}
+
+/**
+ * @brief Creates a tool path xyz trajectory from the joint parameters
+ * @param state       The robot state
+ * @param parameters  The joint parameters [num_dimensions x num_timesteps]
+ * @return  The tool path [3 x num_timesteps]
+ */
+static Eigen::MatrixXd jointsToToolPath(RobotState& state,const std::string& group_name,const Eigen::MatrixXd& parameters)
+{
+
+  Eigen::MatrixXd tool_traj = Eigen::MatrixXd::Zero(3,parameters.cols());
+  const moveit::core::JointModelGroup* joint_group = state.getJointModelGroup(group_name);
+  std::string tool_link = joint_group->getLinkModelNames().back();
+  for(auto t = 0u; t < parameters.cols();t++)
+  {
+    state.setJointGroupPositions(joint_group,parameters.col(t));
+    Eigen::Affine3d tool_pos = state.getFrameTransform(tool_link);
+    tool_traj(0,t) = tool_pos.translation()(0);
+    tool_traj(1,t) = tool_pos.translation()(1);
+    tool_traj(2,t) = tool_pos.translation()(2);
+  }
+
+  return std::move(tool_traj);
 }
 
 inline void createToolPathMarker(const Eigen::MatrixXd& tool_line, int id, std::string frame_id,
@@ -206,21 +229,10 @@ bool TrajectoryVisualization::filter(std::size_t start_timestep,
     return false;
   }
 
-  // FK on each point
-  const moveit::core::JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_name_);
-  std::string tool_link = joint_group->getLinkModelNames().back();
-  Eigen::MatrixXd updated_parameters = parameters + updates;
-  for(auto t = 0u; t < updated_parameters.cols();t++)
-  {
-    state_->setJointGroupPositions(joint_group,updated_parameters.col(t));
-    Eigen::Affine3d tool_pos = state_->getFrameTransform(tool_link);
-    tool_traj_line_(0,t) = tool_pos.translation()(0);
-    tool_traj_line_(1,t) = tool_pos.translation()(1);
-    tool_traj_line_(2,t) = tool_pos.translation()(2);
-  }
-
   if(publish_intermediate_)
   {
+    Eigen::MatrixXd updated_parameters = parameters + updates;
+    tool_traj_line_ = jointsToToolPath(*state_,group_name_,updated_parameters);
     eigenToPointsMsgs(tool_traj_line_,tool_traj_marker_.points);
     viz_pub_.publish(tool_traj_marker_);
   }
@@ -228,9 +240,10 @@ bool TrajectoryVisualization::filter(std::size_t start_timestep,
   return true;
 }
 
-
-void TrajectoryVisualization::done(bool success,int total_iterations,double final_cost)
+void TrajectoryVisualization::done(bool success,int total_iterations,double final_cost,const Eigen::MatrixXd& parameters)
 {
+
+  tool_traj_line_ = jointsToToolPath(*state_,group_name_,parameters);
   eigenToPointsMsgs(tool_traj_line_,tool_traj_marker_.points);
 
   if(!success)

@@ -177,13 +177,25 @@ public:
                                       Eigen::MatrixXd& updates) override;
 
   /**
+   * @brief Called by STOMP at the end of each iteration.
+   * @param start_timestep    The start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     The number of elements to use from 'parameters' starting from 'start_timestep'
+   * @param iteration_number  The current iteration count in the optimization loop
+   * @param cost              The cost value for the current parameters.
+   * @param parameters        The value of the parameters at the end of the current iteration [num_dimensions x num_timesteps].
+   */
+  virtual void postIteration(std::size_t start_timestep,
+                                std::size_t num_timesteps,int iteration_number,double cost,const Eigen::MatrixXd& parameters);
+
+  /**
    * @brief Called by Stomp at the end of the optimization process
    *
    * @param success           Whether the optimization succeeded
    * @param total_iterations  Number of iterations used
    * @param final_cost        The cost value after optimizing.
+   * @param parameters        The parameters generated at the end of current iteration[num_dimensions x num_timesteps]
    */
-  virtual void done(bool success,int total_iterations,double final_cost) override;
+  virtual void done(bool success,int total_iterations,double final_cost,const Eigen::MatrixXd& parameters) override;
 
 protected:
 

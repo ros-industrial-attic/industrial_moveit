@@ -402,27 +402,51 @@ bool StompOptimizationTask::filterParameterUpdates(std::size_t start_timestep,
   return true;
 }
 
-void StompOptimizationTask::done(bool success,int total_iterations,double final_cost)
+void StompOptimizationTask::postIteration(std::size_t start_timestep,
+                                std::size_t num_timesteps,int iteration_number,double cost,const Eigen::MatrixXd& parameters)
 {
   for(auto p : noise_generators_)
   {
-    p->done(success,total_iterations,final_cost);
+    p->postIteration(start_timestep,num_timesteps,iteration_number,cost,parameters);
+  }
+
+  for(auto p : cost_functions_)
+  {
+    p->postIteration(start_timestep,num_timesteps,iteration_number,cost,parameters);
+  }
+
+  for(auto p: noisy_filters_)
+  {
+    p->postIteration(start_timestep,num_timesteps,iteration_number,cost,parameters);
+  }
+
+  for(auto p: update_filters_)
+  {
+    p->postIteration(start_timestep,num_timesteps,iteration_number,cost,parameters);
+  }
+}
+
+void StompOptimizationTask::done(bool success,int total_iterations,double final_cost,const Eigen::MatrixXd& parameters)
+{
+  for(auto p : noise_generators_)
+  {
+    p->done(success,total_iterations,final_cost,parameters);
   }
 
 
   for(auto p : cost_functions_)
   {
-    p->done(success,total_iterations,final_cost);
+    p->done(success,total_iterations,final_cost,parameters);
   }
 
   for(auto p: noisy_filters_)
   {
-    p->done(success,total_iterations,final_cost);
+    p->done(success,total_iterations,final_cost,parameters);
   }
 
   for(auto p: update_filters_)
   {
-    p->done(success,total_iterations,final_cost);
+    p->done(success,total_iterations,final_cost,parameters);
   }
 }
 
