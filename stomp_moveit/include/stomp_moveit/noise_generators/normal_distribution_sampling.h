@@ -86,8 +86,9 @@ public:
    * @param success           Whether the optimization succeeded
    * @param total_iterations  Number of iterations used
    * @param final_cost        The cost value after optimizing.
+   * @param parameters        The parameters generated at the end of current iteration [num_dimensions x num_timesteps]
    */
-  virtual void done(bool success,int total_iterations,double final_cost){}
+  virtual void done(bool success,int total_iterations,double final_cost,const Eigen::MatrixXd& parameters){}
 
 
   virtual std::string getName() const

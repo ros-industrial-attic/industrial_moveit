@@ -310,11 +310,6 @@ bool GoalGuidedMultivariateGaussian::generateRandomGoal(const Eigen::VectorXd& s
   return true;
 }
 
-void GoalGuidedMultivariateGaussian::done(bool success,int total_iterations,double final_cost)
-{
-
-}
-
 
 } /* namespace noise_generators */
 } /* namespace stomp_moveit */

@@ -252,7 +252,7 @@ bool ObstacleDistanceGradient::checkIntermediateCollisions(const Eigen::VectorXd
   return true;
 }
 
-void ObstacleDistanceGradient::done(bool success,int total_iterations,double final_cost)
+void ObstacleDistanceGradient::done(bool success,int total_iterations,double final_cost,const Eigen::MatrixXd& parameters)
 {
   robot_state_.reset();
 }

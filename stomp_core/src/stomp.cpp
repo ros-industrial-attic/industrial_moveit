@@ -290,7 +290,7 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
   parameters_optimized = parameters_optimized_;
 
   // notifying task
-  task_->done(parameters_valid_,current_iteration_,current_lowest_cost_);
+  task_->done(parameters_valid_,current_iteration_,current_lowest_cost_,parameters_optimized);
 
   return parameters_valid_;
 }
@@ -432,6 +432,9 @@ bool Stomp::runSingleIteration()
       computeProbabilities() &&
       updateParameters() &&
       computeOptimizedCost();
+
+  // notifying end of iteration
+  task_->postIteration(0,config_.num_timesteps,current_iteration_,current_lowest_cost_,parameters_optimized_);
 
   return proceed;
 }
