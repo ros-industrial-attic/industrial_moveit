@@ -195,7 +195,7 @@ bool applyPolynomialSmoothing(moveit::core::RobotModelConstPtr robot_model, cons
   int num_timesteps = parameters.cols();
 
   VectorXd domain_vals;
-  generateMinimumDomainValues(joint_models, parameters, domain_vals);
+  domain_vals.setLinSpaced(num_timesteps,0,1);
 
   request.d = poly_order;
   request.xy.resize(2, num_timesteps);
@@ -211,7 +211,7 @@ bool applyPolynomialSmoothing(moveit::core::RobotModelConstPtr robot_model, cons
 
     PolyFitResults results;
     results = polyFit(request);
-    for(auto i = 0; i < results.y.rows(); ++i)
+    for(auto i = 0; i < results.y.size(); ++i)
       joint_models[r]->enforcePositionBounds(&results.y[i]);
 
     //  Now check if joint trajectory is within joint limits

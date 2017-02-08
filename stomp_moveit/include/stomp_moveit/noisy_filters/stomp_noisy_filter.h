@@ -41,7 +41,7 @@ namespace noisy_filters
 {
 
 class StompNoisyFilter;
-typedef boost::shared_ptr<StompNoisyFilter> StompNoisyFilterPtr;
+typedef std::shared_ptr<StompNoisyFilter> StompNoisyFilterPtr;
 
 
 /**

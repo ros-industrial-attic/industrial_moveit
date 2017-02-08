@@ -52,7 +52,7 @@ namespace utils
 {
 
 class MultivariateGaussian;
-typedef boost::shared_ptr<MultivariateGaussian> MultivariateGaussianPtr;
+typedef std::shared_ptr<MultivariateGaussian> MultivariateGaussianPtr;
 
 /**
  * @brief Generates samples from a multivariate gaussian distribution
@@ -79,7 +79,7 @@ private:
   int size_;
   boost::mt19937 rng_;
   boost::normal_distribution<> normal_dist_;
-  boost::shared_ptr<boost::variate_generator<boost::mt19937, boost::normal_distribution<> > > gaussian_;
+  std::shared_ptr<boost::variate_generator<boost::mt19937, boost::normal_distribution<> > > gaussian_;
 };
 
 //////////////////////// template function definitions follow //////////////////////////////

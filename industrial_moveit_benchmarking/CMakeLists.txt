@@ -14,12 +14,10 @@ find_package(catkin REQUIRED COMPONENTS
   cmake_modules
   pluginlib
   moveit_core
-  moveit_experimental
 )
 
 # This is required because there is a bug in moveit_ros_planning they are not exporting
 # this library.
-list(APPEND catkin_LIBRARIES /opt/ros/indigo/lib/libmoveit_collision_plugin_loader.so)
 
 ## System dependencies are found with CMake's conventions
 find_package(cmake_modules REQUIRED)

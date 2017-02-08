@@ -112,7 +112,7 @@ bool loadPlugins(const PluginData plugin_data,
       PluginPtr plugin;
       try
       {
-        plugin = class_loader->createInstance(entry.first);
+        plugin.reset(class_loader->createUnmanagedInstance(entry.first));
       }
       catch(pluginlib::PluginlibException& ex)
       {

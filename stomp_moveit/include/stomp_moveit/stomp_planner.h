@@ -35,7 +35,7 @@
 namespace stomp_moveit
 {
 
-using StompOptimizationTaskPtr = boost::shared_ptr<StompOptimizationTask>;
+using StompOptimizationTaskPtr = std::shared_ptr<StompOptimizationTask>;
 
 /**
  * @brief The PlanningContext specialization that wraps the STOMP algorithm.
@@ -158,7 +158,7 @@ protected:
 protected:
 
   // stomp optimization
-  boost::shared_ptr< stomp_core::Stomp> stomp_;
+  std::shared_ptr< stomp_core::Stomp> stomp_;
   StompOptimizationTaskPtr task_;
   XmlRpc::XmlRpcValue config_;
   stomp_core::StompConfiguration stomp_config_;

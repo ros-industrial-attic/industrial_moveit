@@ -41,7 +41,7 @@ namespace noise_generators
 {
 
 class StompNoiseGenerator;
-typedef boost::shared_ptr<StompNoiseGenerator> StompNoiseGeneratorPtr;
+typedef std::shared_ptr<StompNoiseGenerator> StompNoiseGeneratorPtr;
 
 /**
  * @class stomp_moveit::StompNoiseGenerator

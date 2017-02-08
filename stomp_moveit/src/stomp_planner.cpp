@@ -397,7 +397,7 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
       KinematicConfig kc;
       if(createKinematicConfig(group,pos_constraint,orient_constraint,start,kc) )
       {
-        if(solveIK(boost::make_shared<moveit::core::RobotState>(state),group_,kc,goal))
+        if(solveIK(std::make_shared<moveit::core::RobotState>(state),group_,kc,goal))
         {
           found_goal = true;
           break;

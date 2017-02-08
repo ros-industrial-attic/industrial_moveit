@@ -41,7 +41,7 @@ namespace cost_functions
 {
 
 class StompCostFunction;
-typedef boost::shared_ptr<StompCostFunction> StompCostFunctionPtr;
+typedef std::shared_ptr<StompCostFunction> StompCostFunctionPtr;
 
 /**
  * @class stomp_moveit::cost_functions::StompCostFunction

@@ -35,6 +35,7 @@
 /* Author: Ioan Sucan */
 
 #include <industrial_collision_detection/collision_detection/collision_world_industrial.h>
+#include <boost/bind.hpp>
 #include <fcl/shape/geometric_shape_to_BVH_model.h>
 #include <fcl/traversal/traversal_node_bvhs.h>
 #include <fcl/traversal/traversal_node_setup.h>
@@ -158,7 +159,7 @@ void collision_detection::CollisionWorldIndustrial::constructFCLObject(const Wor
     if (g)
     {
       fcl::CollisionObject *co = new fcl::CollisionObject(g->collision_geometry_,  transform2fcl(obj->shape_poses_[i]));
-      fcl_obj.collision_objects_.push_back(boost::shared_ptr<fcl::CollisionObject>(co));
+      fcl_obj.collision_objects_.push_back(std::shared_ptr<fcl::CollisionObject>(co));
       fcl_obj.collision_geometry_.push_back(g);
     }
   }
@@ -276,27 +277,31 @@ void collision_detection::CollisionWorldIndustrial::distanceRobotHelper(const Di
 
 }
 
-double collision_detection::CollisionWorldIndustrial::distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state) const
+double collision_detection::CollisionWorldIndustrial::distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state,
+		bool verbose) const
 {
   return distanceRobotHelper(robot, state, NULL);
 }
 
-double collision_detection::CollisionWorldIndustrial::distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix &acm) const
+double collision_detection::CollisionWorldIndustrial::distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state,
+		const AllowedCollisionMatrix &acm,bool verbose) const
 {
   return distanceRobotHelper(robot, state, &acm);
 }
 
-void collision_detection::CollisionWorldIndustrial::distanceRobot(const DistanceRequest &req, DistanceResult &res, const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state) const
+void collision_detection::CollisionWorldIndustrial::distanceRobot(const DistanceRequest &req, DistanceResult &res,
+		const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state,bool verbose) const
 {
   distanceRobotHelper(req, res, robot, state);
 }
 
-double collision_detection::CollisionWorldIndustrial::distanceWorld(const CollisionWorld &world) const
+double collision_detection::CollisionWorldIndustrial::distanceWorld(const CollisionWorld &world,bool verbose) const
 {
   return distanceWorldHelper(world, NULL);
 }
 
-double collision_detection::CollisionWorldIndustrial::distanceWorld(const CollisionWorld &world, const AllowedCollisionMatrix &acm) const
+double collision_detection::CollisionWorldIndustrial::distanceWorld(const CollisionWorld &world, const AllowedCollisionMatrix &acm,
+		bool verbose) const
 {
   return distanceWorldHelper(world, &acm);
 }

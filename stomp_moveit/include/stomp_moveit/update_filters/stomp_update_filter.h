@@ -50,7 +50,7 @@ namespace update_filters
  *
  */
 class StompUpdateFilter;
-typedef boost::shared_ptr<StompUpdateFilter> StompUpdateFilterPtr;
+typedef std::shared_ptr<StompUpdateFilter> StompUpdateFilterPtr;
 
 class StompUpdateFilter
 {

@@ -61,11 +61,13 @@ namespace collision_detection
     virtual void checkWorldCollision(const CollisionRequest &req, CollisionResult &res, const CollisionWorld &other_world) const;
     virtual void checkWorldCollision(const CollisionRequest &req, CollisionResult &res, const CollisionWorld &other_world, const AllowedCollisionMatrix &acm) const;
 
-    virtual double distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state) const;
-    virtual void distanceRobot(const DistanceRequest &req, DistanceResult &res, const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state) const;
-    virtual double distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix &acm) const;
-    virtual double distanceWorld(const CollisionWorld &world) const;
-    virtual double distanceWorld(const CollisionWorld &world, const AllowedCollisionMatrix &acm) const;
+    virtual double distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state, bool verbose = false) const;
+    virtual void distanceRobot(const DistanceRequest &req, DistanceResult &res, const collision_detection::CollisionRobot &robot,
+    		const robot_state::RobotState &state,bool verbose = false) const;
+    virtual double distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix &acm,
+    		bool verbose = false) const;
+    virtual double distanceWorld(const CollisionWorld &world,bool verbose = false) const;
+    virtual double distanceWorld(const CollisionWorld &world, const AllowedCollisionMatrix &acm,bool verbose = false) const;
 
     virtual void setWorld(const WorldPtr& world);
 
@@ -90,8 +92,8 @@ namespace collision_detection
     World::ObserverHandle observer_handle_;
   };
 
-  typedef boost::shared_ptr<CollisionWorldIndustrial> CollisionWorldIndustrialPtr;
-  typedef boost::shared_ptr<const CollisionWorldIndustrial> CollisionWorldIndustrialConstPtr;
+  typedef std::shared_ptr<CollisionWorldIndustrial> CollisionWorldIndustrialPtr;
+  typedef std::shared_ptr<const CollisionWorldIndustrial> CollisionWorldIndustrialConstPtr;
 }
 
 #endif

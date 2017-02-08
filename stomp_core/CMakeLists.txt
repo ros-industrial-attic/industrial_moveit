@@ -19,7 +19,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES stomp_core
   CATKIN_DEPENDS roscpp cmake_modules
-  DEPENDS eigen
+  DEPENDS Eigen
 )
 
 ###########

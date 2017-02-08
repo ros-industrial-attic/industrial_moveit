@@ -35,7 +35,7 @@ namespace stomp_core
 {
 
 class Task;
-typedef boost::shared_ptr<Task> TaskPtr; /**< Defines a boost shared ptr for type Task */
+typedef std::shared_ptr<Task> TaskPtr; /**< Defines a boost shared ptr for type Task */
 
 /** @brief Defines the STOMP improvement policy */
 class Task

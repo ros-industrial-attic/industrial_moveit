@@ -86,7 +86,7 @@ namespace constrained_ik
 
 
   };
-typedef boost::shared_ptr<CLIKPlanningContext> CLIKPlanningContextPtr; /**< Typedef for CLIKPlanning Context boost shared ptr */
+typedef std::shared_ptr<CLIKPlanningContext> CLIKPlanningContextPtr; /**< Typedef for CLIKPlanning Context boost shared ptr */
 } //namespace constrained_ik
 
 #endif // CONSTRAINED_IK_PLANNING_CONTEXT_H

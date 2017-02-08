@@ -135,7 +135,7 @@ namespace constrained_ik
     if (it != planners_.end())
     {
       ConstrainedIKConfiguration new_config = convertToConstrainedIKConfiguration(config);
-      boost::shared_ptr<CartesianPlanner> planner = boost::static_pointer_cast<CartesianPlanner>(it->second);
+      std::shared_ptr<CartesianPlanner> planner = std::static_pointer_cast<CartesianPlanner>(it->second);
       planner->setSolverConfiguration(new_config);
     }
   }

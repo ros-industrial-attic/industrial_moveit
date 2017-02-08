@@ -44,8 +44,8 @@
 
 namespace collision_detection
 {
-  typedef boost::shared_ptr<fcl::CollisionObject> FCLCollisionObjectPtr;
-  typedef boost::shared_ptr<const fcl::CollisionObject> FCLCollisionObjectConstPtr;
+  typedef std::shared_ptr<fcl::CollisionObject> FCLCollisionObjectPtr;
+  typedef std::shared_ptr<const fcl::CollisionObject> FCLCollisionObjectConstPtr;
 
   class CollisionRobotIndustrial : public CollisionRobot
   {
@@ -103,8 +103,8 @@ namespace collision_detection
     std::vector<FCLCollisionObjectConstPtr> fcl_objs_;
   };
 
-  typedef boost::shared_ptr<CollisionRobotIndustrial> CollisionRobotIndustrialPtr;
-  typedef boost::shared_ptr<const CollisionRobotIndustrial> CollisionRobotIndustrialConstPtr;
+  typedef std::shared_ptr<CollisionRobotIndustrial> CollisionRobotIndustrialPtr;
+  typedef std::shared_ptr<const CollisionRobotIndustrial> CollisionRobotIndustrialConstPtr;
 }
 
 #endif

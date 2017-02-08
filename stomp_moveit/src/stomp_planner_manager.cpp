@@ -68,7 +68,7 @@ bool StompPlannerManager::initialize(const robot_model::RobotModelConstPtr &mode
       continue;
     }
 
-    boost::shared_ptr<StompPlanner> planner(new StompPlanner(v->first, v->second, robot_model_));
+    std::shared_ptr<StompPlanner> planner(new StompPlanner(v->first, v->second, robot_model_));
     planners_.insert(std::make_pair(v->first, planner));
   }
 
@@ -89,7 +89,7 @@ bool StompPlannerManager::canServiceRequest(const moveit_msgs::MotionPlanRequest
   }
 
   // Get planner
-  boost::shared_ptr<StompPlanner> planner = boost::static_pointer_cast<StompPlanner>(planners_.at(req.group_name));
+  std::shared_ptr<StompPlanner> planner = std::static_pointer_cast<StompPlanner>(planners_.at(req.group_name));
   return planner->canServiceRequest(req);
 }
 
@@ -135,7 +135,7 @@ planning_interface::PlanningContextPtr StompPlannerManager::getPlanningContext(c
   }
 
   // Get planner
-  boost::shared_ptr<StompPlanner> planner = boost::static_pointer_cast<StompPlanner>(planners_.at(req.group_name));
+  std::shared_ptr<StompPlanner> planner = std::static_pointer_cast<StompPlanner>(planners_.at(req.group_name));
 
   if(!planner->canServiceRequest(req))
   {

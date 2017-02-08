@@ -1,7 +1,7 @@
 stomp/manipulator:
   group_name: manipulator
   optimization:
-    num_timesteps: 20
+    num_timesteps: 50
     num_iterations: 50
     num_iterations_after_valid: 0    
     num_rollouts: 10
@@ -11,12 +11,17 @@ stomp/manipulator:
   task:
     noise_generator:
       - class: stomp_moveit/NormalDistributionSampling
-        stddev: [0.3, 1.0, 0.5, 0.4, 0.3, 0.3]
+        stddev: [0.1, 1.0, 1.0, 0.4, 0.3, 0.3]
     cost_functions:
-      - class: stomp_moveit/ObstacleDistanceGradient
-        max_distance: 0.2
+      - class: stomp_moveit/CollisionCheck
+        collision_penalty: 1.0
         cost_weight: 1.0
+        kernel_window_percentage: 0.2
         longest_valid_joint_move: 0.05 
+#      - class: stomp_moveit/ObstacleDistanceGradient
+#        max_distance: 0.2
+#        cost_weight: 1.0
+#        longest_valid_joint_move: 0.05 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
@@ -27,7 +32,8 @@ stomp/manipulator:
         marker_array_topic: stomp_trajectories
         marker_namespace: noisy
     update_filters:
-      - class: stomp_moveit/ControlCostProjectionMatrix
+      - class: stomp_moveit/PolynomialSmoother
+        poly_order: 5
       - class: stomp_moveit/TrajectoryVisualization
         line_width: 0.02
         rgb: [191, 0, 255]
