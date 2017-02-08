@@ -14,7 +14,6 @@ find_package(catkin REQUIRED COMPONENTS
   cmake_modules
   pluginlib
   moveit_core
-  moveit_experimental
 )
 
 # This is required because there is a bug in moveit_ros_planning they are not exporting
