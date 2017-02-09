@@ -1,9 +1,9 @@
 <launch>
 
   <!-- Stomp Plugin for MoveIt! -->
-  <arg name="planning_plugin" value="stomp_moveit_interface/StompPlannerManager" />
+  <arg name="planning_plugin" value="stomp_moveit/StompPlannerManager" />
 
-  <!-- The request adapters (plugins) ORDER MATTERS -->
+  <!-- The request adapters  ORDER MATTERS -->
   <arg name="planning_adapters" value="default_planner_request_adapters/FixWorkspaceBounds
                                        default_planner_request_adapters/FixStartStateBounds
                                        default_planner_request_adapters/FixStartStateCollision
@@ -14,6 +14,6 @@
   <param name="planning_plugin" value="$(arg planning_plugin)" />
   <param name="request_adapters" value="$(arg planning_adapters)" />
   <param name="start_state_max_bounds_error" value="$(arg start_state_max_bounds_error)" />
-  <rosparam command="load" file="$(find stomp_test_kr210_moveit_config)/config/stomp_planning.yaml"/>
+  <rosparam command="load" file="$(find stomp_test_kr210_moveit_config)/config/stomp_config.yaml"/>
 
 </launch>

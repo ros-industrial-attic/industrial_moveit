@@ -8,7 +8,7 @@
   <arg name="rviz" default="true"/>
 
   <!-- Planning pipeline -->
-  <arg name="pipeline" default="stomp_moveit"/>
+  <arg name="pipeline" default="stomp"/>
 
   <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
   <include file="$(find stomp_test_kr210_moveit_config)/launch/planning_context.launch">
