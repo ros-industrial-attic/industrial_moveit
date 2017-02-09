@@ -11,14 +11,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -58,31 +58,28 @@ public:
   {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    /**
-     * @brief This is a copy of the current state of the parent solver
-     */
+    /** @brief This is a copy of the current state of the parent solver */
     SolverState state_;
 
     /**
      * @brief The constructure class which should be called by the inheriting structure.
-     * @param The current state of the solver.
+     * @param state solvers current state.
      */
     ConstraintData(const constrained_ik::SolverState &state) { state_ = state; }
   };
 
   Constraint() : initialized_(false), debug_(false) {}
-  virtual ~Constraint() {}
 
   /**
    * @brief Pure definition for calculating constraint error, jacobian & status
-   * @param state, The state of the current solver.
+   * @param state solvers current state
    * @return ConstraintResults
    */
   virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const = 0;
 
   /**
-   * @brief Initialize constraint, Should be called by any inheriting classes
-   * @param ik, Pointer to Constrained_IK
+   * @brief Initialize constraint and should be called by any inheriting classes
+   * @param ik Pointer to Constrained_IK
    */
   virtual void init(const Constrained_IK* ik) { initialized_=true; ik_ = ik;}
 
@@ -99,12 +96,15 @@ public:
   void setDebug(bool debug = true) {debug_= debug;}
 
 protected:
-  bool initialized_;
-  bool debug_;
+  bool initialized_;         /**< True if solver is intialized, otherwise false */
+  bool debug_;               /**< Provide control over if certain print statements are output */
+  const Constrained_IK* ik_; /**< Pointer to parent solver */
 
-  const Constrained_IK* ik_;
-
-  int numJoints() const;
+  /**
+   * @brief Returns the number of joints
+   * @return number of joints
+   */
+  virtual int numJoints() const;
 
 }; // class Constraint
 

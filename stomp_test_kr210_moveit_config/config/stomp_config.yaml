@@ -2,23 +2,21 @@ stomp/manipulator:
   group_name: manipulator
   optimization:
     num_timesteps: 20
-    num_dimensions: 6
     num_iterations: 50
-    num_iterations_after_valid: 0
-    delta_t: 0.1
+    num_iterations_after_valid: 0    
     num_rollouts: 10
     max_rollouts: 100
     initialization_method: 1 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
-    control_cost_weight: 0.1
+    control_cost_weight: 0.0
   task:
     noise_generator:
       - class: stomp_moveit/NormalDistributionSampling
         stddev: [0.3, 1.0, 0.5, 0.4, 0.3, 0.3]
     cost_functions:
-      - class: stomp_moveit/CollisionCheck
-        collision_penalty: 1.0
-        cost_weight: 1.0 
-        kernel_window_percentage: 0.2
+      - class: stomp_moveit/ObstacleDistanceGradient
+        max_distance: 0.2
+        cost_weight: 1.0
+        longest_valid_joint_move: 0.05 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
@@ -41,10 +39,8 @@ stomp/manipulator_rail:
   group_name: manipulator_rail
   optimization:
     num_timesteps: 40
-    num_dimensions: 7
     num_iterations: 40
-    num_iterations_after_valid: 0
-    delta_t: 0.1
+    num_iterations_after_valid: 0    
     num_rollouts: 10
     max_rollouts: 10 
     initialization_method: 3 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
@@ -58,10 +54,7 @@ stomp/manipulator_rail:
         collision_penalty: 1.0
         cost_weight: 1.0
         kernel_window_percentage: 0.2
-#      - class: stomp_moveit/ObstacleAvoidance
-#        collision_clearance: 0.5
-#        collision_penalty: 2.0
-#        cost_weight: 1.0
+        longest_valid_joint_move: 0.05 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
@@ -92,10 +85,8 @@ stomp/manipulator_tool:
   group_name: manipulator_tool
   optimization:
     num_timesteps: 40
-    num_dimensions: 7
     num_iterations: 40
-    num_iterations_after_valid: 0
-    delta_t: 0.1
+    num_iterations_after_valid: 0    
     num_rollouts: 10
     max_rollouts: 10 
     initialization_method: 3 #[1 : LINEAR_INTERPOLATION, 2 : CUBIC_POLYNOMIAL, 3 : MININUM_CONTROL_COST
@@ -109,34 +100,23 @@ stomp/manipulator_tool:
         kernel_window_percentage: 0.2
         collision_penalty: 1.0
         cost_weight: 1.0
-#      - class: stomp_moveit/ToolGoalPose
-#        constrained_dofs: [1, 1, 1, 1, 1, 0]
-#        position_error_range: [0.01, 0.1]     #[min, max]
-#        orientation_error_range: [0.01, 0.1]  #[min, max]
-#        position_cost_weight: 0.5
-#        orientation_cost_weight: 0.5
+        longest_valid_joint_move: 0.05 
+#      - class: stomp_moveit/ObstacleDistanceGradient
+#        max_distance: 0.2
+#        cost_weight: 1.0
+#        longest_valid_joint_move: 0.05 
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
         lock_goal: True
-#      - class: stomp_moveit/UnderconstrainedGoal
-#        constrained_dofs: [1, 1, 1, 1, 1, 0]
-#        cartesian_convergence: [0.01, 0.01, 0.01, 0.01, 0.01, 1.00]
-#        joint_update_rates: [0.05, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-#        max_ik_iterations: 100
       - class: stomp_moveit/MultiTrajectoryVisualization
         line_width: 0.04
         rgb: [255, 255, 0]
         marker_array_topic: stomp_trajectories
         marker_namespace: noisy
     update_filters:
-#      - class: stomp_moveit/ConstrainedCartesianGoal
-#        constrained_dofs: [1, 1, 1, 1, 1, 0]
-#        cartesian_convergence: [0.001, 0.001, 0.001, 0.001, 0.001, 1.00]
-#        joint_update_rates: [0.05, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
-#        max_ik_iterations: 100
       - class: stomp_moveit/PolynomialSmoother
-        poly_order: 2
+        poly_order: 5
       - class: stomp_moveit/TrajectoryVisualization
         line_width: 0.02
         rgb: [0, 191, 255]

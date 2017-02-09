@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,16 +26,23 @@
 #include <stdexcept>
 #include "stomp_moveit/stomp_optimization_task.h"
 
-using PluginArray = std::vector< std::pair<std::string,XmlRpc::XmlRpcValue> >;
+using PluginConfigs = std::vector< std::pair<std::string,XmlRpc::XmlRpcValue> >;
 
 static const std::string COST_FUNCTIONS_FIELD = "cost_functions";
 static const std::string NOISY_FILTERS_FIELD = "noisy_filters";
 static const std::string UPDATE_FILTERS_FIELD = "update_filters";
 static const std::string NOISE_GENERATOR_FIELD = "noise_generator";
 
-bool parsePlugins(XmlRpc::XmlRpcValue config,
+/**
+ * @brief Convenience method to load an array of STOMP plugins
+ * @param config      The parameter value
+ * @param param_name  The parameter name that contains the plugin
+ * @param plugins     An array of found plugins and their corresponding parameter value
+ * @return true if succeeded, false otherwise.
+ */
+bool parsePluginConfigs(XmlRpc::XmlRpcValue config,
                       std::string param_name,
-                      PluginArray& plugins)
+                      PluginConfigs& plugins)
 {
   if(config.hasMember(param_name) && (config[param_name].getType() == XmlRpc::XmlRpcValue::TypeArray))
   {
@@ -68,6 +75,105 @@ bool parsePlugins(XmlRpc::XmlRpcValue config,
   return !plugins.empty();
 }
 
+/**
+ * @struct PluginData
+ * @brief   Packs plugin information into a single struct
+ * @param config          The configuration data in XmlRPC format
+ * @param param_key       The lookup key which should have an entry in "config"
+ * @param critical        Whether this plugin is required
+ * @param single_instance Whether only one plugin is expected
+ * @param plugin_desc     A brief description of the plugin
+ * @param robot_model     A pointer  to the robot mdel
+ * @param group_name      The specified group name
+ */
+struct PluginData
+{
+  XmlRpc::XmlRpcValue config;
+  std::string param_key;
+  bool critical;
+  bool single_instance;
+  std::string plugin_desc;
+  moveit::core::RobotModelConstPtr robot_model;
+  std::string group_name;
+};
+
+template <typename PluginPtr,typename ClassLoaderPtr>
+bool loadPlugins(const PluginData plugin_data,
+                 ClassLoaderPtr class_loader ,std::vector<PluginPtr>& plugin_array)
+{
+  PluginConfigs plugins;
+
+
+  if(parsePluginConfigs(plugin_data.config,plugin_data.param_key,plugins))
+  {
+    for(auto& entry: plugins)
+    {
+      // instantiating
+      PluginPtr plugin;
+      try
+      {
+        plugin = class_loader->createInstance(entry.first);
+      }
+      catch(pluginlib::PluginlibException& ex)
+      {
+        if(plugin_data.critical)
+        {
+          ROS_ERROR("%s plugin '%s' could not be created",plugin_data.plugin_desc.c_str() ,entry.first.c_str());
+          return false;
+        }
+        else
+        {
+          ROS_WARN("%s plugin '%s' could not be created",plugin_data.plugin_desc.c_str() ,entry.first.c_str());
+          continue;
+        }
+      }
+
+      // initializing
+      if(plugin->initialize(plugin_data.robot_model,plugin_data.group_name,entry.second))
+      {
+        plugin_array.push_back(plugin);
+        ROS_INFO_STREAM("Stomp Optimization Task loaded "<< plugin_data.plugin_desc <<" '"<<plugin->getName()<<"' plugin");
+      }
+      else
+      {
+        if(plugin_data.critical)
+        {
+          ROS_ERROR("%s plugin '%s' failed to initialize",plugin_data.plugin_desc.c_str(), entry.first.c_str());
+          return false;
+        }
+        else
+        {
+          ROS_WARN("%s plugin '%s' failed to initialize",plugin_data.plugin_desc.c_str(), entry.first.c_str());
+          continue;
+        }
+      }
+
+      if(plugin_data.single_instance)
+      {
+        break;
+      }
+    }
+
+    std::stringstream ss;
+    ss<<"[";
+    auto arrayToString = [&ss](PluginConfigs::value_type& p)
+    {
+      ss<<p.first<<" ";
+    };
+
+    std::for_each(plugins.begin(),plugins.end(),arrayToString);
+    ss<<"]";
+
+    ROS_DEBUG("Loaded %s plugins: %s", plugin_data.plugin_desc.c_str(), ss.str().c_str());
+  }
+  else
+  {
+    return false;
+  }
+
+  return true;
+}
+
 namespace stomp_moveit
 {
 
@@ -80,21 +186,33 @@ StompOptimizationTask::StompOptimizationTask(
 {
   // initializing plugin loaders
   cost_function_loader_.reset(new CostFunctionLoader("stomp_moveit", "stomp_moveit::cost_functions::StompCostFunction"));
-  noise_generator_loader_.reset(new NoiseGeneratorLoader("stomp_moveit",
-                                                         "stomp_moveit::noise_generators::StompNoiseGenerator"));
+  noise_generator_loader_.reset(new NoiseGeneratorLoader("stomp_moveit","stomp_moveit::noise_generators::StompNoiseGenerator"));
   noisy_filter_loader_.reset(new NoisyFilterLoader("stomp_moveit", "stomp_moveit::noisy_filters::StompNoisyFilter"));
   update_filter_loader_.reset(new UpdateFilterLoader("stomp_moveit", "stomp_moveit::update_filters::StompUpdateFilter"));
 
+  // preparing plugin init data
+  PluginData plugin_data;
+  plugin_data.config = config;
+  plugin_data.group_name = group_name_;
+  plugin_data.robot_model = robot_model_ptr_;
 
   // loading cost function plugins
-  if(!initializeCostFunctionPlugins(config))
+  plugin_data.param_key = COST_FUNCTIONS_FIELD;
+  plugin_data.plugin_desc = "CostFunction";
+  plugin_data.critical = true;
+  plugin_data.single_instance = false;
+  if(!loadPlugins(plugin_data,cost_function_loader_,cost_functions_))
   {
     ROS_ERROR("StompOptimizationTask/%s failed to load '%s' plugins from yaml",group_name.c_str(),COST_FUNCTIONS_FIELD.c_str());
     throw std::logic_error("plugin not found");
   }
 
   // loading noise generators
-  if(!initializeNoiseGeneratorPlugins(config))
+  plugin_data.param_key = NOISE_GENERATOR_FIELD;
+  plugin_data.plugin_desc = "NoiseGenerator";
+  plugin_data.critical = true;
+  plugin_data.single_instance = true;
+  if(!loadPlugins(plugin_data, noise_generator_loader_,noise_generators_))
   {
     ROS_ERROR("StompOptimizationTask/%s failed to load '%s' plugins from yaml",group_name.c_str(),
              NOISE_GENERATOR_FIELD.c_str());
@@ -102,201 +220,29 @@ StompOptimizationTask::StompOptimizationTask(
   }
 
   // loading noisy filter plugins
-  if(!initializeNoisyFilterPlugins(config))
+  plugin_data.param_key = NOISY_FILTERS_FIELD;
+  plugin_data.plugin_desc = "NoisyFilter";
+  plugin_data.critical = false;
+  plugin_data.single_instance = false;
+  if(!loadPlugins(plugin_data,noisy_filter_loader_,noisy_filters_))
   {
     ROS_WARN("StompOptimizationTask/%s failed to load '%s' plugins from yaml",group_name.c_str(),NOISY_FILTERS_FIELD.c_str());
   }
 
   // loading filter plugins
-  if(!initializeUpdateFilterPlugins(config))
+  plugin_data.param_key = UPDATE_FILTERS_FIELD;
+  plugin_data.plugin_desc = "UpdateFilter";
+  plugin_data.critical = false;
+  plugin_data.single_instance = false;
+  if(!loadPlugins(plugin_data,update_filter_loader_,update_filters_))
   {
     ROS_WARN("StompOptimizationTask/%s failed to load '%s' plugins from yaml",group_name.c_str(),UPDATE_FILTERS_FIELD.c_str());
   }
-
 }
 
 StompOptimizationTask::~StompOptimizationTask()
 {
   // TODO Auto-generated destructor stub
-}
-
-bool StompOptimizationTask::initializeCostFunctionPlugins(const XmlRpc::XmlRpcValue& config)
-{
-  PluginArray plugins;
-  if(parsePlugins(config,COST_FUNCTIONS_FIELD,plugins))
-  {
-    for(auto& entry: plugins)
-    {
-      // instantiating
-      cost_functions::StompCostFunctionPtr plugin;
-      try
-      {
-        plugin = cost_function_loader_->createInstance(entry.first);
-      }
-      catch(pluginlib::PluginlibException& ex)
-      {
-        ROS_ERROR("%s CostFunction plugin could not be created",entry.first.c_str());
-        return false;
-      }
-
-      // initializing
-      if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
-      {
-        cost_functions_.push_back(plugin);
-        ROS_INFO_STREAM("StompOptimizationTask loaded "<<plugin->getName()<<" CostFunction plugin");
-      }
-      else
-      {
-        ROS_ERROR("%s CostFunction plugin failed to initialize",entry.first.c_str());
-        return false;
-      }
-    }
-
-    std::stringstream ss;
-    ss<<"[";
-    auto arrayToString = [&ss](PluginArray::value_type& p)
-    {
-      ss<<p.first<<" ";
-    };
-
-    std::for_each(plugins.begin(),plugins.end(),arrayToString);
-    ss<<"]";
-
-    ROS_DEBUG("Loaded CostFunction plugins: %s",ss.str().c_str());
-  }
-  else
-  {
-    return false;
-  }
-
-  return true;
-}
-
-bool StompOptimizationTask::initializeNoisyFilterPlugins(const XmlRpc::XmlRpcValue& config)
-{
-  PluginArray plugins;
-  bool success = false;
-  if(parsePlugins(config,NOISY_FILTERS_FIELD,plugins))
-  {
-    for(auto& entry: plugins)
-    {
-      // instantiating
-      noisy_filters::StompNoisyFilterPtr plugin;
-      try
-      {
-        plugin = noisy_filter_loader_->createInstance(entry.first);
-      }
-      catch(pluginlib::PluginlibException& ex)
-      {
-        ROS_WARN("%s NoisyFilter plugin could not be created",entry.first.c_str());
-        continue;
-      }
-
-      // initializing
-      if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
-      {
-        noisy_filters_.push_back(plugin);
-        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" NoisyFilter plugin");
-        success = true;
-      }
-      else
-      {
-        ROS_WARN("%s NoisyFilter plugin failed to initialize",entry.first.c_str());
-        continue;
-      }
-    }
-  }
-  else
-  {
-    return false;
-  }
-
-  return success;
-}
-
-bool StompOptimizationTask::initializeUpdateFilterPlugins(const XmlRpc::XmlRpcValue& config)
-{
-  PluginArray plugins;
-  bool success = false;
-  if(parsePlugins(config,UPDATE_FILTERS_FIELD,plugins))
-  {
-    for(auto& entry: plugins)
-    {
-      // instantiating
-      update_filters::StompUpdateFilterPtr plugin;
-      try
-      {
-        plugin = update_filter_loader_->createInstance(entry.first);
-      }
-      catch(pluginlib::PluginlibException& ex)
-      {
-        ROS_WARN("%s UpdateFilter plugin could not be created",entry.first.c_str());
-        continue;
-      }
-
-      // initializing
-      if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
-      {
-        update_filters_.push_back(plugin);
-        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" UpdateFilter plugin");
-        success = true;
-      }
-      else
-      {
-        ROS_WARN("%s UpdateFilter plugin failed to initialize",entry.first.c_str());
-        continue;
-      }
-    }
-  }
-  else
-  {
-    return false;
-  }
-
-  return success;
-}
-
-bool StompOptimizationTask::initializeNoiseGeneratorPlugins(const XmlRpc::XmlRpcValue& config)
-{
-  PluginArray plugins;
-  bool success = false;
-  if(parsePlugins(config,NOISE_GENERATOR_FIELD,plugins))
-  {
-    for(auto& entry: plugins)
-    {
-      // instantiating
-      noise_generators::StompNoiseGeneratorPtr plugin;
-      try
-      {
-        plugin = noise_generator_loader_->createInstance(entry.first);
-      }
-      catch(pluginlib::PluginlibException& ex)
-      {
-        ROS_ERROR("%s NoiseGenerator plugin could not be created",entry.first.c_str());
-        return false;
-      }
-
-      // initializing
-      if(plugin->initialize(robot_model_ptr_,group_name_,entry.second))
-      {
-        noise_generators_.push_back(plugin);
-        ROS_INFO_STREAM("Stomp Optimization Task loaded "<<plugin->getName()<<" NoiseGenerator plugin");
-        success = true;
-        break;
-      }
-      else
-      {
-        ROS_WARN("%s NoiseGenerator plugin failed to initialize",entry.first.c_str());
-        continue;
-      }
-    }
-  }
-  else
-  {
-    return false;
-  }
-
-  return success;
 }
 
 bool StompOptimizationTask::generateNoisyParameters(const Eigen::MatrixXd& parameters,
@@ -456,27 +402,51 @@ bool StompOptimizationTask::filterParameterUpdates(std::size_t start_timestep,
   return true;
 }
 
-void StompOptimizationTask::done(bool success,int total_iterations,double final_cost)
+void StompOptimizationTask::postIteration(std::size_t start_timestep,
+                                std::size_t num_timesteps,int iteration_number,double cost,const Eigen::MatrixXd& parameters)
 {
   for(auto p : noise_generators_)
   {
-    p->done(success,total_iterations,final_cost);
+    p->postIteration(start_timestep,num_timesteps,iteration_number,cost,parameters);
+  }
+
+  for(auto p : cost_functions_)
+  {
+    p->postIteration(start_timestep,num_timesteps,iteration_number,cost,parameters);
+  }
+
+  for(auto p: noisy_filters_)
+  {
+    p->postIteration(start_timestep,num_timesteps,iteration_number,cost,parameters);
+  }
+
+  for(auto p: update_filters_)
+  {
+    p->postIteration(start_timestep,num_timesteps,iteration_number,cost,parameters);
+  }
+}
+
+void StompOptimizationTask::done(bool success,int total_iterations,double final_cost,const Eigen::MatrixXd& parameters)
+{
+  for(auto p : noise_generators_)
+  {
+    p->done(success,total_iterations,final_cost,parameters);
   }
 
 
   for(auto p : cost_functions_)
   {
-    p->done(success,total_iterations,final_cost);
+    p->done(success,total_iterations,final_cost,parameters);
   }
 
   for(auto p: noisy_filters_)
   {
-    p->done(success,total_iterations,final_cost);
+    p->done(success,total_iterations,final_cost,parameters);
   }
 
   for(auto p: update_filters_)
   {
-    p->done(success,total_iterations,final_cost);
+    p->done(success,total_iterations,final_cost,parameters);
   }
 }
 

@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -49,23 +49,33 @@ bool StompPlannerManager::initialize(const robot_model::RobotModelConstPtr &mode
     nh_ = ros::NodeHandle(ns);
   }
 
+  robot_model_ = model;
+
   // each element under 'stomp' should be a group name
   std::map<std::string, XmlRpc::XmlRpcValue> group_config;
 
   if (!StompPlanner::getConfigData(nh_, group_config))
+  {
     return false;
+  }
 
   for(std::map<std::string, XmlRpc::XmlRpcValue>::iterator v = group_config.begin(); v != group_config.end(); v++)
   {
     if(!model->hasJointModelGroup(v->first))
     {
-      ROS_ERROR("The robot model does not support the planning group '%s' listed by in the stomp configuration",
+      ROS_WARN("The robot model does not support the planning group '%s' in the STOMP configuration, skipping STOMP setup for this group",
                 v->first.c_str());
-      return false;
+      continue;
     }
 
-    boost::shared_ptr<StompPlanner> planner(new StompPlanner(v->first, v->second, model));
+    boost::shared_ptr<StompPlanner> planner(new StompPlanner(v->first, v->second, robot_model_));
     planners_.insert(std::make_pair(v->first, planner));
+  }
+
+  if(planners_.empty())
+  {
+    ROS_ERROR("All planning groups are invalid, STOMP could not be configured");
+    return false;
   }
 
   return true;

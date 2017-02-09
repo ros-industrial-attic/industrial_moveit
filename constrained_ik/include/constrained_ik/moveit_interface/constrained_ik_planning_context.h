@@ -11,14 +11,14 @@
  *
  * @copyright Copyright (c) 2015, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,8 +29,7 @@
 #define CONSTRAINED_IK_PLANNING_CONTEXT_H
 
 #include <moveit/planning_interface/planning_interface.h>
-#include <constrained_ik/moveit_interface/constrained_ik_planner_parameters.h>
-#include <constrained_ik/ConstrainedIKPlannerDynamicReconfigureConfig.h>
+#include <constrained_ik/CLIKPlannerDynamicConfig.h>
 
 namespace constrained_ik
 {
@@ -43,37 +42,51 @@ namespace constrained_ik
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+    /**
+     * @brief CartesianPlanner Constructor
+     * @param name of planner
+     * @param group of the planner
+     */
     CLIKPlanningContext(const std::string &name, const std::string &group) : planning_interface::PlanningContext(name, group)  {}
 
-    virtual void clear() = 0;
+    /** @brief Clear the planner data */
+    void clear() override = 0;
 
-    virtual bool terminate() = 0;
+    /**
+     * @brief Terminate the active planner solve
+     * @return wether successfull
+     */
+    bool terminate() override = 0;
 
-    virtual bool solve(planning_interface::MotionPlanResponse &res) = 0;
+    /**
+     * @brief Solve for the provided request
+     * @param res planner response
+     * @return wether successfull
+     */
+    bool solve(planning_interface::MotionPlanResponse &res) override = 0;
 
-    bool solve(planning_interface::MotionPlanDetailedResponse &res)
-    {
-      std::cout << "Entered TESTPlanner.solve detailed" << std::endl;
-      return false;
-    }
+    /**
+     * @brief Solve for the provided request
+     * @param res planner detailed response
+     * @return wether successfull
+     */
+    bool solve(planning_interface::MotionPlanDetailedResponse &res) override = 0;
+
     /**
      * @brief setConfiguration - Sets/Updates planner parameters.
-     * @param params - Parameters used by the CLIK planners
+     * @param config - Parameters used by the CLIK planners
      */
-    void setConfiguration(const ConstrainedIKPlannerDynamicReconfigureConfig &config) { config_ = config; }
+    virtual void setPlannerConfiguration(const CLIKPlannerDynamicConfig &config) { config_ = config; }
 
-    /**
-     * @brief resetConfiguration - Resets configuration parameters to their default values.
-     */
-    void resetConfiguration() { config_.__getDefault__(); }
+    /** @brief resetConfiguration - Resets configuration parameters to their default values. */
+    virtual void resetPlannerConfiguration() { config_.__getDefault__(); }
 
   protected:
-    /** Store the parameters for the CLIK planners. */
-    ConstrainedIKPlannerDynamicReconfigureConfig config_;
+    CLIKPlannerDynamicConfig config_; /**< Store the parameters for the CLIK planners. */
 
 
   };
-typedef boost::shared_ptr<CLIKPlanningContext> CLIKPlanningContextPtr;
+typedef boost::shared_ptr<CLIKPlanningContext> CLIKPlanningContextPtr; /**< Typedef for CLIKPlanning Context boost shared ptr */
 } //namespace constrained_ik
 
 #endif // CONSTRAINED_IK_PLANNING_CONTEXT_H

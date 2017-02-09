@@ -11,14 +11,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,32 +35,56 @@ namespace stomp_moveit
 namespace update_filters
 {
 
+/**
+ * @class stomp_moveit::update_filters::PolynomialSmoother
+ * @brief This is a constrained polynomial trajectory smoother.
+ *
+ * It uses the constrained least-squares technique shown below.
+ *
+ * |p| - | 2*A*A', C |^-1 * | 2*A*b |
+ * |z| - |     C', 0 |      |     d |
+ *
+ * Where:
+ *   p - An array of the polynomial coefficients solved for.
+ *   z - An array of Lagrange mulitipliers
+ *   A - Is the Vandermonde matrix of all (constrained and unconstrained) domain values
+ *   C - Is the Vandermonde matrix of the constrained domain values
+ *   b - An array of the values to perform the fit on
+ *   d - An array of the values corresponding to the constrained domain values
+ *
+ * @par Examples:
+ * All examples are located here @ref examples
+ *
+ */
 class PolynomialSmoother : public StompUpdateFilter
 {
 public:
   PolynomialSmoother();
   virtual ~PolynomialSmoother();
 
+  /** @brief see base class for documentation*/
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,const XmlRpc::XmlRpcValue& config) override;
 
+  /** @brief see base class for documentation*/
   virtual bool configure(const XmlRpc::XmlRpcValue& config) override;
 
+  /** @brief see base class for documentation*/
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
                    moveit_msgs::MoveItErrorCodes& error_code) override;
 
   /**
-   * @brief smoothes the updates array.  Uses the Control Cost Matrix projection.
+   * @brief smoothes the updates array by using a constrained polynomial fit.
    *
    * @param start_timestep    start index into the 'parameters' array, usually 0.
    * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
    * @param iteration_number  The current iteration count in the optimization loop
-   * @param parameters        The parameters generated in the previous iteration [num_dimensions] x [num_timesteps]
-   * @param updates           The updates to be applied to the parameters [num_dimensions] x [num_timesteps]
+   * @param parameters        The parameters generated in the previous iteration [num_dimensions x num_timesteps]
+   * @param updates           The updates to be applied to the parameters [num_dimensions x num_timesteps]
    * @param filtered          set ot 'true' if the updates were modified.
-   * @return false if something failed
+   * @return false if there was an irrecoverable failure, true otherwise.
    */
   virtual bool filter(std::size_t start_timestep,
                       std::size_t num_timesteps,
@@ -81,21 +105,11 @@ public:
 
 protected:
 
-  void fillVandermondeMatrix(double poly_order,const Eigen::ArrayXd& domain_vals,Eigen::MatrixXd& X);
-
-protected:
-
   std::string name_;
   std::string group_name_;
 
   // parameters
   unsigned int poly_order_;
-
-  // temp
-  Eigen::ArrayXd domain_vals_;
-  Eigen::MatrixXd X_matrix_;
-  Eigen::MatrixXd X_pseudo_inv_;
-  Eigen::VectorXd smoothed_parameters_;
 
   // robot
   moveit::core::RobotModelConstPtr robot_model_;

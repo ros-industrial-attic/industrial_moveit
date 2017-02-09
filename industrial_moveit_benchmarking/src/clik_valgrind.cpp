@@ -35,7 +35,7 @@
 #include <moveit/kinematic_constraints/utils.h>
 #include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <constrained_ik/moveit_interface/joint_interpolation_planner.h>
-#include <constrained_ik/ConstrainedIKPlannerDynamicReconfigureConfig.h>
+#include <constrained_ik/CLIKPlannerDynamicConfig.h>
 #include <fstream>
 #include <time.h>
 #include <constrained_ik/moveit_interface/cartesian_planner.h>
@@ -83,7 +83,7 @@ int main (int argc, char *argv[])
   }
 
   collision_detection::CollisionPluginLoader cd_loader;
-  ConstrainedIKPlannerDynamicReconfigureConfig config;
+  CLIKPlannerDynamicConfig config;
   config.joint_discretization_step = 0.02;
   config.translational_discretization_step = 0.02;
   config.orientational_discretization_step = 0.02;
@@ -98,7 +98,7 @@ int main (int argc, char *argv[])
   planning_interface::MotionPlanResponse res;
   string group_name = "manipulator_rail";
   CartesianPlanner cart_planner("", group_name);
-  cart_planner.setConfiguration(config);
+  cart_planner.setPlannerConfiguration(config);
 
   req.allowed_planning_time = 100;
   req.num_planning_attempts = 1;

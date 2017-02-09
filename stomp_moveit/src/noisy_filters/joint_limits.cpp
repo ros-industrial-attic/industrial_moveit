@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -107,8 +107,11 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
     ROS_ERROR_STREAM("Failed to save start state");
     return false;
   }
-  start_state_->enforceBounds(robot_model_->getJointModelGroup(group_name_));
 
+  if(!start_state_->satisfiesBounds(robot_model_->getJointModelGroup(group_name_)))
+  {
+    ROS_WARN("%s Requested Start State is out of bounds",getName().c_str());
+  }
 
   // saving goal state
   if(lock_goal_)
@@ -121,7 +124,12 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
         goal_state_->setVariablePosition(jc.joint_name,jc.position);
         goal_state_saved = true;
       }
-      goal_state_->enforceBounds(robot_model_->getJointModelGroup(group_name_));
+
+      if(!goal_state_->satisfiesBounds(robot_model_->getJointModelGroup(group_name_)))
+      {
+        ROS_WARN("%s Requested Goal State is out of bounds",getName().c_str());
+      }
+
       break;
     }
 

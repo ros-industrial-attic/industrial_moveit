@@ -1,33 +1,33 @@
 /**
-* @file constrained_ik_planner_plugin.cpp
-* @brief This class represents the CLIK planner plugin for moveit.  It manages all of the CLIK planners.
-*
-* @author Levi Armstrong
-* @date May 4, 2015
-* @version TODO
-* @bug No known bugs
-*
-* @copyright Copyright (c) 2015, Southwest Research Institute
-*
-* @license Software License Agreement (Apache License)\n
-* \n
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at\n
-* \n
-* http://www.apache.org/licenses/LICENSE-2.0\n
-* \n
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * @file constrained_ik_planner_plugin.cpp
+ * @brief This class represents the CLIK planner plugin for moveit.  It manages all of the CLIK planners.
+ *
+ * @author Levi Armstrong
+ * @date May 4, 2015
+ * @version TODO
+ * @bug No known bugs
+ *
+ * @copyright Copyright (c) 2015, Southwest Research Institute
+ *
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <constrained_ik/moveit_interface/constrained_ik_planner_plugin.h>
 #include <class_loader/class_loader.h>
 
-const std::string JOINT_INTERP_PLANNER = "JointInterpolation";
-const std::string CARTESIAN_PLANNER = "Cartesian";
+const std::string JOINT_INTERP_PLANNER = "JointInterpolation"; /**< Joint interpolation planner name */
+const std::string CARTESIAN_PLANNER = "Cartesian"; /**< Cartesian plannner name */
 
 namespace constrained_ik
 {
@@ -36,12 +36,24 @@ namespace constrained_ik
     if (!ns.empty())
       nh_ = ros::NodeHandle(ns);
 
-    // Create map of planners
-    planners_.insert(std::make_pair(JOINT_INTERP_PLANNER, new JointInterpolationPlanner(JOINT_INTERP_PLANNER, "")));
-    planners_.insert(std::make_pair(CARTESIAN_PLANNER, new CartesianPlanner(CARTESIAN_PLANNER, "")));
+    for (auto & group_name : model->getJointModelGroupNames())
+    {
+      //Create a cartesian planner for group
+      if (model->getJointModelGroup(group_name)->isChain())
+      {
+        planners_.insert(std::make_pair(std::make_pair(CARTESIAN_PLANNER, group_name), CLIKPlanningContextPtr(new CartesianPlanner(CARTESIAN_PLANNER, group_name))));
 
-    dynamic_reconfigure_server_.reset(new DynReconfigServer(mutex_, ros::NodeHandle(nh_, "constrained_ik_planner")));
-    dynamic_reconfigure_server_->setCallback(boost::bind(&CLIKPlannerManager::dynamicReconfigureCallback, this, _1, _2));
+        CartesianDynReconfigServerPtr drs(new CartesianDynReconfigServer(mutex_, ros::NodeHandle(nh_, "constrained_ik_solver/" + group_name)));
+        drs->setCallback(boost::bind(&CLIKPlannerManager::cartesianDynamicReconfigureCallback, this, _1, _2, group_name));
+        cartesian_dynamic_reconfigure_server_.insert(std::make_pair(group_name, drs));
+
+        //Create a joint interpolated planner for group
+        planners_.insert(std::make_pair(std::make_pair(JOINT_INTERP_PLANNER, group_name), CLIKPlanningContextPtr(new JointInterpolationPlanner(JOINT_INTERP_PLANNER, group_name))));
+      }
+    }
+
+    dynamic_reconfigure_server_.reset(new ManagerDynReconfigServer(mutex_, ros::NodeHandle(nh_, "constrained_ik_planner")));
+    dynamic_reconfigure_server_->setCallback(boost::bind(&CLIKPlannerManager::managerDynamicReconfigureCallback, this, _1, _2));
 
     return true;
   }
@@ -49,12 +61,8 @@ namespace constrained_ik
   void CLIKPlannerManager::getPlanningAlgorithms(std::vector<std::string> &algs) const
   {
     algs.clear();
-
-    for(std::map<std::string, constrained_ik::CLIKPlanningContextPtr>::const_iterator iter = planners_.begin(); iter != planners_.end(); ++iter)
-    {
-      algs.push_back(iter->first);
-    }
-
+    algs.push_back(JOINT_INTERP_PLANNER);
+    algs.push_back(CARTESIAN_PLANNER);
   }
 
   void CLIKPlannerManager::setPlannerConfigurations(const planning_interface::PlannerConfigurationMap &pcs)
@@ -82,15 +90,19 @@ namespace constrained_ik
     }
 
     // Get planner
-    std::map<std::string, constrained_ik::CLIKPlanningContextPtr>::const_iterator it = planners_.find(req.planner_id);
-    if (it != planners_.end())
-    {
-      planner = it->second;
-    }
+    std::map<std::pair<std::string, std::string>, constrained_ik::CLIKPlanningContextPtr>::const_iterator it;
+    if (req.planner_id.empty())
+      it = planners_.find(std::make_pair(JOINT_INTERP_PLANNER, req.group_name));
     else
+      it = planners_.find(std::make_pair(req.planner_id, req.group_name));
+
+    if (it == planners_.end())
     {
-      planner = planners_.find(CARTESIAN_PLANNER)->second;
+      logError("No planner for specified group");
+      error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_GROUP_NAME;
+      return planning_interface::PlanningContextPtr();
     }
+    planner = it->second;
 
     // Setup Planner
     planner->clear();
@@ -101,16 +113,31 @@ namespace constrained_ik
     return planner;
   }
 
-  void CLIKPlannerManager::dynamicReconfigureCallback(ConstrainedIKPlannerDynamicReconfigureConfig &config, uint32_t level)
+  void CLIKPlannerManager::managerDynamicReconfigureCallback(CLIKPlannerDynamicConfig &config, uint32_t level)
   {
-    typedef std::map< std::string, constrained_ik::CLIKPlanningContextPtr>::const_iterator it_type;
+    typedef std::map<std::pair<std::string, std::string>, constrained_ik::CLIKPlanningContextPtr>::const_iterator it_type;
 
     config_ = config;
     for (it_type it = planners_.begin(); it != planners_.end(); it++)
     {
-      it->second->setConfiguration(config_);
+      it->second->setPlannerConfiguration(config_);
     }
 
+  }
+
+  void CLIKPlannerManager::cartesianDynamicReconfigureCallback(CLIKDynamicConfig &config, uint32_t level, std::string group_name)
+  {
+    // process configuration parameters and fix errors/limits
+    validateConstrainedIKConfiguration<CLIKDynamicConfig>(config);
+
+    typedef std::map<std::pair<std::string, std::string>, constrained_ik::CLIKPlanningContextPtr>::const_iterator it_type;
+    it_type it = planners_.find(std::make_pair(CARTESIAN_PLANNER, group_name));
+    if (it != planners_.end())
+    {
+      ConstrainedIKConfiguration new_config = convertToConstrainedIKConfiguration(config);
+      boost::shared_ptr<CartesianPlanner> planner = boost::static_pointer_cast<CartesianPlanner>(it->second);
+      planner->setSolverConfiguration(new_config);
+    }
   }
 
 } //namespace constrained_ik

@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -56,7 +56,7 @@ void generateFiniteDifferenceMatrix(int num_time_steps,
         continue;
       }
 
-      diff_matrix(i,index) = multiplier * FINITE_DIFF_COEFFS[order][j+FINITE_DIFF_RULE_LENGTH/2];
+      diff_matrix(i,index) = multiplier * FINITE_CENTRAL_DIFF_COEFFS[order][j+FINITE_DIFF_RULE_LENGTH/2];
     }
   }
 }
@@ -96,22 +96,48 @@ void differentiate(const Eigen::VectorXd& parameters, DerivativeOrders::Derivati
                           double dt, Eigen::VectorXd& derivatives )
 {
 
-  unsigned int padding = FINITE_DIFF_RULE_LENGTH/2;
-  unsigned int padded_size = parameters.size()+FINITE_DIFF_RULE_LENGTH-1;
-  Eigen::MatrixXd diff_matrix;
-  Eigen::VectorXd padded_parameters = Eigen::VectorXd::Zero(padded_size);
+  using namespace Eigen;
+
   derivatives = Eigen::VectorXd::Zero(parameters.size());
 
-  // initializing padded parameters
-  padded_parameters.segment(FINITE_DIFF_RULE_LENGTH/2,parameters.size()) = parameters;
-  padded_parameters.head(FINITE_DIFF_RULE_LENGTH/2).setConstant(parameters.head(1)(0));
-  padded_parameters.tail(FINITE_DIFF_RULE_LENGTH/2).setConstant(parameters.tail(1)(0));
 
-  // computing derivatives
-  generateFiniteDifferenceMatrix(padded_size,order,dt,diff_matrix);
-  derivatives = (diff_matrix*padded_parameters).col(0).segment(FINITE_DIFF_RULE_LENGTH/2,parameters.size());
-  derivatives.head(1).setConstant(0.0);
-  derivatives.tail(1).setConstant(0.0);
+  // coefficient arrays
+  VectorXd central_coeffs = VectorXd::Map(&FINITE_CENTRAL_DIFF_COEFFS[order][0],FINITE_DIFF_RULE_LENGTH);
+  VectorXd forward_coeffs = VectorXd::Map(&FINITE_FORWARD_DIFF_COEFFS[order][0],FINITE_DIFF_RULE_LENGTH);
+  VectorXd backward_coeffs = forward_coeffs.reverse();
+
+  // check order eveness
+  if(order %2 != 0)
+  {
+    backward_coeffs*= -1.0;
+  }
+
+  // creating difference matrix
+  int rule_length = FINITE_DIFF_RULE_LENGTH;
+  int size = parameters.size();
+  int skip = FINITE_DIFF_RULE_LENGTH/2;
+  Eigen::MatrixXd A = Eigen::MatrixXd::Zero(size,size);
+  int start_ind, end_ind;
+  for(auto i = 0; i < size; i++)
+  {
+    if(i < skip)
+    {
+      start_ind = i;
+      A.row(i).segment(start_ind,rule_length) = forward_coeffs;
+    }
+    else if(i >= skip && i < size - skip)
+    {
+      start_ind = i - skip;
+      A.row(i).segment(start_ind,rule_length) = central_coeffs;
+    }
+    else
+    {
+      start_ind = i - rule_length+1;
+      A.row(i).segment(start_ind,rule_length) = backward_coeffs;
+    }
+  }
+
+  derivatives = A*parameters/std::pow(dt,2);
 }
 
 void toVector(const Eigen::MatrixXd& m,std::vector<Eigen::VectorXd>& v)

@@ -1,0 +1,384 @@
+/**
+ * @page code_examples Constrained IK Package Examples
+ * @tableofcontents
+ *
+ * @section planner_examples How to configure CLIK planners?
+ *
+ * - @ref clik_moveit_setup
+ *
+ * @section clik_configuration CLIK Configuration
+ *
+ * - @ref clik_config_example
+ *
+ * @section constraints_examples How to add constraints?
+ *
+ * - @ref avoid_joint_limits_example
+ * - @ref avoid_joint_vel_limits_example
+ * - @ref avoid_obstacles_example
+ * - @ref avoid_singularities_example
+ * - @ref goal_mid_joint_example
+ * - @ref goal_minimize_change_example
+ * - @ref goal_orientation_example
+ * - @ref goal_position_example
+ * - @ref goal_tool_orientation_example
+ * - @ref goal_tool_pointing_example
+ * - @ref goal_tool_position_example
+ * - @ref goal_zero_jvel_example
+ */
+
+/**
+ * @page clik_moveit_setup CLIK MoveIt! Setup
+ *
+ * @section create_launch_file Create the Pipeline Launch File
+ * First, you must already have a moveit_config package that was generated with the <a href="http://docs.ros.org/hydro/api/moveit_setup_assistant/html/doc/tutorial.html">MoveIt! Setup Assistant </a> .  Once this package is
+ * available you can tell the <b>move_group</b> node to load CLIK Planners by creating a <b>clik_planning_pipeline.launch.xml</b>
+ * file as follows:
+ * @include clik_planning_pipeline.launch.xml
+ *
+ * - Take notice of how the <b>pluginlib</b> parameters is set to <b>constrained_ik/CLIKPlanner</b> in order
+ * to tell the <b>move_group</b> node to load CLIK into MoveIt!
+ * - The CLIK planners are then configured from the yaml file as shown in the line below:
+ * @code
+ * <rosparam command="load" file="$(find test_moveit_config)/config/clik_planning.yaml"/>
+ * @endcode
+ *
+ * @section change_move_group_launch  Modify the move_group.launch file
+ * Open the <b>move_group.launch</b> file of your moveit_config package and change the <b>pipeline</b> parameter to <b>"clik"</b> as shown below:
+ * @code
+ * .
+ * .
+ * .
+ * <!-- Planning Functionality -->
+ * <include ns="move_group" file="$(test_moveit_config)/launch/planning_pipeline.launch.xml">
+ *  <arg name="pipeline" value="clik" />
+ * </include>
+ * .
+ * .
+ * .
+ * @endcode
+ */
+
+/**
+ * @page clik_config_example CLIK Yaml file
+ * @tableofcontents
+ * @section basic_solver_config Basic CLIK Planner Configuration
+ * @par
+ *   A basic configuration file is as follows:
+ *   - clik_config_example.yaml
+ *   @include clik_config_example.yaml
+ *   Each "constrained_ik_solver/group_name" section is specific to that planning group.  The group name must
+ *   be a valid planning group in the SRDF file
+ * @section explanation_of_parameters Explanation of parameters
+ *   @subsection solver_parameters Constrained IK Solver Parameters
+ *     All the parameters affect the behavior of the Constrained IK solver process.  These parameters are as follows:
+ *     - allow_joint_convergence: Allow the solver to converge based on joint convergence.
+ *     - allow_primary_normalization: Allow the solver to normalize primary motion.
+ *     - allow_auxiliary_nomalization: Allow the solver to normalize auxiliary motion.
+ *     - limit_primary_motion: Allow the solver to limit the primary motion.
+ *     - limit_auxiliary_motion: Allow the solver to limit the auxiliary motion.
+ *     - limit_auxiliary_interations: Allow the solver to limit the number of auxiliary interation.
+ *     - solver_max_iterations: Solver's maximum number of iterations allowed.
+ *     - solver_min_iterations: Solver's minimum number of iterations required.
+ *     - auxiliary_max_iterations: Auxiliary's maximum number of iteration allowed.
+ *     - auxiliary_max_motion: Auxiliary's maximum motion allowed.
+ *     - primary_max_motion: Primary's maximum motion allowed.
+ *     - primary_norm: Normalize primary motion to set value.
+ *     - auxiliary_norm: Normalize auxiliary motion to set value.
+ *     - primary_gain: Solver's primary motion update gain.
+ *     - auxiliary_gain: Solver's auxiliary motion update gain.
+ *     - joint_convergence_tol: Solver's joint convergence tolerance.
+ *     - constraints: Contains a list of ik solver constraints.
+ *   @subsection planner_parameters Planner Parameters
+ *     These parameters are as follows:
+ *     - translational_discretization_step: Cartesian planner max translational discretization step parameter.
+ *     - orientational_discretization_step: Cartesian planner max orientational discretization step parameter.
+ *     - joint_discretization_step: Joint interpolation planner joint discretization step parameter.
+ */
+
+/**
+ * @page avoid_joint_limits_example Avoid Joint Limit Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik avoid_joint_limits_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - avoid_joint_limits_example.cpp
+ * @include avoid_joint_limits_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik avoid_joint_limits_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - avoid_joint_limits_example.yaml
+ * @include avoid_joint_limits_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */
+
+/**
+ * @page avoid_joint_vel_limits_example Avoid Joint Velocity Limits Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik avoid_joint_vel_limits_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - avoid_joint_vel_limits_example.cpp
+ * @include avoid_joint_vel_limits_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik avoid_joint_vel_limits_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - avoid_joint_vel_limits_example.yaml
+ * @include avoid_joint_vel_limits_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */
+
+/**
+ * @page avoid_obstacles_example Avoid Obstacles Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik avoid_obstacles_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - avoid_obstacles_example.cpp
+ * @include avoid_obstacles_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik avoid_obstacles_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - avoid_obstacles_example.yaml
+ * @include avoid_obstacles_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */
+
+/**
+ * @page avoid_singularities_example Avoid Singularities Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik avoid_singularities_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - avoid_singularities_example.cpp
+ * @include avoid_singularities_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik avoid_singularities_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - avoid_singularities_example.yaml
+ * @include avoid_singularities_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */
+
+/**
+ * @page goal_mid_joint_example Goal Mid Joint Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_mid_joint_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - goal_mid_joint_example.cpp
+ * @include goal_mid_joint_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_mid_joint_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - goal_mid_joint_example.yaml
+ * @include goal_mid_joint_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */
+
+/**
+ * @page goal_minimize_change_example Goal Minimize Joint Change Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_minimize_change_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - goal_minimize_change_example.cpp
+ * @include goal_minimize_change_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_minimize_change_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - goal_minimize_change_example.yaml
+ * @include goal_minimize_change_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */
+
+/**
+ * @page goal_orientation_example Goal Orientation Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_orientation_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - goal_orientation_example.cpp
+ * @include goal_orientation_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_orientation_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - goal_orientation_example.yaml
+ * @include goal_orientation_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */
+
+/**
+ * @page goal_position_example Goal Position Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_position_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - goal_position_example.cpp
+ * @include goal_position_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_position_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - goal_position_example.yaml
+ * @include goal_position_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */
+
+/**
+ * @page goal_tool_orientation_example Goal Tool Orientation Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_tool_orientation_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - goal_tool_orientation_example.cpp
+ * @include goal_tool_orientation_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_tool_orientation_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - goal_tool_orientation_example.yaml
+ * @include goal_tool_orientation_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */
+
+/**
+ * @page goal_tool_pointing_example Goal Tool Pointing Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_tool_pointing_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - goal_tool_pointing_example.cpp
+ * @include goal_tool_pointing_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_tool_pointing_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - goal_tool_pointing_example.yaml
+ * @include goal_tool_pointing_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */
+
+/**
+ * @page goal_tool_position_example Goal Tool Position Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_tool_position_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - goal_tool_position_example.cpp
+ * @include goal_tool_position_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_tool_position_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - goal_tool_position_example.yaml
+ * @include goal_tool_position_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */
+
+/**
+ * @page goal_zero_jvel_example Goal Zero Joint Velocity Constraint Examples
+ * @tableofcontents
+ * @section section1 Available Methods
+ * @subsection subsection1 Add the constraint using c++.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_zero_jvel_example.launch use_yaml:=false @endcode
+ * @par
+ * @b Files:
+ * - goal_zero_jvel_example.cpp
+ * @include goal_zero_jvel_example.cpp
+ * @subsection subsection2 Add the constraint using yaml file.
+ * @par
+ * <b>Run the example by executing the command below.</b>
+ * @code roslaunch constrained_ik goal_zero_jvel_example.launch use_yaml:=true @endcode
+ * @par
+ * @b Files:
+ * - goal_zero_jvel_example.yaml
+ * @include goal_zero_jvel_example.yaml
+ * - constraints_from_yaml_example.cpp
+ * @include constraints_from_yaml_example.cpp
+ */

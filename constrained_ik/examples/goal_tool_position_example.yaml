@@ -1,0 +1,8 @@
+example_yaml:
+  constraints:
+  -
+    class: constrained_ik/ToolPosition
+    primary: true
+    weight: [1.0, 1.0, 1.0]
+    position_tolerance: 0.001
+    debug: true

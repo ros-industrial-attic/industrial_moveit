@@ -1,8 +1,6 @@
 /**
  * @file constrained_ik.cpp
- * @brief Basic low-level kinematics functions.
- *
- * Typically, just wrappers around the equivalent KDL calls.
+ * @brief Constrained Inverse Kinematic Solver
  *
  * @author dsolomon
  * @date Sep 15, 2013
@@ -11,14 +9,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,7 +29,7 @@
 #include <constrained_ik/constraint_results.h>
 #include <ros/ros.h>
 
-const std::string DEFAULT_COLLISION_DETECTOR = "IndustrialFCL";
+const std::vector<std::string> SUPPORTED_COLLISION_DETECTORS = {"IndustrialFCL", "CollisionDetectionOpenVDB"}; /**< Supported collision detector */
 
 namespace constrained_ik
 {
@@ -42,23 +40,96 @@ using Eigen::Affine3d;
 Constrained_IK::Constrained_IK():nh_("~")
 {
   initialized_ = false;
+
+  loadDefaultSolverConfiguration();
 }
 
-void Constrained_IK::dynamicReconfigureCallback(ConstrainedIKDynamicReconfigureConfig &config, uint32_t level)
+void Constrained_IK::addConstraintsFromParamServer(const std::string &parameter_name)
 {
-  if (config.limit_auxiliary_motion)
+  XmlRpc::XmlRpcValue constraints_xml;
+  boost::shared_ptr<pluginlib::ClassLoader<constrained_ik::Constraint> > constraint_loader;
+
+  constraint_loader.reset(new pluginlib::ClassLoader<constrained_ik::Constraint>("constrained_ik", "constrained_ik::Constraint"));
+
+  if (!nh_.getParam(parameter_name, constraints_xml))
   {
-    if (config.auxiliary_norm > config.auxiliary_max_motion)
+    ROS_ERROR("Unable to find ros parameter: %s", parameter_name.c_str());
+    ROS_BREAK();
+    return;
+  }
+
+  if(constraints_xml.getType() != XmlRpc::XmlRpcValue::TypeArray)
+  {
+    ROS_ERROR("ROS parameter %s must be an array", parameter_name.c_str());
+    ROS_BREAK();
+    return;
+  }
+
+  for (int i=0; i<constraints_xml.size(); ++i)
+  {
+    XmlRpc::XmlRpcValue constraint_xml = constraints_xml[i];
+
+    if (constraint_xml.hasMember("class") &&
+              constraint_xml["class"].getType() == XmlRpc::XmlRpcValue::TypeString &&
+              constraint_xml.hasMember("primary") &&
+              constraint_xml["primary"].getType() == XmlRpc::XmlRpcValue::TypeBoolean)
     {
-      config.auxiliary_norm = config.auxiliary_max_motion;
+      std::string class_name = constraint_xml["class"];
+      bool is_primary = constraint_xml["primary"];
+
+      Constraint *constraint;
+      try
+      {
+        constraint = constraint_loader->createUnmanagedInstance(class_name);
+
+        constraint->loadParameters(constraint_xml);
+        if (is_primary)
+          addConstraint(constraint, constraint_types::Primary);
+        else
+          addConstraint(constraint, constraint_types::Auxiliary);
+
+      }
+      catch (pluginlib::PluginlibException& ex)
+      {
+        ROS_ERROR("Couldn't load constraint named %s.\n Error: %s", class_name.c_str(), ex.what());
+        ROS_BREAK();
+      }
     }
-    else if (config.auxiliary_norm < config.auxiliary_max_motion)
+    else
     {
-      unsigned int divisor = floor(config.auxiliary_max_motion/config.auxiliary_norm) + 1;
-      config.auxiliary_norm = config.auxiliary_max_motion/divisor;
+      ROS_ERROR("Constraint must have class(string) and primary(boolean) members");
     }
   }
+}
+
+void Constrained_IK::loadDefaultSolverConfiguration()
+{
+  ConstrainedIKConfiguration config;
+  config.debug_mode = false;
+  config.allow_joint_convergence = false;
+  config.allow_primary_normalization = true;
+  config.allow_auxiliary_nomalization = true;
+  config.limit_primary_motion = false;
+  config.limit_auxiliary_motion = false;
+  config.limit_auxiliary_interations = false;
+  config.solver_max_iterations = 500;
+  config.solver_min_iterations = 0;
+  config.auxiliary_max_iterations = 5;
+  config.primary_max_motion = 2.0;
+  config.auxiliary_max_motion = 0.2;
+  config.primary_norm = 1.0;
+  config.auxiliary_norm = 0.2;
+  config.primary_gain = 1.0;
+  config.auxiliary_gain = 1.0;
+  config.joint_convergence_tol = 0.0001;
+
+  setSolverConfiguration(config);
+}
+
+void Constrained_IK::setSolverConfiguration(const ConstrainedIKConfiguration &config)
+{
   config_ = config;
+  validateConstrainedIKConfiguration<ConstrainedIKConfiguration>(config_);
 }
 
 constrained_ik::ConstraintResults Constrained_IK::evalConstraint(constraint_types::ConstraintTypes constraint_type, const constrained_ik::SolverState &state) const
@@ -147,6 +218,7 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
   constrained_ik::SolverState state = getState(goal, joint_seed); // create state vars for this IK solve
   state.condition = checkInitialized();
   state.planning_scene = planning_scene;
+  state.group_name = kin_.getJointModelGroup()->getName();
 
   //TODO: Does this still belong here?
   if(planning_scene)
@@ -154,12 +226,18 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     state.robot_state = robot_state::RobotStatePtr(new moveit::core::RobotState(planning_scene->getCurrentState()));
 
     //Check and make sure the correct collision detector is loaded.
-    if (planning_scene->getActiveCollisionDetectorName() != DEFAULT_COLLISION_DETECTOR)
+    auto pos = std::find(SUPPORTED_COLLISION_DETECTORS.begin(),SUPPORTED_COLLISION_DETECTORS.end(),
+                         planning_scene->getActiveCollisionDetectorName());
+    if (pos == SUPPORTED_COLLISION_DETECTORS.end())
     {
-      throw std::runtime_error("Constrained IK requires the use of collision detector \"" + DEFAULT_COLLISION_DETECTOR + "\"\n"
-                               "To resolve the issue add the ros parameter collision_detector = " + DEFAULT_COLLISION_DETECTOR +
-                               ".\nIt is recommend to added it where the move_group node is launched, usually in the in the "
-                               "(robot_name)_moveit_config/launch/move_group.launch");
+      std::stringstream error_message;
+      error_message<<" Constrained IK requires the use of collision detectors: ";
+      for(auto& d : SUPPORTED_COLLISION_DETECTORS)
+      {
+        error_message<<"'"<< d<<"' ";
+      }
+      error_message<<".\nSet or add the 'collision_detector' parameter to an allowed collision detector in the move_group.launch file"<<std::endl;
+      throw std::runtime_error(error_message.str());
     }
 
     state.collision_robot = boost::dynamic_pointer_cast<const collision_detection::CollisionRobotIndustrial>(planning_scene->getCollisionRobot());
@@ -184,15 +262,21 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     constrained_ik::ConstraintResults primary = evalConstraint(constraint_types::Primary, state);
     // TODO since we already have J_p = USV, use that to get null-projection too.
     // otherwise, we are repeating the expensive calculation of the SVD
-    MatrixXd Ji_p = calcDampedPseudoinverse(primary.jacobian);
-    VectorXd dJoint_p = config_.primary_gain*(Ji_p*primary.error);
-    dJoint_norm = dJoint_p.norm();
-    if(config_.allow_primary_normalization && dJoint_norm > config_.primary_norm)// limit maximum update radian/meter
+
+    VectorXd dJoint_p;
+    dJoint_p.setZero(joint_seed.size());
+    if (!primary.isEmpty()) // This is required because not all constraints always return data.
     {
-      dJoint_p = config_.primary_norm * (dJoint_p/dJoint_norm);
+      MatrixXd Ji_p = calcDampedPseudoinverse(primary.jacobian);
+      dJoint_p = config_.primary_gain*(Ji_p*primary.error);
       dJoint_norm = dJoint_p.norm();
+      if(config_.allow_primary_normalization && dJoint_norm > config_.primary_norm)// limit maximum update radian/meter
+      {
+        dJoint_p = config_.primary_norm * (dJoint_p/dJoint_norm);
+        dJoint_norm = dJoint_p.norm();
+      }
+      state.primary_sum += dJoint_norm;
     }
-    state.primary_sum += dJoint_norm;
 
     // Auxiliary Constraints
     VectorXd dJoint_a;
@@ -229,7 +313,7 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     
     if (status == Converged)
     {
-      ROS_DEBUG_STREAM("IK solution: " << joint_angles.transpose());
+      ROS_DEBUG_STREAM("Found IK solution in " << state.iter << " iterations: " << joint_angles.transpose());
       return true;
     }
     else if (status == NotConverged)
@@ -253,20 +337,23 @@ SolverStatus Constrained_IK::checkStatus(const constrained_ik::SolverState &stat
   {
     bool status = (primary.status && auxiliary.status);
 
-    if (!status && primary.status && state.auxiliary_at_limit && state.iter >= config_.solver_min_iterations)
+    if (state.iter > config_.solver_min_iterations)
     {
-      ROS_DEBUG("Auxiliary motion or iteration limit reached!");
-      return Converged;
-    }
-    else if(status && state.iter >= config_.solver_min_iterations)
-    {
-      return Converged;
+      if (!status && primary.status && state.auxiliary_at_limit)
+      {
+        ROS_DEBUG("Auxiliary motion or iteration limit reached!");
+        return Converged;
+      }
+      else if(status)
+      {
+        return Converged;
+      }
     }
   }
   
   if(state.condition == initialization_state::PrimaryOnly)
   {   
-    if (primary.status && state.iter >= config_.solver_min_iterations)
+    if (primary.status && state.iter > config_.solver_min_iterations)
     {
       return Converged;
     }
@@ -274,10 +361,16 @@ SolverStatus Constrained_IK::checkStatus(const constrained_ik::SolverState &stat
 
   // check for joint convergence
   //   - this is an error: joints stabilize, but goal pose not reached
-  if (config_.allow_joint_convergence && state.joints_delta.cwiseAbs().maxCoeff() < config_.joint_convergence_tol && state.iter >= config_.solver_min_iterations)
+  if (config_.allow_joint_convergence)
   {
-    ROS_DEBUG_STREAM("Joint convergence reached " << state.iter << " / " << config_.solver_max_iterations << " iterations before convergence.");
-    return Converged;
+    if (state.joints_delta.cwiseAbs().maxCoeff() < config_.joint_convergence_tol)
+    {
+      if (state.iter > config_.solver_min_iterations)
+      {
+        ROS_DEBUG_STREAM("Joint convergence reached " << state.iter << " / " << config_.solver_max_iterations << " iterations before convergence.");
+        return Converged;
+      }
+    }
   }
   
   if (state.iter > config_.solver_max_iterations || (config_.limit_primary_motion && state.primary_sum >= config_.primary_max_motion))
@@ -332,8 +425,6 @@ void Constrained_IK::init(const basic_kin::BasicKin &kin)
     throw std::invalid_argument("Input argument 'BasicKin' must be initialized");
 
   kin_ = kin;
-  dynamic_reconfigure_server_.reset(new dynamic_reconfigure::Server<ConstrainedIKDynamicReconfigureConfig>(mutex_, ros::NodeHandle(nh_, "constrained_ik_solver/" + kin_.getJointModelGroup()->getName())));
-  dynamic_reconfigure_server_->setCallback(boost::bind(&Constrained_IK::dynamicReconfigureCallback, this, _1, _2));
   initialized_ = true;
   primary_constraints_.init(this);
   auxiliary_constraints_.init(this);

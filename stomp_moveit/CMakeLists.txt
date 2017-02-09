@@ -4,11 +4,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   moveit_core
   moveit_ros_planning
-  moveit_experimental
   stomp_core
   cmake_modules
   pluginlib
-  industrial_collision_detection
 )
 find_package(Eigen REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
@@ -22,7 +20,7 @@ add_definitions("-std=c++11")
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core cmake_modules pluginlib roscpp moveit_experimental
+  CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core cmake_modules pluginlib roscpp
   DEPENDS Eigen
 )
 
@@ -39,6 +37,7 @@ include_directories(include
 add_library(${PROJECT_NAME}
   src/stomp_optimization_task.cpp
   src/stomp_planner.cpp
+  src/utils/polynomial.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -52,9 +51,8 @@ target_link_libraries(${PROJECT_NAME}_planner_manager ${PROJECT_NAME} ${catkin_L
 
 # cost function plugin(s)
 add_library(${PROJECT_NAME}_cost_functions
-  src/cost_functions/tool_goal_pose.cpp
-  src/cost_functions/obstacle_avoidance.cpp
   src/cost_functions/collision_check.cpp
+  src/cost_functions/obstacle_distance_gradient.cpp
  )
 target_link_libraries(${PROJECT_NAME}_cost_functions ${catkin_LIBRARIES})
 
@@ -62,7 +60,6 @@ target_link_libraries(${PROJECT_NAME}_cost_functions ${catkin_LIBRARIES})
 add_library(${PROJECT_NAME}_noisy_filters
   src/noisy_filters/joint_limits.cpp  
   src/noisy_filters/multi_trajectory_visualization.cpp
-  src/noisy_filters/underconstrained_goal.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_noisy_filters ${catkin_LIBRARIES})
@@ -70,10 +67,10 @@ target_link_libraries(${PROJECT_NAME}_noisy_filters ${catkin_LIBRARIES})
 # update plugin(s)
 add_library(${PROJECT_NAME}_update_filters
   src/update_filters/polynomial_smoother.cpp
-  src/update_filters/constrained_cartesian_goal.cpp
   src/update_filters/trajectory_visualization.cpp
   src/update_filters/control_cost_projection.cpp
   src/update_filters/update_logger.cpp
+  src/utils/polynomial.cpp
  )
 target_link_libraries(${PROJECT_NAME}_update_filters ${catkin_LIBRARIES})
 

@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,31 +38,43 @@ namespace stomp_moveit
 namespace noisy_filters
 {
 
+/**
+ * @class stomp_moveit::noisy_filters::MultiTrajectoryVisualization
+ * @brief Publishes rviz markers to visualize the noisy trajectories
+ *
+ * @par Examples:
+ * All examples are located here @ref examples
+ *
+ */
 class MultiTrajectoryVisualization : public StompNoisyFilter
 {
 public:
   MultiTrajectoryVisualization();
   virtual ~MultiTrajectoryVisualization();
 
+  /** @brief see base class for documentation*/
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,const XmlRpc::XmlRpcValue& config) override;
 
+  /** @brief see base class for documentation*/
   virtual bool configure(const XmlRpc::XmlRpcValue& config) override;
 
+  /** @brief see base class for documentation*/
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
                    moveit_msgs::MoveItErrorCodes& error_code) override;
 
   /**
-   * @brief filters the parameters and modifies the original values
+   * @brief Creates rviz markers for visualizing the noisy trajectories, it does not change the parameters.
    *
-   * @param start_timestep    start index into the 'parameters' array, usually 0.
-   * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
-   * @param iteration_number  The current iteration count in the optimization loop
-   * @param rollout_number    index of the noisy trajectory whose cost is being evaluated.
-   * @param parameters [num_dimensions] x [num_timesteps]
-   * @return false if no filtering was applied
+   * @param start_timestep    Start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     Number of elements to use from 'parameters' starting from 'start_timestep'
+   * @param iteration_number  The current iteration count in the optimization loop.
+   * @param rollout_number    Index of the noisy trajectory whose cost is being evaluated.
+   * @param parameters        Output argument containing the parameters to be filtered [num_dimensions x num_timesteps].
+   * @param filtered          Output argument that's set to 'true' if the parameters were changed according to the filtering method.
+   * @return false if there was an irrecoverable failure, true otherwise.
    */
   virtual bool filter(std::size_t start_timestep,
                       std::size_t num_timesteps,

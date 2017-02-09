@@ -1,5 +1,13 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 2.8.12)
 project(constrained_ik)
+
+if(CMAKE_VERSION VERSION_LESS 3.1)
+    add_compile_options(-std=c++11)
+else()
+    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    set(CMAKE_CXX_EXTENSIONS ON)
+endif()
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -23,8 +31,8 @@ find_package(Eigen REQUIRED)
 
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
-  cfg/ConstrainedIKDynamicReconfigure.cfg
-  cfg/ConstrainedIKPlannerDynamicReconfigure.cfg
+  cfg/CLIKDynamic.cfg
+  cfg/CLIKPlannerDynamic.cfg
 )
 
 #######################################
@@ -61,7 +69,7 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
- LIBRARIES constrained_ik moveit_clik_planner_plugin constrained_ik_plugin
+ LIBRARIES constrained_ik constrained_ik_constraints moveit_clik_planner_plugin constrained_ik_plugin
  CATKIN_DEPENDS roscpp urdf eigen_conversions tf_conversions urdf moveit_ros_planning moveit_core dynamic_reconfigure kdl_parser cmake_modules industrial_collision_detection
  DEPENDS boost eigen orocos_kdl
 )
@@ -82,7 +90,6 @@ add_library(constrained_ik
             src/solver_state.cpp
             src/enum_types.cpp
             src/constrained_ik_utils.cpp
-            src/constraints/avoid_joint_limits.cpp
             src/constraint_group.cpp
 )
 
@@ -99,6 +106,7 @@ add_library(constrained_ik_constraints
             src/constraints/avoid_singularities.cpp
             src/constraints/joint_vel_limits.cpp
             src/constraints/avoid_obstacles.cpp
+            src/constraints/avoid_joint_limits.cpp
             src/constraints/goal_tool_pointing.cpp
 )
 target_link_libraries(constrained_ik_constraints constrained_ik ${catkin_LIBRARIES})
@@ -167,15 +175,62 @@ install(DIRECTORY include/${PROJECT_NAME}/
 if(CATKIN_ENABLE_TESTING)
   find_package(rostest REQUIRED)
 
-  add_rostest_gtest(test_basic_kin test/test_basic_kin.launch test/test_BasicKin.cpp )
-  target_link_libraries(test_basic_kin constrained_ik)
-
-  add_rostest_gtest(test_basic_ik test/test_basic_ik.launch test/test_BasicIK.cpp )
-  target_link_libraries(test_basic_ik constrained_ik)
+  add_rostest_gtest(test_basic_kin test/test_basic_kin.launch test/test_basic_kin.cpp )
+  target_link_libraries(test_basic_kin constrained_ik constrained_ik_constraints)
 
   add_rostest_gtest(test_constrained_ik
     test/test_constrained_ik.launch
     test/test_constrained_ik.cpp )
-  target_link_libraries(test_constrained_ik constrained_ik)
+  target_link_libraries(test_constrained_ik constrained_ik constrained_ik_constraints)
 endif()
+
+##############
+## Examples ##
+##############
+
+## Add cpp example targets and link libraries
+SET(EXAMPLE_LIBS
+    constrained_ik
+    constrained_ik_constraints
+    ${catkin_LIBRARIES})
+
+add_executable(constraints_from_yaml_example examples/constraints_from_yaml_example.cpp examples/example_utils.h)
+target_link_libraries(constraints_from_yaml_example ${EXAMPLE_LIBS})
+
+add_executable(avoid_joint_limits_example examples/avoid_joint_limits_example.cpp examples/example_utils.h)
+target_link_libraries(avoid_joint_limits_example ${EXAMPLE_LIBS})
+
+add_executable(avoid_obstacles_example examples/avoid_obstacles_example.cpp examples/example_utils.h)
+target_link_libraries(avoid_obstacles_example ${EXAMPLE_LIBS})
+
+add_executable(avoid_singularities_example examples/avoid_singularities_example.cpp examples/example_utils.h)
+target_link_libraries(avoid_singularities_example ${EXAMPLE_LIBS})
+
+add_executable(goal_mid_joint_example examples/goal_mid_joint_example.cpp examples/example_utils.h)
+target_link_libraries(goal_mid_joint_example ${EXAMPLE_LIBS})
+
+add_executable(goal_minimize_change_example examples/goal_minimize_change_example.cpp examples/example_utils.h)
+target_link_libraries(goal_minimize_change_example ${EXAMPLE_LIBS})
+
+add_executable(goal_orientation_example examples/goal_orientation_example.cpp examples/example_utils.h)
+target_link_libraries(goal_orientation_example ${EXAMPLE_LIBS})
+
+add_executable(goal_position_example examples/goal_position_example.cpp examples/example_utils.h)
+target_link_libraries(goal_position_example ${EXAMPLE_LIBS})
+
+add_executable(goal_tool_orientation_example examples/goal_tool_orientation_example.cpp examples/example_utils.h)
+target_link_libraries(goal_tool_orientation_example ${EXAMPLE_LIBS})
+
+add_executable(goal_tool_pointing_example examples/goal_tool_pointing_example.cpp examples/example_utils.h)
+target_link_libraries(goal_tool_pointing_example ${EXAMPLE_LIBS})
+
+add_executable(goal_zero_jvel_example examples/goal_zero_jvel_example.cpp examples/example_utils.h)
+target_link_libraries(goal_zero_jvel_example ${EXAMPLE_LIBS})
+
+add_executable(avoid_joint_vel_limits_example examples/avoid_joint_vel_limits_example.cpp examples/example_utils.h)
+target_link_libraries(avoid_joint_vel_limits_example ${EXAMPLE_LIBS})
+
+add_executable(goal_tool_position_example examples/goal_tool_position_example.cpp examples/example_utils.h)
+target_link_libraries(goal_tool_position_example ${EXAMPLE_LIBS})
+
 

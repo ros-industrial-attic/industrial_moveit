@@ -15,14 +15,14 @@
  *
  * @copyright Copyright (c) 2015, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -36,7 +36,7 @@
 #include <moveit/planning_scene/planning_scene.h>
 #include <constrained_ik/moveit_interface/constrained_ik_planning_context.h>
 #include <boost/atomic.hpp>
-#include <constrained_ik/ik/master_ik.h>
+#include <constrained_ik/constrained_ik.h>
 
 namespace constrained_ik
 {
@@ -54,21 +54,63 @@ namespace constrained_ik
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    CartesianPlanner(const std::string &name, const std::string &group) : constrained_ik::CLIKPlanningContext(name, group), terminate_(false), robot_description_("robot_description") {}
+    /**
+     * @brief CartesianPlanner Constructor
+     * @param name of planner
+     * @param group of the planner
+     */
+    CartesianPlanner(const std::string &name, const std::string &group);
 
-    CartesianPlanner(const CartesianPlanner &other) : constrained_ik::CLIKPlanningContext(other), terminate_(false), robot_description_("robot_description") {}
+    /**
+     * @brief CartesianPlanner Copy Constructor
+     * @param other cartesian planner
+     */
+    CartesianPlanner(const CartesianPlanner &other) : constrained_ik::CLIKPlanningContext(other),
+      terminate_(false),
+      robot_description_(robot_description_),
+      solver_(solver_) {}
 
-    void clear() { terminate_ = false; }
+    /** @brief Clear planner data */
+    void clear() override { terminate_ = false; }
 
-    bool terminate()
+    /**
+     * @brief Terminate the active planner solve
+     * @return True if successfully terminated, otherwise false
+     */
+    bool terminate() override
     {
       terminate_ = true;
       return true;
     }
 
-    bool solve(planning_interface::MotionPlanResponse &res);
+    /**
+     * @brief Inverse Kinematic Solve
+     * @param res planner response
+     * @return
+     */
+    bool solve(planning_interface::MotionPlanResponse &res) override;
 
-    boost::shared_ptr<constrained_ik::MasterIK> getSolver(std::string group_name);
+    /**
+     * @brief Inverse Kinematic Solve
+     * @param res planner detailed response
+     * @return
+     */
+    bool solve(planning_interface::MotionPlanDetailedResponse &res) override;
+
+    /**
+     * @brief This will initialize the solver if it has not all ready
+     * @return True if successful, otherwise false
+     */
+    bool initializeSolver();
+
+    /**
+     * @brief Set the planners IK solver configuration
+     * @param config Constrained IK solver configuration
+     */
+    void setSolverConfiguration(const ConstrainedIKConfiguration &config);
+
+    /** @brief Reset the planners IK solver configuration to it default settings */
+    void resetSolverConfiguration();
 
   private:
     /**
@@ -82,13 +124,11 @@ namespace constrained_ik
     std::vector<Eigen::Affine3d,Eigen::aligned_allocator<Eigen::Affine3d> >
     interpolateCartesian(const Eigen::Affine3d& start, const Eigen::Affine3d& stop, double ds, double dt) const;
 
-    boost::atomic<bool> terminate_;
-    std::string robot_description_;
-    robot_model::RobotModelConstPtr robot_model_;
-    std::map<std::string, robot_model::JointModelGroup*> joint_model_groups_;
-    std::vector<std::string> groups_;
-    std::map<std::string, boost::shared_ptr<constrained_ik::MasterIK> > solvers_;
-    boost::mutex mutex_;
+    boost::atomic<bool> terminate_;               /**< Termination flag */
+    std::string robot_description_;               /**< robot description value from ros param server */
+    robot_model::RobotModelConstPtr robot_model_; /**< Robot model object */
+    boost::shared_ptr<Constrained_IK> solver_;    /**< Constrained IK Solver */
+    boost::mutex mutex_;                          /**< Mutex */
   };
 } //namespace constrained_ik
 

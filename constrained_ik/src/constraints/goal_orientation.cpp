@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,7 +29,7 @@
 #include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalOrientation, constrained_ik::Constraint)
 
-const double DEFAULT_ORIENTATION_TOLERANCE = 0.009;
+const double DEFAULT_ORIENTATION_TOLERANCE = 0.009; /**< Default orientation convergance criteria */
 
 namespace constrained_ik
 {
@@ -106,7 +106,7 @@ void GoalOrientation::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
   if (!getParam(local_xml, "orientation_tolerance", rot_err_tol_))
   {
-    ROS_WARN("Gool Orientation: Unable to retrieving orientation_tolerance member, default parameter will be used.");
+    ROS_WARN("Gool Orientation: Unable to retrieve orientation_tolerance member, default parameter will be used.");
   }
 
   Eigen::VectorXd weights;
@@ -123,7 +123,12 @@ void GoalOrientation::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
   }
   else
   {
-    ROS_WARN("Gool Orientation: Unable to retrieving weights member, default parameter will be used.");
+    ROS_WARN("Gool Orientation: Unable to retrieve weights member, default parameter will be used.");
+  }
+
+  if (!getParam(local_xml, "debug", debug_))
+  {
+    ROS_WARN("Gool Orientation: Unable to retrieve debug member, default parameter will be used.");
   }
 }
 

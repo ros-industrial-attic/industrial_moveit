@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,58 +32,60 @@ namespace constrained_ik
 {
 namespace constraints
 {
-
-/** @brief Constraint to pushes joints back towards their starting position */
+/**
+ * @class constrained_ik::constraints::GoalMinimizeChange
+ * @brief Constraint to pushes joints back towards their starting position
+ *
+ * @par Examples:
+ * All examples are located here @ref goal_minimize_change_example
+ */
 class GoalMinimizeChange : public Constraint
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   GoalMinimizeChange();
-  virtual ~GoalMinimizeChange() {}
 
-  virtual constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const;
+  /** @brief see base class for documentation*/
+  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+
+  /** @brief see base class for documentation*/
+  void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) override;
 
   /**
    * @brief Jacobian is identity becasue all joints are affected
-   * @param cdata, The constraint specific data.
+   * @param cdata The constraint specific data.
    * @return Identity scaled by weight_
    */
   virtual Eigen::MatrixXd calcJacobian(const ConstraintData &cdata) const;
 
   /**
    * @brief Joint velocity is difference between starting position and current position
-   * @param cdata, The constraint specific data.
+   * @param cdata The constraint specific data.
    * @return Joint difference scaled by weight_
    */
   virtual Eigen::VectorXd calcError(const ConstraintData &cdata) const;
 
   /**
    * @brief Termination criteria for singularity constraint
-   * @param cdata, The constraint specific data.
+   * @param cdata The constraint specific data.
    * @return True always (no termination criteria)
    */
   virtual bool checkStatus(const ConstraintData &cdata) const { return true;}
 
   /**
-   * @brief Load constraint parameters from XmlRpc::XmlRpcValue
-   * @param constraint_xml XmlRpc::XmlRpcValue
-   */
-  virtual void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml);
-
-  /**
    * @brief Getter for weight_
    * @return weight_
    */
-  double getWeight() {return weight_;}
+  virtual double getWeight() const {return weight_;}
 
   /**
    * @brief setter for weight_
    * @param weight Value to set weight_ to
    */
-  void setWeight(double weight) {weight_ = weight;}
+  virtual void setWeight(double weight) {weight_ = weight;}
 
 protected:
-  double weight_;
+  double weight_; /**< @brief weights used to scale the jocabian and error */
 
 }; // class GoalMinimizeChange
 

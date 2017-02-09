@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,12 +33,17 @@
 #include <numeric>
 #include "stomp_core/stomp.h"
 
-static const double DEFAULT_NOISY_COST_IMPORTANCE_WEIGHT = 1.0;
-static const double EXPONENTIATED_COST_SENSITIVITY = 10;
-static const double MIN_COST_DIFFERENCE = 1e-8;
-static const double MIN_CONTROL_COST_WEIGHT = 1e-8;
-static const double OPTIMIZATION_TIMESTEP = 1;
+static const double DEFAULT_NOISY_COST_IMPORTANCE_WEIGHT = 1.0; /**< Default noisy cost importance weight */
+static const double MIN_COST_DIFFERENCE = 1e-8; /**< Minimum cost difference allowed during probability calculation */
+static const double MIN_CONTROL_COST_WEIGHT = 1e-8; /**< Minimum control cost weight allowed */
 
+/**
+ * @brief Compute a linear interpolated trajectory given a start and end state
+ * @param first             The start position
+ * @param last              The final position
+ * @param num_timesteps     The number of timesteps
+ * @param trajectory_joints The returned linear interpolated trajectory
+ */
 static void computeLinearInterpolation(const std::vector<double>& first,const std::vector<double>& last,
                          int num_timesteps,
                          Eigen::MatrixXd& trajectory_joints)
@@ -54,6 +59,14 @@ static void computeLinearInterpolation(const std::vector<double>& first,const st
   }
 }
 
+/**
+ * @brief Compute a cubic interpolated trajectory given a start and end state
+ * @param first             The start position
+ * @param last              The final position
+ * @param num_points        The number of points in the trajectory
+ * @param dt                The timestep in seconds
+ * @param trajectory_joints The returned cubic interpolated trajectory
+ */
 static void computeCubicInterpolation(const std::vector<double>& first,const std::vector<double>& last,
                          int num_points,double dt,
                          Eigen::MatrixXd& trajectory_joints)
@@ -75,6 +88,15 @@ static void computeCubicInterpolation(const std::vector<double>& first,const std
   }
 }
 
+/**
+ * @brief Compute a minimum cost trajectory given a start and end state
+ * @param first                        The start position
+ * @param last                         The final position
+ * @param control_cost_matrix_R_padded The control cost matrix with padding
+ * @param inv_control_cost_matrix_R    The inverse constrol cost matrix
+ * @param trajectory_joints            The returned minimum cost trajectory
+ * @return True if successful, otherwise false
+ */
 bool computeMinCostTrajectory(const std::vector<double>& first,
                               const std::vector<double>& last,
                               const Eigen::MatrixXd& control_cost_matrix_R_padded,
@@ -116,7 +138,14 @@ bool computeMinCostTrajectory(const std::vector<double>& first,
   return true;
 }
 
-
+/**
+ * @brief Compute the parameters control costs
+ * @param parameters            The parameters used to compute the control cost
+ * @param dt                    The timestep in seconds
+ * @param control_cost_weight   The control cost weight
+ * @param control_cost_matrix_R The control cost matrix
+ * @param control_costs returns The parameters control costs
+ */
 void computeParametersControlCosts(const Eigen::MatrixXd& parameters,
                                           double dt,
                                           double control_cost_weight,
@@ -139,32 +168,6 @@ void computeParametersControlCosts(const Eigen::MatrixXd& parameters,
 
 namespace stomp_core {
 
-bool Stomp::parseConfig(XmlRpc::XmlRpcValue config,StompConfiguration& stomp_config)
-{
-  using namespace XmlRpc;
-
-  try
-  {
-
-    stomp_config.control_cost_weight = static_cast<double>(config["control_cost_weight"]);
-    stomp_config.delta_t = static_cast<double>(config["delta_t"]);
-    stomp_config.initialization_method = static_cast<int>(config["initialization_method"]);
-    stomp_config.max_rollouts = static_cast<int>(config["max_rollouts"]);
-    stomp_config.num_dimensions = static_cast<int>(config["num_dimensions"]);
-    stomp_config.num_iterations = static_cast<int>(config["num_iterations"]);
-    stomp_config.num_iterations_after_valid = static_cast<int>(config["num_iterations_after_valid"]);
-    stomp_config.num_rollouts = static_cast<int>(config["num_rollouts"]);
-    stomp_config.num_timesteps = static_cast<int>(config["num_timesteps"]);
-  }
-  catch(XmlRpc::XmlRpcException& e)
-  {
-    ROS_ERROR("Failed to parse Stomp configuration ");
-    return false;
-  }
-
-  return true;
-}
-
 
 Stomp::Stomp(const StompConfiguration& config,TaskPtr task):
     config_(config),
@@ -175,14 +178,15 @@ Stomp::Stomp(const StompConfiguration& config,TaskPtr task):
 
 }
 
-Stomp::~Stomp()
-{
-
-}
-
 bool Stomp::clear()
 {
   return resetVariables();
+}
+
+void Stomp::setConfig(const StompConfiguration& config)
+{
+  config_ = config;
+  resetVariables();
 }
 
 bool Stomp::solve(const std::vector<double>& first,const std::vector<double>& last,
@@ -195,6 +199,19 @@ bool Stomp::solve(const std::vector<double>& first,const std::vector<double>& la
   }
 
   return solve(parameters_optimized_,parameters_optimized);
+}
+
+bool Stomp::solve(const Eigen::VectorXd& first,const Eigen::VectorXd& last,
+                  Eigen::MatrixXd& parameters_optimized)
+{
+  // converting to std vectors
+  std::vector<double> start(first.size());
+  std::vector<double> end(last.size());
+
+  Eigen::VectorXd::Map(&start[0],first.size()) = first;
+  Eigen::VectorXd::Map(&end[0],last.size()) = last;
+
+  return solve(start,end,parameters_optimized);
 }
 
 bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
@@ -223,6 +240,14 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
   current_iteration_ = 1;
   unsigned int valid_iterations = 0;
   current_lowest_cost_ = std::numeric_limits<double>::max();
+
+  // computing initialial trajectory cost
+  if(!computeOptimizedCost())
+  {
+    ROS_ERROR("Failed to calculate initial trajectory cost");
+    return false;
+  }
+
   while(current_iteration_ <= config_.num_iterations && runSingleIteration())
   {
 
@@ -265,7 +290,7 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
   parameters_optimized = parameters_optimized_;
 
   // notifying task
-  task_->done(parameters_valid_,current_iteration_,current_lowest_cost_);
+  task_->done(parameters_valid_,current_iteration_,current_lowest_cost_,parameters_optimized);
 
   return parameters_valid_;
 }
@@ -279,10 +304,10 @@ bool Stomp::resetVariables()
   current_iteration_ = 0;
 
   // verifying configuration
-  if(config_.max_rollouts < config_.num_rollouts)
+  if(config_.max_rollouts <= config_.num_rollouts)
   {
-    ROS_WARN_STREAM("'max_rollouts' must be greater than 'num_rollouts_per_iteration'.");
-    config_.max_rollouts = config_.num_rollouts;
+    ROS_DEBUG_STREAM("'max_rollouts' must be greater than 'num_rollouts_per_iteration'.");
+    config_.max_rollouts = config_.num_rollouts + 1; // one more to accommodate optimized trajectory
   }
 
   // noisy rollouts allocation
@@ -342,13 +367,13 @@ bool Stomp::resetVariables()
   start_index_padded_ = FINITE_DIFF_RULE_LENGTH-1;
   num_timesteps_padded_ = config_.num_timesteps + 2*(FINITE_DIFF_RULE_LENGTH-1);
   generateFiniteDifferenceMatrix(num_timesteps_padded_,DerivativeOrders::STOMP_ACCELERATION,
-                                 OPTIMIZATION_TIMESTEP,finite_diff_matrix_A_padded_);
+                                 config_.delta_t,finite_diff_matrix_A_padded_);
 
   /* control cost matrix (R = A_transpose * A):
    * Note: Original code multiplies the A product by the time interval.  However this is not
    * what was described in the literature
    */
-  control_cost_matrix_R_padded_ = OPTIMIZATION_TIMESTEP*finite_diff_matrix_A_padded_.transpose() * finite_diff_matrix_A_padded_;
+  control_cost_matrix_R_padded_ = config_.delta_t*finite_diff_matrix_A_padded_.transpose() * finite_diff_matrix_A_padded_;
   control_cost_matrix_R_ = control_cost_matrix_R_padded_.block(
       start_index_padded_,start_index_padded_,config_.num_timesteps,config_.num_timesteps);
   inv_control_cost_matrix_R_ = control_cost_matrix_R_.fullPivLu().inverse();
@@ -408,6 +433,9 @@ bool Stomp::runSingleIteration()
       updateParameters() &&
       computeOptimizedCost();
 
+  // notifying end of iteration
+  task_->postIteration(0,config_.num_timesteps,current_iteration_,current_lowest_cost_,parameters_optimized_);
+
   return proceed;
 }
 
@@ -415,11 +443,12 @@ bool Stomp::generateNoisyRollouts()
 {
   // calculating number of rollouts to reuse from previous iteration
   std::vector< std::pair<double,int> > rollout_cost_sorter; // Used to sort noisy trajectories in ascending order wrt their total cost
-  double h = EXPONENTIATED_COST_SENSITIVITY;
-  int rollouts_stored = num_active_rollouts_;
+  double h = config_.exponentiated_cost_sensitivity;
+  int rollouts_stored = num_active_rollouts_-1; // don't take the optimized rollout into account
+  rollouts_stored = rollouts_stored < 0 ? 0 : rollouts_stored;
   int rollouts_generate = config_.num_rollouts;
-  int rollouts_total = rollouts_generate + rollouts_stored;
-  int rollouts_reuse =  rollouts_total < config_.max_rollouts  ? rollouts_stored:  config_.max_rollouts - rollouts_generate ;
+  int rollouts_total = rollouts_generate + rollouts_stored +1;
+  int rollouts_reuse =  rollouts_total < config_.max_rollouts  ? rollouts_stored :  config_.max_rollouts - (rollouts_generate + 1) ; // +1 for optimized params
 
   // selecting least costly rollouts from previous iteration
   if(rollouts_reuse > 0)
@@ -468,9 +497,16 @@ bool Stomp::generateNoisyRollouts()
     // copy them back from reused_rollouts_ into rollouts_
     for (auto r = 0u; r<rollouts_reuse; ++r)
     {
-      noisy_rollouts_[rollouts_generate+r] = reused_rollouts_[r];
+      noisy_rollouts_[rollouts_generate + r ] = reused_rollouts_[r];
     }
   }
+
+  // adding optimized trajectory as the last rollout
+  noisy_rollouts_[rollouts_generate + rollouts_reuse].parameters_noise = parameters_optimized_;
+  noisy_rollouts_[rollouts_generate + rollouts_reuse].noise.setZero();
+  noisy_rollouts_[rollouts_generate + rollouts_reuse].state_costs = parameters_state_costs_;
+  noisy_rollouts_[rollouts_generate + rollouts_reuse].control_costs = parameters_control_costs_;
+
 
   // generate new noisy rollouts
   for(auto r = 0u; r < rollouts_generate; r++)
@@ -488,7 +524,7 @@ bool Stomp::generateNoisyRollouts()
   }
 
   // update total active rollouts
-  num_active_rollouts_ = rollouts_reuse + rollouts_generate;
+  num_active_rollouts_ = rollouts_reuse + rollouts_generate + 1;
 
   return true;
 }
@@ -596,7 +632,7 @@ bool Stomp::computeRolloutsControlCosts()
     else
     {
       computeParametersControlCosts(rollout.parameters_noise,
-                                    OPTIMIZATION_TIMESTEP,
+                                    config_.delta_t,
                                     config_.control_cost_weight,
                                     control_cost_matrix_R_,rollout.control_costs);
     }
@@ -613,7 +649,7 @@ bool Stomp::computeProbabilities()
   double denom;
   double numerator;
   double probl_sum = 0.0; // total probability sum of all rollouts for each joint
-  const double h = EXPONENTIATED_COST_SENSITIVITY;
+  const double h = config_.exponentiated_cost_sensitivity;
   double exponent = 0;
 
   for (auto d = 0u; d<config_.num_dimensions; ++d)
@@ -639,7 +675,7 @@ bool Stomp::computeProbabilities()
       // prevent division by zero:
       if (denom < MIN_COST_DIFFERENCE)
       {
-        denom = 1;
+        denom = MIN_COST_DIFFERENCE;
       }
 
       probl_sum = 0.0;
@@ -675,7 +711,7 @@ bool Stomp::computeProbabilities()
     }
 
     denom = max_cost - min_cost;
-    denom = denom < MIN_COST_DIFFERENCE ? 1 : denom;
+    denom = denom < MIN_COST_DIFFERENCE ? MIN_COST_DIFFERENCE : denom;
 
     probl_sum = 0.0;
     for (int r=0; r<num_active_rollouts_; ++r)
@@ -729,7 +765,7 @@ bool Stomp::computeOptimizedCost()
   if(config_.control_cost_weight > MIN_CONTROL_COST_WEIGHT)
   {
     computeParametersControlCosts(parameters_optimized_,
-                                  OPTIMIZATION_TIMESTEP,
+                                  config_.delta_t,
                                   config_.control_cost_weight,
                                   control_cost_matrix_R_,
                                   parameters_control_costs_);

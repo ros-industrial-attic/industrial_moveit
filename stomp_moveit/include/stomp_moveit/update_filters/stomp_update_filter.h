@@ -9,14 +9,14 @@
  *
  * @copyright Copyright (c) 2016, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -41,6 +41,14 @@ namespace stomp_moveit
 namespace update_filters
 {
 
+/**
+ * @class stomp_moveit::update_filters::StompUpdateFilter
+ * @brief Interface class which applies filtering methods to the update parameters before it is added onto the optimized trajectory.
+ *
+ * @par Examples:
+ * All examples are located here @ref examples
+ *
+ */
 class StompUpdateFilter;
 typedef boost::shared_ptr<StompUpdateFilter> StompUpdateFilterPtr;
 
@@ -50,26 +58,46 @@ public:
   StompUpdateFilter(){}
   virtual ~StompUpdateFilter(){}
 
+  /**
+   * @brief Initializes and configures.
+   * @param robot_model_ptr A pointer to the robot model.
+   * @param group_name      The designated planning group.
+   * @param config          The configuration data.  Usually loaded from the ros parameter server
+   * @return true if succeeded, false otherwise.
+   */
   virtual bool initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                           const std::string& group_name,const XmlRpc::XmlRpcValue& config) = 0;
 
+  /**
+   * @brief Sets internal members of the plugin from the configuration data.
+   * @param config  The configuration data.  Usually loaded from the ros parameter server
+   * @return  true if succeeded, false otherwise.
+   */
   virtual bool configure(const XmlRpc::XmlRpcValue& config) = 0;
 
+  /**
+   * @brief Stores the planning details.
+   * @param planning_scene      A smart pointer to the planning scene
+   * @param req                 The motion planning request
+   * @param config              The  Stomp configuration.
+   * @param error_code          Moveit error code.
+   * @return  true if succeeded, false otherwise.
+   */
   virtual bool setMotionPlanRequest(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
                    moveit_msgs::MoveItErrorCodes& error_code) = 0;
 
   /**
-   * @brief filters the parameter updates
+   * @brief Filters the parameter updates and may change its values.
    *
    * @param start_timestep    start index into the 'parameters' array, usually 0.
    * @param num_timesteps     number of elements to use from 'parameters' starting from 'start_timestep'
    * @param iteration_number  The current iteration count in the optimization loop
-   * @param parameters        The parameters generated in the previous iteration [num_dimensions] x [num_timesteps]
-   * @param updates           The updates to be applied to the parameters [num_dimensions] x [num_timesteps]
-   * @param filtered          set ot 'true' if the updates were modified.
-   * @return false if something failed
+   * @param parameters        The parameters generated in the previous iteration [num_dimensions x num_timesteps]
+   * @param updates           Output argument which contains the updates to be applied to the parameters [num_dimensions x num_timesteps]
+   * @param filtered          Output argument which is set to 'true' if the updates were modified.
+   * @return false if there was an irrecoverable failure, true otherwise.
    */
   virtual bool filter(std::size_t start_timestep,
                       std::size_t num_timesteps,
@@ -79,13 +107,25 @@ public:
                       bool& filtered) = 0 ;
 
   /**
+   * @brief Called by STOMP at the end of each iteration.
+   * @param start_timestep    The start index into the 'parameters' array, usually 0.
+   * @param num_timesteps     The number of elements to use from 'parameters' starting from 'start_timestep'
+   * @param iteration_number  The current iteration count in the optimization loop
+   * @param cost              The cost value for the current parameters.
+   * @param parameters        The value of the parameters at the end of the current iteration [num_dimensions x num_timesteps].
+   */
+  virtual void postIteration(std::size_t start_timestep,
+                                std::size_t num_timesteps,int iteration_number,double cost,const Eigen::MatrixXd& parameters){}
+
+  /**
    * @brief Called by the Stomp at the end of the optimization process
    *
    * @param success           Whether the optimization succeeded
    * @param total_iterations  Number of iterations used
    * @param final_cost        The cost value after optimizing.
+   * @param parameters        The parameters generated at the end of current iteration [num_dimensions x num_timesteps]
    */
-  virtual void done(bool success,int total_iterations,double final_cost){}
+  virtual void done(bool success,int total_iterations,double final_cost,const Eigen::MatrixXd& parameters){}
 
 
   virtual std::string getName() const

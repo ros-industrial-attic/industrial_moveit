@@ -1,8 +1,6 @@
 /**
  * @file constrained_ik.h
- * @brief Basic low-level kinematics functions.
- *
- * Typically, just wrappers around the equivalent KDL calls.
+ * @brief Constrained Inverse Kinematic Solver
  *
  * @author dsolomon
  * @date Sep 15, 2013
@@ -11,14 +9,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,6 +29,7 @@
 #include "constrained_ik/basic_kin.h"
 #include "constraint_group.h"
 #include "solver_state.h"
+#include "constrained_ik/constrained_ik_utils.h"
 #include <string>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -38,23 +37,22 @@
 #include <constrained_ik/enum_types.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include <constrained_ik/constraint_results.h>
-#include <dynamic_reconfigure/server.h>
-#include <dynamic_reconfigure/Reconfigure.h>
-#include <constrained_ik/ConstrainedIKDynamicReconfigureConfig.h>
+#include <pluginlib/class_loader.h>
 
 namespace constrained_ik
 {
 
+/** @brief Available Solver Status */
 enum SolverStatus
 {
-  Converged,
-  NotConverged,
-  Failed
+  Converged, /**< Solver has converged */
+  NotConverged, /**< Solver has not converged */
+  Failed, /**< Solver failed to converge */
 };
 
 /**
  * @brief Damped Least-Squares Inverse Kinematic Solution
- *          - see derived classes for more complex constrained-IK solvers
+ * @todo Remove calcNullspaceProjection function and rename calcNullspaceProjectionTheRightWay to calcNullspaceProjection
  */
 class Constrained_IK
 {
@@ -63,7 +61,6 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   Constrained_IK();
-  virtual ~Constrained_IK() { }
 
   /**
    * @brief computes and returns the link transfoms of the named joints
@@ -72,7 +69,7 @@ public:
    * @param link_names the names of the links
    * @return true on success
    */
-  bool linkTransforms(const Eigen::VectorXd &joints,
+  virtual bool linkTransforms(const Eigen::VectorXd &joints,
                       std::vector<KDL::Frame> &poses,
                       const std::vector<std::string> link_names = std::vector<std::string>()) const
   {return kin_.linkTransforms(joints, poses, link_names);}
@@ -96,11 +93,20 @@ public:
   }
 
   /**
+   * @brief Add constraints from the ROS Parameter Server
+   * This allows for the constraints to be defined in a yaml file and loaded
+   * at runtime using the plugin interface.
+   * @param parameter_name the complete parameter name on the ROS parameter server
+   * Example: parameter_name="/namespace/namespace2/array_parameter"
+   */
+  virtual void addConstraintsFromParamServer(const std::string &parameter_name);
+
+  /**
    * @brief computes the inverse kinematics for the given pose of the tip link
-   * @param pose  The pose of the tip link
+   * @param goal cartesian pose to solve the inverse kinematics about
    * @param joint_seed joint values that is used as the initial guess
    * @param joint_angles The joint pose that places the tip link to the desired pose.
-   * @return True if valid IK solution is found
+   * @return True if valid IK solution is found, otherwise false
    */
   virtual bool calcInvKin(const Eigen::Affine3d &goal,
                           const Eigen::VectorXd &joint_seed,
@@ -109,12 +115,12 @@ public:
 
   /**
    * @brief computes the inverse kinematics for the given pose of the tip link
-   * @param pose  The pose of the tip link
+   * @param goal cartesian pose to solve the inverse kinematics about
    * @param joint_seed joint values that is used as the initial guess
    * @param planning_scene pointer to a planning scene that holds all the object in the environment.  Use by the solver to check for collision; if
    *            a null pointer is passed then collisions are ignored.
    * @param joint_angles The joint pose that places the tip link to the desired pose.
-   * @return True if valid IK solution is found
+   * @return True if valid IK solution is found, otherwise false
    */
   virtual bool calcInvKin(const Eigen::Affine3d &goal,
                           const Eigen::VectorXd &joint_seed,
@@ -125,7 +131,7 @@ public:
    * @brief Checks to see if object is initialized (ie: init() has been called)
    * @return InitializationState
    */
-  initialization_state::InitializationState checkInitialized() const
+  virtual initialization_state::InitializationState checkInitialized() const
   {
     if (initialized_)
     {
@@ -149,39 +155,42 @@ public:
   }
 
   /** @brief Delete all constraints */
-  void clearConstraintList();
+  virtual void clearConstraintList();
 
   /**
    * @brief Getter for joint names
    * @param names Output vector of strings naming all joints in robot
    * @return True if BasicKin object is initialized
    */
-  bool getJointNames(std::vector<std::string> &names) const {return kin_.getJointNames(names);}
+  virtual bool getJointNames(std::vector<std::string> &names) const {return kin_.getJointNames(names);}
 
   /**
    * @brief Getter for kinematics object
    * @return Reference to active kinematics object
    */
-  inline const basic_kin::BasicKin& getKin() const {return kin_;}
+  virtual inline const basic_kin::BasicKin& getKin() const {return kin_;}
 
   /**
    * @brief Getter for link names
    * @param names Output vector of strings naming all links in robot
    * @return True is BasicKin object is initialized
    */
-  bool getLinkNames(std::vector<std::string> &names) const {return kin_.getLinkNames(names);}
+  virtual bool getLinkNames(std::vector<std::string> &names) const {return kin_.getLinkNames(names);}
 
   /**
    * @brief Getter for solver configuration
-   * @return ConstrainedIKDynamicReconfigureConfig
+   * @return ConstrainedIkConfiguration
    */
-  ConstrainedIKDynamicReconfigureConfig getSolverConfiguration() const {return config_;}
+  virtual ConstrainedIKConfiguration getSolverConfiguration() const {return config_;}
 
   /**
    * @brief Setter for solver configuration
    * @param config new object for config_
    */
-  void setSolverConfiguration(const ConstrainedIKDynamicReconfigureConfig &config) {config_ = config;}
+  virtual void setSolverConfiguration(const ConstrainedIKConfiguration &config);
+
+  /** @brief This will load the default solver configuration parameters. */
+  virtual void loadDefaultSolverConfiguration();
 
   /**
    * @brief Initializes object with kinematic model of robot
@@ -193,40 +202,55 @@ public:
    * @brief Getter for BasicKin numJoints
    * @return Number of variable joints in robot
    */
-  unsigned int numJoints() const {return kin_.numJoints();}
+  virtual unsigned int numJoints() const {return kin_.numJoints();}
 
   /**
    * @brief Translates an angle to lie between +/-PI
+   * @todo Should be moved to the utils class
    * @param angle Input angle, radians
    * @return Output angle within range of +/- PI
    */
   static double rangedAngle(double angle);
 
-  //TODO document
+  /**
+   * @brief Calculates the null space projection matrix using J^-1 * J
+   * @param J matrix to compute null space projection matrix from
+   * @return null space projection matrix
+   */
   virtual Eigen::MatrixXd calcNullspaceProjection(const Eigen::MatrixXd &J) const;
 
-  //TODO document
+  /**
+   * @brief Calculates the null space projection matrix using SVD
+   * @param A matrix to compute null space projection matrix from
+   * @return null space projection matrix
+   */
   virtual Eigen::MatrixXd calcNullspaceProjectionTheRightWay(const Eigen::MatrixXd &A) const;
 
-  //TODO document
+  /**
+   * @brief Calculate the damped pseudo inverse of a matrix
+   * @param J matrix to compute inverse of
+   * @return inverse of J
+   */
   virtual Eigen::MatrixXd calcDampedPseudoinverse(const Eigen::MatrixXd &J) const;
 
-  void dynamicReconfigureCallback(ConstrainedIKDynamicReconfigureConfig &config, uint32_t level);
+  /**
+   * @brief Check if solver has been initialized
+   * @return True if initialized, otherwise false
+   */
+  bool isInitialized() const { return initialized_; }
 
  protected:
   // solver configuration parameters
-  ros::NodeHandle nh_;
-  ConstrainedIKDynamicReconfigureConfig config_;
-  boost::scoped_ptr<dynamic_reconfigure::Server<ConstrainedIKDynamicReconfigureConfig> > dynamic_reconfigure_server_;
-  boost::recursive_mutex mutex_;
+  ros::NodeHandle nh_;                /**< ROS node handle */
+  ConstrainedIKConfiguration config_; /**< Solver configuration parameters */
 
   // constraints
-  ConstraintGroup primary_constraints_;
-  ConstraintGroup auxiliary_constraints_;
+  ConstraintGroup primary_constraints_;   /**< Array of primary constraints */
+  ConstraintGroup auxiliary_constraints_; /**< Array of auxiliary constraints */
 
   // state/counter data
-  bool initialized_;
-  basic_kin::BasicKin kin_;
+  bool initialized_;        /**< True if solver is intialized, otherwise false */
+  basic_kin::BasicKin kin_; /**< Solver kinematic model */
 
   /**
    * @brief Calculating error, jacobian & status for all constraints specified.
@@ -234,28 +258,28 @@ public:
    * @param state The state of the current solver
    * @return ConstraintResults
    */
-  constrained_ik::ConstraintResults evalConstraint(constraint_types::ConstraintTypes constraint_type, const constrained_ik::SolverState &state) const;
+  virtual constrained_ik::ConstraintResults evalConstraint(constraint_types::ConstraintTypes constraint_type, const constrained_ik::SolverState &state) const;
 
   /**
    * @brief This function clips the joints within the joint limits.
    * @param joints a Eigen::VectorXd passed by reference
    */
-  void clipToJointLimits(Eigen::VectorXd &joints) const;
+  virtual void clipToJointLimits(Eigen::VectorXd &joints) const;
 
   /**
    * @brief Method determine convergence when both primary
    * and auxiliary constraints are present
-   * @param state, The state of the current solver
-   * @param primary, The primary constraint results
-   * @param auxiliary, The auxiliary constraint results
-   * @return bool, True for converged, False for not converged
+   * @param state current state of the solver
+   * @param primary constraint results
+   * @param auxiliary constraint results
+   * @return SolverStatus
    */
   virtual SolverStatus checkStatus(const constrained_ik::SolverState &state, const constrained_ik::ConstraintResults &primary, const constrained_ik::ConstraintResults &auxiliary) const;
 
   /**
    * @brief Creates a new SolverState and checks key elements.
-   * @param goal, The goal of the solver
-   * @param joint_seed, The inital joint position for the solver.
+   * @param goal cartesian pose to solve the inverse kinematics about
+   * @param joint_seed inital joint position for the solver.
    * @return SolverState
    */
   virtual constrained_ik::SolverState getState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed) const;
@@ -263,8 +287,8 @@ public:
   /**
    * @brief Method update an existing SolverState provided
    * new joint positions.
-   * @param state, The state of the current solver
-   * @param joints, The new joint position to be used by the solver
+   * @param state solvers current state
+   * @param joints new joint position to be used by the solver
    */
   virtual void updateState(constrained_ik::SolverState &state, const Eigen::VectorXd &joints) const;
 
@@ -272,6 +296,6 @@ public:
 
 } // namespace constrained_ik
 
-typedef constrained_ik::SolverStatus SolverStatus;
+typedef constrained_ik::SolverStatus SolverStatus; /**< typedef SolverStatus to the global namespace */
 #endif // CONSTRAINED_IK_H
 

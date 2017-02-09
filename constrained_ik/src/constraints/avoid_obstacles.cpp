@@ -13,14 +13,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,13 +33,13 @@
 #include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::AvoidObstacles, constrained_ik::Constraint)
 
-const double DEFAULT_WEIGHT = 1.0;
-const double DEFAULT_MIN_DISTANCE = 0.1;
-const double DEFAULT_AVOIDANCE_DISTANCE = 0.3;
-const double DEFAULT_AMPLITUDE = 0.3;
-const double DEFAULT_SHIFT = 5.0;
-const double DEFAULT_ZERO_POINT = 10;
-const double DYNAMIC_WEIGHT_FUNCTION_CONSTANT = -13.86;
+const double DEFAULT_WEIGHT = 1.0; /**< Default weight */
+const double DEFAULT_MIN_DISTANCE = 0.1; /**< Default minimum obstacle distance allowed for convergence */
+const double DEFAULT_AVOIDANCE_DISTANCE = 0.3; /**< Default distance at which to start avoiding the obstacle */
+const double DEFAULT_AMPLITUDE = 0.3; /**< Default amplitude of the sigmoid error curve */
+const double DEFAULT_SHIFT = 5.0; /**< Default shift for the sigmoid error curve */
+const double DEFAULT_ZERO_POINT = 10; /**< Default zeros point for the sigmoid error curve */
+const double DYNAMIC_WEIGHT_FUNCTION_CONSTANT = -13.86; /**< Default dynamic weight function constant */
 
 namespace constrained_ik
 {
@@ -53,7 +53,8 @@ using Eigen::MatrixXd;
 using std::string;
 using std::vector;
 
-AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), avoidance_distance_(DEFAULT_AVOIDANCE_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL), link_name_(link_name) {}
+AvoidObstacles::LinkAvoidance::LinkAvoidance(): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), avoidance_distance_(DEFAULT_AVOIDANCE_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL) {}
+AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): LinkAvoidance() {link_name_ = link_name;}
 
 void AvoidObstacles::init(const Constrained_IK * ik)
 {
@@ -106,7 +107,7 @@ void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
     }
     else
     {
-      ROS_WARN("Abstacle Avoidance: Unable to retrieving amplitude member, default parameter will be used.");
+      ROS_WARN("Abstacle Avoidance: Unable to retrieve amplitude member, default parameter will be used.");
     }
 
     if (getParam(local_xml, "minimum_distance", minimum_distance))
@@ -119,7 +120,7 @@ void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
     }
     else
     {
-      ROS_WARN("Abstacle Avoidance: Unable to retrieving minimum_distance member, default parameter will be used.");
+      ROS_WARN("Abstacle Avoidance: Unable to retrieve minimum_distance member, default parameter will be used.");
     }
 
     if (getParam(local_xml, "avoidance_distance", avoidance_distance))
@@ -132,20 +133,20 @@ void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
     }
     else
     {
-      ROS_WARN("Abstacle Avoidance: Unable to retrieving avoidance_distance member, default parameter will be used.");
+      ROS_WARN("Abstacle Avoidance: Unable to retrieve avoidance_distance member, default parameter will be used.");
     }
 
-    if (getParam(local_xml, "weight", weight))
+    if (getParam(local_xml, "weights", weight))
     {
       if (link_names.size()!=weight.size())
       {
-        ROS_WARN("Abstacle Avoidance: weight memebr must be same size array as link_names member, default parameters will be used.");
+        ROS_WARN("Abstacle Avoidance: weights member must be same size array as link_names member, default parameters will be used.");
         weight.clear();
       }
     }
     else
     {
-      ROS_WARN("Abstacle Avoidance: Unable to retrieving weight member, default parameter will be used.");
+      ROS_WARN("Abstacle Avoidance: Unable to retrieve weight member, default parameter will be used.");
     }
 
 
@@ -172,7 +173,7 @@ void AvoidObstacles::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
   }
   else
   {
-    ROS_WARN("Abstacle Avoidance: Unable to retrieving link_names member, default parameter will be used.");
+    ROS_WARN("Abstacle Avoidance: Unable to retrieve link_names member, default parameter will be used.");
   }
 }
 
@@ -274,6 +275,7 @@ bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata
 AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state, const AvoidObstacles *parent): ConstraintData(state), parent_(parent)
 {
   DistanceRequest distance_req(true, false, parent_->link_models_, state_.planning_scene->getAllowedCollisionMatrix(), parent_->distance_threshold_);
+  distance_req.group_name = state.group_name;
   distance_res_.clear();
   
   collision_detection::CollisionRequest collision_req;

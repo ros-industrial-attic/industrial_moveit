@@ -11,14 +11,14 @@
  *
  * @copyright Copyright (c) 2013, Southwest Research Institute
  *
- * @license Software License Agreement (Apache License)\n
- * \n
+ * @par License
+ * Software License Agreement (Apache License)
+ * @par
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at\n
- * \n
- * http://www.apache.org/licenses/LICENSE-2.0\n
- * \n
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * @par
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -61,7 +61,6 @@ public:
   {
 
   }
-  ~BasicKin() {}
 
   /**
    * @brief Calculates tool pose of robot chain
@@ -116,14 +115,6 @@ public:
    */
   bool getJointNames(std::vector<std::string> &names) const;
 
-
-//   * @brief Get list of joint names for specific robot chain
-//   * Crawls chain to create list
-//   * @param chain Input robot chain to retrieve list from
-//   * @param names Output vector of joint names
-//   * @return True if BasicKin has been successfully initialized
-//  bool getJointNames(const KDL::Chain &chain, std::vector<std::string> &names) const;
-
   /**
    * @brief Getter for joint_limits_
    * @return Matrix of joint limits
@@ -138,21 +129,10 @@ public:
    */
   bool getLinkNames(std::vector<std::string> &names) const;
 
-  //TODO test
-//   * @brief Get list of link names for specific robot chain
-//   * Crawls chain to create list
-//   * @param chain Input robot chain to retrieve list from
-//   * @param names Output vector of link names
-//   * @return True if BasicKin has been successfully initialized
-//  bool getLinkNames(const KDL::Chain &chain, std::vector<std::string> &names) const;
-
   /**
    * @brief Initializes BasicKin
    * Creates KDL::Chain from urdf::Model, populates joint_list_, joint_limits_, and link_list_
-   * @param robot Input model containing robot information
-   * @param base_name Input name of base link
-   * @param tip_name Input name of tip link
-   * @param group_name Input name of the kinematic group
+   * @param group Input kinematic joint model group
    * @return True if init() completes successfully
    */
   bool init(const moveit::core::JointModelGroup* group);
@@ -251,15 +231,17 @@ static void KDLToEigen(const KDL::Jacobian &jacobian, Eigen::MatrixXd &matrix);
 static void EigenToKDL(const Eigen::VectorXd &vec, KDL::JntArray &joints) {joints.data = vec;}
 
 private:
-  bool initialized_;
-  const moveit::core::JointModelGroup* group_;
-  KDL::Chain  robot_chain_;
-  KDL::Tree   kdl_tree_;
-  std::string base_name_,  tip_name_, root_name_;
-  std::vector<std::string> joint_list_, link_list_;
-  Eigen::Matrix<double, Eigen::Dynamic, 2> joint_limits_;
-  boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_;
-  boost::scoped_ptr<KDL::ChainJntToJacSolver> jac_solver_;
+  bool initialized_;                                             /**< Identifies if the object has been initialized */
+  const moveit::core::JointModelGroup* group_;                   /**< Move group */
+  KDL::Chain  robot_chain_;                                      /**< KDL Chain object */
+  KDL::Tree   kdl_tree_;                                         /**< KDL tree object */
+  std::string base_name_;                                        /**< Link name of first link in the kinematic chain */
+  std::string tip_name_;                                         /**< Link name of last kink in the kinematic chain */
+  std::vector<std::string> joint_list_;                          /**< List of joint names */
+  std::vector<std::string> link_list_;                           /**< List of link names */
+  Eigen::Matrix<double, Eigen::Dynamic, 2> joint_limits_;        /**< Joint limits */
+  boost::scoped_ptr<KDL::ChainFkSolverPos_recursive> fk_solver_; /**< KDL Forward Kinematic Solver */
+  boost::scoped_ptr<KDL::ChainJntToJacSolver> jac_solver_;       /**< KDL Jacobian Solver */
 
   /**
    * @brief Get joint number of given joint in initialized robot
