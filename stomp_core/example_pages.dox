@@ -1,5 +1,5 @@
 /**
-@page examples stomp_core examples
+@page stomp_core_examples stomp_core examples
 @tableofcontents
 @section stomp_core_example Optimize with STOMP
 The full example program can be found in file @ref stomp_example_code

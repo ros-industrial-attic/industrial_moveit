@@ -43,7 +43,7 @@ namespace cost_functions
  *        is from the desired under-constrained task manifold
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_plugins_examples
  */
 class ToolGoalPose: public StompCostFunction
 {

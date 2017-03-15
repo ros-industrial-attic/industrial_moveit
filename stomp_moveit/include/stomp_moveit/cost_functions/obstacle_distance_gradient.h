@@ -39,7 +39,7 @@ namespace cost_functions
  * @brief Assigns a cost value to  each robot state by evaluating the minimum distance between the robot and the nearest obstacle.
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  */
 class ObstacleDistanceGradient : public StompCostFunction
 {

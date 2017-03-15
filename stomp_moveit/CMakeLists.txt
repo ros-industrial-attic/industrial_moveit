@@ -83,6 +83,24 @@ target_link_libraries(${PROJECT_NAME}_noise_generators ${catkin_LIBRARIES})
 #############
 ## Install ##
 #############
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+
+## Mark cpp header files for installation
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
+
+## Mark executables and/or libraries for installation
+install(TARGETS ${PROJECT_NAME}_planner_manager ${PROJECT_NAME}_cost_functions 
+  ${PROJECT_NAME}_noisy_filters ${PROJECT_NAME}_update_filters ${PROJECT_NAME}_noise_generators
+ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(FILES cost_function_plugins.xml noise_generator_plugins.xml update_filter_plugins.xml planner_manager_plugins.xml noisy_filter_plugins.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 
 install(
   FILES

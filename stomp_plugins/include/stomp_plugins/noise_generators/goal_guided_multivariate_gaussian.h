@@ -45,7 +45,7 @@ typedef boost::variate_generator< RGNType, boost::uniform_real<> > RandomGenerat
  * @brief This class generates noisy trajectories to an under-constrained cartesian goal pose.
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_plugins_examples
  *
  */
 class GoalGuidedMultivariateGaussian: public StompNoiseGenerator
