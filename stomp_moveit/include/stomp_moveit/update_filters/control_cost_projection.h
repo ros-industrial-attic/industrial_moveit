@@ -42,7 +42,7 @@ namespace update_filters
  *    The matrix is built using a numerical derivative method
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  *
  */
 class ControlCostProjection : public StompUpdateFilter

@@ -1,12 +1,13 @@
 <?xml version="1.0"?>
 <package>
   <name>stomp_moveit</name>
-  <version>0.0.0</version>
+  <version>0.1.1</version>
   <description>The stomp_moveit package</description>
 
   <maintainer email="jrgnichodevel@gmail.com">Jorge Nicho</maintainer>
   <license>Apache 2.0</license>
   <author email="jrgnichodevel@gmail.com">Jorge Nicho</author>
+  <url type="website">http://ros.org/wiki/stomp_moveit</url>
 
   <buildtool_depend>catkin</buildtool_depend>
 
@@ -31,5 +32,6 @@
     <stomp_moveit plugin="${prefix}/noisy_filter_plugins.xml"/>
     <stomp_moveit plugin="${prefix}/update_filter_plugins.xml"/>
     <stomp_moveit plugin="${prefix}/noise_generator_plugins.xml"/>
+    <rosdoc config="rosdoc.yaml"/>
   </export>
 </package>

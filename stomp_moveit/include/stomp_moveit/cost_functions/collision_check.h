@@ -40,7 +40,7 @@ namespace cost_functions
  * @brief Assigns a cost value to  each robot state by evaluating if the robot is in collision.
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  */
 class CollisionCheck : public StompCostFunction
 {

@@ -36,7 +36,7 @@ namespace stomp_moveit
  * @brief The PlannerManager implementation that loads STOMP into moveit
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  *
  */
 class StompPlannerManager : public planning_interface::PlannerManager

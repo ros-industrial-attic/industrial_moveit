@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   cmake_modules
 )
+
 find_package(Eigen REQUIRED)
 
 add_definitions("-std=c++11")
@@ -16,7 +17,7 @@ add_definitions("-std=c++11")
 ## catkin specific configuration ##
 ###################################
 catkin_package(
-  INCLUDE_DIRS include
+  INCLUDE_DIRS include ${EIGEN_INCLUDE_DIRS}
   LIBRARIES stomp_core
   CATKIN_DEPENDS roscpp cmake_modules
   DEPENDS Eigen
@@ -47,6 +48,14 @@ target_link_libraries(${PROJECT_NAME}_example ${PROJECT_NAME} ${catkin_LIBRARIES
 #############
 ## Install ##
 #############
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+
+## Mark cpp header files for installation
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN ".svn" EXCLUDE
+)
 
 
 #############

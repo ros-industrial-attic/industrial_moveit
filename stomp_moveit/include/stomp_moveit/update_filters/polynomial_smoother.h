@@ -53,7 +53,7 @@ namespace update_filters
  *   d - An array of the values corresponding to the constrained domain values
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  *
  */
 class PolynomialSmoother : public StompUpdateFilter

@@ -56,7 +56,7 @@ typedef std::shared_ptr<NoiseGeneratorLoader> NoiseGeneratorLoaderPtr;
  * @brief Loads and manages the STOMP plugins during the planning process.
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  *
  */
 class StompOptimizationTask: public stomp_core::Task

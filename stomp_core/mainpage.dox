@@ -3,12 +3,12 @@
  * @htmlinclude manifest.html
  *
  * @section Description Description
- * This package containes the STOMP Core algorithm. The acronym STOMP,
+ * This package contains the STOMP Core algorithm. The acronym STOMP
  * stands for "Stochastic Trajectory Optimization for Motion Planning".
- * This planner can plan paths for high-dimensional robotic systems that
- * are collision-free, smooth, and can simultaneously satisfy task
- * constraints, minimize energy consumption, or optimize other arbitrary
- * criteria. STOMP is derived from gradient-free optimization and path
+ * This planner can produce smooths, collision-free paths for high-dimensional 
+ * robotic systems that satisfy various task constraints in order to minimize 
+ * energy consumption or optimize other user-chosen
+ * criteria. STOMP leverages gradient-free optimization and path
  * integral reinforcement learning techniques (Policy Improvement with
  * Path Integrals, Theodorou et al, 2010).
  *
@@ -26,5 +26,5 @@
  * limitations under the License.
  *
  * @section Examples
- * @ref examples
+ * @ref stomp_core_examples
  */

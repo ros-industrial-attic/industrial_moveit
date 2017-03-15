@@ -5,17 +5,19 @@
 - Build the workspace:
   - Cd into the catkin workspace directory and type the following command:
 ```
-catkin_make --jobs=4
+catkin build
 ```
 
 #### Unit Test
-- Run stomp_core Unit Test:
+- Run all of industrial_moveit unit tests:
   - Cd into the catkin workspace directory and type the following command:
 ```
-catkin_make run_tests_stomp_core_gtest
+catkin run_tests 
 ```
-- Inspect the Unit test
-  - *roscd* into the **stomp_core** package and go locate the "stomp_3dof.cpp" file inside the **test** directory.
+- Run the stomp_core unit tests:
+```
+catkin run_tests stomp_core
+```
 
 
 #### Stomp Moveit Demo
@@ -34,8 +36,9 @@ catkin_make run_tests_stomp_core_gtest
   - **roscd** into the **stomp_test_kr210_moveit_config** package and locate the "stomp_config.yaml" file under the config directory
 - Rerun demo.launch file and plan once again to see how the changes affect the planner's behavior. 
 
-==============================================================================================
-[ROS-Industrial][] move it meta-package.  See the [ROS wiki][] page for more information.  
-[ROS-Industrial]: http://www.ros.org/wiki/Industrial
-[ROS wiki]: http://ros.org/wiki/industrial_moveit
+========================================================================  
+[ROS-Industrial]: http://www.ros.org/wiki/Industrial  
+[ROS wiki]: http://ros.org/wiki/industrial_moveit  
+[ConstrainedIK]: http://wiki.ros.org/constrained_ik?distro=indigo  
+[Stomp MoveIt!]: http://wiki.ros.org/stomp_moveit
 

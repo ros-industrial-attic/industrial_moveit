@@ -40,7 +40,7 @@ namespace noise_generators
  * @brief Uses a normal distribution to apply noise onto the trajectory.
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  */
 class NormalDistributionSampling: public StompNoiseGenerator
 {

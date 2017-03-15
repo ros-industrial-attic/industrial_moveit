@@ -48,7 +48,7 @@ typedef std::shared_ptr<StompCostFunction> StompCostFunctionPtr;
  * @brief The interface class for the STOMP cost functions.
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  */
 class StompCostFunction
 {
