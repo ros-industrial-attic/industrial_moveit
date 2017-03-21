@@ -5,7 +5,19 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   cmake_modules
 )
-find_package(Eigen REQUIRED)
+
+
+find_package(Eigen3 QUIET)
+if(NOT EIGEN3_FOUND)
+  # saucy does not have Eigen3, but have Eigen instead
+  find_package(cmake_modules REQUIRED)
+  find_package(Eigen REQUIRED)
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS})
+endif()
+
+if(NOT EIGEN3_INCLUDE_DIRS)
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
+endif()
 
 add_definitions("-std=c++11")
 
@@ -19,7 +31,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES stomp_core
   CATKIN_DEPENDS roscpp cmake_modules
-  DEPENDS eigen
+  DEPENDS EIGEN3
 )
 
 ###########
@@ -29,7 +41,7 @@ include_directories(
   include
   examples
   ${catkin_INCLUDE_DIRS}
-  ${EIGEN_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -47,6 +59,14 @@ target_link_libraries(${PROJECT_NAME}_example ${PROJECT_NAME} ${catkin_LIBRARIES
 #############
 ## Install ##
 #############
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+
+## Mark cpp header files for installation
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN ".svn" EXCLUDE
+)
 
 
 #############

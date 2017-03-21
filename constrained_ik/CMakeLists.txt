@@ -125,33 +125,12 @@ add_library(moveit_clik_planner_plugin
 
 target_link_libraries(moveit_clik_planner_plugin constrained_ik constrained_ik_constraints ${catkin_LIBRARIES})
 
-## Declare a cpp executable
-# add_executable(constrained_ik_node src/constrained_ik_node.cpp)
-
-## Add cmake target dependencies of the executable/library
-## as an example, message headers may need to be generated before nodes
-# add_dependencies(constrained_ik_node constrained_ik_generate_messages_cpp)
 
 #############
 ## Install ##
 #############
-
-# all install targets should use catkin DESTINATION variables
-# See http://ros.org/doc/groovy/api/catkin/html/adv_user_guide/variables.html
-
-## Mark executable scripts (Python etc.) for installation
-## in contrast to setup.py, you can choose the destination
-# install(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
-
-## Mark executables and/or libraries for installation
-# install(TARGETS constrained_ik constrained_ik_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(TARGETS constrained_ik LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+install(TARGETS constrained_ik_constraints LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
 ## Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}/
@@ -160,13 +139,15 @@ install(DIRECTORY include/${PROJECT_NAME}/
   PATTERN ".svn" EXCLUDE
 )
 
-## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+install(TARGETS constrained_ik_plugin moveit_clik_planner_plugin 
+ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
+install(FILES constrained_ik_constraint_plugin_description.xml constrained_ik_planner_plugin_description.xml constrained_ik_plugin.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 #############
 ## Testing ##
 #############
