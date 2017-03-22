@@ -6,18 +6,7 @@ find_package(catkin REQUIRED COMPONENTS
   cmake_modules
 )
 
-
-find_package(Eigen3 QUIET)
-if(NOT EIGEN3_FOUND)
-  # saucy does not have Eigen3, but have Eigen instead
-  find_package(cmake_modules REQUIRED)
-  find_package(Eigen REQUIRED)
-  set(EIGEN3_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS})
-endif()
-
-if(NOT EIGEN3_INCLUDE_DIRS)
-  set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
-endif()
+find_package(Eigen REQUIRED)
 
 add_definitions("-std=c++11")
 
@@ -28,10 +17,10 @@ add_definitions("-std=c++11")
 ## catkin specific configuration ##
 ###################################
 catkin_package(
-  INCLUDE_DIRS include
+  INCLUDE_DIRS include ${EIGEN_INCLUDE_DIRS}
   LIBRARIES stomp_core
   CATKIN_DEPENDS roscpp cmake_modules
-  DEPENDS EIGEN3
+  DEPENDS eigen
 )
 
 ###########
@@ -41,7 +30,7 @@ include_directories(
   include
   examples
   ${catkin_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIRS}
+  ${EIGEN_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
