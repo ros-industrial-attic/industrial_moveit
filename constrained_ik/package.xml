@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>constrained_ik</name>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
   <description>Constraint-based IK solver.  Good for high-DOF robots or underconstrained tasks.</description>
 
   <author email="cl__is@swri.org">Chris Lewis</author>

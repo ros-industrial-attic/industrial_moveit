@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>stomp_core</name>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
   <description>The stomp_core package</description>
 
   <maintainer email="jrgnichodevel@gmail.com">Jorge Nicho</maintainer>
