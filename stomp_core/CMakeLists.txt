@@ -17,7 +17,7 @@ add_definitions("-std=c++11")
 ###################################
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES stomp_core
+  LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS roscpp cmake_modules
   DEPENDS eigen
 )
@@ -47,6 +47,15 @@ target_link_libraries(${PROJECT_NAME}_example ${PROJECT_NAME} ${catkin_LIBRARIES
 #############
 ## Install ##
 #############
+install(TARGETS ${PROJECT_NAME}
+ ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+ LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+ RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+)
+
+install(DIRECTORY include/${PROJECT_NAME}/
+ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
 
 
 #############
