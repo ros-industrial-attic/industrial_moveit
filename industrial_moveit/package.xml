@@ -1,6 +1,6 @@
 <package>
   <name>industrial_moveit</name>
-  <version>0.0.0</version>
+  <version>0.1.1</version>
   <description>ROS Industrial MoveIt packages.</description>
   <author email="jz__s@swri.org">Jeremy Zoss</author>
   <author email="dps____on@gmail.com">Dan Solomon</author>

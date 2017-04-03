@@ -27,7 +27,26 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 find_package(orocos_kdl REQUIRED)
 find_package(Boost REQUIRED)
-find_package(Eigen REQUIRED)
+
+# We don't build anything here, but in order to export the right
+# build flags in catkin_package(), we still have to find Eigen3 here.  Note
+# that this is somewhat complicated because of our need to support Ubuntu
+# all the way back to saucy.  First we look for the Eigen3 cmake module
+# provided by the libeigen3-dev on newer Ubuntu.  If that fails, then we
+# fall-back to the version provided by cmake_modules, which is a stand-in.
+find_package(Eigen3 QUIET)
+if(NOT EIGEN3_FOUND)
+  # saucy does not have Eigen3, but have Eigen instead
+  find_package(cmake_modules REQUIRED)
+  find_package(Eigen REQUIRED)
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS})
+endif()
+
+# Note that eigen 3.2 (on Ubuntu Wily) only provides EIGEN3_INCLUDE_DIR,
+# not EIGEN3_INCLUDE_DIRS, so we have to set the latter from the former.
+if(NOT EIGEN3_INCLUDE_DIRS)
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
+endif()
 
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
@@ -35,29 +54,6 @@ generate_dynamic_reconfigure_options(
   cfg/CLIKPlannerDynamic.cfg
 )
 
-#######################################
-## Declare ROS messages and services ##
-#######################################
-
-## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
-
-## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
-
-## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
 
 ###################################
 ## catkin specific configuration ##
@@ -68,7 +64,7 @@ generate_dynamic_reconfigure_options(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
- INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
+ INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS}
  LIBRARIES constrained_ik constrained_ik_constraints moveit_clik_planner_plugin constrained_ik_plugin
  CATKIN_DEPENDS roscpp urdf eigen_conversions tf_conversions urdf moveit_ros_planning moveit_core dynamic_reconfigure kdl_parser cmake_modules industrial_collision_detection
  DEPENDS boost eigen orocos_kdl
@@ -80,7 +76,7 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
 
 ## Declare a cpp library
 add_library(constrained_ik
@@ -125,33 +121,12 @@ add_library(moveit_clik_planner_plugin
 
 target_link_libraries(moveit_clik_planner_plugin constrained_ik constrained_ik_constraints ${catkin_LIBRARIES})
 
-## Declare a cpp executable
-# add_executable(constrained_ik_node src/constrained_ik_node.cpp)
-
-## Add cmake target dependencies of the executable/library
-## as an example, message headers may need to be generated before nodes
-# add_dependencies(constrained_ik_node constrained_ik_generate_messages_cpp)
 
 #############
 ## Install ##
 #############
-
-# all install targets should use catkin DESTINATION variables
-# See http://ros.org/doc/groovy/api/catkin/html/adv_user_guide/variables.html
-
-## Mark executable scripts (Python etc.) for installation
-## in contrast to setup.py, you can choose the destination
-# install(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
-
-## Mark executables and/or libraries for installation
-# install(TARGETS constrained_ik constrained_ik_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(TARGETS constrained_ik LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+install(TARGETS constrained_ik_constraints LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
 ## Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}/
@@ -160,13 +135,15 @@ install(DIRECTORY include/${PROJECT_NAME}/
   PATTERN ".svn" EXCLUDE
 )
 
-## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+install(TARGETS constrained_ik_plugin moveit_clik_planner_plugin 
+ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
+install(FILES constrained_ik_constraint_plugin_description.xml constrained_ik_planner_plugin_description.xml constrained_ik_plugin.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 #############
 ## Testing ##
 #############
