@@ -43,7 +43,7 @@ namespace noisy_filters
  * @brief Publishes rviz markers to visualize the noisy trajectories
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  *
  */
 class MultiTrajectoryVisualization : public StompNoisyFilter

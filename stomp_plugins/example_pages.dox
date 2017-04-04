@@ -1,5 +1,5 @@
 /**
-@page examples STOMP Plugins Examples
+@page stomp_plugins_examples STOMP Plugins Examples
 @tableofcontents
 @section stomp_plugins STOMP Plugins
 @subsection cost_functions_plugins Cost Function Plugins

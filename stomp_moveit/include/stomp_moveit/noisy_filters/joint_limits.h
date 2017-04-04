@@ -40,7 +40,7 @@ namespace noisy_filters
  *  the values of those joints that exceed the limits.
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  *
  */
 class JointLimits : public StompNoisyFilter

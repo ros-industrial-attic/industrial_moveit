@@ -34,7 +34,7 @@
  *      - @ref  update_logger_example 
  * 
  * @section Examples
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  *    
  * @section License
  * Software License Agreement (Apache License)

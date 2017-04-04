@@ -43,7 +43,7 @@ namespace update_filters
  * @brief Publishes rviz markers to visualize the optimized trajectory
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  *
  */
 class TrajectoryVisualization : public StompUpdateFilter

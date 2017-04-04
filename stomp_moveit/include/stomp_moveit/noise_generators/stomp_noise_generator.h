@@ -48,7 +48,7 @@ typedef boost::shared_ptr<StompNoiseGenerator> StompNoiseGeneratorPtr;
  * @brief Interface class for plugins that apply random noise to the trajectory in order to explore the workspace.
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  */
 class StompNoiseGenerator
 {
