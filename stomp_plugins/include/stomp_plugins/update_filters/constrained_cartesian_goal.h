@@ -40,7 +40,7 @@ namespace update_filters
  * @brief Forces the goal cartesian tool pose into the task space.
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_plugins_examples
  *
  */
 class ConstrainedCartesianGoal : public StompUpdateFilter

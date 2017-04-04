@@ -2,10 +2,17 @@
   <name>industrial_moveit</name>
   <version>0.1.1</version>
   <description>ROS Industrial MoveIt packages.</description>
-  <author email="jz__s@swri.org">Jeremy Zoss</author>
-  <author email="dps____on@gmail.com">Dan Solomon</author>
-  <maintainer email="jzoss@swri.org">Jeremy Zoss</maintainer>
-  <maintainer email="dpsolomon@gmail.com">Dan Solomon</maintainer>
+  <author email="clewis@swri.org">Chris Lewis</author>
+  <author email="dpsolomon@gmail.com">Dan Solomon</author>
+  <author email="jzoss@swri.org">Jeremy Zoss</author>
+  <author email="levi.armstrong@gmail.com">Levi Armstrong</author>
+  <author email="jrgnichodevel@gmail.com">Jorge Nicho</author>
+  <author email="jonathan.meyer@swri.org">Jonathan Meyer</author>
+
+  <maintainer email="levi.armstrong@gmail.com">Levi Armstrong</maintainer>
+  <maintainer email="jrgnichodevel@gmail.com">Jorge Nicho</maintainer>
+  <maintainer email="jonathan.meyer@swri.org">Jonathan Meyer</maintainer>
+
   <license>Apache 2.0</license>
 
   <url type="website">http://ros.org/wiki/industrial_moveit</url>
@@ -15,6 +22,12 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <run_depend>constrained_ik</run_depend>
+  <run_depend>stomp_core</run_depend>
+  <run_depend>stomp_moveit</run_depend>
+  <run_depend>stomp_plugins</run_depend>
+  <run_depend>industrial_collision_detection</run_depend>
+  <run_depend>stomp_test_support</run_depend>
+  <run_depend>stomp_test_kr210_moveit_config</run_depend>
 
   <export>
     <metapackage/>

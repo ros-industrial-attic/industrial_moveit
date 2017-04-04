@@ -46,7 +46,7 @@ namespace update_filters
  * @brief Interface class which applies filtering methods to the update parameters before it is added onto the optimized trajectory.
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  *
  */
 class StompUpdateFilter;

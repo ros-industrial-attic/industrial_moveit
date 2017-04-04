@@ -1,5 +1,5 @@
 /**
-@page examples STOMP MoveIt! examples
+@page stomp_moveit_examples STOMP MoveIt! examples
 @tableofcontents
 @section stomp_moveit Plan with STOMP through MoveIt!
 
@@ -158,7 +158,7 @@ distances will lead to higher costs values for that state. Collisions will be se
     longest_valid_joint_move: 0.05 
 @endcode
   - class:        The class name
-  - max_distance: Used in calculating the cost as a function of the shortest distance.  The cost equals <b>abs(max_distance - d)/max_distance]</b>
+  - max_distance: Used in calculating the cost as a function of the shortest distance.  The cost equals <b>[(max_distance - d)/max_distance]</b>
                   If the shortest distance is greater than <b>max_distance</b> then the cost is set to zero.
   - cost_weight:  A weight value multiplied onto to each state cost.
   - longest_valid_joint_move: This value is used to check for collisions at intermediate poses between consecutive

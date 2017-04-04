@@ -49,7 +49,7 @@ typedef boost::shared_ptr<StompNoisyFilter> StompNoisyFilterPtr;
  * @brief Interface class for filtering noisy trajectories
  *
  * @par Examples:
- * All examples are located here @ref examples
+ * All examples are located here @ref stomp_moveit_examples
  */
 class StompNoisyFilter
 {
