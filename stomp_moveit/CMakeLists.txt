@@ -84,6 +84,13 @@ target_link_libraries(${PROJECT_NAME}_noise_generators ${catkin_LIBRARIES})
 ## Install ##
 #############
 
+install(
+  FILES
+    planner_manager_plugins.xml
+  DESTINATION
+    ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
 #############
 ## Testing ##
 #############
