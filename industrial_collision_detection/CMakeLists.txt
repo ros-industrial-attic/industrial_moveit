@@ -65,3 +65,9 @@ install(TARGETS ${PROJECT_NAME}
         ARCHIVE DESTINATION lib)
 install(DIRECTORY include/
   DESTINATION include)
+install(
+  FILES
+    industrial_collision_detection_plugin_description.xml
+  DESTINATION
+    ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)

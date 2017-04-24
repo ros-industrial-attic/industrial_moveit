@@ -160,6 +160,16 @@ install(DIRECTORY include/${PROJECT_NAME}/
   PATTERN ".svn" EXCLUDE
 )
 
+install(
+  FILES
+    constrained_ik_constraint_plugin_description.xml
+    constrained_ik_planner_plugin_description.xml
+    constrained_ik_plugin.xml
+  DESTINATION
+    ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
 #   # myfile1
