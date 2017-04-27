@@ -39,6 +39,6 @@ catkin run_tests stomp_core
 ========================================================================  
 [ROS-Industrial]: http://www.ros.org/wiki/Industrial  
 [ROS wiki]: http://ros.org/wiki/industrial_moveit  
-[ConstrainedIK]: http://wiki.ros.org/constrained_ik?distro=indigo  
+[ConstrainedIK]: http://wiki.ros.org/constrained_ik
 [Stomp MoveIt!]: http://wiki.ros.org/stomp_moveit
 
