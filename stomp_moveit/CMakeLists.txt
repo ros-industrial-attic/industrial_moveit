@@ -1,11 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(stomp_moveit)
-
-add_definitions("-std=c++11")
-
-find_package(Eigen3 REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system)
-
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   moveit_core
@@ -14,6 +8,11 @@ find_package(catkin REQUIRED COMPONENTS
   cmake_modules
   pluginlib
 )
+find_package(Eigen REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system)
+
+add_definitions("-std=c++11")
+
 
 ###################################
 ## catkin specific configuration ##
@@ -22,7 +21,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core cmake_modules pluginlib roscpp
-  DEPENDS EIGEN3
+  DEPENDS Eigen
 )
 
 ###########
@@ -31,8 +30,7 @@ catkin_package(
 
 ## Specify additional locations of header files
 include_directories(include
-  ${catkin_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -60,7 +58,7 @@ target_link_libraries(${PROJECT_NAME}_cost_functions ${catkin_LIBRARIES})
 
 # filter plugin(s)
 add_library(${PROJECT_NAME}_noisy_filters
-  src/noisy_filters/joint_limits.cpp
+  src/noisy_filters/joint_limits.cpp  
   src/noisy_filters/multi_trajectory_visualization.cpp
 )
 
@@ -91,7 +89,7 @@ install(DIRECTORY include/${PROJECT_NAME}/
 )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_planner_manager ${PROJECT_NAME}_cost_functions
+install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_planner_manager ${PROJECT_NAME}_cost_functions 
   ${PROJECT_NAME}_noisy_filters ${PROJECT_NAME}_update_filters ${PROJECT_NAME}_noise_generators
 ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
@@ -112,3 +110,4 @@ install(
 #############
 ## Testing ##
 #############
+

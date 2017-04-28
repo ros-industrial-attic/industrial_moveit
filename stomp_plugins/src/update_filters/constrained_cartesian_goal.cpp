@@ -140,12 +140,13 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
 
   // storing tool goal pose
   bool found_goal = false;
-  for(const auto& g: goals)
+  state_->updateCollisionBodyTransforms();
+  Eigen::Affine3d start_tool_pose = state_->getGlobalLinkTransform(tool_link_);
+  for(const auto& cg: goals)
   {
-
-    if(!g.position_constraints.empty() &&
-        !g.orientation_constraints.empty()) // check cartesian pose constraints first
+    if(validateCartesianConstraints(cg)) // check cartesian pose constraints first
     {
+      auto g = constructCartesianConstraints(cg,start_tool_pose);
 
       // storing cartesian goal pose using ik
       const moveit_msgs::PositionConstraint& pos_constraint = g.position_constraints.front();
@@ -156,21 +157,15 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
       if(createKinematicConfig(joint_group,pos_constraint,orient_constraint,req.start_state,kc))
       {
         kc_.tool_goal_pose = kc.tool_goal_pose;
-        if(!solveIK(state_,group_name_,kc,joint_pose))
-        {
-          ROS_WARN("%s failed calculating ik for cartesian goal pose in the MotionPlanRequest",getName().c_str());
-        }
-
         found_goal = true;
         break;
       }
-
     }
 
     if(!found_goal )
     {
       // check joint constraints
-      if(g.joint_constraints.empty())
+      if(cg.joint_constraints.empty())
       {
         ROS_WARN_STREAM("No joint values for the goal were found");
         continue;
@@ -179,7 +174,7 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
       ROS_WARN("%s a cartesian goal pose in MotionPlanRequest was not provided,calculating it from FK",getName().c_str());
 
       // compute FK to obtain cartesian goal pose
-      const std::vector<moveit_msgs::JointConstraint>& joint_constraints = g.joint_constraints;
+      const std::vector<moveit_msgs::JointConstraint>& joint_constraints = cg.joint_constraints;
 
       // copying goal values into state
       for(auto& jc: joint_constraints)

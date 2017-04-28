@@ -34,9 +34,9 @@
 
 
 static const std::string DESCRIPTION = "STOMP";
-static const double TIMEOUT_INTERVAL = 0.05;
-static int const IK_ATTEMPTS = 10;
-static int const IK_TIMEOUT = 0.05;
+static const double TIMEOUT_INTERVAL = 0.5;
+static int const IK_ATTEMPTS = 4;
+static int const IK_TIMEOUT = 0.005;
 const static double MAX_START_DISTANCE_THRESH = 0.5;
 
 /**
@@ -44,7 +44,7 @@ const static double MAX_START_DISTANCE_THRESH = 0.5;
  * @param config        The XmlRpcValue of stomp configuration parameters
  * @param group         The moveit planning group
  * @param stomp_config  The stomp configuration structure
- * @return True if sucessfully parsed, otherwise false.
+ * @return True if successfully parsed, otherwise false.
  */
 bool parseConfig(XmlRpc::XmlRpcValue config,const moveit::core::JointModelGroup* group,stomp_core::StompConfiguration& stomp_config)
 {
@@ -201,12 +201,14 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   ROS_WARN_COND(TIMEOUT_INTERVAL > request_.allowed_planning_time,
                 "%s allowed planning time %f is less than the minimum planning time value of %f",
                 getName().c_str(),request_.allowed_planning_time,TIMEOUT_INTERVAL);
+  std::atomic<bool> terminating(false);
   ros::Timer timeout_timer = ph_->createTimer(ros::Duration(TIMEOUT_INTERVAL), [&](const ros::TimerEvent& evnt)
   {
-    if((ros::WallTime::now() - start_time) > allowed_time)
+    if(((ros::WallTime::now() - start_time) > allowed_time))
     {
-      ROS_ERROR("%s exceeded allowed time of %f , terminating",getName().c_str(),allowed_time.toSec());
+      ROS_ERROR_COND(!terminating,"%s exceeded allowed time of %f , terminating",getName().c_str(),allowed_time.toSec());
       this->terminate();
+      terminating = true;
     }
 
   },false);
@@ -237,7 +239,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     if(!getStartAndGoal(start,goal))
     {
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
-      ROS_ERROR("STOMP failed to get the start and goal positions");
       return false;
     }
 
@@ -389,21 +390,15 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
       break;
     }
 
-    if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // checking cartesian
+    // now check cartesian constraint
+    std::vector<Eigen::VectorXd> joint_solutions;
+    moveit::core::RobotStatePtr start_state(new moveit::core::RobotState(state));
+    if(cartesianConstraintstoJointSolutions(start_state, gc, joint_solutions))
     {
-      // solving ik at goal
-      const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
-      const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
-
-      KinematicConfig kc;
-      if(createKinematicConfig(group,pos_constraint,orient_constraint,start,kc) )
-      {
-        if(solveIK(std::make_shared<moveit::core::RobotState>(state),group_,kc,goal))
-        {
-          found_goal = true;
-          break;
-        }
-      }
+      goal = joint_solutions.front();
+      found_goal = true;
+      ROS_DEBUG("%s Found %lu joint goals from IK ",getName().c_str(),joint_solutions.size());
+      break;
     }
 
   }
@@ -456,7 +451,11 @@ bool StompPlanner::parametersToJointTrajectory(const Eigen::MatrixXd& parameters
   trajectory_processing::IterativeParabolicTimeParameterization time_generator;
   robot_trajectory::RobotTrajectory traj(robot_model_,group_);
   moveit::core::RobotState robot_state(robot_model_);
-  moveit::core::robotStateMsgToRobotState(request_.start_state,robot_state);
+  if(!moveit::core::robotStateMsgToRobotState(request_.start_state,robot_state))
+  {
+    return false;
+  }
+
   traj.setRobotTrajectoryMsg(robot_state,trajectory);
 
   // converting to msg
@@ -575,6 +574,7 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
   try
   {
     // copying start state
+    state->setToDefaultValues();
     if(!robotStateMsgToRobotState(request_.start_state,*state))
     {
       ROS_ERROR("%s Failed to extract start state from MotionPlanRequest",getName().c_str());
@@ -607,6 +607,8 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
     // extracting goal joint values
     for(const auto& gc : request_.goal_constraints)
     {
+
+      // check joint constraints first
       if(!gc.joint_constraints.empty())
       {
 
@@ -637,22 +639,16 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
 
       }
 
-      if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // check cartesian
+      // now check cartesian constraint
+      std::vector<Eigen::VectorXd> joint_solutions;
+      ros::Time start_time = ros::Time::now();
+      if(cartesianConstraintstoJointSolutions(state, gc, joint_solutions))
       {
-        // solving ik at goal
-        const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
-        const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
-
-        KinematicConfig kc;
-        if(createKinematicConfig(joint_group,pos_constraint,orient_constraint,start,kc) )
-        {
-          if(solveIK(state,group_,kc,goal))
-          {
-            ROS_DEBUG("%s Found goal from IK ",getName().c_str());
-            found_goal = true;
-            break;
-          }
-        }
+        goal = joint_solutions.front();
+        found_goal = true;
+        ros::Duration time_elapsed = ros::Time::now() - start_time;
+        ROS_DEBUG("%s Found %lu joint goals from IK in %f seconds",getName().c_str(),joint_solutions.size(),time_elapsed.toSec());
+        break;
       }
 
     }
@@ -686,10 +682,12 @@ bool StompPlanner::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) 
     return false;
   }
 
-  // check that we have only joint constraints at the goal
-  if (req.goal_constraints[0].joint_constraints.size() == 0)
+  // check that we have joint or cartesian constraints at the goal
+  const auto& gc = req.goal_constraints[0];
+  if ((gc.joint_constraints.size() == 0) &&
+		  !utils::kinematics::validateCartesianConstraints(gc))
   {
-    ROS_ERROR("STOMP: Can only handle joint space goals.");
+    ROS_ERROR("STOMP couldn't find either a joint or cartesian goal.");
     return false;
   }
 
@@ -740,6 +738,194 @@ bool StompPlanner::getConfigData(ros::NodeHandle &nh, std::map<std::string, XmlR
     ROS_ERROR("Unable to parse ROS parameter:\n %s",stomp_config.toXml().c_str());
     return false;
   }
+}
+
+std::vector<Eigen::Affine3d> sampleCartesianPoses(const moveit_msgs::Constraints& c,
+                                                  const std::vector<double> sampling_resolution = {0.05, 0.05, 0.05, M_PI_2,M_PI_2,M_PI_2},
+                                                  int max_samples =20 )
+{
+  using namespace Eigen;
+
+  std::vector<Eigen::Affine3d> poses;
+
+  // random generator
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  auto sample_val_func = [&gen](double min, double max, double intrv) -> double
+  {
+    double length = max - min;
+    if(length <= intrv || length < 1e-6)
+    {
+      return 0.5*(max + min); // return average
+    }
+
+    int num_intervals = std::ceil(length/intrv);
+    std::uniform_int_distribution<> dis(0, num_intervals);
+    int r = dis(gen);
+    double val = min + r*(intrv);
+    val = val > max ? max : val;
+    return val;
+  };
+
+  // extracting tolerances from constraints
+  const std::vector<moveit_msgs::PositionConstraint>& pos_constraints = c.position_constraints;
+  const std::vector<moveit_msgs::OrientationConstraint>& orient_constraints = c.orientation_constraints;
+  for(std::size_t k = 0; k < pos_constraints.size(); k++)
+  {
+
+    const moveit_msgs::PositionConstraint& pos_constraint = pos_constraints[k];
+    const moveit_msgs::OrientationConstraint& orient_constraint = orient_constraints[k];
+
+    // collecting position tolerances
+    std::vector<double> tolerances(6);
+    const shape_msgs::SolidPrimitive& bv = pos_constraint.constraint_region.primitives[0];
+    bool valid_constraint = true;
+    switch(bv.type)
+    {
+      case shape_msgs::SolidPrimitive::BOX :
+      {
+        if(bv.dimensions.size() != 3)
+        {
+          ROS_WARN("Position constraint for BOX shape incorrectly defined, only 3 dimensions entries are needed");
+          valid_constraint = false;
+          break;
+        }
+
+        using SP = shape_msgs::SolidPrimitive;
+        tolerances[0] = bv.dimensions[SP::BOX_X];
+        tolerances[1] = bv.dimensions[SP::BOX_Y];
+        tolerances[2] = bv.dimensions[SP::BOX_Z];
+      }
+      break;
+
+      case shape_msgs::SolidPrimitive::SPHERE:
+      {
+        if(bv.dimensions.size() != 1)
+        {
+          ROS_WARN("Position constraint for SPHERE shape has no valid dimensions");
+          valid_constraint = false;
+          break;
+        }
+
+        using SP = shape_msgs::SolidPrimitive;
+        tolerances[0] = bv.dimensions[SP::SPHERE_RADIUS];
+        tolerances[1] = bv.dimensions[SP::SPHERE_RADIUS];
+        tolerances[2] = bv.dimensions[SP::SPHERE_RADIUS];
+      }
+      break;
+
+      default:
+
+        ROS_ERROR("The Position constraint shape %i isn't supported",bv.type);
+        valid_constraint = false;
+        break;
+    }
+
+    if(!valid_constraint)
+    {
+      continue;
+    }
+
+    // collecting orientation tolerance
+    tolerances[3] = orient_constraint.absolute_x_axis_tolerance;
+    tolerances[4] = orient_constraint.absolute_y_axis_tolerance;
+    tolerances[5] = orient_constraint.absolute_z_axis_tolerance;
+
+    // calculating total number of samples
+    int total_num_samples = 1;
+    for(std::size_t i = 0; i < tolerances.size(); i++)
+    {
+      total_num_samples *= (std::floor((2*tolerances[i]/sampling_resolution[i]) + 1) );
+    }
+    total_num_samples = total_num_samples > max_samples ? max_samples : total_num_samples;
+
+
+    // tool pose nominal position
+    auto& p = pos_constraint.constraint_region.primitive_poses[0].position;
+
+    // tool pose nominal orientation
+    Eigen::Quaterniond q;
+    tf::quaternionMsgToEigen(orient_constraint.orientation,q);
+
+    // generating samples
+    std::vector<double> vals(6);
+    Affine3d nominal_pos = Affine3d::Identity()*Eigen::Translation3d(Eigen::Vector3d(p.x,p.y,p.z));
+    Affine3d nominal_rot = Affine3d::Identity()*q;
+    for(int i = 0; i < total_num_samples; i++)
+    {
+      for(int j = 0; j < vals.size() ; j++)
+      {
+        vals[j] = sample_val_func(-0.5*tolerances[j],0.5*tolerances[j],sampling_resolution[j]);
+      }
+
+      Affine3d rot = nominal_rot * AngleAxisd(vals[3],Vector3d::UnitX()) * AngleAxisd(vals[4],Vector3d::UnitY())
+          * AngleAxisd(vals[5],Vector3d::UnitZ());
+      Affine3d pose = nominal_pos * Translation3d(Vector3d(vals[0],vals[1],vals[2])) * rot;
+      poses.push_back(pose);
+    }
+
+    if(poses.size()>= max_samples)
+    {
+      break;
+    }
+  }
+
+  return poses;
+}
+
+bool StompPlanner::cartesianConstraintstoJointSolutions(moveit::core::RobotStateConstPtr start_state,const moveit_msgs::Constraints& goal,
+                                                std::vector<Eigen::VectorXd>& joint_solutions) const
+{
+  using namespace moveit::core;
+  using namespace utils::kinematics;
+
+  const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_);
+  std::string tool_link = joint_group->getLinkModelNames().back();
+
+  if(!validateCartesianConstraints(goal))
+  {
+    ROS_ERROR("A valid cartesian constraint wasn't specified");
+    return false;
+  }
+
+  // ==== Creating 6DOF tool poses ====
+
+  // create robot state
+  RobotStatePtr state(new RobotState(*start_state));
+  state->updateCollisionBodyTransforms();
+  Eigen::Affine3d start_tool_pose = state->getGlobalLinkTransform(tool_link);
+
+  moveit_msgs::Constraints tool_constraints = constructCartesianConstraints(goal,start_tool_pose);
+  std::vector<Eigen::Affine3d> tool_poses = sampleCartesianPoses(tool_constraints);
+  if(tool_poses.empty())
+  {
+    ROS_ERROR("Unable to sample goal poses for the given goal constraints");
+    return false;
+  }
+
+  ROS_DEBUG("STOMP sampled %lu goal poses",tool_poses.size());
+
+  // collision check callback
+  auto validity_cb = [this](RobotState* robot_state, const JointModelGroup* joint_group, const double* joint_group_variable_values) -> bool
+  {
+    robot_state->setJointGroupPositions(joint_group, joint_group_variable_values);
+    robot_state->updateCollisionBodyTransforms();
+    return !this->getPlanningScene()->isStateColliding(*robot_state, joint_group->getName(), false);
+  };
+
+  // === solving ik at sampled goals ===
+  joint_solutions.clear();
+  for(int i =0 ; i < tool_poses.size(); i++)
+  {
+    if(state->setFromIK(joint_group,tool_poses[i],tool_link,IK_ATTEMPTS,IK_TIMEOUT,validity_cb))
+    {
+      Eigen::VectorXd sol(joint_group->getVariableCount());
+      state->copyJointGroupPositions(joint_group, sol);
+      joint_solutions.push_back(sol);
+    }
+  }
+
+  return !joint_solutions.empty();
 }
 
 

@@ -121,6 +121,16 @@ protected:
   bool getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal);
 
   /**
+   * @brief Generates one or more joint poses from a cartesian goal
+   * @param start_state
+   * @param goal
+   * @param goal_poses
+   * @return
+   */
+  bool cartesianConstraintstoJointSolutions(moveit::core::RobotStateConstPtr start_state,const moveit_msgs::Constraints& goal,
+                                    std::vector<Eigen::VectorXd>& joint_solutions) const;
+
+  /**
    * @brief This function 1) gets the seed trajectory from the active motion plan request, 2) checks to see if
    * the given seed trajectory makes sense in the context of the user provided goal constraints, 3) modifies
    * the seed's first and last point to 'fix' it for small deviations in the goal constraints and 4) applies

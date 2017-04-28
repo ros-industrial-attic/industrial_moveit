@@ -33,6 +33,7 @@
 #include <moveit/robot_state/conversions.h>
 #include <pluginlib/class_list_macros.h>
 #include <XmlRpcException.h>
+#include <moveit_msgs/Constraints.h>
 #include <moveit_msgs/PositionConstraint.h>
 #include <moveit_msgs/OrientationConstraint.h>
 
@@ -81,6 +82,75 @@ namespace kinematics
 
   };
 
+  static bool validateCartesianConstraints(const moveit_msgs::Constraints& c)
+  {
+    return !(c.position_constraints.empty() && c.orientation_constraints.empty());
+  }
+
+  static moveit_msgs::Constraints constructCartesianConstraints(const moveit_msgs::Constraints& c,const Eigen::Affine3d& ref_pose,
+                                                                double default_pos_tol = 0.0, double default_rot_tol = M_PI)
+  {
+    using namespace moveit_msgs;
+
+    moveit_msgs::Constraints cc;
+    int num_pos_constraints = c.position_constraints.size();
+    int num_orient_constraints = c.orientation_constraints.size();
+    int num_entries = num_pos_constraints >= num_orient_constraints ? num_pos_constraints : num_orient_constraints;
+
+    if(!validateCartesianConstraints(c))
+    {
+      return cc;
+    }
+
+    // creating default position constraint
+    PositionConstraint pc;
+    pc.constraint_region.primitive_poses.resize(1);
+    tf::poseEigenToMsg(Eigen::Affine3d::Identity(), pc.constraint_region.primitive_poses[0]);
+    pc.constraint_region.primitive_poses[0].position.x = ref_pose.translation().x();
+    pc.constraint_region.primitive_poses[0].position.y = ref_pose.translation().y();
+    pc.constraint_region.primitive_poses[0].position.z = ref_pose.translation().z();
+    shape_msgs::SolidPrimitive shape;
+    shape.type = shape.SPHERE;
+    shape.dimensions.push_back(default_pos_tol);
+    pc.constraint_region.primitives.push_back(shape);
+
+    // creating default orientation constraint
+    OrientationConstraint oc;
+    oc.absolute_x_axis_tolerance = default_rot_tol;
+    oc.absolute_y_axis_tolerance = default_rot_tol;
+    oc.absolute_z_axis_tolerance = default_rot_tol;
+    oc.orientation.x = oc.orientation.y = oc.orientation.z = 0;
+    oc.orientation.w = 1;
+
+
+    cc.position_constraints.resize(num_entries);
+    cc.orientation_constraints.resize(num_entries);
+    for(int i =0; i < num_entries; i++)
+    {
+      // populating position constraints
+      if(c.position_constraints.size() >= num_entries)
+      {
+        cc.position_constraints[i] = c.position_constraints[i];
+      }
+      else
+      {
+        cc.position_constraints[i] = pc;
+      }
+
+      // populating orientation constraints
+      if(c.orientation_constraints.size() >= num_entries)
+      {
+        cc.orientation_constraints[i] = c.orientation_constraints[i];
+      }
+      else
+      {
+        cc.orientation_constraints[i] = oc;
+      }
+    }
+
+    return cc;
+  }
+
   /**
    * @brief Populates a Kinematic Config struct from the position and orientation constraints requested;
    * @param group             A pointer to the JointModelGroup
@@ -94,7 +164,11 @@ namespace kinematics
                                                const moveit_msgs::PositionConstraint& pc,const moveit_msgs::OrientationConstraint& oc,
                                                const Eigen::VectorXd& init_joint_pose,KinematicConfig& kc)
   {
+    using namespace moveit::core;
+
     int num_joints = group->getActiveJointModelNames().size();
+    const std::vector<const JointModel* >& joint_models = group->getActiveJointModels();
+
     if(num_joints != init_joint_pose.size())
     {
       ROS_ERROR("Initial joint pose has an incorrect number of joints");
@@ -114,18 +188,44 @@ namespace kinematics
     // defining constraints
     kc.constrained_dofs << 1, 1, 1, 1, 1, 1;
 
-    // position tolerance
     const shape_msgs::SolidPrimitive& bv = pc.constraint_region.primitives[0];
-    if(bv.type != shape_msgs::SolidPrimitive::BOX || bv.dimensions.size() != 3)
+    switch(bv.type)
     {
-      ROS_ERROR("Position constraint incorrectly defined, a BOX region is expected");
-      return false;
-    }
+      case shape_msgs::SolidPrimitive::BOX :
+      {
+        if(bv.dimensions.size() != 3)
+        {
+          ROS_ERROR("Position constraint for BOX shape incorrectly defined, only 3 dimensions entries are needed");
+          return false;
+        }
 
-    using SP = shape_msgs::SolidPrimitive;
-    kc.cartesian_convergence_thresholds[0] = bv.dimensions[SP::BOX_X];
-    kc.cartesian_convergence_thresholds[1] = bv.dimensions[SP::BOX_Y];
-    kc.cartesian_convergence_thresholds[2] = bv.dimensions[SP::BOX_Z];
+        using SP = shape_msgs::SolidPrimitive;
+        kc.cartesian_convergence_thresholds[0] = bv.dimensions[SP::BOX_X];
+        kc.cartesian_convergence_thresholds[1] = bv.dimensions[SP::BOX_Y];
+        kc.cartesian_convergence_thresholds[2] = bv.dimensions[SP::BOX_Z];
+      }
+      break;
+
+      case shape_msgs::SolidPrimitive::SPHERE:
+      {
+        if(bv.dimensions.size() != 1)
+        {
+          ROS_ERROR("Position constraint for SPHERE shape has no valid dimensions");
+          return false;
+        }
+
+        using SP = shape_msgs::SolidPrimitive;
+        kc.cartesian_convergence_thresholds[0] = bv.dimensions[SP::SPHERE_RADIUS];
+        kc.cartesian_convergence_thresholds[1] = bv.dimensions[SP::SPHERE_RADIUS];
+        kc.cartesian_convergence_thresholds[2] = bv.dimensions[SP::SPHERE_RADIUS];
+      }
+      break;
+
+      default:
+
+        ROS_ERROR("The Position constraint shape %i isn't supported",bv.type);
+        return false;
+    }
 
     // orientation tolerance
     kc.cartesian_convergence_thresholds[3] = oc.absolute_x_axis_tolerance;
@@ -139,8 +239,23 @@ namespace kinematics
       kc.constrained_dofs[i] = v >= 2*M_PI ? 0 : 1;
     }
 
-    // additional variables
+    // setting up joint update rates
     kc.joint_update_rates = Eigen::ArrayXd::Constant(num_joints,0.5f);
+    for(std::size_t i = 0 ; i < num_joints; i++)
+    {
+      const JointModel* jm = joint_models[i];
+
+      if(jm->getType() == JointModel::REVOLUTE)
+      {
+        kc.joint_update_rates(i) = 0.5;
+      }
+      else if(jm->getType() == JointModel::PRISMATIC)
+      {
+        kc.joint_update_rates(i) = 0.05;
+      }
+    }
+
+    // additional variables
     kc.init_joint_pose = init_joint_pose;
     kc.max_iterations = 100;
 
@@ -320,7 +435,8 @@ namespace kinematics
     std::string tool_link = joint_group->getLinkModelNames().back();
     Affine3d tool_current_pose = robot_state->getGlobalLinkTransform(tool_link);
 
-    auto harmonize_joints = [&joint_group,&joint_names](Eigen::VectorXd& joint_vals) -> bool
+    // unwinds revolute joints in order to set them inside its bounds
+    auto unwind_joints = [&joint_group,&joint_names](Eigen::VectorXd& joint_vals) -> bool
     {
       if(joint_names.size() != joint_vals.size())
       {
@@ -330,29 +446,54 @@ namespace kinematics
       const double incr = 2*M_PI;
       for(std::size_t i = 0; i < joint_names.size();i++)
       {
-        if( joint_group->getJointModel(joint_names[i])->getType() != JointModel::REVOLUTE )
+        auto joint_model = joint_group->getJointModel(joint_names[i]);
+        const JointModel::Bounds& bounds = joint_model->getVariableBounds();
+
+        JointModel::JointType joint_type = joint_model->getType();
+        switch(joint_type)
         {
-          continue;
+          case JointModel::REVOLUTE:
+          {
+            // checking if it's allowed to rotate indefinitely
+            if(static_cast<const RevoluteJointModel*>(joint_model)->isContinuous())
+            {
+              break;
+            }
+
+            double j = joint_vals(i);
+            for(const VariableBounds& b: bounds)
+            {
+
+             while(j > b.max_position_)
+             {
+               j-= incr;
+             }
+
+             while(j < b.min_position_)
+             {
+               j += incr;
+             }
+            }
+
+            joint_vals(i) = j;
+          }
+          break;
+
+          case JointModel::PRISMATIC:
+          {
+            double j = joint_vals(i);
+            if(!joint_model->satisfiesPositionBounds(&j))
+            {
+              joint_model->enforcePositionBounds(&j);
+              joint_vals(i) = j;
+            }
+          }
+          break;
+
+          default:
+            break;
         }
 
-        const JointModel::Bounds& bounds = joint_group->getJointModel(joint_names[i])->getVariableBounds();
-
-        double j = joint_vals(i);
-        for(const VariableBounds& b: bounds)
-        {
-
-          while(j > b.max_position_)
-          {
-            j-= incr;
-          }
-
-          while(j < b.min_position_)
-          {
-            j += incr;
-          }
-        }
-
-        joint_vals(i) = j;
       }
 
       return true;
@@ -381,6 +522,8 @@ namespace kinematics
     bool converged = false;
     while(iteration_count < max_iterations)
     {
+      iteration_count++;
+
       // computing twist vector
       computeTwist(tool_current_pose,tool_goal_pose,constrained_dofs,tool_twist);
 
@@ -390,12 +533,8 @@ namespace kinematics
         if(robot_state->satisfiesBounds(joint_group))
         {
           converged = true;
+          break;
         }
-        else
-        {
-          ROS_DEBUG("IK joint solution violates bounds");
-        }
-        break;
       }
 
       // updating reduced tool twist
@@ -438,17 +577,15 @@ namespace kinematics
 
       // updating joint values
       joint_pose += (joint_update_rates* delta_j.array()).matrix();
-      harmonize_joints(joint_pose);
+      unwind_joints(joint_pose);
 
       // updating tool pose
       robot_state->setJointGroupPositions(joint_group,joint_pose);
       robot_state->updateLinkTransforms();
       tool_current_pose = robot_state->getGlobalLinkTransform(tool_link);
-
-      iteration_count++;
     }
 
-    ROS_DEBUG_STREAM_COND(!converged,"Error tool twist "<<tool_twist.transpose());
+    ROS_DEBUG_STREAM_COND(!converged,"IK did not converge, error tool twist "<<tool_twist.transpose());
 
     return converged;
   }

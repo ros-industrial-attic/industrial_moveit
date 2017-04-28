@@ -167,6 +167,8 @@ bool NormalDistributionSampling::generateNoise(const Eigen::MatrixXd& parameters
   for(auto d = 0u; d < parameters.rows() ; d++)
   {
     rand_generators_[d]->sample(raw_noise_);
+    raw_noise_.head(1).setZero();
+    raw_noise_.tail(1).setZero(); // zeroing out the start and end noise values
     noise.row(d).transpose() = stddev_[d] * raw_noise_;
     parameters_noise.row(d) = parameters.row(d) + noise.row(d);
   }

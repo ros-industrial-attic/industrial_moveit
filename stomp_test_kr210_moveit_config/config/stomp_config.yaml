@@ -25,13 +25,18 @@ stomp/manipulator:
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
-        lock_goal: True
+        lock_goal: False
       - class: stomp_moveit/MultiTrajectoryVisualization
         line_width: 0.02
         rgb: [0, 255, 0]
         marker_array_topic: stomp_trajectories
         marker_namespace: noisy
     update_filters:
+      - class: stomp_moveit/ConstrainedCartesianGoal
+        constrained_dofs: [1, 1, 1, 1, 1, 1]
+        cartesian_convergence: [0.005, 0.005, 0.005, 0.01, 0.01, 0.01]
+        joint_update_rates: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+        max_ik_iterations: 100
       - class: stomp_moveit/PolynomialSmoother
         poly_order: 5
       - class: stomp_moveit/TrajectoryVisualization
@@ -64,13 +69,18 @@ stomp/manipulator_rail:
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
-        lock_goal: True
+        lock_goal: False
       - class: stomp_moveit/MultiTrajectoryVisualization
         line_width: 0.02
         rgb: [255, 255, 0]
         marker_array_topic: stomp_trajectories
         marker_namespace: noisy
     update_filters:
+      - class: stomp_moveit/ConstrainedCartesianGoal
+        constrained_dofs: [1, 1, 1, 1, 1, 1]
+        cartesian_convergence: [0.005, 0.005, 0.005, 0.01, 0.01, 0.01]
+        joint_update_rates: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+        max_ik_iterations: 100
       - class: stomp_moveit/UpdateLogger
         package: stomp_moveit
         directory: log
@@ -114,13 +124,18 @@ stomp/manipulator_tool:
     noisy_filters:
       - class: stomp_moveit/JointLimits
         lock_start: True
-        lock_goal: True
+        lock_goal: False
       - class: stomp_moveit/MultiTrajectoryVisualization
         line_width: 0.04
         rgb: [255, 255, 0]
         marker_array_topic: stomp_trajectories
         marker_namespace: noisy
     update_filters:
+      - class: stomp_moveit/ConstrainedCartesianGoal
+        constrained_dofs: [1, 1, 1, 1, 1, 1]
+        cartesian_convergence: [0.005, 0.005, 0.005, 0.01, 0.01, 0.01]
+        joint_update_rates: [0.01 , 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+        max_ik_iterations: 100
       - class: stomp_moveit/PolynomialSmoother
         poly_order: 5
       - class: stomp_moveit/TrajectoryVisualization
