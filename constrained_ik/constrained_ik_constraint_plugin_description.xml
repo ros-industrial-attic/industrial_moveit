@@ -1,4 +1,4 @@
-<library path="lib/libconstrained_ik_constraints">
+<library path="libconstrained_ik_constraints">
   <class name="constrained_ik/AvoidObstacles" type="constrained_ik::constraints::AvoidObstacles" base_class_type="constrained_ik::Constraint">
     <description>
       A implementation of AvoidObstacles as a plugin.
