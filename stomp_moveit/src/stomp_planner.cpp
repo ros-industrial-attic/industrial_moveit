@@ -373,11 +373,11 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
       }
 
       // copying values into goal array
-      if(!state.satisfiesBounds(group))
+      /*if(!state.satisfiesBounds(group))
       {
         ROS_ERROR("%s Requested Goal joint pose is out of bounds",getName().c_str());
         continue;
-      }
+      }*/
 
       for(auto j = 0u; j < joint_names.size(); j++)
       {
@@ -574,6 +574,8 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
   try
   {
     // copying start state
+      ROS_ERROR_STREAM("Group:"<<group_);
+      ROS_INFO_STREAM("START STATE:"<<request_.start_state);
     if(!robotStateMsgToRobotState(request_.start_state,*state))
     {
       ROS_ERROR("%s Failed to extract start state from MotionPlanRequest",getName().c_str());
@@ -581,13 +583,18 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
     }
 
     // copying start joint values
-    const std::vector<std::string> joint_names= state->getJointModelGroup(group_)->getActiveJointModelNames();
+    const std::vector<std::string> joint_names2= state->getJointModelGroup(group_)->getActiveJointModelNames();
+    std::vector<std::string> joint_names;
+    for(int i=0;i<6;i++){
+        joint_names.push_back(joint_names2.at(i));
+    }
     start.resize(joint_names.size());
     goal.resize(joint_names.size());
 
-    if(!state->satisfiesBounds())
+    if(!state->satisfiesBounds(state->getJointModelGroup(group_)))
     {
       ROS_ERROR("%s Start joint pose is out of bounds",getName().c_str());
+
       return false;
     }
 
@@ -617,7 +624,7 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
         }
 
 
-        if(!state->satisfiesBounds())
+        if(!state->satisfiesBounds(state->getJointModelGroup(group_)))
         {
           ROS_ERROR("%s Requested Goal joint pose is out of bounds",getName().c_str());
           continue;
