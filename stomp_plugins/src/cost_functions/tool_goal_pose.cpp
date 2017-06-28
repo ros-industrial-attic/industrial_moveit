@@ -23,15 +23,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <math.h>
 #include <stomp_plugins/cost_functions/tool_goal_pose.h>
 #include <XmlRpcException.h>
 #include <pluginlib/class_list_macros.h>
-#include <stomp_moveit/utils/kinematics.h>
 #include <ros/console.h>
 
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::cost_functions::ToolGoalPose,stomp_moveit::cost_functions::StompCostFunction);
 
 static const int CARTESIAN_DOF_SIZE = 6;
+static const double DEFAULT_POS_TOLERANCE = 0.001;
+static const double DEFAULT_ROT_TOLERANCE = 0.01;
+static const double POS_MAX_ERROR_RATIO = 10.0;
+static const double ROT_MAX_ERROR_RATIO = 10.0;
 
 namespace stomp_moveit
 {
@@ -55,6 +59,7 @@ bool ToolGoalPose::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
 {
   group_name_ = group_name;
   robot_model_ = robot_model_ptr;
+  ik_solver_.reset(new utils::kinematics::IKSolver(robot_model_ptr,group_name));
 
   return configure(config);
 }
@@ -67,32 +72,7 @@ bool ToolGoalPose::configure(const XmlRpc::XmlRpcValue& config)
   {
     XmlRpcValue params = config;
 
-    XmlRpcValue dof_nullity_param = params["constrained_dofs"];
-    XmlRpcValue pos_error_range_param = params["position_error_range"];
-    XmlRpcValue orient_error_range_param = params["orientation_error_range"];
-
-    if((dof_nullity_param.getType() != XmlRpcValue::TypeArray) || dof_nullity_param.size() < CARTESIAN_DOF_SIZE ||
-        (pos_error_range_param.getType() != XmlRpcValue::TypeArray) || pos_error_range_param.size() != 2 ||
-        (orient_error_range_param.getType() != XmlRpcValue::TypeArray) || orient_error_range_param.size() != 2 )
-    {
-      ROS_ERROR("%s received invalid array parameters",getName().c_str());
-      return false;
-    }
-
-    dof_nullity_.resize(CARTESIAN_DOF_SIZE);
-    for(auto i = 0u; i < dof_nullity_param.size(); i++)
-    {
-      dof_nullity_(i) = static_cast<int>(dof_nullity_param[i]);
-    }
-
-    position_error_range_.first = static_cast<double>(pos_error_range_param[0]);
-    position_error_range_.second = static_cast<double>(pos_error_range_param[1]);
-
-    orientation_error_range_.first = static_cast<double>(orient_error_range_param[0]);
-    orientation_error_range_.second = static_cast<double>(orient_error_range_param[1]);
-
     position_cost_weight_ = static_cast<double>(params["position_cost_weight"]);
-
     orientation_cost_weight_ = static_cast<double>(params["orientation_cost_weight"]);
 
     // total weight
@@ -134,20 +114,16 @@ bool ToolGoalPose::setMotionPlanRequest(const planning_scene::PlanningSceneConst
   bool found_goal = false;
   for(const auto& g: goals)
   {
-    if(!g.position_constraints.empty() &&
-        !g.orientation_constraints.empty())
+
+    if(utils::kinematics::validateCartesianConstraints(g))
     {
-      // tool cartesian goal
-      const moveit_msgs::PositionConstraint& pos_constraint = g.position_constraints.front();
-      const moveit_msgs::OrientationConstraint& orient_constraint = g.orientation_constraints.front();
-
-      geometry_msgs::Pose pose;
-      pose.position = pos_constraint.constraint_region.primitive_poses[0].position;
-      pose.orientation = orient_constraint.orientation;
-      tf::poseMsgToEigen(pose,tool_goal_pose_);
-      found_goal = true;
+      // tool cartesian goal data
+      state_->updateLinkTransforms();
+      Eigen::Affine3d start_tool_pose = state_->getGlobalLinkTransform(tool_link_);
+      moveit_msgs::Constraints cartesian_constraints = utils::kinematics::constructCartesianConstraints(g,start_tool_pose);
+      std::vector<double> tolerance;
+      found_goal = utils::kinematics::decodeCartesianConstraint(cartesian_constraints,tool_goal_pose_,tolerance);
       break;
-
     }
 
 
@@ -172,15 +148,23 @@ bool ToolGoalPose::setMotionPlanRequest(const planning_scene::PlanningSceneConst
         state_->setVariablePosition(jc.joint_name,jc.position);
       }
 
-      // storing reference goal position tool and pose
+      // storing tool goal pose and tolerance
       state_->update(true);
       tool_goal_pose_ = state_->getGlobalLinkTransform(tool_link_);
+      tool_goal_tolerance_.resize(CARTESIAN_DOF_SIZE);
+      double ptol = DEFAULT_POS_TOLERANCE;
+      double rtol = DEFAULT_ROT_TOLERANCE;
+      tool_goal_tolerance_ << ptol, ptol, ptol, rtol, rtol, rtol;
       found_goal = true;
       break;
     }
   }
 
-
+  // setting cartesian error range
+  min_twist_error_ = tool_goal_tolerance_;
+  max_twist_error_.head(3) = min_twist_error_.head(3)*POS_MAX_ERROR_RATIO;
+  max_twist_error_.tail(3) = min_twist_error_.tail(3)*ROT_MAX_ERROR_RATIO;
+  max_twist_error_.tail(3) = (max_twist_error_.tail(3).array() > M_PI).select(M_PI,max_twist_error_.tail(3));
 
   return true;
 }
@@ -198,49 +182,38 @@ bool ToolGoalPose::computeCosts(const Eigen::MatrixXd& parameters,
   using namespace utils::kinematics;
   validity = true;
 
-  auto compute_scaled_error = [](const double& raw_cost,const std::pair<double,double>& range,bool& below_min)
+  auto compute_scaled_error = [](VectorXd& val,VectorXd& min,VectorXd& max) -> VectorXd
   {
-    below_min = false;
-
-    // error above range
-    if(raw_cost > range.second)
-    {
-      return 1.0;
-    }
-
-    // error in range
-    if(raw_cost >= range.first)
-    {
-      return raw_cost/(range.second - range.first);
-    }
-
-    // error below range
-    below_min = true;
-    return 0.0;
+    VectorXd capped_val;
+    capped_val = (val.array() > max.array()).select(max,val);
+    capped_val = (val.array() < min.array()).select(min,val);
+    auto range = max - min;
+    VectorXd scaled = (capped_val - min).array()/(range.array());
+    return scaled;
   };
 
-  costs.resize(parameters.cols());
-  costs.setConstant(0.0);
 
   last_joint_pose_ = parameters.rightCols(1);
   state_->setJointGroupPositions(group_name_,last_joint_pose_);
   last_tool_pose_ = state_->getGlobalLinkTransform(tool_link_);
 
-  computeTwist(last_tool_pose_,tool_goal_pose_,dof_nullity_,tool_twist_error_);
+  // computing twist error
+  Eigen::ArrayXi constrained_dof= Eigen::ArrayXi::Ones(6);
+  computeTwist(last_tool_pose_,tool_goal_pose_,constrained_dof,tool_twist_error_);
 
-  double pos_error = tool_twist_error_.segment(0,3).norm();
-  double orientation_error = tool_twist_error_.segment(3,3).norm();
 
+  // computing relative error values
+  VectorXd scaled_twist_error = compute_scaled_error(tool_twist_error_,min_twist_error_,max_twist_error_);
+  double pos_error = scaled_twist_error.head(3).cwiseAbs().maxCoeff();
+  double orientation_error = scaled_twist_error.tail(3).cwiseAbs().maxCoeff();
 
-  // scaling errors so that max total error  = pos_weight + orient_weight
-  bool valid;
-  pos_error = compute_scaled_error(pos_error,position_error_range_,valid);
-  validity &= valid;
-
-  orientation_error = compute_scaled_error(orientation_error,orientation_error_range_,valid);
-  validity &= valid;
-
+  // computing cost of last point
+  costs.resize(parameters.cols());
+  costs.setConstant(0.0);
   costs(costs.size()-1) = pos_error*position_cost_weight_ + orientation_error * orientation_cost_weight_;
+
+  // check if valid when twist errors are below the allowed tolerance.
+  validity = (tool_twist_error_.array() <= tool_goal_tolerance_.array()).all();
 
   return true;
 }
