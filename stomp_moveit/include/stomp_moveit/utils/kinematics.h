@@ -36,6 +36,7 @@
 #include <moveit_msgs/Constraints.h>
 #include <moveit_msgs/PositionConstraint.h>
 #include <moveit_msgs/OrientationConstraint.h>
+#include <trac_ik/trac_ik.hpp>
 
 
 namespace stomp_moveit
@@ -52,6 +53,70 @@ namespace kinematics
 
   const static double EPSILON = 0.011;  /**< @brief Used in dampening the matrix pseudo inverse calculation */
   const static double LAMBDA = 0.01;    /**< @brief Used in dampening the matrix pseudo inverse calculation */
+
+  MOVEIT_CLASS_FORWARD(IKSolver);
+
+  /**
+   * @class stomp_moveit::utils::kinematics::IKSolver
+   * @brief Wrapper around an IK solver implementation.
+   */
+  class IKSolver
+  {
+  public:
+    /**
+     * @brief Creates an internal IK solver for the specified robot and planning group
+     * @param robot_model The robot model
+     * @param group_name  The planning group name
+     * @param max_time    Max time allowed to find a solution.
+     */
+    IKSolver(moveit::core::RobotModelConstPtr robot_model,std::string group_name,double max_time = 0.005);
+    ~IKSolver();
+
+    /**
+     * @brief Find the joint position that achieves the requested tool pose.
+     * @param seed      A joint pose to seed the solver.
+     * @param tool_pose The tool pose for which a joint solution must be found.
+     * @param solution  The joint values that place the tool in the requested cartesian pose
+     * @param tol       The tolerance values for each dimension of position and orientation.
+     * @return  True if a solution was found, false otherwise.
+     */
+    bool solve(const Eigen::VectorXd& seed,const Eigen::Affine3d& tool_pose,Eigen::VectorXd& solution,
+               Eigen::VectorXd tol = Eigen::VectorXd::Constant(6,0.005)) ;
+
+    /**
+     * @brief Find the joint position that achieves the requested tool pose.
+     * @param seed      A joint pose to seed the solver.
+     * @param tool_pose The tool pose for which a joint solution must be found.
+     * @param solution  The joint values that place the tool in the requested cartesian pose
+     * @param tol       The tolerance values for each dimension of position and orientation.
+     * @return  True if a solution was found, false otherwise.
+     */
+    bool solve(const std::vector<double>& seed, const Eigen::Affine3d& tool_pose,std::vector<double>& solution,
+               std::vector<double> tol = std::vector<double>(6,0.005)) ;
+
+    /**
+     * @brief Find the joint position that obeys the specified Cartesian constraint.
+     * @param seed              A joint pose to seed the solver.
+     * @param tool_constraints  The Cartesian constraint info to be used in determining the tool pose and tolerances
+     * @param solution          The joint values that comply with the Cartesian constraint.
+     * @return  True if a solution was found, false otherwise.
+     */
+    bool solve(const std::vector<double>& seed, const moveit_msgs::Constraints& tool_constraints,std::vector<double>& solution);
+
+    /**
+     * @brief Find the joint position that obeys the specified Cartesian constraint.
+     * @param seed              A joint pose to seed the solver.
+     * @param tool_constraints  The Cartesian constraint info to be used in determining the tool pose and tolerances
+     * @param solution          The joint values that comply with the Cartesian constraint.
+     * @return  True if a solution was found, false otherwise.
+     */
+    bool solve(const Eigen::VectorXd& seed, const moveit_msgs::Constraints& tool_constraints,Eigen::VectorXd& solution);
+
+  protected:
+
+    std::shared_ptr<TRAC_IK::TRAC_IK> ik_solver_impl_;
+
+  };
 
   /**
    * @struct stomp_moveit::utils::KinematicConfig
@@ -87,8 +152,16 @@ namespace kinematics
     return !(c.position_constraints.empty() && c.orientation_constraints.empty());
   }
 
+  /**
+   * @brief Populates the missing parts of a Cartesian constraints in order to provide a constraint that can be used by the Ik solver.
+   * @param c               The constraint object. It may define position, orientation or both constraint types.
+   * @param ref_pose        If no orientation or position constraints are given then this pose will be use to fill the missing information.
+   * @param default_pos_tol Used when no position tolerance is specified.
+   * @param default_rot_tol Used when no rotation tolerance is specified
+   * @return
+   */
   static moveit_msgs::Constraints constructCartesianConstraints(const moveit_msgs::Constraints& c,const Eigen::Affine3d& ref_pose,
-                                                                double default_pos_tol = 0.0, double default_rot_tol = M_PI)
+                                                                double default_pos_tol = 0.0005, double default_rot_tol = M_PI)
   {
     using namespace moveit_msgs;
 
@@ -150,6 +223,20 @@ namespace kinematics
 
     return cc;
   }
+
+  bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose, std::vector<double>& tolerance);
+  bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose, Eigen::VectorXd& tolerance);
+
+  /**
+   * @brief Creates cartesian poses in accordance to the constraint and sampling resolution values
+   * @param c                     The constraints which provides information on how to sample the poses.
+   * @param sampling_resolution   The incremental values used to sample along each dimension of position and orientation (dx, dy, dz, d_rx, d_ry, d_rz)
+   * @param max_samples           Maximum number of samples to be generated
+   * @return The sampled poses
+   */
+  static std::vector<Eigen::Affine3d> sampleCartesianPoses(const moveit_msgs::Constraints& c,
+                                                    const std::vector<double> sampling_resolution = {0.05, 0.05, 0.05, M_PI_2,M_PI_2,M_PI_2},
+                                                    int max_samples =20 );
 
   /**
    * @brief Populates a Kinematic Config struct from the position and orientation constraints requested;

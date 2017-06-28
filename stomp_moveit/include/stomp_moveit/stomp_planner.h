@@ -29,6 +29,7 @@
 #include <moveit/planning_interface/planning_interface.h>
 #include <stomp_core/stomp.h>
 #include <stomp_moveit/stomp_optimization_task.h>
+#include <stomp_moveit/utils/kinematics.h>
 #include <boost/thread.hpp>
 #include <ros/ros.h>
 
@@ -121,16 +122,6 @@ protected:
   bool getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal);
 
   /**
-   * @brief Generates one or more joint poses from a cartesian goal
-   * @param start_state
-   * @param goal
-   * @param goal_poses
-   * @return
-   */
-  bool cartesianConstraintstoJointSolutions(moveit::core::RobotStateConstPtr start_state,const moveit_msgs::Constraints& goal,
-                                    std::vector<Eigen::VectorXd>& joint_solutions) const;
-
-  /**
    * @brief This function 1) gets the seed trajectory from the active motion plan request, 2) checks to see if
    * the given seed trajectory makes sense in the context of the user provided goal constraints, 3) modifies
    * the seed's first and last point to 'fix' it for small deviations in the goal constraints and 4) applies
@@ -173,8 +164,9 @@ protected:
   XmlRpc::XmlRpcValue config_;
   stomp_core::StompConfiguration stomp_config_;
 
-  // robot environment
+  // robot model
   moveit::core::RobotModelConstPtr robot_model_;
+  utils::kinematics::IKSolverPtr ik_solver_;
 
   // ros tasks
   ros::NodeHandlePtr ph_;

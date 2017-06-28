@@ -7,6 +7,8 @@ find_package(catkin REQUIRED COMPONENTS
   stomp_core
   cmake_modules
   pluginlib
+  kdl_parser
+  trac_ik_lib
 )
 find_package(Eigen REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
@@ -20,7 +22,7 @@ add_definitions("-std=c++11")
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core cmake_modules pluginlib roscpp
+  CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core cmake_modules pluginlib roscpp kdl_parser trac_ik_lib
   DEPENDS Eigen
 )
 
@@ -38,6 +40,7 @@ add_library(${PROJECT_NAME}
   src/stomp_optimization_task.cpp
   src/stomp_planner.cpp
   src/utils/polynomial.cpp
+  src/utils/kinematics.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
