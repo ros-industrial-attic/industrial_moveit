@@ -36,13 +36,11 @@
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::noise_generators::GoalGuidedMultivariateGaussian,
                        stomp_moveit::noise_generators::StompNoiseGenerator);
 
-static int const IK_ITERATIONS = 40;
-static double const JOINT_UPDATE_RATE = 0.5f;
-static double const CARTESIAN_POS_CONVERGENCE = 0.01;
-static double const CARTESIAN_ROT_CONVERGENCE = 0.01;
 static const std::vector<double> ACC_MATRIX_DIAGONAL_VALUES = {-1.0/12.0, 16.0/12.0, -30.0/12.0, 16.0/12.0, -1.0/12.0};
 static const std::vector<int> ACC_MATRIX_DIAGONAL_INDICES = {-2, -1, 0 ,1, 2};
 static const int CARTESIAN_DOF_SIZE = 6;
+static const double DEFAULT_POS_TOLERANCE = 0.001;
+static const double DEFAULT_ROT_TOLERANCE = 0.01;
 
 
 namespace stomp_moveit
@@ -62,13 +60,12 @@ GoalGuidedMultivariateGaussian::~GoalGuidedMultivariateGaussian()
 
 }
 
-
-
 bool GoalGuidedMultivariateGaussian::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
                         const std::string& group_name,const XmlRpc::XmlRpcValue& config)
 {
   using namespace moveit::core;
 
+  // robot model details
   group_ = group_name;
   robot_model_ = robot_model_ptr;
   const JointModelGroup* joint_group = robot_model_ptr->getJointModelGroup(group_name);
@@ -78,16 +75,11 @@ bool GoalGuidedMultivariateGaussian::initialize(moveit::core::RobotModelConstPtr
     return false;
   }
 
+  // kinematics
+  ik_solver_.reset(new stomp_moveit::utils::kinematics::IKSolver(robot_model_ptr,group_name));
+
+  // trajectory noise generation
   stddev_.resize(joint_group->getActiveJointModelNames().size());
-  goal_stddev_.resize(CARTESIAN_DOF_SIZE);
-
-  // goal kinematics parameters
-  kc_.joint_update_rates = JOINT_UPDATE_RATE*Eigen::VectorXd::Ones(stddev_.size());
-  kc_.cartesian_convergence_thresholds << CARTESIAN_POS_CONVERGENCE, CARTESIAN_POS_CONVERGENCE, CARTESIAN_POS_CONVERGENCE,
-      CARTESIAN_ROT_CONVERGENCE, CARTESIAN_ROT_CONVERGENCE, CARTESIAN_ROT_CONVERGENCE;
-  kc_.constrained_dofs << 1, 1, 1, 1, 1, 1;
-  kc_.max_iterations = IK_ITERATIONS;
-
 
   return configure(config);
 }
@@ -102,19 +94,11 @@ bool GoalGuidedMultivariateGaussian::configure(const XmlRpc::XmlRpcValue& config
 
     // noise generation parameters
     XmlRpcValue stddev_param = params["stddev"];
-    XmlRpcValue goal_stddev_param = params["goal_stddev"];
 
     // check  stddev
     if(stddev_param.size() < stddev_.size())
     {
       ROS_ERROR("%s the 'stddev' parameter has fewer elements than the number of joints",getName().c_str());
-      return false;
-    }
-
-    // check goal stddev
-    if(goal_stddev_param.size() != CARTESIAN_DOF_SIZE)
-    {
-      ROS_ERROR("%s the 'goal_stddev' parameter must have 6 entries [x y z rx ry rz] for the tool cartesian goal",getName().c_str());
       return false;
     }
 
@@ -124,25 +108,6 @@ bool GoalGuidedMultivariateGaussian::configure(const XmlRpc::XmlRpcValue& config
       stddev_[i] = static_cast<double>(stddev_param[i]);
     }
 
-    // goal stddev
-    for(auto i = 0u; i < goal_stddev_param.size(); i++)
-    {
-      goal_stddev_[i] = static_cast<double>(goal_stddev_param[i]);
-    }
-
-    // goal constraint parameters
-    XmlRpcValue dof_nullity_param = params["constrained_dofs"];
-    if((dof_nullity_param.getType() != XmlRpcValue::TypeArray) ||
-        dof_nullity_param.size() < CARTESIAN_DOF_SIZE )
-    {
-      ROS_ERROR("UnderconstrainedGoal received invalid array parameters");
-      return false;
-    }
-
-    for(auto i = 0u; i < dof_nullity_param.size(); i++)
-    {
-      kc_.constrained_dofs(i) = static_cast<int>(dof_nullity_param[i]);
-    }
 
   }
   catch(XmlRpc::XmlRpcException& e)
@@ -159,13 +124,13 @@ bool GoalGuidedMultivariateGaussian::setMotionPlanRequest(const planning_scene::
                  const stomp_core::StompConfiguration &config,
                  moveit_msgs::MoveItErrorCodes& error_code)
 {
-  bool succeed = setNoiseGeneration(planning_scene,req,config,error_code) &&
-      setGoalConstraints(planning_scene,req,config,error_code);
+  bool succeed = setupNoiseGeneration(planning_scene,req,config,error_code) &&
+      setupGoalConstraints(planning_scene,req,config,error_code);
 
   return succeed;
 }
 
-bool GoalGuidedMultivariateGaussian::setNoiseGeneration(const planning_scene::PlanningSceneConstPtr& planning_scene,
+bool GoalGuidedMultivariateGaussian::setupNoiseGeneration(const planning_scene::PlanningSceneConstPtr& planning_scene,
                                                const moveit_msgs::MotionPlanRequest &req,
                                                const stomp_core::StompConfiguration &config,
                                                moveit_msgs::MoveItErrorCodes& error_code)
@@ -212,7 +177,7 @@ bool GoalGuidedMultivariateGaussian::setNoiseGeneration(const planning_scene::Pl
 }
 
 
-bool GoalGuidedMultivariateGaussian::setGoalConstraints(const planning_scene::PlanningSceneConstPtr& planning_scene,
+bool GoalGuidedMultivariateGaussian::setupGoalConstraints(const planning_scene::PlanningSceneConstPtr& planning_scene,
                                                const moveit_msgs::MotionPlanRequest &req,
                                                const stomp_core::StompConfiguration &config,
                                                moveit_msgs::MoveItErrorCodes& error_code)
@@ -221,11 +186,49 @@ bool GoalGuidedMultivariateGaussian::setGoalConstraints(const planning_scene::Pl
   using namespace moveit::core;
   using namespace utils::kinematics;
 
+  // robot state
   const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_);
   int num_joints = joint_group->getActiveJointModels().size();
   tool_link_ = joint_group->getLinkModelNames().back();
   state_.reset(new RobotState(robot_model_));
   robotStateMsgToRobotState(req.start_state,*state_);
+
+  // storing cartesian goal tolerance from motion plan request
+  const std::vector<moveit_msgs::Constraints>& goals = req.goal_constraints;
+  if(goals.empty())
+  {
+    ROS_ERROR("A goal constraint was not provided");
+    error_code.val = error_code.INVALID_GOAL_CONSTRAINTS;
+    return false;
+  }
+  bool found_valid = false;
+  for(const auto& g: goals)
+  {
+
+    if(utils::kinematics::validateCartesianConstraints(g))
+    {
+      // decoding goal
+      state_->updateLinkTransforms();
+      Eigen::Affine3d start_tool_pose = state_->getGlobalLinkTransform(tool_link_);
+      moveit_msgs::Constraints cartesian_constraints = utils::kinematics::constructCartesianConstraints(g,start_tool_pose);
+      Eigen::Affine3d tool_goal_pose;
+      found_valid = utils::kinematics::decodeCartesianConstraint(cartesian_constraints,tool_goal_pose,tool_goal_tolerance_);
+    }
+
+
+    if(!found_valid)
+    {
+      ROS_DEBUG("%s a cartesian goal pose in MotionPlanRequest was not provided,using default cartesian tolerance",getName().c_str());
+
+      // creating default cartesian tolerance
+      tool_goal_tolerance_.resize(CARTESIAN_DOF_SIZE);
+      double ptol = DEFAULT_POS_TOLERANCE;
+      double rtol = DEFAULT_ROT_TOLERANCE;
+      tool_goal_tolerance_ << ptol, ptol, ptol, rtol, rtol, rtol;
+    }
+
+    break;
+  }
 
   ROS_DEBUG("%s using '%s' tool link",getName().c_str(),tool_link_.c_str());
   error_code.val = error_code.SUCCESS;
@@ -247,7 +250,7 @@ bool GoalGuidedMultivariateGaussian::generateNoise(const Eigen::MatrixXd& parame
   VectorXd goal_joint_pose, goal_joint_noise;
   if(parameters.rows() != stddev_.size())
   {
-    ROS_ERROR("Number of rows in parameters %i differs from expected number of joints",int(parameters.rows()));
+    ROS_ERROR("%s Number of rows in parameters %i differs from expected number of joints",int(parameters.rows()),getName().c_str());
     return false;
   }
 
@@ -257,7 +260,7 @@ bool GoalGuidedMultivariateGaussian::generateNoise(const Eigen::MatrixXd& parame
   }
   else
   {
-    ROS_WARN("%s failed to generate random goal pose in the task space, not applying noise at goal",getName().c_str());
+    ROS_DEBUG("%s failed to generate random goal pose in the task space, not applying noise at goal",getName().c_str());
     goal_joint_noise = VectorXd::Zero(parameters.rows());
   }
 
@@ -278,7 +281,7 @@ bool GoalGuidedMultivariateGaussian::generateNoise(const Eigen::MatrixXd& parame
   return true;
 }
 
-bool GoalGuidedMultivariateGaussian::generateRandomGoal(const Eigen::VectorXd& seed_joint_pose,Eigen::VectorXd& goal_joint_pose)
+bool GoalGuidedMultivariateGaussian::generateRandomGoal(const Eigen::VectorXd& reference_joint_pose,Eigen::VectorXd& goal_joint_pose)
 {
   using namespace Eigen;
   using namespace moveit::core;
@@ -288,22 +291,21 @@ bool GoalGuidedMultivariateGaussian::generateRandomGoal(const Eigen::VectorXd& s
   Eigen::VectorXd noise = Eigen::VectorXd::Zero(CARTESIAN_DOF_SIZE);
   for(auto d = 0u; d < noise.size(); d++)
   {
-    noise(d) = goal_stddev_[d]*(*goal_rand_generator_)();
+    noise(d) = tool_goal_tolerance_(d)*(*goal_rand_generator_)();
   }
 
   // applying noise onto tool pose
-  state_->setJointGroupPositions(group_,seed_joint_pose);
+  state_->setJointGroupPositions(group_,reference_joint_pose);
   state_->updateLinkTransforms();
   Affine3d tool_pose = state_->getGlobalLinkTransform(tool_link_);
   auto& n = noise;
-  kc_.tool_goal_pose = tool_pose * Translation3d(Vector3d(n(0),n(1),n(2)))*
+  Affine3d noisy_tool_pose = tool_pose * Translation3d(Vector3d(n(0),n(1),n(2)))*
       AngleAxisd(n(3),Vector3d::UnitX())*AngleAxisd(n(4),Vector3d::UnitY())*AngleAxisd(n(5),Vector3d::UnitZ());
-  kc_.init_joint_pose = seed_joint_pose;
 
-  if(!kinematics::solveIK(state_,group_,kc_,goal_joint_pose))
+  if(!ik_solver_->solve(reference_joint_pose,noisy_tool_pose,goal_joint_pose,tool_goal_tolerance_))
   {
-    ROS_DEBUG("%s 'solveIK(...)' failed, returning noiseless goal pose",getName().c_str());
-    goal_joint_pose= seed_joint_pose;
+    ROS_DEBUG("%s could not solve ik, returning noiseless goal pose",getName().c_str());
+    goal_joint_pose= reference_joint_pose;
     return false;
   }
 

@@ -121,15 +121,15 @@ bool ToolGoalPose::setMotionPlanRequest(const planning_scene::PlanningSceneConst
       state_->updateLinkTransforms();
       Eigen::Affine3d start_tool_pose = state_->getGlobalLinkTransform(tool_link_);
       moveit_msgs::Constraints cartesian_constraints = utils::kinematics::constructCartesianConstraints(g,start_tool_pose);
-      std::vector<double> tolerance;
-      found_goal = utils::kinematics::decodeCartesianConstraint(cartesian_constraints,tool_goal_pose_,tolerance);
+      found_goal = utils::kinematics::decodeCartesianConstraint(cartesian_constraints,tool_goal_pose_,tool_goal_tolerance_);
+      ROS_DEBUG_STREAM("ToolGoalTolerance cost function will use tolerance: "<<tool_goal_tolerance_.transpose());
       break;
     }
 
 
     if(!found_goal)
     {
-      ROS_WARN("%s a cartesian goal pose in MotionPlanRequest was not provided,calculating it from FK",getName().c_str());
+      ROS_DEBUG("%s a cartesian goal pose in MotionPlanRequest was not provided,calculating it from FK",getName().c_str());
 
       // check joint constraints
       if(g.joint_constraints.empty())
@@ -162,9 +162,9 @@ bool ToolGoalPose::setMotionPlanRequest(const planning_scene::PlanningSceneConst
 
   // setting cartesian error range
   min_twist_error_ = tool_goal_tolerance_;
+  max_twist_error_.resize(min_twist_error_.size());
   max_twist_error_.head(3) = min_twist_error_.head(3)*POS_MAX_ERROR_RATIO;
   max_twist_error_.tail(3) = min_twist_error_.tail(3)*ROT_MAX_ERROR_RATIO;
-  max_twist_error_.tail(3) = (max_twist_error_.tail(3).array() > M_PI).select(M_PI,max_twist_error_.tail(3));
 
   return true;
 }

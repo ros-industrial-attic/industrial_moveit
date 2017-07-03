@@ -127,17 +127,23 @@ public:
 
 protected:
 
-  virtual bool setNoiseGeneration(const planning_scene::PlanningSceneConstPtr& planning_scene,
+  virtual bool setupNoiseGeneration(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
                    moveit_msgs::MoveItErrorCodes& error_code);
 
-  virtual bool setGoalConstraints(const planning_scene::PlanningSceneConstPtr& planning_scene,
+  virtual bool setupGoalConstraints(const planning_scene::PlanningSceneConstPtr& planning_scene,
                    const moveit_msgs::MotionPlanRequest &req,
                    const stomp_core::StompConfiguration &config,
                    moveit_msgs::MoveItErrorCodes& error_code);
 
-  virtual bool generateRandomGoal(const Eigen::VectorXd& seed,Eigen::VectorXd& goal_joint_pose);
+  /**
+   * @brief Genereates a random tool pose by apply noise on the redundant axis to a reference tool pose;
+   * @param reference_joint_pose  Joint position used in computing the reference tool pose with FK
+   * @param goal_joint_pose       The joint position corresponding to the randomized tool pose
+   * @return  True if succeded, false otherwise
+   */
+  virtual bool generateRandomGoal(const Eigen::VectorXd& reference_joint_pose,Eigen::VectorXd& goal_joint_pose);
 
 protected:
 
@@ -145,17 +151,16 @@ protected:
   std::string name_;
   std::string group_;
 
-  // goal tool constraints
+  // goal constraints
   std::string tool_link_;
+  Eigen::VectorXd tool_goal_tolerance_;
 
   // ros parameters
-  utils::kinematics::KinematicConfig kc_;                             /**< @brief The kinematic configuration to find valid goal poses **/
+  std::vector<double> stddev_;                                        /**< @brief The standard deviations applied to each joint, [num_dimensions x 1 **/
 
   // noisy trajectory generation
   std::vector<utils::MultivariateGaussianPtr> traj_noise_generators_; /**< @brief Randomized numerical distribution generators, [6 x 1] **/
   Eigen::VectorXd raw_noise_;                                         /**< @brief The noise vector **/
-  std::vector<double> stddev_;                                        /**< @brief The standard deviations applied to each joint, [num_dimensions x 1 **/
-  std::vector<double> goal_stddev_;                                   /**< @brief The standard deviations applied to each cartesian dimension at the goal, [6 x 1] **/
 
   // random goal generation
   boost::shared_ptr<RandomGenerator> goal_rand_generator_;            /**< @brief Random generator for the tool goal pose **/
@@ -163,6 +168,7 @@ protected:
   // robot
   moveit::core::RobotModelConstPtr robot_model_;
   moveit::core::RobotStatePtr state_;
+  stomp_moveit::utils::kinematics::IKSolverPtr ik_solver_;
 
 };
 
