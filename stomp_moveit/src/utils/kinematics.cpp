@@ -96,339 +96,530 @@ namespace utils
 namespace kinematics
 {
 
-  IKSolver::IKSolver(moveit::core::RobotModelConstPtr robot_model,std::string group_name,double max_time)
+IKSolver::IKSolver(moveit::core::RobotModelConstPtr robot_model,std::string group_name,double max_time)
+{
+  const moveit::core::JointModelGroup* group = robot_model->getJointModelGroup(group_name);
+  ik_solver_impl_ = createTRACIKSolver(robot_model,group,max_time);
+}
+
+IKSolver::~IKSolver()
+{
+
+}
+
+bool IKSolver::solve(const Eigen::VectorXd& seed,const Eigen::Affine3d& tool_pose,Eigen::VectorXd& solution,
+           Eigen::VectorXd tol)
+{
+  using namespace Eigen;
+  std::vector<double> seed_(seed.size(),0);
+  std::vector<double> solution_;
+  std::vector<double> tol_(6,0);
+
+  // converting to eigen
+  VectorXd::Map(&seed_.front(),seed.size()) = seed;
+  VectorXd::Map(&tol_.front(),tol_.size()) = tol;
+
+  if(!solve(seed_,tool_pose,solution_,tol_))
   {
-    const moveit::core::JointModelGroup* group = robot_model->getJointModelGroup(group_name);
-    ik_solver_impl_ = createTRACIKSolver(robot_model,group,max_time);
+    return false;
   }
 
-  IKSolver::~IKSolver()
-  {
+  solution.resize(solution_.size());
+  solution = VectorXd::Map(solution_.data(),solution.size());
+  return true;
+}
 
+bool IKSolver::solve(const std::vector<double>& seed, const Eigen::Affine3d& tool_pose,std::vector<double>& solution,
+           std::vector<double> tol)
+{
+  using namespace KDL;
+  using namespace Eigen;
+  JntArray seed_kdl = toKDLJntArray(seed);
+  Twist tol_kdl;
+  JntArray solution_kdl;
+  Frame tool_pose_kdl;
+
+  // converting to KDL data types
+  for(int i = 0; i < tol.size(); i++)
+  {
+    tol_kdl[i] = tol[i];
   }
 
-  bool IKSolver::solve(const Eigen::VectorXd& seed,const Eigen::Affine3d& tool_pose,Eigen::VectorXd& solution,
-             Eigen::VectorXd tol)
+  tf::transformEigenToKDL(tool_pose, tool_pose_kdl);
+
+
+  // calling solver
+  if(ik_solver_impl_->CartToJnt(seed_kdl,tool_pose_kdl,solution_kdl,tol_kdl) <= 0)
   {
-    using namespace Eigen;
-    std::vector<double> seed_(seed.size(),0);
-    std::vector<double> solution_;
-    std::vector<double> tol_(6,0);
-
-    // converting to eigen
-    VectorXd::Map(&seed_.front(),seed.size()) = seed;
-    VectorXd::Map(&tol_.front(),tol_.size()) = tol;
-
-    if(!solve(seed_,tool_pose,solution_,tol_))
-    {
-      return false;
-    }
-
-    solution.resize(solution_.size());
-    solution = VectorXd::Map(solution_.data(),solution.size());
-    return true;
+    ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"Failed to solve IK for tool pose:\n"<<tool_pose.matrix());
+    ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"Cartesian tolerance used :\n"<<tol_kdl[0]<<" "<<tol_kdl[1]<<" "<<tol_kdl[2]<<" "<<tol_kdl[3]<<" "<<tol_kdl[4]<<" "<<tol_kdl[5]);
+    return false;
   }
 
-  bool IKSolver::solve(const std::vector<double>& seed, const Eigen::Affine3d& tool_pose,std::vector<double>& solution,
-             std::vector<double> tol)
+  solution.resize(solution_kdl.rows());
+  VectorXd::Map(&solution.front(),solution.size()) = solution_kdl.data;
+  return true;
+}
+
+bool IKSolver::solve(const std::vector<double>& seed, const moveit_msgs::Constraints& tool_constraints,std::vector<double>& solution)
+{
+  Eigen::Affine3d tool_pose;
+  std::vector<double> tolerance;
+  if(!decodeCartesianConstraint(tool_constraints,tool_pose,tolerance))
   {
-    using namespace KDL;
-    using namespace Eigen;
-    JntArray seed_kdl = toKDLJntArray(seed);
-    Twist tol_kdl;
-    JntArray solution_kdl;
-    Frame tool_pose_kdl;
-
-    // converting to KDL data types
-    for(int i = 0; i < tol.size(); i++)
-    {
-      tol_kdl[i] = tol[i];
-    }
-
-    tf::transformEigenToKDL(tool_pose, tool_pose_kdl);
-
-
-    // calling solver
-    if(ik_solver_impl_->CartToJnt(seed_kdl,tool_pose_kdl,solution_kdl,tol_kdl) <= 0)
-    {
-      ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"Failed to solve IK for tool pose:\n"<<tool_pose.matrix());
-      ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"Cartesian tolerance used :\n"<<tol_kdl[0]<<" "<<tol_kdl[1]<<" "<<tol_kdl[2]<<" "<<tol_kdl[3]<<" "<<tol_kdl[4]<<" "<<tol_kdl[5]);
-      return false;
-    }
-
-    solution.resize(solution_kdl.rows());
-    VectorXd::Map(&solution.front(),solution.size()) = solution_kdl.data;
-    return true;
+    return false;
   }
 
-  bool IKSolver::solve(const std::vector<double>& seed, const moveit_msgs::Constraints& tool_constraints,std::vector<double>& solution)
-  {
-    Eigen::Affine3d tool_pose;
-    std::vector<double> tolerance;
-    if(!decodeCartesianConstraint(tool_constraints,tool_pose,tolerance))
-    {
-      return false;
-    }
+  return solve(seed,tool_pose,solution,tolerance);
+}
 
-    return solve(seed,tool_pose,solution,tolerance);
+bool IKSolver::solve(const Eigen::VectorXd& seed, const moveit_msgs::Constraints& tool_constraints,Eigen::VectorXd& solution)
+{
+  Eigen::Affine3d tool_pose;
+  std::vector<double> tolerance;
+  if(!decodeCartesianConstraint(tool_constraints,tool_pose,tolerance))
+  {
+    return false;
   }
 
-  bool IKSolver::solve(const Eigen::VectorXd& seed, const moveit_msgs::Constraints& tool_constraints,Eigen::VectorXd& solution)
-  {
-    Eigen::Affine3d tool_pose;
-    std::vector<double> tolerance;
-    if(!decodeCartesianConstraint(tool_constraints,tool_pose,tolerance))
-    {
-      return false;
-    }
+  Eigen::VectorXd tolerance_eigen = Eigen::VectorXd::Zero(6);
+  tolerance_eigen = Eigen::VectorXd::Map(tolerance.data(),tolerance.size());
+  return solve(seed,tool_pose,solution,tolerance_eigen);
+}
 
-    Eigen::VectorXd tolerance_eigen = Eigen::VectorXd::Zero(6);
-    tolerance_eigen = Eigen::VectorXd::Map(tolerance.data(),tolerance.size());
-    return solve(seed,tool_pose,solution,tolerance_eigen);
+moveit_msgs::Constraints constructCartesianConstraints(const moveit_msgs::Constraints& c,const Eigen::Affine3d& ref_pose,
+                                                              double default_pos_tol , double default_rot_tol)
+{
+  using namespace moveit_msgs;
+
+  moveit_msgs::Constraints cc;
+  int num_pos_constraints = c.position_constraints.size();
+  int num_orient_constraints = c.orientation_constraints.size();
+  int num_entries = num_pos_constraints >= num_orient_constraints ? num_pos_constraints : num_orient_constraints;
+
+  if(!validateCartesianConstraints(c))
+  {
+    return cc;
   }
 
-  bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose, Eigen::VectorXd& tolerance)
+  // creating default position constraint
+  PositionConstraint pc;
+  pc.constraint_region.primitive_poses.resize(1);
+  tf::poseEigenToMsg(Eigen::Affine3d::Identity(), pc.constraint_region.primitive_poses[0]);
+  pc.constraint_region.primitive_poses[0].position.x = ref_pose.translation().x();
+  pc.constraint_region.primitive_poses[0].position.y = ref_pose.translation().y();
+  pc.constraint_region.primitive_poses[0].position.z = ref_pose.translation().z();
+  shape_msgs::SolidPrimitive shape;
+  shape.type = shape.SPHERE;
+  shape.dimensions.push_back(default_pos_tol);
+  pc.constraint_region.primitives.push_back(shape);
+
+  // creating default orientation constraint
+  OrientationConstraint oc;
+  oc.absolute_x_axis_tolerance = default_rot_tol;
+  oc.absolute_y_axis_tolerance = default_rot_tol;
+  oc.absolute_z_axis_tolerance = default_rot_tol;
+  oc.orientation.x = oc.orientation.y = oc.orientation.z = 0;
+  oc.orientation.w = 1;
+
+
+  cc.position_constraints.resize(num_entries);
+  cc.orientation_constraints.resize(num_entries);
+  for(int i =0; i < num_entries; i++)
   {
-    std::vector<double> tolerance_std;
-    if(!decodeCartesianConstraint(constraints,tool_pose,tolerance_std))
+    // populating position constraints
+    if(c.position_constraints.size() >= num_entries)
     {
-      return false;
-    }
-
-    tolerance = Eigen::VectorXd::Map(tolerance_std.data(),tolerance_std.size());
-    return true;
-  }
-
-  bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose, std::vector<double>& tolerance)
-  {
-    using namespace Eigen;
-
-    // declaring result variables
-    tolerance.resize(6,0);
-    geometry_msgs::Point p;
-    Eigen::Quaterniond q = Quaterniond::Identity();
-    const std::vector<moveit_msgs::PositionConstraint>& pos_constraints = constraints.position_constraints;
-    const std::vector<moveit_msgs::OrientationConstraint>& orient_constraints = constraints.orientation_constraints;
-
-    int num_constraints = pos_constraints.size() > orient_constraints.size() ? pos_constraints.size() : orient_constraints.size();
-    if(num_constraints == 0)
-    {
-     ROS_ERROR("Constraints message is empty");
-     return false;
-    }
-
-    // position
-    if(pos_constraints.empty())
-    {
-     ROS_ERROR("Position constraint is empty");
-     return false;
+      cc.position_constraints[i] = c.position_constraints[i];
     }
     else
     {
-     const moveit_msgs::PositionConstraint& pos_constraint = pos_constraints[0];
+      cc.position_constraints[i] = pc;
+    }
 
-     // tool pose nominal position
-     p = pos_constraint.constraint_region.primitive_poses[0].position;
+    // populating orientation constraints
+    if(c.orientation_constraints.size() >= num_entries)
+    {
+      cc.orientation_constraints[i] = c.orientation_constraints[i];
+    }
+    else
+    {
+      cc.orientation_constraints[i] = oc;
+    }
+  }
 
-     // collecting position tolerances
-     const shape_msgs::SolidPrimitive& bv = pos_constraint.constraint_region.primitives[0];
-     bool valid_constraint = true;
-     switch(bv.type)
+  return cc;
+}
+
+bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose, Eigen::VectorXd& tolerance)
+{
+  std::vector<double> tolerance_std;
+  if(!decodeCartesianConstraint(constraints,tool_pose,tolerance_std))
+  {
+    return false;
+  }
+
+  tolerance = Eigen::VectorXd::Map(tolerance_std.data(),tolerance_std.size());
+  return true;
+}
+
+bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose, std::vector<double>& tolerance)
+{
+  using namespace Eigen;
+
+  // declaring result variables
+  tolerance.resize(6,0);
+  geometry_msgs::Point p;
+  Eigen::Quaterniond q = Quaterniond::Identity();
+  const std::vector<moveit_msgs::PositionConstraint>& pos_constraints = constraints.position_constraints;
+  const std::vector<moveit_msgs::OrientationConstraint>& orient_constraints = constraints.orientation_constraints;
+
+  int num_constraints = pos_constraints.size() > orient_constraints.size() ? pos_constraints.size() : orient_constraints.size();
+  if(num_constraints == 0)
+  {
+   ROS_ERROR("Constraints message is empty");
+   return false;
+  }
+
+  // position
+  if(pos_constraints.empty())
+  {
+   ROS_ERROR("Position constraint is empty");
+   return false;
+  }
+  else
+  {
+   const moveit_msgs::PositionConstraint& pos_constraint = pos_constraints[0];
+
+   // tool pose nominal position
+   p = pos_constraint.constraint_region.primitive_poses[0].position;
+
+   // collecting position tolerances
+   const shape_msgs::SolidPrimitive& bv = pos_constraint.constraint_region.primitives[0];
+   bool valid_constraint = true;
+   switch(bv.type)
+   {
+     case shape_msgs::SolidPrimitive::BOX :
      {
-       case shape_msgs::SolidPrimitive::BOX :
+       if(bv.dimensions.size() != 3)
        {
-         if(bv.dimensions.size() != 3)
-         {
-           ROS_WARN("Position constraint for BOX shape incorrectly defined, only 3 dimensions entries are needed");
-           valid_constraint = false;
-           break;
-         }
-
-         using SP = shape_msgs::SolidPrimitive;
-         tolerance[0] = bv.dimensions[SP::BOX_X];
-         tolerance[1] = bv.dimensions[SP::BOX_Y];
-         tolerance[2] = bv.dimensions[SP::BOX_Z];
-       }
-       break;
-
-       case shape_msgs::SolidPrimitive::SPHERE:
-       {
-         if(bv.dimensions.size() != 1)
-         {
-           ROS_WARN("Position constraint for SPHERE shape has no valid dimensions");
-           valid_constraint = false;
-           break;
-         }
-
-         using SP = shape_msgs::SolidPrimitive;
-         tolerance[0] = bv.dimensions[SP::SPHERE_RADIUS];
-         tolerance[1] = bv.dimensions[SP::SPHERE_RADIUS];
-         tolerance[2] = bv.dimensions[SP::SPHERE_RADIUS];
-       }
-       break;
-
-       default:
-
-         ROS_WARN("The Position constraint shape %i isn't supported, defaulting position tolerance to zero",bv.type);
+         ROS_WARN("Position constraint for BOX shape incorrectly defined, only 3 dimensions entries are needed");
+         valid_constraint = false;
          break;
+       }
+
+       using SP = shape_msgs::SolidPrimitive;
+       tolerance[0] = bv.dimensions[SP::BOX_X];
+       tolerance[1] = bv.dimensions[SP::BOX_Y];
+       tolerance[2] = bv.dimensions[SP::BOX_Z];
      }
-    }
+     break;
 
-    // orientation
-    if(orient_constraints.size() == 0)
-    {
-     // setting tolerance to zero
-     std::fill(tolerance.begin()+3,tolerance.end(),M_PI);
-    }
-    else
-    {
-     const moveit_msgs::OrientationConstraint& orient_constraint = orient_constraints[0];
+     case shape_msgs::SolidPrimitive::SPHERE:
+     {
+       if(bv.dimensions.size() != 1)
+       {
+         ROS_WARN("Position constraint for SPHERE shape has no valid dimensions");
+         valid_constraint = false;
+         break;
+       }
 
-     // collecting orientation tolerance
-     tolerance[3] = orient_constraint.absolute_x_axis_tolerance;
-     tolerance[4] = orient_constraint.absolute_y_axis_tolerance;
-     tolerance[5] = orient_constraint.absolute_z_axis_tolerance;
+       using SP = shape_msgs::SolidPrimitive;
+       tolerance[0] = bv.dimensions[SP::SPHERE_RADIUS];
+       tolerance[1] = bv.dimensions[SP::SPHERE_RADIUS];
+       tolerance[2] = bv.dimensions[SP::SPHERE_RADIUS];
+     }
+     break;
 
-     // tool pose nominal orientation
-     tf::quaternionMsgToEigen(orient_constraint.orientation,q);
-    }
+     default:
 
-    // assembling tool pose
-    tool_pose = Affine3d::Identity()*Eigen::Translation3d(Eigen::Vector3d(p.x,p.y,p.z))*q;
-
-    return true;
+       ROS_WARN("The Position constraint shape %i isn't supported, defaulting position tolerance to zero",bv.type);
+       break;
+   }
   }
 
-  std::vector<Eigen::Affine3d> sampleCartesianPoses(const moveit_msgs::Constraints& c,const std::vector<double> sampling_resolution,int max_samples)
+  // orientation
+  if(orient_constraints.size() == 0)
   {
-    using namespace Eigen;
+   // setting tolerance to zero
+   std::fill(tolerance.begin()+3,tolerance.end(),M_PI);
+  }
+  else
+  {
+   const moveit_msgs::OrientationConstraint& orient_constraint = orient_constraints[0];
 
-    std::vector<Eigen::Affine3d> poses;
+   // collecting orientation tolerance
+   tolerance[3] = orient_constraint.absolute_x_axis_tolerance;
+   tolerance[4] = orient_constraint.absolute_y_axis_tolerance;
+   tolerance[5] = orient_constraint.absolute_z_axis_tolerance;
 
-    // random generator
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    auto sample_val_func = [&gen](double min, double max, double intrv) -> double
+   // tool pose nominal orientation
+   tf::quaternionMsgToEigen(orient_constraint.orientation,q);
+  }
+
+  // assembling tool pose
+  tool_pose = Affine3d::Identity()*Eigen::Translation3d(Eigen::Vector3d(p.x,p.y,p.z))*q;
+
+  return true;
+}
+
+std::vector<Eigen::Affine3d> sampleCartesianPoses(const moveit_msgs::Constraints& c,const std::vector<double> sampling_resolution,int max_samples)
+{
+  using namespace Eigen;
+
+  std::vector<Eigen::Affine3d> poses;
+
+  // random generator
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  auto sample_val_func = [&gen](double min, double max, double intrv) -> double
+  {
+    double length = max - min;
+    if(length <= intrv || length < 1e-6)
     {
-      double length = max - min;
-      if(length <= intrv || length < 1e-6)
-      {
-        return 0.5*(max + min); // return average
-      }
+      return 0.5*(max + min); // return average
+    }
 
-      int num_intervals = std::ceil(length/intrv);
-      std::uniform_int_distribution<> dis(0, num_intervals);
-      int r = dis(gen);
-      double val = min + r*(intrv);
-      val = val > max ? max : val;
-      return val;
-    };
+    int num_intervals = std::ceil(length/intrv);
+    std::uniform_int_distribution<> dis(0, num_intervals);
+    int r = dis(gen);
+    double val = min + r*(intrv);
+    val = val > max ? max : val;
+    return val;
+  };
 
-    // extracting tolerances from constraints
-    const std::vector<moveit_msgs::PositionConstraint>& pos_constraints = c.position_constraints;
-    const std::vector<moveit_msgs::OrientationConstraint>& orient_constraints = c.orientation_constraints;
-    for(std::size_t k = 0; k < pos_constraints.size(); k++)
+  // extracting tolerances from constraints
+  const std::vector<moveit_msgs::PositionConstraint>& pos_constraints = c.position_constraints;
+  const std::vector<moveit_msgs::OrientationConstraint>& orient_constraints = c.orientation_constraints;
+  for(std::size_t k = 0; k < pos_constraints.size(); k++)
+  {
+
+    const moveit_msgs::PositionConstraint& pos_constraint = pos_constraints[k];
+    const moveit_msgs::OrientationConstraint& orient_constraint = orient_constraints[k];
+
+    // collecting position tolerances
+    std::vector<double> tolerances(6);
+    const shape_msgs::SolidPrimitive& bv = pos_constraint.constraint_region.primitives[0];
+    bool valid_constraint = true;
+    switch(bv.type)
     {
-
-      const moveit_msgs::PositionConstraint& pos_constraint = pos_constraints[k];
-      const moveit_msgs::OrientationConstraint& orient_constraint = orient_constraints[k];
-
-      // collecting position tolerances
-      std::vector<double> tolerances(6);
-      const shape_msgs::SolidPrimitive& bv = pos_constraint.constraint_region.primitives[0];
-      bool valid_constraint = true;
-      switch(bv.type)
+      case shape_msgs::SolidPrimitive::BOX :
       {
-        case shape_msgs::SolidPrimitive::BOX :
+        if(bv.dimensions.size() != 3)
         {
-          if(bv.dimensions.size() != 3)
-          {
-            ROS_WARN("Position constraint for BOX shape incorrectly defined, only 3 dimensions entries are needed");
-            valid_constraint = false;
-            break;
-          }
-
-          using SP = shape_msgs::SolidPrimitive;
-          tolerances[0] = bv.dimensions[SP::BOX_X];
-          tolerances[1] = bv.dimensions[SP::BOX_Y];
-          tolerances[2] = bv.dimensions[SP::BOX_Z];
-        }
-        break;
-
-        case shape_msgs::SolidPrimitive::SPHERE:
-        {
-          if(bv.dimensions.size() != 1)
-          {
-            ROS_WARN("Position constraint for SPHERE shape has no valid dimensions");
-            valid_constraint = false;
-            break;
-          }
-
-          using SP = shape_msgs::SolidPrimitive;
-          tolerances[0] = bv.dimensions[SP::SPHERE_RADIUS];
-          tolerances[1] = bv.dimensions[SP::SPHERE_RADIUS];
-          tolerances[2] = bv.dimensions[SP::SPHERE_RADIUS];
-        }
-        break;
-
-        default:
-
-          ROS_ERROR("The Position constraint shape %i isn't supported",bv.type);
+          ROS_WARN("Position constraint for BOX shape incorrectly defined, only 3 dimensions entries are needed");
           valid_constraint = false;
           break;
-      }
-
-      if(!valid_constraint)
-      {
-        continue;
-      }
-
-      // collecting orientation tolerance
-      tolerances[3] = orient_constraint.absolute_x_axis_tolerance;
-      tolerances[4] = orient_constraint.absolute_y_axis_tolerance;
-      tolerances[5] = orient_constraint.absolute_z_axis_tolerance;
-
-      // calculating total number of samples
-      int total_num_samples = 1;
-      for(std::size_t i = 0; i < tolerances.size(); i++)
-      {
-        total_num_samples *= (std::floor((2*tolerances[i]/sampling_resolution[i]) + 1) );
-      }
-      total_num_samples = total_num_samples > max_samples ? max_samples : total_num_samples;
-
-
-      // tool pose nominal position
-      auto& p = pos_constraint.constraint_region.primitive_poses[0].position;
-
-      // tool pose nominal orientation
-      Eigen::Quaterniond q;
-      tf::quaternionMsgToEigen(orient_constraint.orientation,q);
-
-      // generating samples
-      std::vector<double> vals(6);
-      Affine3d nominal_pos = Affine3d::Identity()*Eigen::Translation3d(Eigen::Vector3d(p.x,p.y,p.z));
-      Affine3d nominal_rot = Affine3d::Identity()*q;
-      for(int i = 0; i < total_num_samples; i++)
-      {
-        for(int j = 0; j < vals.size() ; j++)
-        {
-          vals[j] = sample_val_func(-0.5*tolerances[j],0.5*tolerances[j],sampling_resolution[j]);
         }
 
-        Affine3d rot = nominal_rot * AngleAxisd(vals[3],Vector3d::UnitX()) * AngleAxisd(vals[4],Vector3d::UnitY())
-            * AngleAxisd(vals[5],Vector3d::UnitZ());
-        Affine3d pose = nominal_pos * Translation3d(Vector3d(vals[0],vals[1],vals[2])) * rot;
-        poses.push_back(pose);
+        using SP = shape_msgs::SolidPrimitive;
+        tolerances[0] = bv.dimensions[SP::BOX_X];
+        tolerances[1] = bv.dimensions[SP::BOX_Y];
+        tolerances[2] = bv.dimensions[SP::BOX_Z];
       }
+      break;
 
-      if(poses.size()>= max_samples)
+      case shape_msgs::SolidPrimitive::SPHERE:
       {
-        break;
+        if(bv.dimensions.size() != 1)
+        {
+          ROS_WARN("Position constraint for SPHERE shape has no valid dimensions");
+          valid_constraint = false;
+          break;
+        }
+
+        using SP = shape_msgs::SolidPrimitive;
+        tolerances[0] = bv.dimensions[SP::SPHERE_RADIUS];
+        tolerances[1] = bv.dimensions[SP::SPHERE_RADIUS];
+        tolerances[2] = bv.dimensions[SP::SPHERE_RADIUS];
       }
+      break;
+
+      default:
+
+        ROS_ERROR("The Position constraint shape %i isn't supported",bv.type);
+        valid_constraint = false;
+        break;
     }
 
-    return poses;
+    if(!valid_constraint)
+    {
+      continue;
+    }
+
+    // collecting orientation tolerance
+    tolerances[3] = orient_constraint.absolute_x_axis_tolerance;
+    tolerances[4] = orient_constraint.absolute_y_axis_tolerance;
+    tolerances[5] = orient_constraint.absolute_z_axis_tolerance;
+
+    // calculating total number of samples
+    int total_num_samples = 1;
+    for(std::size_t i = 0; i < tolerances.size(); i++)
+    {
+      total_num_samples *= (std::floor((2*tolerances[i]/sampling_resolution[i]) + 1) );
+    }
+    total_num_samples = total_num_samples > max_samples ? max_samples : total_num_samples;
+
+
+    // tool pose nominal position
+    auto& p = pos_constraint.constraint_region.primitive_poses[0].position;
+
+    // tool pose nominal orientation
+    Eigen::Quaterniond q;
+    tf::quaternionMsgToEigen(orient_constraint.orientation,q);
+
+    // generating samples
+    std::vector<double> vals(6);
+    Affine3d nominal_pos = Affine3d::Identity()*Eigen::Translation3d(Eigen::Vector3d(p.x,p.y,p.z));
+    Affine3d nominal_rot = Affine3d::Identity()*q;
+    for(int i = 0; i < total_num_samples; i++)
+    {
+      for(int j = 0; j < vals.size() ; j++)
+      {
+        vals[j] = sample_val_func(-0.5*tolerances[j],0.5*tolerances[j],sampling_resolution[j]);
+      }
+
+      Affine3d rot = nominal_rot * AngleAxisd(vals[3],Vector3d::UnitX()) * AngleAxisd(vals[4],Vector3d::UnitY())
+          * AngleAxisd(vals[5],Vector3d::UnitZ());
+      Affine3d pose = nominal_pos * Translation3d(Vector3d(vals[0],vals[1],vals[2])) * rot;
+      poses.push_back(pose);
+    }
+
+    if(poses.size()>= max_samples)
+    {
+      break;
+    }
   }
+
+  return poses;
+}
+
+void computeTwist(const Eigen::Affine3d& p0,
+                                        const Eigen::Affine3d& pf,
+                                        const Eigen::ArrayXi& nullity,Eigen::VectorXd& twist)
+{
+  twist.resize(nullity.size());
+  twist.setConstant(0);
+
+  // relative transform
+  auto p0_inv = p0.inverse();
+  Eigen::Affine3d t = (p0_inv) * pf;
+
+  Eigen::Vector3d twist_pos = pf.translation() - p0.translation();
+
+  // relative rotation -> R = inverse(R0) * Rf
+  Eigen::AngleAxisd relative_rot(t.rotation());
+  double angle = relative_rot.angle();
+  Eigen::Vector3d axis = relative_rot.axis();
+
+  // forcing angle to range [-pi , pi]
+  while( (angle > M_PI) || (angle < -M_PI))
+  {
+    angle = (angle >  M_PI) ? (angle - 2*M_PI) : angle;
+    angle = (angle < -M_PI )? (angle + 2*M_PI) : angle;
+  }
+
+  // creating twist rotation relative to tool
+  Eigen::Vector3d twist_rot = axis.normalized() * angle;
+
+  // assigning into full 6dof twist vector
+  twist.head(3) = twist_pos;
+  twist.tail(3) = twist_rot;
+
+  // zeroing all underconstrained cartesian dofs
+  twist = (nullity == 0).select(0,twist);
+}
+
+void reduceJacobian(const Eigen::MatrixXd& jacb,
+                                          const std::vector<int>& indices,Eigen::MatrixXd& jacb_reduced)
+{
+  jacb_reduced.resize(indices.size(),jacb.cols());
+  for(auto i = 0u; i < indices.size(); i++)
+  {
+    jacb_reduced.row(i) = jacb.row(indices[i]);
+  }
+}
+
+
+void calculateDampedPseudoInverse(const Eigen::MatrixXd &jacb, Eigen::MatrixXd &jacb_pseudo_inv,
+                                         double eps, double lambda)
+{
+  using namespace Eigen;
+
+
+  //Calculate A+ (pseudoinverse of A) = V S+ U*, where U* is Hermition of U (just transpose if all values of U are real)
+  //in order to solve Ax=b -> x*=A+ b
+  Eigen::JacobiSVD<MatrixXd> svd(jacb, Eigen::ComputeThinU | Eigen::ComputeThinV);
+  const MatrixXd &U = svd.matrixU();
+  const VectorXd &Sv = svd.singularValues();
+  const MatrixXd &V = svd.matrixV();
+
+  // calculate the reciprocal of Singular-Values
+  // damp inverse with lambda so that inverse doesn't oscillate near solution
+  size_t nSv = Sv.size();
+  VectorXd inv_Sv(nSv);
+  for(size_t i=0; i< nSv; ++i)
+  {
+    if (fabs(Sv(i)) > eps)
+    {
+      inv_Sv(i) = 1/Sv(i);
+    }
+    else
+    {
+      inv_Sv(i) = Sv(i) / (Sv(i)*Sv(i) + lambda*lambda);
+    }
+  }
+
+  jacb_pseudo_inv = V * inv_Sv.asDiagonal() * U.transpose();
+}
+
+bool computeJacobianNullSpace(moveit::core::RobotStatePtr state,std::string group,std::string tool_link,
+                                     const Eigen::ArrayXi& constrained_dofs,const Eigen::VectorXd& joint_pose,
+                                     Eigen::MatrixXd& jacb_nullspace)
+{
+  using namespace Eigen;
+  using namespace moveit::core;
+
+  // robot state
+  const JointModelGroup* joint_group = state->getJointModelGroup(group);
+  state->setJointGroupPositions(joint_group,joint_pose);
+  Affine3d tool_pose = state->getGlobalLinkTransform(tool_link);
+
+  // jacobian calculations
+  static MatrixXd jacb_transform(6,6);
+  MatrixXd jacb, jacb_reduced, jacb_pseudo_inv;
+  jacb_transform.setZero();
+
+  if(!state->getJacobian(joint_group,state->getLinkModel(tool_link),Vector3d::Zero(),jacb))
+  {
+    ROS_ERROR("Failed to get Jacobian for link %s",tool_link.c_str());
+    return false;
+  }
+
+  // transform jacobian rotational part to tool coordinates
+  auto rot = tool_pose.inverse().rotation();
+  jacb_transform.setZero();
+  jacb_transform.block(0,0,3,3) = rot;
+  jacb_transform.block(3,3,3,3) = rot;
+  jacb = jacb_transform*jacb;
+
+  // reduce jacobian and compute its pseudo inverse
+  std::vector<int> indices;
+  for(auto i = 0u; i < constrained_dofs.size(); i++)
+  {
+    if(constrained_dofs(i) != 0)
+    {
+      indices.push_back(i);
+    }
+  }
+  reduceJacobian(jacb,indices,jacb_reduced);
+  calculateDampedPseudoInverse(jacb_reduced,jacb_pseudo_inv,EPSILON,LAMBDA);
+
+  int num_joints = joint_pose.size();
+  jacb_nullspace = MatrixXd::Identity(num_joints,num_joints) - jacb_pseudo_inv*jacb_reduced;
+
+  return true;
+}
 
 } // kinematics
 } // utils

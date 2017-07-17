@@ -248,6 +248,8 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
     return false;
   }
 
+  parameters_optimized_prev_ = parameters_optimized_;
+  parameters_valid_prev_ = parameters_valid_;
   while(current_iteration_ <= config_.num_iterations && runSingleIteration())
   {
 
@@ -788,15 +790,29 @@ bool Stomp::computeOptimizedCost()
     return false;
   }
 
+  // stop optimizing when valid solution is found
   if(current_lowest_cost_ > parameters_total_cost_)
   {
     current_lowest_cost_ = parameters_total_cost_;
   }
   else
   {
-    // reverting updates as no improvement was made
-    parameters_optimized_ -= parameters_updates_;
+    if(parameters_valid_)
+    {
+      if(parameters_valid_prev_)
+      {
+        parameters_optimized_ = parameters_optimized_prev_;
+      }
+    }
+    else
+    {
+      // reverting updates as no improvement was made
+      parameters_optimized_ -= parameters_updates_;
+    }
   }
+
+  parameters_optimized_prev_ = parameters_optimized_;
+  parameters_valid_prev_ = parameters_valid_;
 
   return true;
 }
