@@ -248,7 +248,6 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
     return false;
   }
 
-  parameters_optimized_prev_ = parameters_optimized_;
   parameters_valid_prev_ = parameters_valid_;
   while(current_iteration_ <= config_.num_iterations && runSingleIteration())
   {
@@ -801,7 +800,8 @@ bool Stomp::computeOptimizedCost()
     {
       if(parameters_valid_prev_)
       {
-        parameters_optimized_ = parameters_optimized_prev_;
+        // reverting updates as no improvement was made
+        parameters_optimized_ -= parameters_updates_;
       }
     }
     else
@@ -811,7 +811,6 @@ bool Stomp::computeOptimizedCost()
     }
   }
 
-  parameters_optimized_prev_ = parameters_optimized_;
   parameters_valid_prev_ = parameters_valid_;
 
   return true;

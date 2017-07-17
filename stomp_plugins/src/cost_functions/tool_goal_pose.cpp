@@ -182,7 +182,7 @@ bool ToolGoalPose::computeCosts(const Eigen::MatrixXd& parameters,
   using namespace utils::kinematics;
   validity = true;
 
-  auto compute_scaled_error = [](VectorXd& val,VectorXd& min,VectorXd& max) -> VectorXd
+  auto compute_scaled_error = [](const VectorXd& val,VectorXd& min,VectorXd& max) -> VectorXd
   {
     VectorXd capped_val;
     capped_val = (val.array() > max.array()).select(max,val);
@@ -195,11 +195,17 @@ bool ToolGoalPose::computeCosts(const Eigen::MatrixXd& parameters,
 
   last_joint_pose_ = parameters.rightCols(1);
   state_->setJointGroupPositions(group_name_,last_joint_pose_);
+  state_->updateLinkTransforms();
   last_tool_pose_ = state_->getGlobalLinkTransform(tool_link_);
 
   // computing twist error
-  Eigen::ArrayXi constrained_dof= Eigen::ArrayXi::Ones(6);
-  computeTwist(last_tool_pose_,tool_goal_pose_,constrained_dof,tool_twist_error_);
+  Eigen::Affine3d tf = tool_goal_pose_.inverse() * last_tool_pose_;
+  Eigen::Vector3d angles_err = tf.rotation().eulerAngles(0,1,2);
+  Eigen::Vector3d pos_err = tool_goal_pose_.translation() - last_tool_pose_.translation();
+
+  tool_twist_error_.resize(6);
+  tool_twist_error_.head(3) = pos_err.head(3);
+  tool_twist_error_.tail(3) = angles_err.tail(3);
 
 
   // computing relative error values
@@ -213,9 +219,15 @@ bool ToolGoalPose::computeCosts(const Eigen::MatrixXd& parameters,
   costs(costs.size()-1) = pos_error*position_cost_weight_ + orientation_error * orientation_cost_weight_;
 
   // check if valid when twist errors are below the allowed tolerance.
-  validity = (tool_twist_error_.array() <= tool_goal_tolerance_.array()).all();
+  validity = (tool_twist_error_.cwiseAbs().array() <= tool_goal_tolerance_.array()).all();
 
   return true;
+}
+void ToolGoalPose::done(bool success,int total_iterations,double final_cost,const Eigen::MatrixXd& parameters)
+{
+  ROS_DEBUG_STREAM(getName()<<" last tool error: "<<tool_twist_error_.transpose());
+  ROS_DEBUG_STREAM(getName()<<" used tool tolerance: "<<tool_goal_tolerance_.transpose());
+  ROS_DEBUG_STREAM(getName()<<" last joint position: "<<last_joint_pose_.transpose());
 }
 
 } /* namespace cost_functions */

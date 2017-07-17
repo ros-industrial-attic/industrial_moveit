@@ -186,7 +186,6 @@ protected:
   double parameters_total_cost_;                   /**< @brief Total cost of the optimized parameters */
   double current_lowest_cost_;                     /**< @brief Hold the lowest cost of the optimized parameters */
   Eigen::MatrixXd parameters_optimized_;           /**< @brief A matrix [dimensions][timesteps] of the optimized parameters. */
-  Eigen::MatrixXd parameters_optimized_prev_;      /**< @brief A matrix [dimensions][timesteps] of the optimized parameters in the previous iteration. */
 
   Eigen::MatrixXd parameters_updates_;             /**< @brief A matrix [dimensions][timesteps] of the parameter updates*/
   Eigen::VectorXd parameters_state_costs_;         /**< @brief A vector [timesteps] of the parameters state costs */
