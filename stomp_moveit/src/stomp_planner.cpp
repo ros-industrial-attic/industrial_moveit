@@ -35,9 +35,7 @@
 
 static const std::string DESCRIPTION = "STOMP";
 static const double TIMEOUT_INTERVAL = 0.05;
-static int const IK_ATTEMPTS = 10;
-static int const IK_TIMEOUT = 0.05;
-const static double MAX_START_DISTANCE_THRESH = 0.5;
+const static double JOINT_DISTANCE_THRESH = 0.01;
 
 /**
  * @brief Parses a XmlRpcValue and populates a StompComfiguration structure.
@@ -334,15 +332,21 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
   // We check to see if the start state in the request and the seed state are 'close'
   if (moveit::core::robotStateMsgToRobotState(request_.start_state, state))
   {
+
+    if(!state.satisfiesBounds(group))
+    {
+      ROS_ERROR("%s Requested Start joint pose is out of bounds",getName().c_str());
+      return false;
+    }
+
     // copying start joint values
     start.resize(joint_names.size());
     for(auto j = 0u; j < joint_names.size(); j++)
     {
       start(j) = state.getVariablePosition(joint_names[j]);
     }
-    state.enforceBounds(group);
 
-    if(within_tolerance(parameters.leftCols(1),start,MAX_START_DISTANCE_THRESH))
+    if(within_tolerance(parameters.leftCols(1),start,JOINT_DISTANCE_THRESH))
     {
       parameters.leftCols(1) = start;
     }
@@ -410,7 +414,7 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
   // forcing the goal into the seed trajectory
   if(found_goal)
   {
-    if(within_tolerance(parameters.rightCols(1),goal,MAX_START_DISTANCE_THRESH))
+    if(within_tolerance(parameters.rightCols(1),goal,JOINT_DISTANCE_THRESH))
     {
       parameters.rightCols(1) = goal;
     }
@@ -585,7 +589,7 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
     start.resize(joint_names.size());
     goal.resize(joint_names.size());
 
-    if(!state->satisfiesBounds())
+    if(!state->satisfiesBounds(joint_group))
     {
       ROS_ERROR("%s Start joint pose is out of bounds",getName().c_str());
       return false;
@@ -617,7 +621,7 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
         }
 
 
-        if(!state->satisfiesBounds())
+        if(!state->satisfiesBounds(joint_group))
         {
           ROS_ERROR("%s Requested Goal joint pose is out of bounds",getName().c_str());
           continue;
