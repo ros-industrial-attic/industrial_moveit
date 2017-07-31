@@ -337,13 +337,19 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
   // We check to see if the start state in the request and the seed state are 'close'
   if (moveit::core::robotStateMsgToRobotState(request_.start_state, state))
   {
+
+    if(!state.satisfiesBounds(group))
+    {
+      ROS_ERROR("Start state is out of bounds");
+      return false;
+    }
+
     // copying start joint values
     start.resize(joint_names.size());
     for(auto j = 0u; j < joint_names.size(); j++)
     {
       start(j) = state.getVariablePosition(joint_names[j]);
     }
-    state.enforceBounds(group);
 
     if(within_tolerance(parameters.leftCols(1),start,MAX_START_DISTANCE_THRESH))
     {
@@ -400,6 +406,7 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
 
     Eigen::VectorXd solution;
     Eigen::VectorXd seed = start;
+    ik_solver_->setKinematicState(state);
     if(ik_solver_->solve(seed,tool_constraints,solution))
     {
       goal = solution;
@@ -659,6 +666,7 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
       // now solve ik
       Eigen::VectorXd solution;
       Eigen::VectorXd seed = start;
+      ik_solver_->setKinematicState(*state);
       if(ik_solver_->solve(seed,tool_constraints,solution))
       {
         goal = solution;

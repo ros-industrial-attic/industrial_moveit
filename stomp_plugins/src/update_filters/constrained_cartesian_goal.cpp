@@ -87,6 +87,9 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
   state_.reset(new RobotState(robot_model_));
   robotStateMsgToRobotState(req.start_state,*state_);
 
+  // update kinematic model
+  ik_solver_->setKinematicState(*state_);
+
   const std::vector<moveit_msgs::Constraints>& goals = req.goal_constraints;
   if(goals.empty())
   {
@@ -106,7 +109,8 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
       state_->updateLinkTransforms();
       Eigen::Affine3d start_tool_pose = state_->getGlobalLinkTransform(tool_link_);
       moveit_msgs::Constraints cartesian_constraints = utils::kinematics::constructCartesianConstraints(g,start_tool_pose);
-      found_goal = utils::kinematics::decodeCartesianConstraint(cartesian_constraints,tool_goal_pose_,tool_goal_tolerance_);
+      found_goal = utils::kinematics::decodeCartesianConstraint(robot_model_,cartesian_constraints,tool_goal_pose_,tool_goal_tolerance_,
+                                                                robot_model_->getRootLinkName());
       break;
     }
 

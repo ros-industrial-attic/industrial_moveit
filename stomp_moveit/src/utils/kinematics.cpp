@@ -50,11 +50,11 @@ KDL::Chain createKDLChain(moveit::core::RobotModelConstPtr robot_model,std::stri
   return chain;
 }
 
-std::shared_ptr<TRAC_IK::TRAC_IK> createTRACIKSolver(moveit::core::RobotModelConstPtr robot_model,const moveit::core::JointModelGroup* group,double max_time = 0.005)
+std::shared_ptr<TRAC_IK::TRAC_IK> createTRACIKSolver(moveit::core::RobotModelConstPtr robot_model,const moveit::core::JointModelGroup* group,double max_time = 0.01)
 {
   using namespace moveit::core;
 
-  std::string base_link = group->getActiveJointModels().front()->getParentLinkModel()->getName();
+  std::string base_link = group->getJointModels().front()->getParentLinkModel()->getName();
   std::string tip_link = group->getLinkModelNames().back();
   int num_joints = group->getActiveJointModelNames().size();
 
@@ -96,15 +96,32 @@ namespace utils
 namespace kinematics
 {
 
-IKSolver::IKSolver(moveit::core::RobotModelConstPtr robot_model,std::string group_name,double max_time)
+IKSolver::IKSolver(const moveit::core::RobotState& robot_state,std::string group_name,double max_time):
+    robot_model_(robot_state.getRobotModel()),
+    group_name_(group_name),
+    robot_state_(new moveit::core::RobotState(robot_state))
 {
-  const moveit::core::JointModelGroup* group = robot_model->getJointModelGroup(group_name);
-  ik_solver_impl_ = createTRACIKSolver(robot_model,group,max_time);
+  setKinematicState(robot_state);
+
+  // create solver implementation
+  ik_solver_impl_ = createTRACIKSolver(robot_model_,robot_model_->getJointModelGroup(group_name),max_time);
 }
 
 IKSolver::~IKSolver()
 {
 
+}
+
+void IKSolver::setKinematicState(const moveit::core::RobotState& state)
+{
+  (*robot_state_) = state;
+  robot_state_->update();
+
+  // update transform from base to root
+  const moveit::core::JointModelGroup* group = robot_state_->getJointModelGroup(group_name_);
+  std::string base_link = group->getJointModels().front()->getParentLinkModel()->getName();
+  Eigen::Affine3d root_to_base_tf = robot_state_->getFrameTransform(base_link);
+  tf_base_to_root_ = root_to_base_tf.inverse();
 }
 
 bool IKSolver::solve(const Eigen::VectorXd& seed,const Eigen::Affine3d& tool_pose,Eigen::VectorXd& solution,
@@ -139,14 +156,14 @@ bool IKSolver::solve(const std::vector<double>& seed, const Eigen::Affine3d& too
   JntArray solution_kdl;
   Frame tool_pose_kdl;
 
-  // converting to KDL data types
+  // converting tolerance to KDL data types
   for(int i = 0; i < tol.size(); i++)
   {
     tol_kdl[i] = tol[i];
   }
 
-  tf::transformEigenToKDL(tool_pose, tool_pose_kdl);
-
+  // converting transform to kdl data type and transforming to chain base link
+  tf::transformEigenToKDL(tf_base_to_root_ * tool_pose, tool_pose_kdl);
 
   // calling solver
   if(ik_solver_impl_->CartToJnt(seed_kdl,tool_pose_kdl,solution_kdl,tol_kdl) <= 0)
@@ -165,7 +182,7 @@ bool IKSolver::solve(const std::vector<double>& seed, const moveit_msgs::Constra
 {
   Eigen::Affine3d tool_pose;
   std::vector<double> tolerance;
-  if(!decodeCartesianConstraint(tool_constraints,tool_pose,tolerance))
+  if(!decodeCartesianConstraint(robot_model_,tool_constraints,tool_pose,tolerance))
   {
     return false;
   }
@@ -177,7 +194,7 @@ bool IKSolver::solve(const Eigen::VectorXd& seed, const moveit_msgs::Constraints
 {
   Eigen::Affine3d tool_pose;
   std::vector<double> tolerance;
-  if(!decodeCartesianConstraint(tool_constraints,tool_pose,tolerance))
+  if(!decodeCartesianConstraint(robot_model_,tool_constraints,tool_pose,tolerance))
   {
     return false;
   }
@@ -187,23 +204,54 @@ bool IKSolver::solve(const Eigen::VectorXd& seed, const moveit_msgs::Constraints
   return solve(seed,tool_pose,solution,tolerance_eigen);
 }
 
+bool validateCartesianConstraints(const moveit_msgs::Constraints& c)
+{
+  std::string frame_id;
+  if(c.position_constraints.empty() && c.orientation_constraints.empty())
+  {
+    ROS_ERROR("Constraint is empty");
+    return false;
+  }
+
+  if(!c.position_constraints.empty())
+  {
+    frame_id = c.position_constraints.front().header.frame_id;
+  }
+
+  if(!c.orientation_constraints.empty())
+  {
+    std::string o_frame_id = c.orientation_constraints.front().header.frame_id;
+    if(frame_id != o_frame_id)
+    {
+      ROS_ERROR("Position and orientation frame_id are different");
+      return false;
+    }
+  }
+
+  return true;
+}
+
 moveit_msgs::Constraints constructCartesianConstraints(const moveit_msgs::Constraints& c,const Eigen::Affine3d& ref_pose,
                                                               double default_pos_tol , double default_rot_tol)
 {
   using namespace moveit_msgs;
 
   moveit_msgs::Constraints cc;
-  int num_pos_constraints = c.position_constraints.size();
-  int num_orient_constraints = c.orientation_constraints.size();
-  int num_entries = num_pos_constraints >= num_orient_constraints ? num_pos_constraints : num_orient_constraints;
-
   if(!validateCartesianConstraints(c))
   {
     return cc;
   }
 
+  // obtaining defaults
+  int num_pos_constraints = c.position_constraints.size();
+  int num_orient_constraints = c.orientation_constraints.size();
+  int num_entries = num_pos_constraints >= num_orient_constraints ? num_pos_constraints : num_orient_constraints;
+  std::string frame_id = !c.position_constraints.empty() ? c.position_constraints.front().header.frame_id : c.orientation_constraints.front().header.frame_id ;
+
+
   // creating default position constraint
   PositionConstraint pc;
+  pc.header.frame_id = frame_id;
   pc.constraint_region.primitive_poses.resize(1);
   tf::poseEigenToMsg(Eigen::Affine3d::Identity(), pc.constraint_region.primitive_poses[0]);
   pc.constraint_region.primitive_poses[0].position.x = ref_pose.translation().x();
@@ -216,6 +264,7 @@ moveit_msgs::Constraints constructCartesianConstraints(const moveit_msgs::Constr
 
   // creating default orientation constraint
   OrientationConstraint oc;
+  oc.header.frame_id = frame_id;
   oc.absolute_x_axis_tolerance = default_rot_tol;
   oc.absolute_y_axis_tolerance = default_rot_tol;
   oc.absolute_z_axis_tolerance = default_rot_tol;
@@ -251,10 +300,11 @@ moveit_msgs::Constraints constructCartesianConstraints(const moveit_msgs::Constr
   return cc;
 }
 
-bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose, Eigen::VectorXd& tolerance)
+bool decodeCartesianConstraint(moveit::core::RobotModelConstPtr model, const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose,
+                               Eigen::VectorXd& tolerance, std::string target_frame)
 {
   std::vector<double> tolerance_std;
-  if(!decodeCartesianConstraint(constraints,tool_pose,tolerance_std))
+  if(!decodeCartesianConstraint(model,constraints,tool_pose,tolerance_std,target_frame))
   {
     return false;
   }
@@ -263,7 +313,8 @@ bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eige
   return true;
 }
 
-bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose, std::vector<double>& tolerance)
+bool decodeCartesianConstraint(moveit::core::RobotModelConstPtr model,const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose,
+                               std::vector<double>& tolerance, std::string target_frame)
 {
   using namespace Eigen;
 
@@ -359,6 +410,34 @@ bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eige
 
   // assembling tool pose
   tool_pose = Affine3d::Identity()*Eigen::Translation3d(Eigen::Vector3d(p.x,p.y,p.z))*q;
+
+  // transforming tool pose
+  if(target_frame.empty())
+  {
+    target_frame = model->getModelFrame();
+  }
+
+  const moveit_msgs::PositionConstraint& pos_constraint = pos_constraints[0];
+  std::string frame_id = pos_constraint.header.frame_id;
+  moveit::core::RobotState state(model);
+  state.update();
+  if(!state.knowsFrameTransform(frame_id))
+  {
+    ROS_ERROR("Frame '%s' is not part of the model",frame_id.c_str());
+    return false;
+  }
+  else if(!state.knowsFrameTransform(target_frame))
+  {
+    ROS_ERROR("Frame '%s' is not part of the model",target_frame.c_str());
+    return false;
+  }
+
+  if(!frame_id.empty() && target_frame != frame_id)
+  {
+    Eigen::Affine3d root_to_frame = state.getFrameTransform(frame_id);
+    Eigen::Affine3d root_to_target = state.getFrameTransform(target_frame);
+    tool_pose = (root_to_target.inverse()) * root_to_frame * tool_pose;
+  }
 
   return true;
 }

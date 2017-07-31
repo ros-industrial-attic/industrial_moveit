@@ -65,19 +65,25 @@ namespace kinematics
   public:
     /**
      * @brief Creates an internal IK solver for the specified robot and planning group
-     * @param robot_model The robot model
+     * @param robot_state The current robot state
      * @param group_name  The planning group name
      * @param max_time    Max time allowed to find a solution.
      */
-    IKSolver(moveit::core::RobotModelConstPtr robot_model,std::string group_name,double max_time = 0.005);
+    IKSolver(const moveit::core::RobotState& robot_state,std::string group_name,double max_time = 0.005);
     ~IKSolver();
+
+    /**
+     * @brief Should be called whenever the robot's kinematic state has changed
+     * @param state The current robot state
+     */
+    void setKinematicState(const moveit::core::RobotState& state);
 
     /**
      * @brief Find the joint position that achieves the requested tool pose.
      * @param seed      A joint pose to seed the solver.
-     * @param tool_pose The tool pose for which a joint solution must be found.
+     * @param tool_pose The tool pose for which a joint solution must be found. The frame of reference is assumed to be the model root
      * @param solution  The joint values that place the tool in the requested cartesian pose
-     * @param tol       The tolerance values for each dimension of position and orientation.
+     * @param tol       The tolerance values for each dimension of position and orientation relative to the tool pose.
      * @return  True if a solution was found, false otherwise.
      */
     bool solve(const Eigen::VectorXd& seed,const Eigen::Affine3d& tool_pose,Eigen::VectorXd& solution,
@@ -86,9 +92,9 @@ namespace kinematics
     /**
      * @brief Find the joint position that achieves the requested tool pose.
      * @param seed      A joint pose to seed the solver.
-     * @param tool_pose The tool pose for which a joint solution must be found.
+     * @param tool_pose The tool pose for which a joint solution must be found. The frame of reference is assumed to be the model root
      * @param solution  The joint values that place the tool in the requested cartesian pose
-     * @param tol       The tolerance values for each dimension of position and orientation.
+     * @param tol       The tolerance values for each dimension of position and orientation relative to the tool pose.
      * @return  True if a solution was found, false otherwise.
      */
     bool solve(const std::vector<double>& seed, const Eigen::Affine3d& tool_pose,std::vector<double>& solution,
@@ -115,14 +121,15 @@ namespace kinematics
   protected:
 
     std::shared_ptr<TRAC_IK::TRAC_IK> ik_solver_impl_;
+    moveit::core::RobotModelConstPtr robot_model_;
+    moveit::core::RobotStatePtr robot_state_;
+    std::string group_name_;
+    Eigen::Affine3d tf_base_to_root_;
 
   };
 
 
-  static bool validateCartesianConstraints(const moveit_msgs::Constraints& c)
-  {
-    return !(c.position_constraints.empty() && c.orientation_constraints.empty());
-  }
+  bool validateCartesianConstraints(const moveit_msgs::Constraints& c);
 
   /**
    * @brief Populates the missing parts of a Cartesian constraints in order to provide a constraint that can be used by the Ik solver.
@@ -137,21 +144,27 @@ namespace kinematics
 
   /**
    * @brief Extracts the cartesian data from the constraint message
-   * @param constraints A moveit_msgs message that encapsulates the cartesian constraints specifications.
-   * @param tool_pose   The tool pose as specified in the constraint message.
-   * @param tolerance   The tolerance values on the tool pose as specified in the constraint message.
+   * @param model         The robot model
+   * @param constraints   A moveit_msgs message that encapsulates the cartesian constraints specifications.
+   * @param tool_pose     The tool pose as specified in the constraint in the target_frame.
+   * @param tolerance     The tolerance values on the tool pose as specified in the constraint message.
+   * @param target_frame  The coordinate frame of the tool pose.  If black the model root is used
    * @return True if succeeded, false otherwise.
    */
-  bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose, std::vector<double>& tolerance);
+  bool decodeCartesianConstraint(moveit::core::RobotModelConstPtr model,const moveit_msgs::Constraints& constraints,
+                                 Eigen::Affine3d& tool_pose, std::vector<double>& tolerance, std::string target_frame = "");
 
   /**
    * @brief Extracts the cartesian data from the constraint message
+   * @param model         The robot model
    * @param constraints A moveit_msgs message that encapsulates the cartesian constraints specifications.
    * @param tool_pose   The tool pose as specified in the constraint message.
    * @param tolerance   The tolerance values on the tool pose as specified in the constraint message.
+   * @param target_frame  The coordinate frame of the tool pose.  If black the model root is used
    * @return  True if succeeded, false otherwise.
    */
-  bool decodeCartesianConstraint(const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose, Eigen::VectorXd& tolerance);
+  bool decodeCartesianConstraint(moveit::core::RobotModelConstPtr model,const moveit_msgs::Constraints& constraints,
+                                 Eigen::Affine3d& tool_pose, Eigen::VectorXd& tolerance,std::string target_frame = "");
 
   /**
    * @brief Creates cartesian poses in accordance to the constraint and sampling resolution values

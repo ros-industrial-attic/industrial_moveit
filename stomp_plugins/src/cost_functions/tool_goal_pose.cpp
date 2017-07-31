@@ -59,7 +59,6 @@ bool ToolGoalPose::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
 {
   group_name_ = group_name;
   robot_model_ = robot_model_ptr;
-  ik_solver_.reset(new utils::kinematics::IKSolver(robot_model_ptr,group_name));
 
   return configure(config);
 }
@@ -121,7 +120,8 @@ bool ToolGoalPose::setMotionPlanRequest(const planning_scene::PlanningSceneConst
       state_->updateLinkTransforms();
       Eigen::Affine3d start_tool_pose = state_->getGlobalLinkTransform(tool_link_);
       moveit_msgs::Constraints cartesian_constraints = utils::kinematics::constructCartesianConstraints(g,start_tool_pose);
-      found_goal = utils::kinematics::decodeCartesianConstraint(cartesian_constraints,tool_goal_pose_,tool_goal_tolerance_);
+      found_goal = utils::kinematics::decodeCartesianConstraint(robot_model_,cartesian_constraints,tool_goal_pose_,
+                                                                tool_goal_tolerance_,robot_model_->getRootLinkName());
       ROS_DEBUG_STREAM("ToolGoalTolerance cost function will use tolerance: "<<tool_goal_tolerance_.transpose());
       break;
     }
@@ -200,7 +200,8 @@ bool ToolGoalPose::computeCosts(const Eigen::MatrixXd& parameters,
 
   // computing twist error
   Eigen::Affine3d tf = tool_goal_pose_.inverse() * last_tool_pose_;
-  Eigen::Vector3d angles_err = tf.rotation().eulerAngles(0,1,2);
+  Eigen::Vector3d angles_err = tf.rotation().eulerAngles(2,1,0);
+  angles_err.reverseInPlace();
   Eigen::Vector3d pos_err = tool_goal_pose_.translation() - last_tool_pose_.translation();
 
   tool_twist_error_.resize(6);

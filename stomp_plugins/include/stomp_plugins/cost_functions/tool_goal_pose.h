@@ -132,7 +132,6 @@ protected:
   std::string tool_link_;
   moveit::core::RobotModelConstPtr robot_model_;
   moveit::core::RobotStatePtr state_;
-  stomp_moveit::utils::kinematics::IKSolverPtr ik_solver_;
 
   // planning context information
   planning_scene::PlanningSceneConstPtr planning_scene_;

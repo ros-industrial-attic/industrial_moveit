@@ -193,6 +193,9 @@ bool GoalGuidedMultivariateGaussian::setupGoalConstraints(const planning_scene::
   state_.reset(new RobotState(robot_model_));
   robotStateMsgToRobotState(req.start_state,*state_);
 
+  // update kinematic model
+  ik_solver_->setKinematicState(*state_);
+
   // storing cartesian goal tolerance from motion plan request
   const std::vector<moveit_msgs::Constraints>& goals = req.goal_constraints;
   if(goals.empty())
@@ -212,7 +215,7 @@ bool GoalGuidedMultivariateGaussian::setupGoalConstraints(const planning_scene::
       Eigen::Affine3d start_tool_pose = state_->getGlobalLinkTransform(tool_link_);
       moveit_msgs::Constraints cartesian_constraints = utils::kinematics::constructCartesianConstraints(g,start_tool_pose);
       Eigen::Affine3d tool_goal_pose;
-      found_valid = utils::kinematics::decodeCartesianConstraint(cartesian_constraints,tool_goal_pose,tool_goal_tolerance_);
+      found_valid = utils::kinematics::decodeCartesianConstraint(robot_model_,cartesian_constraints,tool_goal_pose,tool_goal_tolerance_,robot_model_->getRootLinkName());
     }
 
 
@@ -250,7 +253,7 @@ bool GoalGuidedMultivariateGaussian::generateNoise(const Eigen::MatrixXd& parame
   VectorXd goal_joint_pose, goal_joint_noise;
   if(parameters.rows() != stddev_.size())
   {
-    ROS_ERROR("%s Number of rows in parameters %i differs from expected number of joints",int(parameters.rows()),getName().c_str());
+    ROS_ERROR("%s Number of rows in parameters %i differs from expected number of joints",getName().c_str(),int(parameters.rows()));
     return false;
   }
 
