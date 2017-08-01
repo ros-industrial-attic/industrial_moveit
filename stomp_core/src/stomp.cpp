@@ -512,6 +512,11 @@ bool Stomp::generateNoisyRollouts()
   // generate new noisy rollouts
   for(auto r = 0u; r < rollouts_generate; r++)
   {
+    if(!proceed_)
+    {
+      return false;
+    }
+
     if(!task_->generateNoisyParameters(parameters_optimized_,
                                       0,config_.num_timesteps,
                                       current_iteration_,r,
@@ -536,6 +541,11 @@ bool Stomp::filterNoisyRollouts()
   bool filtered = false;
   for(auto r = 0u ; r < config_.num_rollouts; r++)
   {
+    if(!proceed_)
+    {
+      return false;
+    }
+
     if(!task_->filterNoisyParameters(0,config_.num_timesteps,current_iteration_,r,noisy_rollouts_[r].parameters_noise,filtered))
     {
       ROS_ERROR_STREAM("Failed to filter noisy parameters");

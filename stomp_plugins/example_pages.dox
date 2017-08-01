@@ -48,5 +48,5 @@ Modifies the trajectory update such that the goal of the updated trajectory is w
   update_filters:
       - class: stomp_moveit/ConstrainedCartesianGoal
 @endcode
-  - class:                  The class name.S
+  - class:                  The class name.
 */
