@@ -391,21 +391,13 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
 
     if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // checking cartesian
     {
-      // solving ik at goal
-      const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
-      const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
-
-      KinematicConfig kc;
-      if(createKinematicConfig(group,pos_constraint,orient_constraint,start,kc) )
-      {
-        if(solveIK(std::make_shared<moveit::core::RobotState>(state),group_,kc,goal))
+        if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
+                                      start, goal, group, std::make_shared<moveit::core::RobotState>(state)))
         {
           found_goal = true;
           break;
         }
-      }
     }
-
   }
 
   // forcing the goal into the seed trajectory
@@ -562,6 +554,25 @@ moveit_msgs::TrajectoryConstraints StompPlanner::encodeSeedTrajectory(const traj
   return res;
 }
 
+bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstraint& pos_constraint,
+                                       const moveit_msgs::OrientationConstraint& orient_constraint,
+                                       Eigen::VectorXd& start, Eigen::VectorXd& goal,
+                                       const moveit::core::JointModelGroup* joint_group, moveit::core::RobotStatePtr state) const
+{
+  using namespace moveit::core;
+  using namespace utils::kinematics;
+  KinematicConfig kc;
+  if(createKinematicConfig(joint_group,pos_constraint,orient_constraint,start,kc) )
+  {
+    if(solveIK(state,joint_group->getName(),kc,goal))
+    {
+      ROS_DEBUG("%s Found goal from IK ",getName().c_str());
+      return true;
+    }
+  }
+  return false;
+}
+
 bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal)
 {
   using namespace moveit::core;
@@ -638,23 +649,13 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
       }
 
       if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // check cartesian
-      {
-        // solving ik at goal
-        const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
-        const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
-
-        KinematicConfig kc;
-        if(createKinematicConfig(joint_group,pos_constraint,orient_constraint,start,kc) )
+      // solving ik at goal
+        if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
+                                      start, goal, joint_group, state))
         {
-          if(solveIK(state,group_,kc,goal))
-          {
-            ROS_DEBUG("%s Found goal from IK ",getName().c_str());
-            found_goal = true;
-            break;
-          }
+          found_goal = true;
+          break;
         }
-      }
-
     }
 
     ROS_ERROR_COND(!found_goal,"%s was unable to retrieve the goal from the MotionPlanRequest",getName().c_str());

@@ -155,6 +155,15 @@ protected:
    */
   bool extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const;
 
+ /**
+  * @brief Populates a seed joint trajectory from the 'trajectory_constraints' moveit_msgs::Constraints[] array.
+  *  each entry in the array is considered to be joint values for that time step.
+  */
+  bool ikFromCartesianConstraints(const moveit_msgs::PositionConstraint& pos_constraint,
+                                         const moveit_msgs::OrientationConstraint& orient_constraint,
+                                         Eigen::VectorXd& start, Eigen::VectorXd& goal,
+                                         const moveit::core::JointModelGroup* joint_group, moveit::core::RobotStatePtr state) const;
+
 protected:
 
   // stomp optimization
