@@ -573,6 +573,24 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
   return false;
 }
 
+bool StompPlanner::isCartesianSeed() const
+{
+  const auto& constraints = request_.trajectory_constraints.constraints; // alias to keep names short
+  ROS_ERROR_STREAM("We have a total of " << constraints.size() << " constraints");
+  if (constraints[0].joint_constraints.size() > 0)
+  {
+    ROS_ERROR_STREAM("We have " << constraints[0].joint_constraints.size() << " joint constraints");
+    return false;
+  }
+
+  if (constraints[0].position_constraints.size() > 0 and constraints[0].orientation_constraints.size() > 0)
+  {
+    ROS_ERROR_STREAM("We have " << constraints[0].position_constraints.size() << "  POSITION constraints");
+    ROS_ERROR_STREAM("We have " << constraints[0].orientation_constraints.size() << "  ORIENTATION constraints");
+    return true;
+  }
+}
+
 bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal)
 {
   using namespace moveit::core;

@@ -164,6 +164,8 @@ protected:
                                          Eigen::VectorXd& start, Eigen::VectorXd& goal,
                                          const moveit::core::JointModelGroup* joint_group, moveit::core::RobotStatePtr state) const;
 
+  bool isCartesianSeed() const;
+
 protected:
 
   // stomp optimization
