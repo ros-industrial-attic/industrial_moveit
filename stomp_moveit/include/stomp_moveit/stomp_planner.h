@@ -155,6 +155,10 @@ protected:
    */
   bool extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const;
 
+  bool extractSeedJointTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const;
+
+  bool extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const;
+
  /**
   * @brief Populates a seed joint trajectory from the 'trajectory_constraints' moveit_msgs::Constraints[] array.
   *  each entry in the array is considered to be joint values for that time step.

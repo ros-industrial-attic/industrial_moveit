@@ -486,17 +486,13 @@ bool StompPlanner::jointTrajectorytoParameters(const trajectory_msgs::JointTraje
   return true;
 }
 
-bool StompPlanner::extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const
+bool StompPlanner::extractSeedJointTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const
 {
-  if (req.trajectory_constraints.constraints.empty())
-    return false;
-
   const auto* joint_group = robot_model_->getJointModelGroup(group_);
   const auto& names = joint_group->getActiveJointModelNames();
   const auto dof = names.size();
 
   const auto& constraints = req.trajectory_constraints.constraints; // alias to keep names short
-  // Test the first point to ensure that it has all of the joints required
   for (size_t i = 0; i < constraints.size(); ++i)
   {
     auto n = constraints[i].joint_constraints.size();
@@ -524,6 +520,67 @@ bool StompPlanner::extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& r
   }
 
   seed.joint_names = names;
+  return true;
+}
+
+bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const
+{
+  using namespace moveit::core;
+  const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_);
+  const auto& constraints = req.trajectory_constraints.constraints; // alias to keep names short
+
+  ROS_ASSERT(constraints.size() == 1);
+  ROS_ASSERT(constraints.front().position_constraints.size() == constraints.front().orientation_constraints.size());
+  ROS_ASSERT(constraints.front().position_constraints.size() > 0);
+
+  int fail_count = 0;
+
+  Eigen::VectorXd joint_pos;
+  for (size_t i = 0; i < constraints[0].position_constraints.size(); ++i)
+  {
+    trajectory_msgs::JointTrajectoryPoint joint_pt;
+
+    if(ikFromCartesianConstraints(constraints[0].position_constraints[i],
+                                  constraints[0].orientation_constraints[i],
+                                  joint_group, joint_pos, joint_pos)) // passing the previous joint_pos as hint for the next one!
+    {
+      for(int j=0; j<joint_pos.size(); ++j)
+        joint_pt.positions.push_back(joint_pos(j));
+    }
+    else
+    {
+      fail_count++;
+        // if IK fails on the seed we die here
+        ROS_ERROR_STREAM("**** FAILED TO IK CARTESIAN SEED at step " << i << " ******");
+//        return false;
+        for(int j=0; j<joint_pos.size(); ++j)
+          joint_pt.positions.push_back(joint_pos(j));
+    }
+
+    seed.points.push_back(joint_pt);
+  }
+
+  ROS_WARN_STREAM("Seed trajectory converted with a total of " << fail_count << " IK FAILURES");
+
+  seed.joint_names = joint_group->getActiveJointModelNames();
+  return true;
+}
+
+bool StompPlanner::extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const
+{
+  if (req.trajectory_constraints.constraints.empty())
+    return false;
+
+  if(isCartesianSeed())
+  {
+    return extractSeedCartesianTrajectory(req, seed);
+  }
+  else
+  {
+    return extractSeedJointTrajectory(req, seed);
+  }
+
+
   return true;
 }
 
