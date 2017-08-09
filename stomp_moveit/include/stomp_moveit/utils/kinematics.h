@@ -343,6 +343,7 @@ namespace kinematics
     {
       if(joint_names.size() != joint_vals.size())
       {
+        ROS_ERROR("STOMP::solveIK: Mismatching number of joints");
         return false;
       }
 
