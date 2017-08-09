@@ -31,6 +31,7 @@
 #include <moveit/trajectory_processing/iterative_time_parameterization.h>
 #include <stomp_moveit/utils/kinematics.h>
 #include <stomp_moveit/utils/polynomial.h>
+#include <trac_ik/trac_ik.hpp>
 
 
 static const std::string DESCRIPTION = "STOMP";
@@ -392,7 +393,7 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
     if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // checking cartesian
     {
         if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
-                                      start, goal, group, std::make_shared<moveit::core::RobotState>(state)))
+                                      group, goal))
         {
           found_goal = true;
           break;
@@ -556,21 +557,60 @@ moveit_msgs::TrajectoryConstraints StompPlanner::encodeSeedTrajectory(const traj
 
 bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstraint& pos_constraint,
                                        const moveit_msgs::OrientationConstraint& orient_constraint,
-                                       Eigen::VectorXd& start, Eigen::VectorXd& goal,
-                                       const moveit::core::JointModelGroup* joint_group, moveit::core::RobotStatePtr state) const
+                                       const moveit::core::JointModelGroup* joint_group,
+                                       Eigen::VectorXd& result) const
 {
   using namespace moveit::core;
   using namespace utils::kinematics;
-  KinematicConfig kc;
-  if(createKinematicConfig(joint_group,pos_constraint,orient_constraint,start,kc) )
+
+  const double eps = 1e-3;
+  const double timeout = 0.01;
+  const std::string urdf_param = "/robot_description";
+
+//  for(auto name : joint_group->getActiveJointModelNames())
+//    ROS_ERROR_STREAM("Joint name " << name);
+
+  ROS_ASSERT(joint_group->getJointRoots().size() == 1);
+
+  //TODO: these frame names should be aligned with the frames of the demonstration, maybe send it in seed and retrieve here?
+  std::string chain_start = "base_link"; //TODO: get the link before the first joint here
+  std::string chain_end =  "gripper_grasping_frame"; //joint_group->getLinkModelNames().back();
+
+  ROS_ERROR_STREAM("Setting up IK from " << chain_start << " to " << chain_end);
+  TRAC_IK::TRAC_IK tracik_solver(chain_start, chain_end, urdf_param, timeout, eps); //TODO: this should only be set up once per object, or use IK plugin?
+  KDL::Chain chain;
+  if(not tracik_solver.getKDLChain(chain))
+    return false;
+
+//  if(not tracik_solver.getKDLLimits(ll,ul))
+//    return false;
+
+  KDL::Frame end_effector_pose;
+  end_effector_pose.p[0] = pos_constraint.target_point_offset.x;
+  end_effector_pose.p[1] = pos_constraint.target_point_offset.y;
+  end_effector_pose.p[2] = pos_constraint.target_point_offset.z;
+  end_effector_pose.M = KDL::Rotation::Quaternion(orient_constraint.orientation.x, orient_constraint.orientation.y,
+                                                  orient_constraint.orientation.z, orient_constraint.orientation.w);
+
+  ROS_WARN_STREAM(pos_constraint.target_point_offset);
+  ROS_WARN_STREAM(orient_constraint.orientation);
+
+  // Create Nominal chain configuration midway between all joint limits
+  KDL::JntArray ik_result;
+  KDL::JntArray nominal(chain.getNrOfJoints());
+  int rc=tracik_solver.CartToJnt(nominal,end_effector_pose,ik_result);
+
+  if(rc >= 0)
   {
-    if(solveIK(state,joint_group->getName(),kc,goal))
-    {
-      ROS_DEBUG("%s Found goal from IK ",getName().c_str());
-      return true;
-    }
+    ROS_ERROR_STREAM("Shape of result is " << ik_result.data.rows() << " : " << ik_result.data.cols() << std::endl << ik_result.data);
+    result = ik_result.data;
+    return true;
   }
-  return false;
+  else
+  {
+    ROS_ERROR("Failed to get IK");
+    return false;
+  }
 }
 
 bool StompPlanner::isCartesianSeed() const
@@ -601,93 +641,128 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
   std::string tool_link = joint_group->getLinkModelNames().back();
   bool found_goal = false;
 
-  try
+  ROS_ERROR("getStartAndGoal");
+  if(isCartesianSeed())
   {
-    // copying start state
-    if(!robotStateMsgToRobotState(request_.start_state,*state))
-    {
-      ROS_ERROR("%s Failed to extract start state from MotionPlanRequest",getName().c_str());
-      return false;
-    }
+    //this->getPlanningScene()->getCurrentState()
+    ROS_ERROR("****************** Using cartesian seed ******************");
 
     // copying start joint values
+    ROS_ERROR("INitializing vectors");
     const std::vector<std::string> joint_names= state->getJointModelGroup(group_)->getActiveJointModelNames();
-    start.resize(joint_names.size());
-    goal.resize(joint_names.size());
+    start.setZero(joint_names.size());
+    goal.setZero(joint_names.size());
+    ROS_ERROR_STREAM("Start joint state " << std::endl << start);
+    ROS_ERROR_STREAM("Goal joint state " << std::endl << goal);
 
-    if(!state->satisfiesBounds(state->getJointModelGroup(group_)))
-    {
-      ROS_ERROR("%s Start joint pose is out of bounds",getName().c_str());
-      return false;
-    }
+        // CONVERT START STATE
+    ROS_ERROR("Converting states");
+    const auto& position_constraints = request_.trajectory_constraints.constraints[0].position_constraints;
+    const auto& orientation_constraints = request_.trajectory_constraints.constraints[0].orientation_constraints;
 
-    for(auto j = 0u; j < joint_names.size(); j++)
-    {
-      start(j) = state->getVariablePosition(joint_names[j]);
-    }
+    ROS_ERROR("Calculating start state...");
+    bool found_start = ikFromCartesianConstraints(position_constraints.front(), orientation_constraints.front(),
+                                                  joint_group, start);
+    ROS_ERROR_COND(!found_start, "STOMP failed to get the start positions");
+    ROS_ERROR("Calculating goal state...");
+    found_goal = ikFromCartesianConstraints(position_constraints.back(), orientation_constraints.back(),
+                                            joint_group, goal);
+    ROS_ERROR_COND(!found_goal, "STOMP failed to get the goal positions");
 
-    // check goal constraint
-    if(request_.goal_constraints.empty())
-    {
-      ROS_ERROR("%s A goal constraint was not provided",getName().c_str());
-      return false;
-    }
 
-    // extracting goal joint values
-    for(const auto& gc : request_.goal_constraints)
+    ROS_ERROR_STREAM("Start joint state " << std::endl << start);
+    ROS_ERROR_STREAM("Goal joint state " << std::endl << goal);
+  }
+  else
+  {
+    try
     {
-      if(!gc.joint_constraints.empty())
+      // copying start state
+      if(!robotStateMsgToRobotState(request_.start_state,*state))
       {
+        ROS_ERROR("%s Failed to extract start state from MotionPlanRequest",getName().c_str());
+        ROS_ERROR_STREAM("************* " << request_.start_state.joint_state.name.size());
 
-        // copying goal values into state
-        for(auto j = 0u; j < gc.joint_constraints.size() ; j++)
-        {
-          auto jc = gc.joint_constraints[j];
-          state->setVariablePosition(jc.joint_name,jc.position);
-        }
-
-
-        if(!state->satisfiesBounds(state->getJointModelGroup(group_)))
-        {
-          ROS_ERROR("%s Requested Goal joint pose is out of bounds",getName().c_str());
-          continue;
-        }
-
-        ROS_DEBUG("%s Found goal from joint constraints",getName().c_str());
-
-        // copying values into goal array
-        for(auto j = 0u; j < joint_names.size(); j++)
-        {
-          goal(j) = state->getVariablePosition(joint_names[j]);
-        }
-
-        found_goal = true;
-        break;
-
+        return false;
       }
 
-      if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // check cartesian
-      // solving ik at goal
-        if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
-                                      start, goal, joint_group, state))
+      // copying start joint values
+      const std::vector<std::string> joint_names= state->getJointModelGroup(group_)->getActiveJointModelNames();
+      start.resize(joint_names.size());
+      goal.resize(joint_names.size());
+
+      if(!state->satisfiesBounds())
+      {
+        ROS_ERROR("%s Start joint pose is out of bounds",getName().c_str());
+        return false;
+      }
+
+      for(auto j = 0u; j < joint_names.size(); j++)
+      {
+        start(j) = state->getVariablePosition(joint_names[j]);
+      }
+
+      // check goal constraint
+      if(request_.goal_constraints.empty())
+      {
+        ROS_ERROR("%s A goal constraint was not provided",getName().c_str());
+        return false;
+      }
+
+      // extracting goal joint values
+      for(const auto& gc : request_.goal_constraints)
+      {
+        if(!gc.joint_constraints.empty())
         {
+
+          // copying goal values into state
+          for(auto j = 0u; j < gc.joint_constraints.size() ; j++)
+          {
+            auto jc = gc.joint_constraints[j];
+            state->setVariablePosition(jc.joint_name,jc.position);
+          }
+
+
+          if(!state->satisfiesBounds())
+          {
+            ROS_ERROR("%s Requested Goal joint pose is out of bounds",getName().c_str());
+            continue;
+          }
+
+          ROS_DEBUG("%s Found goal from joint constraints",getName().c_str());
+
+          // copying values into goal array
+          for(auto j = 0u; j < joint_names.size(); j++)
+          {
+            goal(j) = state->getVariablePosition(joint_names[j]);
+          }
+
           found_goal = true;
           break;
+
         }
+
+        if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // check cartesian
+        // solving ik at goal
+          if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
+                                        joint_group, goal))
+          {
+            found_goal = true;
+            break;
+          }
+      }
+
+      ROS_ERROR_COND(!found_goal,"%s was unable to retrieve the goal from the MotionPlanRequest",getName().c_str());
+
     }
-
-    ROS_ERROR_COND(!found_goal,"%s was unable to retrieve the goal from the MotionPlanRequest",getName().c_str());
-
+    catch(moveit::Exception &e)
+    {
+      ROS_ERROR("Failure retrieving start or goal state joint values from request %s", e.what());
+      return false;
+    }
   }
-  catch(moveit::Exception &e)
-  {
-    ROS_ERROR("Failure retrieving start or goal state joint values from request %s", e.what());
-    return false;
-  }
-
   return found_goal;
 }
-
 
 bool StompPlanner::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) const
 {

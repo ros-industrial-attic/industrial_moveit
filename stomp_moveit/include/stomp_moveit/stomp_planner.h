@@ -160,9 +160,9 @@ protected:
   *  each entry in the array is considered to be joint values for that time step.
   */
   bool ikFromCartesianConstraints(const moveit_msgs::PositionConstraint& pos_constraint,
-                                         const moveit_msgs::OrientationConstraint& orient_constraint,
-                                         Eigen::VectorXd& start, Eigen::VectorXd& goal,
-                                         const moveit::core::JointModelGroup* joint_group, moveit::core::RobotStatePtr state) const;
+                                  const moveit_msgs::OrientationConstraint& orient_constraint,
+                                  const moveit::core::JointModelGroup* joint_group,
+                                  Eigen::VectorXd& result) const;
 
   bool isCartesianSeed() const;
 
