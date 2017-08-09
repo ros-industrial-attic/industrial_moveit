@@ -51,6 +51,7 @@ namespace kinematics
 
   const static double EPSILON = 0.011;  /**< @brief Used in dampening the matrix pseudo inverse calculation */
   const static double LAMBDA = 0.01;    /**< @brief Used in dampening the matrix pseudo inverse calculation */
+  const static double default_position_tolerance_ = 0.1; /**< @brief Used in setting IK tolerance */
 
   /**
    * @struct stomp_moveit::utils::KinematicConfig
@@ -101,31 +102,48 @@ namespace kinematics
       return false;
     }
 
+    // POSITION constraints
+
     // tool pose position
     kc.tool_goal_pose.setIdentity();
-    auto& v = pc.constraint_region.primitive_poses[0].position;
-    kc.tool_goal_pose.translation() = Eigen::Vector3d(v.x,v.y,v.z);
+
+    // we may take position constraints from the "BoundingVolume  constraint_region" of the MotionPlanRequest message
+    if(pc.constraint_region.primitive_poses.size() > 0)
+    {
+      ROS_INFO("createKinematicConfig: Using constraint_region from message to determine tolerances");
+      const auto& v = pc.constraint_region.primitive_poses[0].position;
+      kc.tool_goal_pose.translation() = Eigen::Vector3d(v.x,v.y,v.z);
+
+      // position tolerance
+      const shape_msgs::SolidPrimitive& bv = pc.constraint_region.primitives[0];
+      if(bv.type != shape_msgs::SolidPrimitive::BOX || bv.dimensions.size() != 3)
+      {
+        ROS_ERROR("Position constraint incorrectly defined, a BOX region is expected");
+        return false;
+      }
+
+      using SP = shape_msgs::SolidPrimitive;
+      kc.cartesian_convergence_thresholds[0] = bv.dimensions[SP::BOX_X];
+      kc.cartesian_convergence_thresholds[1] = bv.dimensions[SP::BOX_Y];
+      kc.cartesian_convergence_thresholds[2] = bv.dimensions[SP::BOX_Z];
+    }
+    // or we use "target_point_offset" to define the 3DOF position
+    else
+    {
+      const auto& v = pc.target_point_offset;
+      kc.tool_goal_pose.translation() = Eigen::Vector3d(v.x,v.y,v.z);
+
+      ROS_INFO_STREAM("constraint_region not available in message, using default position tolerance of " << default_position_tolerance_);
+      kc.cartesian_convergence_thresholds[0] = default_position_tolerance_;
+      kc.cartesian_convergence_thresholds[1] = default_position_tolerance_;
+      kc.cartesian_convergence_thresholds[2] = default_position_tolerance_;
+    }
+    // ORIENTATION constraints
 
     // tool pose orientation
     Eigen::Quaterniond q;
     tf::quaternionMsgToEigen(oc.orientation,q);
     kc.tool_goal_pose.rotate(q);
-
-    // defining constraints
-    kc.constrained_dofs << 1, 1, 1, 1, 1, 1;
-
-    // position tolerance
-    const shape_msgs::SolidPrimitive& bv = pc.constraint_region.primitives[0];
-    if(bv.type != shape_msgs::SolidPrimitive::BOX || bv.dimensions.size() != 3)
-    {
-      ROS_ERROR("Position constraint incorrectly defined, a BOX region is expected");
-      return false;
-    }
-
-    using SP = shape_msgs::SolidPrimitive;
-    kc.cartesian_convergence_thresholds[0] = bv.dimensions[SP::BOX_X];
-    kc.cartesian_convergence_thresholds[1] = bv.dimensions[SP::BOX_Y];
-    kc.cartesian_convergence_thresholds[2] = bv.dimensions[SP::BOX_Z];
 
     // orientation tolerance
     kc.cartesian_convergence_thresholds[3] = oc.absolute_x_axis_tolerance;
@@ -143,6 +161,7 @@ namespace kinematics
     kc.joint_update_rates = Eigen::ArrayXd::Constant(num_joints,0.5f);
     kc.init_joint_pose = init_joint_pose;
     kc.max_iterations = 100;
+    kc.constrained_dofs << 1, 1, 1, 1, 1, 1;
 
     return true;
   }
