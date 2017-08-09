@@ -558,7 +558,8 @@ moveit_msgs::TrajectoryConstraints StompPlanner::encodeSeedTrajectory(const traj
 bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstraint& pos_constraint,
                                        const moveit_msgs::OrientationConstraint& orient_constraint,
                                        const moveit::core::JointModelGroup* joint_group,
-                                       Eigen::VectorXd& result) const
+                                       Eigen::VectorXd& result,
+                                       const Eigen::VectorXd& hint) const
 {
   using namespace moveit::core;
   using namespace utils::kinematics;
@@ -576,7 +577,7 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
   std::string chain_start = "base_link"; //TODO: get the link before the first joint here
   std::string chain_end =  "gripper_grasping_frame"; //joint_group->getLinkModelNames().back();
 
-  ROS_ERROR_STREAM("Setting up IK from " << chain_start << " to " << chain_end);
+  //ROS_ERROR_STREAM("Setting up IK from " << chain_start << " to " << chain_end);
   TRAC_IK::TRAC_IK tracik_solver(chain_start, chain_end, urdf_param, timeout, eps); //TODO: this should only be set up once per object, or use IK plugin?
   KDL::Chain chain;
   if(not tracik_solver.getKDLChain(chain))
@@ -592,23 +593,29 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
   end_effector_pose.M = KDL::Rotation::Quaternion(orient_constraint.orientation.x, orient_constraint.orientation.y,
                                                   orient_constraint.orientation.z, orient_constraint.orientation.w);
 
-  ROS_WARN_STREAM(pos_constraint.target_point_offset);
-  ROS_WARN_STREAM(orient_constraint.orientation);
-
   // Create Nominal chain configuration midway between all joint limits
   KDL::JntArray ik_result;
   KDL::JntArray nominal(chain.getNrOfJoints());
+
+  if(hint.size() > 0)
+  {
+    //ROS_ERROR_STREAM("Using " << hint << " as IK hint");
+    nominal.data = hint;
+  }
+
   int rc=tracik_solver.CartToJnt(nominal,end_effector_pose,ik_result);
 
   if(rc >= 0)
   {
-    ROS_ERROR_STREAM("Shape of result is " << ik_result.data.rows() << " : " << ik_result.data.cols() << std::endl << ik_result.data);
+    //ROS_ERROR_STREAM("Shape of result is " << ik_result.data.rows() << " : " << ik_result.data.cols() << std::endl << ik_result.data);
     result = ik_result.data;
     return true;
   }
   else
   {
-    ROS_ERROR("Failed to get IK");
+    ROS_WARN("Failed to get IK");
+    ROS_WARN_STREAM(pos_constraint.target_point_offset);
+    ROS_WARN_STREAM(orient_constraint.orientation);
     return false;
   }
 }

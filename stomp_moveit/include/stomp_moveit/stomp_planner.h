@@ -162,7 +162,8 @@ protected:
   bool ikFromCartesianConstraints(const moveit_msgs::PositionConstraint& pos_constraint,
                                   const moveit_msgs::OrientationConstraint& orient_constraint,
                                   const moveit::core::JointModelGroup* joint_group,
-                                  Eigen::VectorXd& result) const;
+                                  Eigen::VectorXd& result,
+                                  const Eigen::VectorXd &hint = Eigen::VectorXd()) const;
 
   bool isCartesianSeed() const;
 
