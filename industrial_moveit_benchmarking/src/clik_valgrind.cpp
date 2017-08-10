@@ -83,10 +83,6 @@ int main (int argc, char *argv[])
   }
 
   collision_detection::CollisionPluginLoader cd_loader;
-  CLIKPlannerDynamicConfig config;
-  config.joint_discretization_step = 0.02;
-  config.translational_discretization_step = 0.02;
-  config.orientational_discretization_step = 0.02;
   planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(robot_model));
 
   //Now assign collision detection plugin
@@ -98,7 +94,7 @@ int main (int argc, char *argv[])
   planning_interface::MotionPlanResponse res;
   string group_name = "manipulator_rail";
   CartesianPlanner cart_planner("", group_name);
-  cart_planner.setPlannerConfiguration(config);
+  cart_planner.setPlannerConfiguration(0.02, 0.02);
 
   req.allowed_planning_time = 100;
   req.num_planning_attempts = 1;
