@@ -39,10 +39,11 @@
 namespace constrained_ik
 {
   CartesianPlanner::CartesianPlanner(const std::string &name, const std::string &group) :
-    constrained_ik::CLIKPlanningContext(name, group),
+    planning_interface::PlanningContext(name, group),
     terminate_(false),
     robot_description_("robot_description")
   {
+    resetPlannerConfiguration();
     solver_.reset(new Constrained_IK());
     std::string constraint_param = "constrained_ik_solver/" + getGroupName() + "/constraints";
     solver_->addConstraintsFromParamServer(constraint_param);
@@ -59,6 +60,28 @@ namespace constrained_ik
 
     solver_->init(kin);
     return true;
+  }
+
+  void CartesianPlanner::setPlannerConfiguration(double translational_discretization_step, double orientational_discretization_step, bool debug_mode)
+  {
+    if (translational_discretization_step > 0)
+      translational_discretization_step_ = translational_discretization_step;
+    else
+      ROS_ERROR("Cartesian Planner translational discretization step must be greater than zero.");
+
+    if (orientational_discretization_step > 0)
+      orientational_discretization_step_ = orientational_discretization_step;
+    else
+      ROS_ERROR("Cartesian Planner orientational discretization step must be greater than zero.");
+
+    debug_mode_ = debug_mode;
+  }
+
+  void CartesianPlanner::resetPlannerConfiguration()
+  {
+    translational_discretization_step_ = DEFAULT_TRANSLATIONAL_DISCRETIZATION_STEP;
+    orientational_discretization_step_ = DEFAULT_ORIENTATIONAL_DISCRETIZATION_STEP;
+    debug_mode_ = false;
   }
 
   void CartesianPlanner::setSolverConfiguration(const ConstrainedIKConfiguration &config)
@@ -159,7 +182,7 @@ namespace constrained_ik
     // Generate Interpolated Cartesian Poses
     Eigen::Affine3d world_to_base = start_state.getGlobalLinkTransform(solver_->getKin().getRobotBaseLinkName()).inverse();
     std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > poses = interpolateCartesian(
-        world_to_base*start_pose, world_to_base*goal_pose, config_.translational_discretization_step, config_.orientational_discretization_step);
+        world_to_base*start_pose, world_to_base*goal_pose, translational_discretization_step_, orientational_discretization_step_);
 
     // Generate Cartesian Trajectory
     int steps = poses.size();
@@ -187,7 +210,7 @@ namespace constrained_ik
 
         if (!found_ik || planning_scene_->isStateColliding(*mid_state, request_.group_name))
         {
-          if (!config_.debug_mode)
+          if (!debug_mode_)
           {
             ROS_INFO("Cartesian planner was unable to find a valid solution. :(");
             res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
