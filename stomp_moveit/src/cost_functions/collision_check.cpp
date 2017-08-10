@@ -170,11 +170,11 @@ bool CollisionCheck::setMotionPlanRequest(const planning_scene::PlanningSceneCon
 
   // storing robot state
   robot_state_.reset(new RobotState(robot_model_ptr_));
-  if(!robotStateMsgToRobotState(req.start_state,*robot_state_,true))
-  {
-    ROS_ERROR("%s Failed to get current robot state from request",getName().c_str());
-    return false;
-  }
+//  if(!robotStateMsgToRobotState(req.start_state,*robot_state_,true))
+//  {
+//    ROS_ERROR("%s Failed to get current robot state from request",getName().c_str());
+//    return false;
+//  }
 
   // copying into intermediate robot states
   for(auto& rs : intermediate_coll_states_)
