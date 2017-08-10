@@ -34,12 +34,14 @@
 
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene/planning_scene.h>
-#include <constrained_ik/moveit_interface/constrained_ik_planning_context.h>
 #include <boost/atomic.hpp>
 #include <constrained_ik/constrained_ik.h>
 
 namespace constrained_ik
 {
+  const double DEFAULT_TRANSLATIONAL_DISCRETIZATION_STEP = 0.01;
+  const double DEFAULT_ORIENTATIONAL_DISCRETIZATION_STEP = 0.01;
+
   /**
   * @brief Cartesian path planner for moveit.
   *
@@ -49,7 +51,7 @@ namespace constrained_ik
   * check if the path created is collision free before it returns a trajectory.
   * If a collision is found it returns an empty trajectory and moveit error.
    */
-  class CartesianPlanner : public constrained_ik::CLIKPlanningContext
+  class CartesianPlanner : public planning_interface::PlanningContext
   {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -65,7 +67,7 @@ namespace constrained_ik
      * @brief CartesianPlanner Copy Constructor
      * @param other cartesian planner
      */
-    CartesianPlanner(const CartesianPlanner &other) : constrained_ik::CLIKPlanningContext(other),
+    CartesianPlanner(const CartesianPlanner &other) : planning_interface::PlanningContext(other),
       terminate_(false),
       robot_description_(robot_description_),
       solver_(solver_) {}
@@ -104,6 +106,17 @@ namespace constrained_ik
     bool initializeSolver();
 
     /**
+     * @brief Set the planners configuration
+     * @param translational_discretization_step Max translational discretization step
+     * @param orientational_discretization_step Max orientational discretization step
+     * @param debug_mode Set debug state
+     */
+    void setPlannerConfiguration(double translational_discretization_step, double orientational_discretization_step, bool debug_mode = false);
+
+    /** @brief Reset the planners configuration to it default settings */
+    void resetPlannerConfiguration();
+
+    /**
      * @brief Set the planners IK solver configuration
      * @param config Constrained IK solver configuration
      */
@@ -124,6 +137,9 @@ namespace constrained_ik
     std::vector<Eigen::Affine3d,Eigen::aligned_allocator<Eigen::Affine3d> >
     interpolateCartesian(const Eigen::Affine3d& start, const Eigen::Affine3d& stop, double ds, double dt) const;
 
+    double translational_discretization_step_;    /**< Max translational discretization step */
+    double orientational_discretization_step_;    /**< Max orientational discretization step */
+    bool debug_mode_;                             /**< Debug state */
     boost::atomic<bool> terminate_;               /**< Termination flag */
     std::string robot_description_;               /**< robot description value from ros param server */
     robot_model::RobotModelConstPtr robot_model_; /**< Robot model object */

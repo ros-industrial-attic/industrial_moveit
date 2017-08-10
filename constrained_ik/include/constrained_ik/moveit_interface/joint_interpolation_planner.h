@@ -34,11 +34,13 @@
 
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene/planning_scene.h>
-#include <constrained_ik/moveit_interface/constrained_ik_planning_context.h>
 #include <boost/atomic.hpp>
 
 namespace constrained_ik
 {
+
+  const double DEFAULT_JOINT_DISCRETIZATION_STEP = 0.02;
+
   /**
    * @brief Joint interpolation planner for moveit.
    *
@@ -48,7 +50,7 @@ namespace constrained_ik
    * returns a trajectory.  If a collision is found it returns an empty
    * trajectory and moveit error.
    */
-  class JointInterpolationPlanner : public constrained_ik::CLIKPlanningContext
+  class JointInterpolationPlanner : public planning_interface::PlanningContext
   {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -58,13 +60,13 @@ namespace constrained_ik
      * @param name of planner
      * @param group of the planner
      */
-    JointInterpolationPlanner(const std::string &name, const std::string &group) : constrained_ik::CLIKPlanningContext(name, group), terminate_(false) {}
+    JointInterpolationPlanner(const std::string &name, const std::string &group) : planning_interface::PlanningContext(name, group), terminate_(false) { resetPlannerConfiguration(); }
 
     /**
      * @brief JointInterpolationPlanner Copy Constructor
      * @param other joint interpolation planner
      */
-    JointInterpolationPlanner(const JointInterpolationPlanner &other) : constrained_ik::CLIKPlanningContext(other), terminate_(false) {}
+    JointInterpolationPlanner(const JointInterpolationPlanner &other) : planning_interface::PlanningContext(other), terminate_(false) {}
 
     /** @brief Clear planner data */
     void clear() override { terminate_ = false; }
@@ -93,8 +95,20 @@ namespace constrained_ik
      */
     bool solve(planning_interface::MotionPlanDetailedResponse &res) override;
 
+    /**
+     * @brief Set the planners configuration
+     * @param joint_discretization_step Max joint discretization step
+     * @param debug_mode Set debug state
+     */
+    void setPlannerConfiguration(double joint_discretization_step, bool debug_mode = false);
+
+    /** @brief Reset the planners configuration to it default settings */
+    void resetPlannerConfiguration();
+
   private:
-    boost::atomic<bool> terminate_; /**< Termination flag */
+    double joint_discretization_step_; /**< Joint discretization step */
+    bool debug_mode_;                  /**< Debug state */
+    boost::atomic<bool> terminate_;    /**< Termination flag */
   };
 } //namespace constrained_ik
 
