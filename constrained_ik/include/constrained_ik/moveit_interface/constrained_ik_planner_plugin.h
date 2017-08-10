@@ -93,7 +93,7 @@ namespace constrained_ik
     CLIKPlannerDynamicConfig config_;                                                                /**< Planner configuration parameters */
     ManagerDynReconfigServerPtr dynamic_reconfigure_server_;                                         /**< Planner dynamic reconfigure server object */
     std::map<std::string, CartesianDynReconfigServerPtr> cartesian_dynamic_reconfigure_server_;      /**< Cartesian constrianed ik solver dynamic reconfigure server */
-    std::map<std::pair<std::string, std::string>, constrained_ik::CLIKPlanningContextPtr> planners_; /**< Containes all the availble CLIK planners */
+    std::map<std::pair<std::string, std::string>, planning_interface::PlanningContextPtr> planners_; /**< Containes all the availble CLIK planners */
   };
 } //namespace constrained_ik
 #endif //CONSTRAINED_IK_PLANNER_PLUGIN_H

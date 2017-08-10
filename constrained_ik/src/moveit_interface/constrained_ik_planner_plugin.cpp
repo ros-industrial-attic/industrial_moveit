@@ -41,14 +41,14 @@ namespace constrained_ik
       //Create a cartesian planner for group
       if (model->getJointModelGroup(group_name)->isChain())
       {
-        planners_.insert(std::make_pair(std::make_pair(CARTESIAN_PLANNER, group_name), CLIKPlanningContextPtr(new CartesianPlanner(CARTESIAN_PLANNER, group_name))));
+        planners_.insert(std::make_pair(std::make_pair(CARTESIAN_PLANNER, group_name), planning_interface::PlanningContextPtr(new CartesianPlanner(CARTESIAN_PLANNER, group_name))));
 
         CartesianDynReconfigServerPtr drs(new CartesianDynReconfigServer(mutex_, ros::NodeHandle(nh_, "constrained_ik_solver/" + group_name)));
         drs->setCallback(boost::bind(&CLIKPlannerManager::cartesianDynamicReconfigureCallback, this, _1, _2, group_name));
         cartesian_dynamic_reconfigure_server_.insert(std::make_pair(group_name, drs));
 
         //Create a joint interpolated planner for group
-        planners_.insert(std::make_pair(std::make_pair(JOINT_INTERP_PLANNER, group_name), CLIKPlanningContextPtr(new JointInterpolationPlanner(JOINT_INTERP_PLANNER, group_name))));
+        planners_.insert(std::make_pair(std::make_pair(JOINT_INTERP_PLANNER, group_name), planning_interface::PlanningContextPtr(new JointInterpolationPlanner(JOINT_INTERP_PLANNER, group_name))));
       }
     }
 
@@ -72,7 +72,7 @@ namespace constrained_ik
 
   planning_interface::PlanningContextPtr CLIKPlannerManager::getPlanningContext(const planning_scene::PlanningSceneConstPtr &planning_scene, const planning_interface::MotionPlanRequest &req, moveit_msgs::MoveItErrorCodes &error_code) const
   {
-    constrained_ik::CLIKPlanningContextPtr planner;
+    planning_interface::PlanningContextPtr planner;
 
     if (req.group_name.empty())
     {
@@ -90,7 +90,7 @@ namespace constrained_ik
     }
 
     // Get planner
-    std::map<std::pair<std::string, std::string>, constrained_ik::CLIKPlanningContextPtr>::const_iterator it;
+    std::map<std::pair<std::string, std::string>, planning_interface::PlanningContextPtr>::const_iterator it;
     if (req.planner_id.empty())
       it = planners_.find(std::make_pair(JOINT_INTERP_PLANNER, req.group_name));
     else
@@ -115,12 +115,23 @@ namespace constrained_ik
 
   void CLIKPlannerManager::managerDynamicReconfigureCallback(CLIKPlannerDynamicConfig &config, uint32_t level)
   {
-    typedef std::map<std::pair<std::string, std::string>, constrained_ik::CLIKPlanningContextPtr>::const_iterator it_type;
+    typedef std::map<std::pair<std::string, std::string>, planning_interface::PlanningContextPtr>::const_iterator it_type;
 
     config_ = config;
     for (it_type it = planners_.begin(); it != planners_.end(); it++)
     {
-      it->second->setPlannerConfiguration(config_);
+      if (it->second->getName() == JOINT_INTERP_PLANNER)
+      {
+        boost::shared_ptr<JointInterpolationPlanner> planner = boost::static_pointer_cast<JointInterpolationPlanner>(it->second);
+        planner->setPlannerConfiguration(config_.joint_discretization_step, config_.debug_mode);
+      }
+
+      if (it->second->getName() == CARTESIAN_PLANNER)
+      {
+        boost::shared_ptr<CartesianPlanner> planner = boost::static_pointer_cast<CartesianPlanner>(it->second);
+        planner->setPlannerConfiguration(config_.translational_discretization_step, config_.orientational_discretization_step, config_.debug_mode);
+      }
+
     }
 
   }
@@ -130,7 +141,7 @@ namespace constrained_ik
     // process configuration parameters and fix errors/limits
     validateConstrainedIKConfiguration<CLIKDynamicConfig>(config);
 
-    typedef std::map<std::pair<std::string, std::string>, constrained_ik::CLIKPlanningContextPtr>::const_iterator it_type;
+    typedef std::map<std::pair<std::string, std::string>, planning_interface::PlanningContextPtr>::const_iterator it_type;
     it_type it = planners_.find(std::make_pair(CARTESIAN_PLANNER, group_name));
     if (it != planners_.end())
     {
