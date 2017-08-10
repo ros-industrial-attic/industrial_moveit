@@ -712,12 +712,9 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
     ROS_ERROR("****************** Using cartesian seed ******************");
 
     // copying start joint values
-    ROS_ERROR("INitializing vectors");
     const std::vector<std::string> joint_names= state->getJointModelGroup(group_)->getActiveJointModelNames();
     start.setZero(joint_names.size());
     goal.setZero(joint_names.size());
-    ROS_ERROR_STREAM("Start joint state " << std::endl << start);
-    ROS_ERROR_STREAM("Goal joint state " << std::endl << goal);
 
         // CONVERT START STATE
     ROS_ERROR("Converting states");
@@ -729,13 +726,15 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
                                                   joint_group, start);
     ROS_ERROR_COND(!found_start, "STOMP failed to get the start positions");
     ROS_ERROR("Calculating goal state...");
-    found_goal = ikFromCartesianConstraints(position_constraints.back(), orientation_constraints.back(),
+    bool found_goal = ikFromCartesianConstraints(position_constraints.back(), orientation_constraints.back(),
                                             joint_group, goal);
     ROS_ERROR_COND(!found_goal, "STOMP failed to get the goal positions");
 
 
     ROS_ERROR_STREAM("Start joint state " << std::endl << start);
     ROS_ERROR_STREAM("Goal joint state " << std::endl << goal);
+
+    return found_goal and found_start;
   }
   else
   {
