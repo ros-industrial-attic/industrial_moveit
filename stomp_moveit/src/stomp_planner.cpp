@@ -695,6 +695,24 @@ bool StompPlanner::isCartesianSeed() const
   }
 }
 
+moveit_msgs::RobotState StompPlanner::robotStateFromEigen(const Eigen::VectorXd& state, const JointModelGroup* joint_group) const
+{
+  moveit_msgs::RobotState result;
+
+  assert(false); // FINISH THIS
+
+  return result;
+}
+
+moveit_msgs::Constraints StompPlanner::jointConstraintsFromEigen(const Eigen::VectorXd& state, const JointModelGroup* joint_group) const
+{
+  moveit_msgs::Constraints result;
+
+  assert(false); // FINISH THIS
+
+  return result;
+}
+
 bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal)
 {
   using namespace moveit::core;
@@ -730,9 +748,18 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
                                             joint_group, goal);
     ROS_ERROR_COND(!found_goal, "STOMP failed to get the goal positions");
 
-
     ROS_ERROR_STREAM("Start joint state " << std::endl << start);
     ROS_ERROR_STREAM("Goal joint state " << std::endl << goal);
+
+    //FIXME: stateful cheat, system design failure:
+    // now that IK was ran on the cartesian seed trajectory, we set the start_state and goal_constraints of the original request
+    // this helps not messing up all the cost functions that are wired for using lots of global state from these variables
+    if(found_goal and found_start)
+    {
+      request_.start_state = robotStateFromEigen(start, joint_group);
+      request_.goal_constraints.clear();
+      request_.goal_constraints.push_back(jointConstraintsFromEigen(goal, joint_group));
+    }
 
     return found_goal and found_start;
   }

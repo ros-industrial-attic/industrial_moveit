@@ -171,6 +171,10 @@ protected:
 
   bool isCartesianSeed() const;
 
+  moveit_msgs::RobotState robotStateFromEigen(const Eigen::VectorXd& state, const moveit::core::JointModelGroup* joint_group) const;
+
+  moveit_msgs::Constraints jointConstraintsFromEigen(const Eigen::VectorXd& state, const moveit::core::JointModelGroup* joint_group) const;
+
 protected:
 
   // stomp optimization
