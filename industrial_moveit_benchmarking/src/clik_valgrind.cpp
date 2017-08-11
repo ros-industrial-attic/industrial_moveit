@@ -93,7 +93,7 @@ int main (int argc, char *argv[])
   planning_interface::MotionPlanRequest req;
   planning_interface::MotionPlanResponse res;
   string group_name = "manipulator_rail";
-  CartesianPlanner cart_planner("", group_name);
+  CartesianPlanner cart_planner("", group_name, pnh);
   cart_planner.setPlannerConfiguration(0.02, 0.02);
 
   req.allowed_planning_time = 100;
