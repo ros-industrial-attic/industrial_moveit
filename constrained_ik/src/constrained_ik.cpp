@@ -37,7 +37,7 @@ using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using Eigen::Affine3d;
 
-Constrained_IK::Constrained_IK():nh_("~")
+Constrained_IK::Constrained_IK(const ros::NodeHandle &nh) : nh_(nh)
 {
   initialized_ = false;
 
