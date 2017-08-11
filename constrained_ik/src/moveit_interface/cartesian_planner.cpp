@@ -38,13 +38,13 @@
 
 namespace constrained_ik
 {
-  CartesianPlanner::CartesianPlanner(const std::string &name, const std::string &group) :
+  CartesianPlanner::CartesianPlanner(const std::string &name, const std::string &group, const ros::NodeHandle &nh) :
     planning_interface::PlanningContext(name, group),
     terminate_(false),
     robot_description_("robot_description")
   {
     resetPlannerConfiguration();
-    solver_.reset(new Constrained_IK());
+    solver_.reset(new Constrained_IK(nh));
     std::string constraint_param = "constrained_ik_solver/" + getGroupName() + "/constraints";
     solver_->addConstraintsFromParamServer(constraint_param);
   }
@@ -67,12 +67,12 @@ namespace constrained_ik
     if (translational_discretization_step > 0)
       translational_discretization_step_ = translational_discretization_step;
     else
-      ROS_ERROR("Cartesian Planner translational discretization step must be greater than zero.");
+      ROS_WARN("Cartesian Planner translational discretization step must be greater than zero.");
 
     if (orientational_discretization_step > 0)
       orientational_discretization_step_ = orientational_discretization_step;
     else
-      ROS_ERROR("Cartesian Planner orientational discretization step must be greater than zero.");
+      ROS_WARN("Cartesian Planner orientational discretization step must be greater than zero.");
 
     debug_mode_ = debug_mode;
   }
