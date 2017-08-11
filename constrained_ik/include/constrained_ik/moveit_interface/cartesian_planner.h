@@ -61,7 +61,7 @@ namespace constrained_ik
      * @param name of planner
      * @param group of the planner
      */
-    CartesianPlanner(const std::string &name, const std::string &group);
+    CartesianPlanner(const std::string &name, const std::string &group, const ros::NodeHandle &nh);
 
     /**
      * @brief CartesianPlanner Copy Constructor

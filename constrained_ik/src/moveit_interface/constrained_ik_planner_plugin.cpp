@@ -36,14 +36,17 @@ namespace constrained_ik
     if (!ns.empty())
       nh_ = ros::NodeHandle(ns);
 
+    std::string clik_mannager_param = "constrained_ik_planner";
+    std::string clik_solver_param = "constrained_ik_solver";
+
     for (auto & group_name : model->getJointModelGroupNames())
     {
       //Create a cartesian planner for group
       if (model->getJointModelGroup(group_name)->isChain())
       {
-        planners_.insert(std::make_pair(std::make_pair(CARTESIAN_PLANNER, group_name), planning_interface::PlanningContextPtr(new CartesianPlanner(CARTESIAN_PLANNER, group_name))));
+        planners_.insert(std::make_pair(std::make_pair(CARTESIAN_PLANNER, group_name), planning_interface::PlanningContextPtr(new CartesianPlanner(CARTESIAN_PLANNER, group_name, nh_))));
 
-        CartesianDynReconfigServerPtr drs(new CartesianDynReconfigServer(mutex_, ros::NodeHandle(nh_, "constrained_ik_solver/" + group_name)));
+        CartesianDynReconfigServerPtr drs(new CartesianDynReconfigServer(mutex_, ros::NodeHandle(nh_, clik_solver_param + "/" + group_name)));
         drs->setCallback(boost::bind(&CLIKPlannerManager::cartesianDynamicReconfigureCallback, this, _1, _2, group_name));
         cartesian_dynamic_reconfigure_server_.insert(std::make_pair(group_name, drs));
 
@@ -52,7 +55,7 @@ namespace constrained_ik
       }
     }
 
-    dynamic_reconfigure_server_.reset(new ManagerDynReconfigServer(mutex_, ros::NodeHandle(nh_, "constrained_ik_planner")));
+    dynamic_reconfigure_server_.reset(new ManagerDynReconfigServer(mutex_, ros::NodeHandle(nh_, clik_mannager_param)));
     dynamic_reconfigure_server_->setCallback(boost::bind(&CLIKPlannerManager::managerDynamicReconfigureCallback, this, _1, _2));
 
     return true;
