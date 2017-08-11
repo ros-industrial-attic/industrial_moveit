@@ -560,7 +560,7 @@ bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanR
     seed.points.push_back(joint_pt);
   }
 
-  ROS_WARN_STREAM("Seed trajectory converted with a total of " << fail_count << " IK FAILURES");
+  ROS_WARN_STREAM("Seed trajectory converted with a total of " << fail_count << "/" << seed.points.size() << " IK FAILURES");
 
   seed.joint_names = joint_group->getActiveJointModelNames();
   return true;
