@@ -32,6 +32,7 @@
 #include <stomp_moveit/utils/kinematics.h>
 #include <stomp_moveit/utils/polynomial.h>
 #include <trac_ik/trac_ik.hpp>
+#include <stomp_moveit/rosconsolecolours.h>
 
 
 static const std::string DESCRIPTION = "STOMP";
@@ -695,20 +696,52 @@ bool StompPlanner::isCartesianSeed() const
   }
 }
 
-moveit_msgs::RobotState StompPlanner::robotStateFromEigen(const Eigen::VectorXd& state, const JointModelGroup* joint_group) const
+moveit_msgs::RobotState StompPlanner::robotStateFromEigen(const Eigen::VectorXd& state,
+                                                          const std::vector<std::string>& state_joint_names,
+                                                          const std::vector<std::string>& all_joint_names) const
 {
+  assert(state.size() == state_joint_names.size());
+
   moveit_msgs::RobotState result;
 
-  assert(false); // FINISH THIS
+  result.is_diff = false;
+  result.joint_state.name = all_joint_names;
+  result.joint_state.position.resize(all_joint_names.size(), 0.0);
+
+  for(int i=0; i<all_joint_names.size(); ++i)
+  {
+    for(int j=0; j<state_joint_names.size(); ++j)
+    {
+      if(all_joint_names[i] == state_joint_names[j])
+        result.joint_state.position[i] = state(j);
+    }
+  }
+
+//  ROS_GREEN_STREAM(result.joint_state.name);
+//  ROS_GREEN_STREAM(result.joint_state.position);
+
+//  ROS_CYAN_STREAM(state_joint_names);
+//  ROS_CYAN_STREAM(state);
 
   return result;
 }
 
-moveit_msgs::Constraints StompPlanner::jointConstraintsFromEigen(const Eigen::VectorXd& state, const JointModelGroup* joint_group) const
+moveit_msgs::Constraints StompPlanner::jointConstraintsFromEigen(const Eigen::VectorXd& state, const std::vector<std::string>& state_joint_names) const
 {
+  assert(state.size() == state_joint_names.size());
+
   moveit_msgs::Constraints result;
 
-  assert(false); // FINISH THIS
+  ROS_CYAN_STREAM(state_joint_names);
+  ROS_CYAN_STREAM(state);
+
+  for(int i=0; i<state_joint_names.size(); ++i)
+  {
+    moveit_msgs::JointConstraint joint_constraint;
+    joint_constraint.joint_name = state_joint_names[i];
+    joint_constraint.position = state(i);
+    result.joint_constraints.push_back(joint_constraint);
+  }
 
   return result;
 }
@@ -756,9 +789,9 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
     // this helps not messing up all the cost functions that are wired for using lots of global state from these variables
     if(found_goal and found_start)
     {
-      request_.start_state = robotStateFromEigen(start, joint_group);
+      request_.start_state = robotStateFromEigen(start, joint_names, state->getVariableNames());
       request_.goal_constraints.clear();
-      request_.goal_constraints.push_back(jointConstraintsFromEigen(goal, joint_group));
+      request_.goal_constraints.push_back(jointConstraintsFromEigen(goal, joint_names));
     }
 
     return found_goal and found_start;
