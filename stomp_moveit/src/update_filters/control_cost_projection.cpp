@@ -80,7 +80,10 @@ bool ControlCostProjection::setMotionPlanRequest(const planning_scene::PlanningS
 {
 
   num_timesteps_ = config.num_timesteps;
-  stomp_core::generateSmoothingMatrix(num_timesteps_,DEFAULT_TIME_STEP,projection_matrix_M_);
+  stomp_core::generateSmoothingMatrix(num_timesteps_,
+                                      static_cast<stomp_core::DerivativeOrders::DerivativeOrder>(config.smoothing_derivative_order),
+                                      DEFAULT_TIME_STEP,
+                                      projection_matrix_M_);
 
   // zeroing out first and last rows
   projection_matrix_M_.topRows(1) = Eigen::VectorXd::Zero(num_timesteps_).transpose();

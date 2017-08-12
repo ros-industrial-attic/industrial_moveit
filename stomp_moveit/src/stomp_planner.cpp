@@ -59,6 +59,7 @@ bool parseConfig(XmlRpc::XmlRpcValue config,const moveit::core::JointModelGroup*
   stomp_config.max_rollouts = 100;
   stomp_config.num_rollouts = 10;
   stomp_config.exponentiated_cost_sensitivity = 10.0;
+  stomp_config.smoothing_derivative_order = stomp_core::DerivativeOrders::STOMP_JERK;
 
   // Load optional config parameters if they exist
   if (config.hasMember("control_cost_weight"))
@@ -87,6 +88,9 @@ bool parseConfig(XmlRpc::XmlRpcValue config,const moveit::core::JointModelGroup*
 
   if (config.hasMember("exponentiated_cost_sensitivity"))
     stomp_config.exponentiated_cost_sensitivity = static_cast<int>(config["exponentiated_cost_sensitivity"]);
+
+  if (config.hasMember("smoothing_derivative_order"))
+    stomp_config.smoothing_derivative_order = static_cast<int>(config["smoothing_derivative_order"]);
 
   // getting number of joints
   stomp_config.num_dimensions = group->getActiveJointModels().size();
