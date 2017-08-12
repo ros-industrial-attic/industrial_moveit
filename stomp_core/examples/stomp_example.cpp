@@ -59,6 +59,7 @@ stomp_core::StompConfiguration create3DOFConfiguration()
   c.num_iterations_after_valid = 0;
   c.num_rollouts = 20;
   c.max_rollouts = 20;
+  c.smoothing_derivative_order = DerivativeOrders::STOMP_ACCELERATION;
   //! [Create Config]
 
   return c;
