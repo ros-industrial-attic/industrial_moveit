@@ -90,7 +90,7 @@ public:
    * @return false if there was an irrecoverable failure, true otherwise.
    */
   virtual bool computeCosts(const Eigen::MatrixXd& parameters, std::size_t start_timestep, std::size_t num_timesteps,
-                            int iteration_number, int rollout_number, Eigen::VectorXd& costs, bool& validity) override;
+                            int iteration_number, int rollout_number, Eigen::VectorXd& costs, bool& validity) const override;
 
   virtual std::string getGroupName() const override
   {
@@ -115,7 +115,7 @@ protected:
    * @param longest_valid_joint_move  The maximum distance that the joints are allowed to move before checking for collisions.
    * @return  True if the interval is collision free, false otherwise.
    */
-  bool checkIntermediateCollisions(const Eigen::VectorXd& start, const Eigen::VectorXd& end,double longest_valid_joint_move);
+  bool checkIntermediateCollisions(const Eigen::VectorXd& start, const Eigen::VectorXd& end,double longest_valid_joint_move) const;
 
 
   std::string name_;
@@ -124,10 +124,6 @@ protected:
   std::string group_name_;
   moveit::core::RobotModelConstPtr robot_model_ptr_;
   moveit::core::RobotStatePtr robot_state_;
-
-  // intermediate collision check support
-  std::array<moveit::core::RobotStatePtr,3 > intermediate_coll_states_;   /**< @brief Used in checking collisions between to consecutive poses*/
-
 
   // planning context information
   planning_scene::PlanningSceneConstPtr planning_scene_;

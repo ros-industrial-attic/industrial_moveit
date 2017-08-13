@@ -99,7 +99,7 @@ public:
                             int iteration_number,
                             int rollout_number,
                             Eigen::VectorXd& costs,
-                            bool& validity) override;
+                            bool& validity) const override;
 
   virtual std::string getGroupName() const override
   {
@@ -145,12 +145,6 @@ protected:
   std::pair<double,double> orientation_error_range_;  /**< @brief The allowed orientation error range as euler angles, [2 x 1] **/
   double position_cost_weight_;                       /**< @brief factor multiplied to the scaled position error **/
   double orientation_cost_weight_;                    /**< @brief factor multiplied to the scaled orientation error **/
-
-  // support variables
-  Eigen::VectorXd last_joint_pose_;
-  Eigen::Affine3d last_tool_pose_;
-  Eigen::VectorXd tool_twist_error_;
-
 
 };
 

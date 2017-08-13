@@ -134,7 +134,7 @@ public:
                          int iteration_number,
                          int rollout_number,
                          Eigen::VectorXd& costs,
-                         bool& validity) override
+                         bool& validity) const override
   {
     costs.setZero(num_timesteps);
     double diff;

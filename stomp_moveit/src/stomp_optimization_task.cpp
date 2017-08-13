@@ -263,7 +263,7 @@ bool StompOptimizationTask::computeNoisyCosts(const Eigen::MatrixXd& parameters,
                                          int iteration_number,
                                          int rollout_number,
                                          Eigen::VectorXd& costs,
-                                         bool& validity)
+                                         bool& validity) const
 {
   Eigen::MatrixXd cost_matrix = Eigen::MatrixXd::Zero(num_timesteps,cost_functions_.size());
   Eigen::VectorXd state_costs = Eigen::VectorXd::Zero(num_timesteps);

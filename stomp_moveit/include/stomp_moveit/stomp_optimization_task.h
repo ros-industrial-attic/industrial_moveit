@@ -121,7 +121,7 @@ public:
                        int iteration_number,
                        int rollout_number,
                        Eigen::VectorXd& costs,
-                       bool& validity) override;
+                       bool& validity) const override;
 
   /**
    * @brief computes the state costs as a function of the optimized parameters for each time step. It does this by calling the loaded Cost Function plugins

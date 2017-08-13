@@ -176,16 +176,6 @@ bool CollisionCheck::setMotionPlanRequest(const planning_scene::PlanningSceneCon
     return false;
   }
 
-  // copying into intermediate robot states
-  for(auto& rs : intermediate_coll_states_)
-  {
-    rs.reset(new RobotState(*robot_state_));
-  }
-
-  // allocating arrays
-  raw_costs_ = Eigen::VectorXd::Zero(config.num_timesteps);
-
-
   return true;
 }
 
@@ -195,7 +185,7 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
                           int iteration_number,
                           int rollout_number,
                           Eigen::VectorXd& costs,
-                          bool& validity)
+                          bool& validity) const
 {
 
   using namespace moveit::core;
@@ -215,7 +205,8 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
   costs = Eigen::VectorXd::Zero(num_timesteps);
 
   // resetting array
-  raw_costs_.setZero();
+  Eigen::VectorXd raw_costs = costs;
+  Eigen::ArrayXd intermediate_costs_slots;
 
   // collision
   collision_detection::CollisionRequest request = collision_request_;
@@ -238,8 +229,9 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
   {
     if(!skip_next_check)
     {
-      robot_state_->setJointGroupPositions(joint_group,parameters.col(t));
-      robot_state_->update();
+      robot_state::RobotState robot_state(*robot_state_);
+      robot_state.setJointGroupPositions(joint_group,parameters.col(t));
+      robot_state.update();
 
       // checking robot vs world (attached objects, octomap, not in urdf) collisions
       result_world_collision.distance = std::numeric_limits<double>::max();
@@ -247,12 +239,12 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
       collision_world_->checkRobotCollision(request,
                                             result_world_collision,
                                             *collision_robot_,
-                                            *robot_state_,
+                                            robot_state,
                                             planning_scene_->getAllowedCollisionMatrix());
 
       collision_robot_->checkSelfCollision(request,
                                            result_robot_collision,
-                                           *robot_state_,
+                                           robot_state,
                                            planning_scene_->getAllowedCollisionMatrix());
 
       results[0]= result_world_collision;
@@ -262,7 +254,7 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
         collision_detection::CollisionResult& result = *i;
         if(result.collision)
         {
-          raw_costs_(t) = collision_penalty_;
+          raw_costs(t) = collision_penalty_;
           validity = false;
           break;
         }
@@ -274,8 +266,8 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
     {
       if(!checkIntermediateCollisions(parameters.col(t),parameters.col(t+1),longest_valid_joint_move_))
       {
-        raw_costs_(t) = 1.0;
-        raw_costs_(t+1) = 1.0;
+        raw_costs(t) = 1.0;
+        raw_costs(t+1) = 1.0;
         validity = false;
         skip_next_check = true;
       }
@@ -296,15 +288,15 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
       window_size = window_size < MIN_KERNEL_WINDOW_SIZE ? MIN_KERNEL_WINDOW_SIZE : window_size;
 
       // adding minimum cost
-      intermediate_costs_slots_ = (raw_costs_.array() < collision_penalty_).cast<double>();
-      raw_costs_ += (raw_costs_.sum()/raw_costs_.size())*(intermediate_costs_slots_.matrix());
+      intermediate_costs_slots = (raw_costs.array() < collision_penalty_).cast<double>();
+      raw_costs += (raw_costs.sum()/raw_costs.size())*(intermediate_costs_slots.matrix());
 
       // smoothing
-      applyKernelSmoothing(window_size,raw_costs_,costs);
+      applyKernelSmoothing(window_size,raw_costs,costs);
     }
     else
     {
-      costs = raw_costs_;
+      costs = raw_costs;
     }
 
   }
@@ -313,7 +305,8 @@ bool CollisionCheck::computeCosts(const Eigen::MatrixXd& parameters,
 }
 
 bool CollisionCheck::checkIntermediateCollisions(const Eigen::VectorXd& start,
-                                                           const Eigen::VectorXd& end,double longest_valid_joint_move)
+                                                 const Eigen::VectorXd& end,
+                                                 double longest_valid_joint_move) const
 {
   Eigen::VectorXd diff = end - start;
   int num_intermediate = std::ceil(((diff.cwiseAbs())/longest_valid_joint_move).maxCoeff()) - 1;
@@ -323,24 +316,18 @@ bool CollisionCheck::checkIntermediateCollisions(const Eigen::VectorXd& start,
     return true;
   }
 
-  // grabbing states
-  auto& start_state = intermediate_coll_states_[0];
-  auto& mid_state = intermediate_coll_states_[1];
-  auto& end_state = intermediate_coll_states_[2];
-
-  if(!start_state || !mid_state || !end_state)
-  {
-    ROS_ERROR("%s intermediate states not initialized",getName().c_str());
-    return false;
-  }
+  // states
+  robot_state::RobotState start_state(*robot_state_);
+  robot_state::RobotState mid_state(*robot_state_);
+  robot_state::RobotState end_state(*robot_state_);
 
   // setting up collision
-  auto req = collision_request_;
-  req.distance = false;
-  collision_detection::CollisionResult res;
   const moveit::core::JointModelGroup* joint_group = robot_model_ptr_->getJointModelGroup(group_name_);
-  start_state->setJointGroupPositions(joint_group,start);
-  end_state->setJointGroupPositions(joint_group,end);
+  start_state.setJointGroupPositions(joint_group,start);
+  start_state.update();
+
+  end_state.setJointGroupPositions(joint_group,end);
+  end_state.update();
 
   // checking intermediate states
   double dt = 1.0/static_cast<double>(num_intermediate);
@@ -348,8 +335,9 @@ bool CollisionCheck::checkIntermediateCollisions(const Eigen::VectorXd& start,
   for(std::size_t i = 1; i < num_intermediate;i++)
   {
     interval = i*dt;
-    start_state->interpolate(*end_state,interval,*mid_state) ;
-    if(planning_scene_->isStateColliding(*mid_state))
+    start_state.interpolate(end_state,interval,mid_state) ;
+    mid_state.update();
+    if(planning_scene_->isStateColliding(mid_state))
     {
       return false;
     }

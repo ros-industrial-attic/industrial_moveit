@@ -81,7 +81,7 @@ public:
                          int iteration_number,
                          int rollout_number,
                          Eigen::VectorXd& costs,
-                         bool& validity) = 0 ;
+                         bool& validity) const = 0 ;
 
     /**
      * @brief computes the state costs as a function of the optimized parameters for each time step.
