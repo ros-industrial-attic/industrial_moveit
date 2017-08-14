@@ -31,8 +31,10 @@
 #include <moveit/trajectory_processing/iterative_time_parameterization.h>
 #include <stomp_moveit/utils/kinematics.h>
 #include <stomp_moveit/utils/polynomial.h>
+
 #include <trac_ik/trac_ik.hpp>
 #include <stomp_moveit/rosconsolecolours.h>
+#include <moveit_msgs/DisplayTrajectory.h>
 
 
 static const std::string DESCRIPTION = "STOMP";
@@ -148,6 +150,14 @@ void StompPlanner::setup()
       throw std::logic_error(msg);
     }
 
+    publish_seed_trajectory_ = config_.hasMember("publish_seed_trajectory") and config_["publish_seed_trajectory"];
+
+    if(publish_seed_trajectory_)
+    {
+      ROS_INFO_STREAM("Publishing seed trajectory on " << ph_->getNamespace() << "/seed_trajectory");
+      seed_trajectory_publisher_ = ph_->advertise<moveit_msgs::DisplayTrajectory>("seed_trajectory", 1);
+    }
+
     stomp_.reset(new stomp_core::Stomp(stomp_config_,task_));
   }
   catch(XmlRpc::XmlRpcException& e)
@@ -171,6 +181,15 @@ bool StompPlanner::solve(planning_interface::MotionPlanResponse &res)
   res.error_code_ = detailed_res.error_code_;
 
   return success;
+}
+
+void publishTrajectory(const trajectory_msgs::JointTrajectory& traj, const ros::Publisher& pub)
+{
+  moveit_msgs::DisplayTrajectory disp_traj;
+  disp_traj.trajectory.resize(1);
+  disp_traj.trajectory.front().joint_trajectory = traj;
+  pub.publish(disp_traj);
+  ROS_YELLOW_STREAM("Publishing seed trajectory...");
 }
 
 bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
@@ -425,6 +444,9 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
   {
     return false;
   }
+
+  if(publish_seed_trajectory_)
+    publishTrajectory(traj, seed_trajectory_publisher_);
 
   return true;
 }

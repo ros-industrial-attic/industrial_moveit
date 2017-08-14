@@ -188,6 +188,9 @@ protected:
 
   // ros tasks
   ros::NodeHandlePtr ph_;
+
+  bool publish_seed_trajectory_;
+  ros::Publisher seed_trajectory_publisher_;
 };
 
 
