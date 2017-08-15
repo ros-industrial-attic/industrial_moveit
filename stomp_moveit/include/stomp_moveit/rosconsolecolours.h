@@ -5,7 +5,7 @@
 #include <deque>
 #include <ros/console.h>
 #include <iostream>
-
+#include <Eigen/Eigen>
 
 #define ROS_RED_STREAM(SSS) ROS_INFO_STREAM("\033[31;1m" << SSS << "\033[0m\n")
 #define ROS_GREEN_STREAM(SSS) ROS_INFO_STREAM("\033[32;1m" << SSS << "\033[0m\n")
@@ -31,6 +31,13 @@ std::ostream& operator<< (std::ostream& stream, const std::deque<T>& list)
     stream << elem << ", ";
   stream.seekp(-2, std::ios_base::end); // remove last ", "
   return stream;
+}
+
+std::string shape(const Eigen::MatrixXd& mat)
+{
+  std::stringstream ss;
+  ss << "(" << mat.rows() << "," << mat.cols() << ")";
+  return ss.str();
 }
 
 /* free test code here
