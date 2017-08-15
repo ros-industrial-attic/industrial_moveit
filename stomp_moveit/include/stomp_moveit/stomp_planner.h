@@ -171,9 +171,9 @@ protected:
 
   bool isCartesianSeed() const;
 
-  moveit_msgs::RobotState robotStateFromEigen(const Eigen::VectorXd& state, const std::vector<std::string> &state_joint_names, const std::vector<std::string> &all_joint_names) const;
+  moveit_msgs::RobotState robotStateFromEigen(const Eigen::MatrixXd& state, const std::vector<std::string> &state_joint_names, const std::vector<std::string> &all_joint_names) const;
 
-  moveit_msgs::Constraints jointConstraintsFromEigen(const Eigen::VectorXd& state, const std::vector<std::string>& state_joint_names) const;
+  moveit_msgs::Constraints jointConstraintsFromEigen(const Eigen::MatrixXd& state, const std::vector<std::string>& state_joint_names) const;
 
 protected:
 
