@@ -347,97 +347,100 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
    * Validating seed trajectory by ensuring that it does obey the
    * motion plan request constraints
    */
-  moveit::core::RobotState state (robot_model_);
-  const auto* group = state.getJointModelGroup(group_);
-  const auto& joint_names = group->getActiveJointModelNames();
-  const auto& tool_link = group->getLinkModelNames().back();
-  Eigen::VectorXd start, goal;
-
-  // We check to see if the start state in the request and the seed state are 'close'
-  if (moveit::core::robotStateMsgToRobotState(request_.start_state, state))
+  if(not isCartesianSeed())
   {
-    // copying start joint values
-    start.resize(joint_names.size());
-    for(auto j = 0u; j < joint_names.size(); j++)
-    {
-      start(j) = state.getVariablePosition(joint_names[j]);
-    }
-    state.enforceBounds(group);
+    moveit::core::RobotState state (robot_model_);
+    const auto* group = state.getJointModelGroup(group_);
+    const auto& joint_names = group->getActiveJointModelNames();
+    const auto& tool_link = group->getLinkModelNames().back();
+    Eigen::VectorXd start, goal;
 
-    if(within_tolerance(parameters.leftCols(1),start,MAX_START_DISTANCE_THRESH))
+    // We check to see if the start state in the request and the seed state are 'close'
+    if (moveit::core::robotStateMsgToRobotState(request_.start_state, state))
     {
-      parameters.leftCols(1) = start;
+      // copying start joint values
+      start.resize(joint_names.size());
+      for(auto j = 0u; j < joint_names.size(); j++)
+      {
+        start(j) = state.getVariablePosition(joint_names[j]);
+      }
+      state.enforceBounds(group);
+
+      if(within_tolerance(parameters.leftCols(1),start,MAX_START_DISTANCE_THRESH))
+      {
+        parameters.leftCols(1) = start;
+      }
+      else
+      {
+        ROS_ERROR("%s Start State is in discrepancy with the seed trajectory",getName().c_str());
+        return false;
+      }
     }
     else
     {
-      ROS_ERROR("%s Start State is in discrepancy with the seed trajectory",getName().c_str());
+      ROS_ERROR("%s Failed to get start state joints",getName().c_str());
       return false;
     }
-  }
-  else
-  {
-    ROS_ERROR("%s Failed to get start state joints",getName().c_str());
-    return false;
-  }
 
-  // We now extract the goal and make sure that the seed's goal obeys the goal constraints
-  bool found_goal = false;
-  goal = parameters.rightCols(1); // initializing goal;
-  for(auto& gc : request_.goal_constraints)
-  {
-    if(!gc.joint_constraints.empty())
+    // We now extract the goal and make sure that the seed's goal obeys the goal constraints
+    bool found_goal = false;
+    goal = parameters.rightCols(1); // initializing goal;
+    for(auto& gc : request_.goal_constraints)
     {
-      // copying goal values into state
-      for(auto j = 0u; j < gc.joint_constraints.size() ; j++)
+      if(!gc.joint_constraints.empty())
       {
-        auto jc = gc.joint_constraints[j];
-        state.setVariablePosition(jc.joint_name,jc.position);
+        // copying goal values into state
+        for(auto j = 0u; j < gc.joint_constraints.size() ; j++)
+        {
+          auto jc = gc.joint_constraints[j];
+          state.setVariablePosition(jc.joint_name,jc.position);
+        }
+
+        // copying values into goal array
+        if(!state.satisfiesBounds(group))
+        {
+          ROS_ERROR("%s Requested Goal joint pose is out of bounds",getName().c_str());
+          continue;
+        }
+
+        for(auto j = 0u; j < joint_names.size(); j++)
+        {
+          goal(j) = state.getVariablePosition(joint_names[j]);
+        }
+
+        found_goal = true;
+        break;
       }
 
-      // copying values into goal array
-      if(!state.satisfiesBounds(group))
+      if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // checking cartesian
       {
-        ROS_ERROR("%s Requested Goal joint pose is out of bounds",getName().c_str());
-        continue;
-      }
-
-      for(auto j = 0u; j < joint_names.size(); j++)
-      {
-        goal(j) = state.getVariablePosition(joint_names[j]);
-      }
-
-      found_goal = true;
-      break;
-    }
-
-    if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // checking cartesian
-    {
         if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
                                       group, goal))
         {
           found_goal = true;
           break;
         }
+      }
     }
-  }
 
-  // forcing the goal into the seed trajectory
-  if(found_goal)
-  {
-    if(within_tolerance(parameters.rightCols(1),goal,MAX_START_DISTANCE_THRESH))
+    // forcing the goal into the seed trajectory
+    if(found_goal)
     {
-      parameters.rightCols(1) = goal;
+      if(within_tolerance(parameters.rightCols(1),goal,MAX_START_DISTANCE_THRESH))
+      {
+        parameters.rightCols(1) = goal;
+      }
+      else
+      {
+        ROS_ERROR("%s Goal in seed to far away from Goal requested",getName().c_str());
+        return false;
+      }
     }
     else
     {
       ROS_ERROR("%s Goal in seed to far away from Goal requested",getName().c_str());
       return false;
     }
-  }
-  else
-  {
-    ROS_ERROR("%s Goal in seed to far away from Goal requested",getName().c_str());
-    return false;
   }
 
   if(!applyPolynomialSmoothing(robot_model_,group_,parameters,5,1e-5))
