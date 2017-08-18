@@ -666,12 +666,11 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
 
   ROS_ASSERT(joint_group->getJointRoots().size() == 1);
 
-  //TODO: these frame names should be aligned with the frames of the demonstration, maybe send it in seed and retrieve here?
-  std::string chain_start = "base_link"; //TODO: get the link before the first joint here
-  std::string chain_end =  "gripper_grasping_frame"; //joint_group->getLinkModelNames().back();
+  const std::string base_frame = pos_constraint.header.frame_id;
+  const std::string end_eff_frame =  pos_constraint.link_name;
 
   //ROS_ERROR_STREAM("Setting up IK from " << chain_start << " to " << chain_end);
-  TRAC_IK::TRAC_IK tracik_solver(chain_start, chain_end, urdf_param, timeout, eps); //TODO: this should only be set up once per object, or use IK plugin?
+  TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps); //TODO: this should only be set up once per object, or use IK plugin?
   KDL::Chain chain;
   if(not tracik_solver.getKDLChain(chain))
     return false;
