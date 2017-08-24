@@ -53,7 +53,10 @@ public:
 
     // generate smoothing matrix
     int num_timesteps = parameters_bias.cols();
-    stomp_core::generateSmoothingMatrix(num_timesteps,1.0,smoothing_M_);
+    stomp_core::generateSmoothingMatrix(num_timesteps,
+                                        stomp_core::DerivativeOrders::STOMP_ACCELERATION,
+                                        1.0,
+                                        smoothing_M_);
     srand(time(0));
 
   }

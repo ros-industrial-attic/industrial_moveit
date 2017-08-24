@@ -366,8 +366,10 @@ bool Stomp::resetVariables()
   // generate finite difference matrix
   start_index_padded_ = FINITE_DIFF_RULE_LENGTH-1;
   num_timesteps_padded_ = config_.num_timesteps + 2*(FINITE_DIFF_RULE_LENGTH-1);
-  generateFiniteDifferenceMatrix(num_timesteps_padded_,DerivativeOrders::STOMP_ACCELERATION,
-                                 config_.delta_t,finite_diff_matrix_A_padded_);
+  generateFiniteDifferenceMatrix(num_timesteps_padded_,
+                                 static_cast<DerivativeOrders::DerivativeOrder>(config_.smoothing_derivative_order),
+                                 config_.delta_t,
+                                 finite_diff_matrix_A_padded_);
 
   /* control cost matrix (R = A_transpose * A):
    * Note: Original code multiplies the A product by the time interval.  However this is not

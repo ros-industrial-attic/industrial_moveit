@@ -61,7 +61,7 @@ void generateFiniteDifferenceMatrix(int num_time_steps,
   }
 }
 
-void generateSmoothingMatrix(int num_timesteps,double dt, Eigen::MatrixXd& projection_matrix_M)
+void generateSmoothingMatrix(int num_timesteps, DerivativeOrders::DerivativeOrder order, double dt, Eigen::MatrixXd& projection_matrix_M)
 {
   using namespace Eigen;
 
@@ -69,8 +69,7 @@ void generateSmoothingMatrix(int num_timesteps,double dt, Eigen::MatrixXd& proje
   int start_index_padded = FINITE_DIFF_RULE_LENGTH-1;
   int num_timesteps_padded = num_timesteps + 2*(FINITE_DIFF_RULE_LENGTH-1);
   MatrixXd finite_diff_matrix_A_padded;
-  generateFiniteDifferenceMatrix(num_timesteps_padded,DerivativeOrders::STOMP_ACCELERATION,
-                                 dt,finite_diff_matrix_A_padded);
+  generateFiniteDifferenceMatrix(num_timesteps_padded, order, dt, finite_diff_matrix_A_padded);
 
 
   /* computing control cost matrix (R = A_transpose * A):

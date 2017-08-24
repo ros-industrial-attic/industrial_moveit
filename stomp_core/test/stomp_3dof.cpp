@@ -62,7 +62,7 @@ public:
 
     // generate smoothing matrix
     int num_timesteps = parameters_bias.cols();
-    generateSmoothingMatrix(num_timesteps,1.0,smoothing_M_);
+    generateSmoothingMatrix(num_timesteps, DerivativeOrders::STOMP_ACCELERATION, 1.0, smoothing_M_);
     srand(1);
 
   }
