@@ -60,7 +60,7 @@ class Constrained_IK
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-  Constrained_IK();
+  Constrained_IK(const ros::NodeHandle &nh = ros::NodeHandle("~"));
 
   /**
    * @brief computes and returns the link transfoms of the named joints

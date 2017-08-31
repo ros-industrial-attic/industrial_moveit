@@ -65,7 +65,7 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS}
- LIBRARIES constrained_ik constrained_ik_constraints moveit_clik_planner_plugin constrained_ik_plugin
+ LIBRARIES constrained_ik constrained_ik_constraints constrained_ik_moveit
  CATKIN_DEPENDS roscpp urdf eigen_conversions tf_conversions urdf moveit_ros_planning moveit_core dynamic_reconfigure kdl_parser cmake_modules industrial_collision_detection
  DEPENDS boost eigen orocos_kdl
 )
@@ -114,12 +114,16 @@ add_library(constrained_ik_plugin
 )
 target_link_libraries(constrained_ik_plugin constrained_ik constrained_ik_constraints ${catkin_LIBRARIES})
 
-add_library(moveit_clik_planner_plugin
-            src/moveit_interface/constrained_ik_planner_plugin.cpp
+add_library(constrained_ik_moveit
             src/moveit_interface/joint_interpolation_planner.cpp
             src/moveit_interface/cartesian_planner.cpp)
 
-target_link_libraries(moveit_clik_planner_plugin constrained_ik constrained_ik_constraints ${catkin_LIBRARIES})
+target_link_libraries(constrained_ik_moveit constrained_ik constrained_ik_constraints ${catkin_LIBRARIES})
+
+add_library(moveit_clik_planner_plugin
+            src/moveit_interface/constrained_ik_planner_plugin.cpp)
+
+target_link_libraries(moveit_clik_planner_plugin constrained_ik constrained_ik_constraints constrained_ik_moveit ${catkin_LIBRARIES})
 
 
 #############
@@ -127,6 +131,7 @@ target_link_libraries(moveit_clik_planner_plugin constrained_ik constrained_ik_c
 #############
 install(TARGETS constrained_ik LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 install(TARGETS constrained_ik_constraints LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
+install(TARGETS constrained_ik_moveit LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
 ## Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}/

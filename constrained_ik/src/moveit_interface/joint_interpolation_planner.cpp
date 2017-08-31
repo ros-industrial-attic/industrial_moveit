@@ -127,7 +127,7 @@ namespace constrained_ik
     start_state.interpolate(goal_state, 0.1, *mid_state);
     mid_state->copyJointGroupPositions(request_.group_name, jv_step);
     delta = (jv_step - jv_start).cwiseAbs();
-    dt = config_.joint_discretization_step*(0.1/delta.maxCoeff());
+    dt = joint_discretization_step_*(0.1/delta.maxCoeff());
 
     // Generate Path
     int steps = (1.0/dt) + 1;
@@ -176,5 +176,21 @@ namespace constrained_ik
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
       return false;
     }
+  }
+
+  void JointInterpolationPlanner::setPlannerConfiguration(double joint_discretization_step, bool debug_mode)
+  {
+    if (joint_discretization_step > 0)
+      joint_discretization_step_ = joint_discretization_step;
+    else
+      ROS_ERROR("Joint Interpolated Planner joint discretization step must be greater than zero.");
+
+    debug_mode_ = debug_mode;
+  }
+
+  void JointInterpolationPlanner::resetPlannerConfiguration()
+  {
+    joint_discretization_step_ = DEFAULT_JOINT_DISCRETIZATION_STEP;
+    debug_mode_ = false;
   }
 } //namespace constrained_ik
