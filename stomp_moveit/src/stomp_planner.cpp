@@ -585,7 +585,7 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
     start.resize(joint_names.size());
     goal.resize(joint_names.size());
 
-    if(!state->satisfiesBounds())
+    if(!state->satisfiesBounds(state->getJointModelGroup(group_)))
     {
       ROS_ERROR("%s Start joint pose is out of bounds",getName().c_str());
       return false;
@@ -617,7 +617,7 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
         }
 
 
-        if(!state->satisfiesBounds())
+        if(!state->satisfiesBounds(state->getJointModelGroup(group_)))
         {
           ROS_ERROR("%s Requested Goal joint pose is out of bounds",getName().c_str());
           continue;
