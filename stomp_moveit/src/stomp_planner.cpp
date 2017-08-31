@@ -307,7 +307,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
     return false;
   }
-
+  trajectory.header.seq=stomp_->getNumIterations(); //number of iterations
   // checking against planning scene
   if(planning_scene_ && !planning_scene_->isPathValid(*res.trajectory_.back(),group_,true))
   {
