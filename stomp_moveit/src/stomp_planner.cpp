@@ -296,6 +296,8 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     }
 
     // creating request response
+    trajectory.header.seq=stomp_->getNumIterations(); //number of iterations
+    ROS_INFO_STREAM("Bruno this is your number of luck "<<trajectory.header.seq);
     moveit::core::RobotState robot_state(robot_model_);
     moveit::core::robotStateMsgToRobotState(request_.start_state,robot_state);
     res.trajectory_[0]= robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(
@@ -307,7 +309,7 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     res.error_code_.val = moveit_msgs::MoveItErrorCodes::PLANNING_FAILED;
     return false;
   }
-  trajectory.header.seq=stomp_->getNumIterations(); //number of iterations
+
   // checking against planning scene
   if(planning_scene_ && !planning_scene_->isPathValid(*res.trajectory_.back(),group_,true))
   {
