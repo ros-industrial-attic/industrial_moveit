@@ -518,7 +518,9 @@ bool StompPlanner::jointTrajectorytoParameters(const trajectory_msgs::JointTraje
   {
     for (size_t joint = 0; joint < dof; ++joint)
     {
-      mat(joint, step) = traj.points[step].positions[joint];
+      auto point = traj.points[step];
+      double val = point.positions[joint];
+      mat(joint, step) = val;
     }
   }
 
@@ -579,20 +581,21 @@ bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanR
   for (size_t i = 0; i < constraints[0].position_constraints.size(); ++i)
   {
     trajectory_msgs::JointTrajectoryPoint joint_pt;
+    joint_pt.positions.resize(joint_group->getActiveJointModelNames().size(), 0.0);
 
     if(ikFromCartesianConstraints(constraints[0].position_constraints[i],
                                   constraints[0].orientation_constraints[i],
                                   joint_group, joint_pos, joint_pos)) // passing the previous joint_pos as hint for the next one!
     {
       for(int j=0; j<joint_pos.size(); ++j)
-        joint_pt.positions.push_back(joint_pos(j));
+        joint_pt.positions[j] = joint_pos(j);
     }
     else
     {
       fail_count++;
-        // if IK fails on the seed we die here
+        // if IK fails on the seed we should die here...instead now only pruning
         ROS_ERROR_STREAM("**** FAILED TO IK CARTESIAN SEED at step " << i << " ******");
-//        return false;
+
         for(int j=0; j<joint_pos.size(); ++j)
           joint_pt.positions.push_back(joint_pos(j));
     }
