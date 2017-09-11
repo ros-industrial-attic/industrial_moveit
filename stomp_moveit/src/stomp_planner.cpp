@@ -708,8 +708,6 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
 
   int rc=tracik_solver.CartToJnt(nominal,end_effector_pose,ik_result, tolerance);
 
-  ROS_WARN_STREAM(ik_result.data);
-
   if(rc >= 0)
   {
     //ROS_ERROR_STREAM("Shape of result is " << ik_result.data.rows() << " : " << ik_result.data.cols() << std::endl << ik_result.data);
