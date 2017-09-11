@@ -665,7 +665,7 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
   using namespace utils::kinematics;
 
   const double eps = 1e-3;
-  const double timeout = 0.01;
+  const double timeout = 0.05;
   const std::string urdf_param = "/robot_description";
 
 //  for(auto name : joint_group->getActiveJointModelNames())
@@ -702,7 +702,13 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
     nominal.data = hint;
   }
 
-  int rc=tracik_solver.CartToJnt(nominal,end_effector_pose,ik_result);
+  KDL::Twist tolerance;
+  tolerance.rot.x(0.01);tolerance.rot.y(0.01);tolerance.rot.z(0.01);
+  tolerance.vel.x(0.01);tolerance.vel.y(0.01);tolerance.vel.z(0.01);
+
+  int rc=tracik_solver.CartToJnt(nominal,end_effector_pose,ik_result, tolerance);
+
+  ROS_WARN_STREAM(ik_result.data);
 
   if(rc >= 0)
   {
