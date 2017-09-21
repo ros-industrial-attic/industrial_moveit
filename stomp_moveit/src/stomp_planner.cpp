@@ -703,7 +703,7 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
   }
 
   KDL::Twist tolerance;
-  tolerance.rot.x(0.01);tolerance.rot.y(0.01);tolerance.rot.z(0.01);
+  tolerance.rot.x(0.2);tolerance.rot.y(0.2);tolerance.rot.z(0.2);
   tolerance.vel.x(0.01);tolerance.vel.y(0.01);tolerance.vel.z(0.01);
 
   int rc=tracik_solver.CartToJnt(nominal,end_effector_pose,ik_result, tolerance);
