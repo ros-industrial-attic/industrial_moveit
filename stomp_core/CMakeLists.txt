@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(stomp_core)
 
+add_definitions("-std=c++11")
+
+find_package(Eigen3 REQUIRED)
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   cmake_modules
 )
-
-find_package(Eigen REQUIRED)
-
-add_definitions("-std=c++11")
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -17,10 +17,10 @@ add_definitions("-std=c++11")
 ## catkin specific configuration ##
 ###################################
 catkin_package(
-  INCLUDE_DIRS include ${EIGEN_INCLUDE_DIRS}
+  INCLUDE_DIRS include
   LIBRARIES stomp_core
   CATKIN_DEPENDS roscpp cmake_modules
-  DEPENDS Eigen
+  DEPENDS EIGEN3
 )
 
 ###########
@@ -30,7 +30,7 @@ include_directories(
   include
   examples
   ${catkin_INCLUDE_DIRS}
-  ${EIGEN_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library

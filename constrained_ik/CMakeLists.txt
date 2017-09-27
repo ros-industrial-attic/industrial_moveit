@@ -64,10 +64,10 @@ generate_dynamic_reconfigure_options(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
- INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS}
+ INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
  LIBRARIES constrained_ik constrained_ik_constraints moveit_clik_planner_plugin constrained_ik_plugin
  CATKIN_DEPENDS roscpp urdf eigen_conversions tf_conversions urdf moveit_ros_planning moveit_core dynamic_reconfigure kdl_parser cmake_modules industrial_collision_detection
- DEPENDS boost eigen orocos_kdl
+ DEPENDS Boost EIGEN3 orocos_kdl
 )
 
 ###########
@@ -144,7 +144,7 @@ install(
     ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
-install(TARGETS constrained_ik_plugin moveit_clik_planner_plugin 
+install(TARGETS constrained_ik_plugin moveit_clik_planner_plugin
 ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -215,5 +215,3 @@ target_link_libraries(avoid_joint_vel_limits_example ${EXAMPLE_LIBS})
 
 add_executable(goal_tool_position_example examples/goal_tool_position_example.cpp examples/example_utils.h)
 target_link_libraries(goal_tool_position_example ${EXAMPLE_LIBS})
-
-
