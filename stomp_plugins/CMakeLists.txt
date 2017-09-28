@@ -10,7 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   pluginlib
 )
 
-find_package(Eigen REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
 
 add_definitions("-std=c++11")
@@ -28,7 +28,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS moveit_ros_planning moveit_core stomp_core stomp_moveit cmake_modules pluginlib roscpp
-  DEPENDS Eigen
+  DEPENDS EIGEN3
 )
 
 ###########
@@ -37,7 +37,8 @@ catkin_package(
 
 ## Specify additional locations of header files
 include_directories(include
-    ${catkin_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
 )
 
 # cost function plugin(s)
@@ -80,4 +81,3 @@ install(FILES cost_function_plugins.xml noise_generator_plugins.xml update_filte
 #############
 ## Testing ##
 #############
-
