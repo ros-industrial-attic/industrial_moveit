@@ -125,13 +125,13 @@ namespace constrained_ik
     {
       if (it->second->getName() == JOINT_INTERP_PLANNER)
       {
-        boost::shared_ptr<JointInterpolationPlanner> planner = boost::static_pointer_cast<JointInterpolationPlanner>(it->second);
+        std::shared_ptr<JointInterpolationPlanner> planner = std::static_pointer_cast<JointInterpolationPlanner>(it->second);
         planner->setPlannerConfiguration(config_.joint_discretization_step, config_.debug_mode);
       }
 
       if (it->second->getName() == CARTESIAN_PLANNER)
       {
-        boost::shared_ptr<CartesianPlanner> planner = boost::static_pointer_cast<CartesianPlanner>(it->second);
+        std::shared_ptr<CartesianPlanner> planner = std::static_pointer_cast<CartesianPlanner>(it->second);
         planner->setPlannerConfiguration(config_.translational_discretization_step, config_.orientational_discretization_step, config_.debug_mode);
       }
 
