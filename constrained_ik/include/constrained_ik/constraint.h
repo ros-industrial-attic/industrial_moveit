@@ -50,6 +50,15 @@ class Constraint
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+  static const unsigned TYPE_POSITION = 1u;
+  static const unsigned TYPE_ORIENTATION = 2u;
+  static const unsigned TYPE_OTHER = 4u;
+
+  virtual unsigned constraintType() const
+  {
+    return TYPE_OTHER;
+  }
+
   /**
    * @brief This structure is to be used by all constraints to store specific data
    * that needs to get updated every iteration of the solver.

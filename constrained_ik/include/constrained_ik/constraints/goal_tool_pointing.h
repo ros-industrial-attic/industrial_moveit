@@ -57,6 +57,11 @@ public:
 
   GoalToolPointing();
 
+  virtual unsigned constraintType() const
+  {
+    return TYPE_POSITION | TYPE_ORIENTATION;
+  }
+
   /** @brief see base class for documentation*/
   constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
 

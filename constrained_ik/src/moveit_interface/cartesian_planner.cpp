@@ -44,9 +44,17 @@ namespace constrained_ik
     robot_description_("robot_description")
   {
     resetPlannerConfiguration();
+
+    // TODO: Defer construction of the constrained_ik solver until solve is called
     solver_.reset(new Constrained_IK(nh));
     std::string constraint_param = "constrained_ik_solver/" + getGroupName() + "/constraints";
-    solver_->addConstraintsFromParamServer(constraint_param);
+    // TODO: We want to load our default set of cost functions here and store them for use
+    // when solve() is called.
+    ROS_INFO("Load from params");
+//    solver_->addConstraintsFromParamServer(constraint_param);
+
+    ROS_INFO("Load into defaults");
+    default_constraints_ = solver_->loadConstraintsFromParamServer(constraint_param);
   }
 
   bool CartesianPlanner::initializeSolver()
@@ -94,6 +102,144 @@ namespace constrained_ik
     solver_->loadDefaultSolverConfiguration();
   }
 
+  std::vector<std::pair<bool, Constraint*> > CartesianPlanner::resolveConstraints() const
+  {
+    // This function attempts to sanely combine goal constraints given by the user with constraints
+    // specified as "default" through the parameter server / YAML file interfaces.
+
+    // This planner currently only uses goal constraints and ignores path constraints: the path is specified implictly.
+    // With high DOF, we could optimize across several goals but our primary purpose here is low DOF industrial bots.
+
+    // User requested goal constraints take precedence over default ones
+
+    // Warn if user specified any path constraints
+    if (request_.path_constraints.joint_constraints.size() > 0 ||
+        request_.path_constraints.position_constraints.size() > 0 ||
+        request_.path_constraints.orientation_constraints.size() > 0 ||
+        request_.path_constraints.visibility_constraints.size() > 0)
+    {
+      ROS_WARN("Cartesian Planner does not (currently) support path constraints.");
+    }
+
+    // First, let's see if the user specifies position
+    std::vector<moveit_msgs::PositionConstraint> position_constraints;
+    for (std::size_t i = 0; i < request_.goal_constraints.size(); ++i)
+    {
+      if (request_.goal_constraints[i].position_constraints.size() > 0)
+      {
+        position_constraints.insert(position_constraints.end(),
+                                    request_.goal_constraints[i].position_constraints.begin(),
+                                    request_.goal_constraints[i].position_constraints.end());
+      }
+    }
+    const bool user_specifies_position = position_constraints.size() > 0;
+
+    // Next lets look at orientation
+    std::vector<moveit_msgs::OrientationConstraint> orientation_constraints;
+    for (std::size_t i = 0; i < request_.goal_constraints.size(); ++i)
+    {
+      if (request_.goal_constraints[i].orientation_constraints.size() > 0)
+      {
+        orientation_constraints.insert(orientation_constraints.end(),
+                                    request_.goal_constraints[i].orientation_constraints.begin(),
+                                    request_.goal_constraints[i].orientation_constraints.end());
+      }
+    }
+    const bool user_specifies_orientation = orientation_constraints.size() > 0;
+
+    // If the user has specified position or orientation, we have to choose the best one...
+    moveit_msgs::PositionConstraint best_position_constraint;
+    moveit_msgs::OrientationConstraint best_orientation_constraint;
+
+    if (user_specifies_position)
+    {
+      ROS_WARN_STREAM("User specifies position123");
+    }
+
+    if (user_specifies_orientation)
+    {
+      ROS_WARN_STREAM("User specifies orientation");
+    }
+
+    Constraint* user_pos_constraint = nullptr;
+    Constraint* user_ori_constraint = nullptr;
+
+    std::vector<std::pair<bool, Constraint*> > result;
+
+    // Create a position constraint, if required
+    if (user_specifies_position)
+    {
+      boost::shared_ptr<pluginlib::ClassLoader<constrained_ik::Constraint> > constraint_loader;
+      constraint_loader.reset(
+            new pluginlib::ClassLoader<constrained_ik::Constraint>("constrained_ik", "constrained_ik::Constraint"));
+
+      user_pos_constraint = constraint_loader->createUnmanagedInstance("constrained_ik/GoalPosition");
+
+
+//      user_pos_constraint = new constrained_ik::constraints::GoalPosition();
+      XmlRpc::XmlRpcValue params;
+      params["position_tolerance"] = 0.001; // TODO: comes from user
+      params["weights"].setSize(3);
+      params["weights"][0] = 1.0;
+      params["weights"][1] = 1.0;
+      params["weights"][2] = 1.0;
+      params["debug"] = XmlRpc::XmlRpcValue(false);
+      user_pos_constraint->loadParameters(params);
+      result.push_back(std::make_pair(true, user_pos_constraint));
+    }
+
+    // Create a orientation constraint, if required
+    if (user_specifies_orientation)
+    {
+      boost::shared_ptr<pluginlib::ClassLoader<constrained_ik::Constraint> > constraint_loader;
+      constraint_loader.reset(
+            new pluginlib::ClassLoader<constrained_ik::Constraint>("constrained_ik", "constrained_ik::Constraint"));
+
+      user_ori_constraint = constraint_loader->createUnmanagedInstance("constrained_ik/GoalToolOrientation");
+
+      XmlRpc::XmlRpcValue params;
+      params["orientation_tolerance"] = 0.001; // TODO: comes from user
+      params["weights"].setSize(3);
+      params["weights"][0] = 1.0;
+      params["weights"][1] = 1.0;
+      params["weights"][2] = 1.0;
+      params["debug"] = XmlRpc::XmlRpcValue(false);
+      ROS_INFO("WHAT");
+      user_ori_constraint->loadParameters(params);
+      result.push_back(std::make_pair(true, user_ori_constraint));
+
+    }
+
+    // Add user constraints to the results as required
+
+//     Now we need to remove constraints from the default set as necessary
+    std::vector<Constraint*> to_delete;
+    for (std::size_t i = 0; i < default_constraints_.size(); ++i)
+    {
+      Constraint* c = default_constraints_[i].second;
+      if ( (c->constraintType() & Constraint::TYPE_POSITION) && user_specifies_position)
+      {
+        to_delete.push_back(c);
+        continue;
+      }
+
+      if ( (c->constraintType() & Constraint::TYPE_ORIENTATION) && user_specifies_orientation)
+      {
+        to_delete.push_back(c);
+        continue;
+      }
+
+      result.push_back(std::make_pair(default_constraints_[i].first, c));
+    }
+
+    for (std::size_t i = 0; i < to_delete.size(); ++i)
+    {
+      delete to_delete[i];
+    }
+
+    return result;
+  }
+
   bool CartesianPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   {
     planning_interface::MotionPlanResponse response;
@@ -116,6 +262,17 @@ namespace constrained_ik
     Eigen::Affine3d start_pose, goal_pose;
 
     robot_model_ = planning_scene_->getRobotModel();
+
+    //  TODO: Create our solver here - we want to generate an intelligent union of the constraints
+    // specified in the parameter file and the constraints specified in the moveit request
+    std::vector<std::pair<bool, Constraint*> > solver_constraints = resolveConstraints();
+    for (std::size_t i = 0; i < solver_constraints.size(); ++i)
+    {
+      if (solver_constraints[i].first)
+        solver_->addConstraint(solver_constraints[i].second, constraint_types::Primary);
+      else
+        solver_->addConstraint(solver_constraints[i].second, constraint_types::Auxiliary);
+    }
 
     // Load solver if not already loaded
     if(!solver_->isInitialized())

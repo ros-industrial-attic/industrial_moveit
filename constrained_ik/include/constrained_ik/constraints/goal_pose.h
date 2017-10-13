@@ -50,6 +50,12 @@ public:
     this->add(position_);
     this->add(orientation_);
   }
+
+  virtual unsigned constraintType() const
+  {
+    return position_->constraintType() | orientation_->constraintType();
+  }
+
   /**
    * @brief Setter for the orientation weights
    * @param weight_orientation values to set the orientation weights
