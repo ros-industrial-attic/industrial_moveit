@@ -71,7 +71,7 @@ std::vector<std::pair<bool, Constraint*> > Constrained_IK::loadConstraintsFromPa
 
   if (!nh_.getParam(parameter_name, constraints_xml))
   {
-    ROS_ERROR("Unable to find ros parameter: %s", parameter_name.c_str());
+    ROS_WARN("Unable to find ros parameter: %s", parameter_name.c_str());
     return constraints;
   }
 

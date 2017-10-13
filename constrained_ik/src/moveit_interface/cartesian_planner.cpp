@@ -50,10 +50,6 @@ namespace constrained_ik
     std::string constraint_param = "constrained_ik_solver/" + getGroupName() + "/constraints";
     // TODO: We want to load our default set of cost functions here and store them for use
     // when solve() is called.
-    ROS_INFO("Load from params");
-//    solver_->addConstraintsFromParamServer(constraint_param);
-
-    ROS_INFO("Load into defaults");
     default_constraints_ = solver_->loadConstraintsFromParamServer(constraint_param);
   }
 
@@ -160,6 +156,18 @@ namespace constrained_ik
     return cs[min_index];
   }
 
+  static bool constraintsPose(const std::vector<std::pair<bool, Constraint*> >& cs)
+  {
+    for (std::size_t i = 0; i < cs.size(); ++i)
+    {
+      bool this_constrains = (cs[i].second->constraintType() & constrained_ik::Constraint::TYPE_POSITION) ||
+                             (cs[i].second->constraintType() & constrained_ik::Constraint::TYPE_ORIENTATION);
+      if (this_constrains)
+        return true;
+    }
+    return false;
+  }
+
   std::vector<std::pair<bool, Constraint*> > CartesianPlanner::resolveConstraints() const
   {
     // This function attempts to sanely combine goal constraints given by the user with constraints
@@ -204,6 +212,18 @@ namespace constrained_ik
       }
     }
     const bool user_specifies_orientation = orientation_constraints.size() > 0;
+
+    // Check for no default constraints and no position/orientation goal constraints
+    if (!user_specifies_orientation && !user_specifies_position && !constraintsPose(default_constraints_))
+    {
+      ROS_WARN_STREAM("No pose goal constraints or default constraints on pose. Generating a default set.");
+      moveit_msgs::PositionConstraint dummy_pos;
+      moveit_msgs::OrientationConstraint dummy_orient;
+      std::vector<std::pair<bool, Constraint*> > res;
+      res.push_back(std::make_pair(true, createConstraint(dummy_pos)));
+      res.push_back(std::make_pair(true, createConstraint(dummy_orient)));
+      return res;
+    }
 
     // If the user has specified position or orientation, we have to choose the best one...
     moveit_msgs::PositionConstraint best_position_constraint;
