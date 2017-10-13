@@ -102,6 +102,64 @@ namespace constrained_ik
     solver_->loadDefaultSolverConfiguration();
   }
 
+
+  static double constraintTolerance(const moveit_msgs::PositionConstraint& pos_constraint)
+  {
+    double tolerance = std::numeric_limits<double>::max();
+    for (std::size_t i = 0; i < pos_constraint.constraint_region.primitives.size(); ++i)
+    {
+      const shape_msgs::SolidPrimitive& p = pos_constraint.constraint_region.primitives[i];
+
+      double this_tolerance = std::numeric_limits<double>::max();
+      if (p.type == shape_msgs::SolidPrimitive::BOX)
+      {
+        if (p.dimensions.size() != 3) continue;
+        this_tolerance = std::min(std::min(p.dimensions[0], p.dimensions[1]), p.dimensions[2]) / 2.0;
+      }
+
+      if (p.type == shape_msgs::SolidPrimitive::SPHERE)
+      {
+        if (p.dimensions.size() != 1) continue;
+        this_tolerance = p.dimensions[0];
+      }
+
+      if (this_tolerance != std::numeric_limits<double>::max())
+      {
+        tolerance = std::min(tolerance, this_tolerance);
+      }
+    }
+    return tolerance;
+  }
+
+  static double constraintTolerance(const moveit_msgs::OrientationConstraint& ori_constraint)
+  {
+    double tolerance = std::min(std::min(ori_constraint.absolute_x_axis_tolerance,
+                                         ori_constraint.absolute_y_axis_tolerance),
+                                ori_constraint.absolute_z_axis_tolerance);
+    return tolerance;
+  }
+
+  template<typename Constraint>
+  static Constraint mostRestrictive(const std::vector<Constraint>& cs)
+  {
+    assert(cs.size() > 0);
+
+    double min_tolerance = std::numeric_limits<double>::max();
+    unsigned min_index = 0;
+
+    for (unsigned i = 0; i < cs.size(); ++i)
+    {
+      double this_tol = constraintTolerance(cs[i]);
+      if (this_tol < min_tolerance)
+      {
+        min_tolerance = min_tolerance;
+        min_index = i;
+      }
+    }
+
+    return cs[min_index];
+  }
+
   std::vector<std::pair<bool, Constraint*> > CartesianPlanner::resolveConstraints() const
   {
     // This function attempts to sanely combine goal constraints given by the user with constraints
@@ -153,66 +211,35 @@ namespace constrained_ik
 
     if (user_specifies_position)
     {
-      ROS_WARN_STREAM("User specifies position123");
+      best_position_constraint = mostRestrictive(position_constraints);
     }
 
     if (user_specifies_orientation)
     {
-      ROS_WARN_STREAM("User specifies orientation");
+      best_orientation_constraint = mostRestrictive(orientation_constraints);
     }
 
-    Constraint* user_pos_constraint = nullptr;
-    Constraint* user_ori_constraint = nullptr;
 
     std::vector<std::pair<bool, Constraint*> > result;
 
     // Create a position constraint, if required
+    Constraint* user_pos_constraint = nullptr;
     if (user_specifies_position)
     {
-      boost::shared_ptr<pluginlib::ClassLoader<constrained_ik::Constraint> > constraint_loader;
-      constraint_loader.reset(
-            new pluginlib::ClassLoader<constrained_ik::Constraint>("constrained_ik", "constrained_ik::Constraint"));
-
-      user_pos_constraint = constraint_loader->createUnmanagedInstance("constrained_ik/GoalPosition");
-
-
-//      user_pos_constraint = new constrained_ik::constraints::GoalPosition();
-      XmlRpc::XmlRpcValue params;
-      params["position_tolerance"] = 0.001; // TODO: comes from user
-      params["weights"].setSize(3);
-      params["weights"][0] = 1.0;
-      params["weights"][1] = 1.0;
-      params["weights"][2] = 1.0;
-      params["debug"] = XmlRpc::XmlRpcValue(false);
-      user_pos_constraint->loadParameters(params);
+      user_pos_constraint = createConstraint(best_position_constraint);
       result.push_back(std::make_pair(true, user_pos_constraint));
     }
 
     // Create a orientation constraint, if required
+    Constraint* user_ori_constraint = nullptr;
     if (user_specifies_orientation)
     {
-      boost::shared_ptr<pluginlib::ClassLoader<constrained_ik::Constraint> > constraint_loader;
-      constraint_loader.reset(
-            new pluginlib::ClassLoader<constrained_ik::Constraint>("constrained_ik", "constrained_ik::Constraint"));
-
-      user_ori_constraint = constraint_loader->createUnmanagedInstance("constrained_ik/GoalToolOrientation");
-
-      XmlRpc::XmlRpcValue params;
-      params["orientation_tolerance"] = 0.001; // TODO: comes from user
-      params["weights"].setSize(3);
-      params["weights"][0] = 1.0;
-      params["weights"][1] = 1.0;
-      params["weights"][2] = 1.0;
-      params["debug"] = XmlRpc::XmlRpcValue(false);
-      ROS_INFO("WHAT");
-      user_ori_constraint->loadParameters(params);
+      user_ori_constraint = createConstraint(best_orientation_constraint);
       result.push_back(std::make_pair(true, user_ori_constraint));
-
     }
 
-    // Add user constraints to the results as required
 
-//     Now we need to remove constraints from the default set as necessary
+    // Now we need to remove constraints from the default set as necessary
     std::vector<Constraint*> to_delete;
     for (std::size_t i = 0; i < default_constraints_.size(); ++i)
     {
@@ -232,12 +259,70 @@ namespace constrained_ik
       result.push_back(std::make_pair(default_constraints_[i].first, c));
     }
 
+    // Cleanup constraints that were loaded but not used - they will not be de-allocated
     for (std::size_t i = 0; i < to_delete.size(); ++i)
     {
       delete to_delete[i];
     }
 
     return result;
+  }
+
+  Constraint* CartesianPlanner::createConstraint(const moveit_msgs::PositionConstraint& pos_constraint) const
+  {
+    Constraint* user_pos_constraint = nullptr;
+
+    boost::shared_ptr<pluginlib::ClassLoader<constrained_ik::Constraint> > constraint_loader;
+    constraint_loader.reset(
+          new pluginlib::ClassLoader<constrained_ik::Constraint>("constrained_ik", "constrained_ik::Constraint"));
+
+    user_pos_constraint = constraint_loader->createUnmanagedInstance("constrained_ik/GoalPosition");
+
+    XmlRpc::XmlRpcValue params;
+
+    double tolerance = constraintTolerance(pos_constraint);
+    if (tolerance == std::numeric_limits<double>::max() || tolerance == 0.0)
+      tolerance = 0.001;
+
+    double weight = pos_constraint.weight != 0.0 ? pos_constraint.weight : 1.0;
+
+    params["position_tolerance"] = tolerance;
+    params["weights"].setSize(3);
+    params["weights"][0] = weight;
+    params["weights"][1] = weight;
+    params["weights"][2] = weight;
+    params["debug"] = XmlRpc::XmlRpcValue(false);
+    user_pos_constraint->loadParameters(params);
+
+    return user_pos_constraint;
+ }
+
+  Constraint* CartesianPlanner::createConstraint(const moveit_msgs::OrientationConstraint& orient_constraint) const
+  {
+    Constraint* user_ori_constraint = nullptr;
+
+    boost::shared_ptr<pluginlib::ClassLoader<constrained_ik::Constraint> > constraint_loader;
+    constraint_loader.reset(
+          new pluginlib::ClassLoader<constrained_ik::Constraint>("constrained_ik", "constrained_ik::Constraint"));
+
+    user_ori_constraint = constraint_loader->createUnmanagedInstance("constrained_ik/GoalToolOrientation");
+
+    double tolerance = constraintTolerance(orient_constraint);
+    tolerance = std::max(tolerance, 0.0001);
+
+    // Determine weight
+    double weight = orient_constraint.weight != 0.0 ? orient_constraint.weight : 1.0;
+
+    XmlRpc::XmlRpcValue params;
+    params["orientation_tolerance"] = tolerance; // TODO: comes from user
+    params["weights"].setSize(3);
+    params["weights"][0] = weight;
+    params["weights"][1] = weight;
+    params["weights"][2] = weight;
+    params["debug"] = XmlRpc::XmlRpcValue(false);
+    user_ori_constraint->loadParameters(params);
+
+    return user_ori_constraint;
   }
 
   bool CartesianPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
