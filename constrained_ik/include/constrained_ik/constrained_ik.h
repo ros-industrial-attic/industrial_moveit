@@ -101,6 +101,8 @@ public:
    */
   virtual void addConstraintsFromParamServer(const std::string &parameter_name);
 
+  virtual std::vector<std::pair<bool, Constraint*> > loadConstraintsFromParamServer(const std::string& parameter_name);
+
   /**
    * @brief computes the inverse kinematics for the given pose of the tip link
    * @param goal cartesian pose to solve the inverse kinematics about
