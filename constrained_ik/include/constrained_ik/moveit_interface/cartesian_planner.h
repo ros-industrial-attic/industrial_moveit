@@ -125,6 +125,7 @@ namespace constrained_ik
     /** @brief Reset the planners IK solver configuration to it default settings */
     void resetSolverConfiguration();
 
+
   private:
     /**
      * @brief Preform position and orientation interpolation between start and stop.
@@ -137,6 +138,15 @@ namespace constrained_ik
     std::vector<Eigen::Affine3d,Eigen::aligned_allocator<Eigen::Affine3d> >
     interpolateCartesian(const Eigen::Affine3d& start, const Eigen::Affine3d& stop, double ds, double dt) const;
 
+    // Constraint additions
+    std::vector<std::pair<bool, Constraint*> > resolveConstraints() const;
+
+    Constraint* createConstraint(const moveit_msgs::PositionConstraint& pos_constraint) const;
+
+    Constraint* createConstraint(const moveit_msgs::OrientationConstraint& orient_constraint) const;
+
+    std::vector<std::pair<bool, Constraint*> > default_constraints_;    /**< These parameters are loaded from YAML files and may be overridden by
+                                                                             constraints specified through planning requests. */
     double translational_discretization_step_;    /**< Max translational discretization step */
     double orientational_discretization_step_;    /**< Max orientational discretization step */
     bool debug_mode_;                             /**< Debug state */

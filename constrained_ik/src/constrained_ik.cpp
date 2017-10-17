@@ -46,26 +46,42 @@ Constrained_IK::Constrained_IK(const ros::NodeHandle &nh) : nh_(nh)
 
 void Constrained_IK::addConstraintsFromParamServer(const std::string &parameter_name)
 {
+  std::vector<std::pair<bool, Constraint*> > constraints = loadConstraintsFromParamServer(parameter_name);
+
+  for (std::size_t i = 0; i < constraints.size(); ++i)
+  {
+    const bool is_primary = constraints[i].first;
+    Constraint* constraint = constraints[i].second;
+
+    if (is_primary)
+      addConstraint(constraint, constraint_types::Primary);
+    else
+      addConstraint(constraint, constraint_types::Auxiliary);
+  }
+}
+
+std::vector<std::pair<bool, Constraint*> > Constrained_IK::loadConstraintsFromParamServer(const std::string& parameter_name)
+{
   XmlRpc::XmlRpcValue constraints_xml;
   boost::shared_ptr<pluginlib::ClassLoader<constrained_ik::Constraint> > constraint_loader;
 
   constraint_loader.reset(new pluginlib::ClassLoader<constrained_ik::Constraint>("constrained_ik", "constrained_ik::Constraint"));
 
+  std::vector<std::pair<bool, Constraint*> > constraints;
+
   if (!nh_.getParam(parameter_name, constraints_xml))
   {
-    ROS_ERROR("Unable to find ros parameter: %s", parameter_name.c_str());
-    ROS_BREAK();
-    return;
+    ROS_WARN("Unable to find ros parameter: %s", parameter_name.c_str());
+    return constraints;
   }
 
   if(constraints_xml.getType() != XmlRpc::XmlRpcValue::TypeArray)
   {
     ROS_ERROR("ROS parameter %s must be an array", parameter_name.c_str());
-    ROS_BREAK();
-    return;
+    return constraints;
   }
 
-  for (int i=0; i<constraints_xml.size(); ++i)
+  for (int i = 0; i < constraints_xml.size(); ++i)
   {
     XmlRpc::XmlRpcValue constraint_xml = constraints_xml[i];
 
@@ -81,18 +97,12 @@ void Constrained_IK::addConstraintsFromParamServer(const std::string &parameter_
       try
       {
         constraint = constraint_loader->createUnmanagedInstance(class_name);
-
         constraint->loadParameters(constraint_xml);
-        if (is_primary)
-          addConstraint(constraint, constraint_types::Primary);
-        else
-          addConstraint(constraint, constraint_types::Auxiliary);
-
+        constraints.push_back(std::make_pair(is_primary, constraint));
       }
       catch (pluginlib::PluginlibException& ex)
       {
         ROS_ERROR("Couldn't load constraint named %s.\n Error: %s", class_name.c_str(), ex.what());
-        ROS_BREAK();
       }
     }
     else
@@ -100,6 +110,8 @@ void Constrained_IK::addConstraintsFromParamServer(const std::string &parameter_
       ROS_ERROR("Constraint must have class(string) and primary(boolean) members");
     }
   }
+
+  return constraints;
 }
 
 void Constrained_IK::loadDefaultSolverConfiguration()
