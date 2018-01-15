@@ -160,9 +160,10 @@ bool StompPlanner::solve(planning_interface::MotionPlanResponse &res)
   ros::WallTime start_time = ros::WallTime::now();
   planning_interface::MotionPlanDetailedResponse detailed_res;
   bool success = solve(detailed_res);
-
-  // construct the compact response from the detailed one
-  res.trajectory_ = detailed_res.trajectory_.back();
+  if(success)
+  {
+    res.trajectory_ = detailed_res.trajectory_.back();
+  }
   ros::WallDuration wd = ros::WallTime::now() - start_time;
   res.planning_time_ = ros::Duration(wd.sec, wd.nsec).toSec();
   res.error_code_ = detailed_res.error_code_;
