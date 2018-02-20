@@ -682,13 +682,30 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
   if(not tracik_solver.getKDLChain(chain))
     return false;
 
-//  if(not tracik_solver.getKDLLimits(ll,ul))
-//    return false;
-
   KDL::Frame end_effector_pose;
-  end_effector_pose.p[0] = pos_constraint.target_point_offset.x;
-  end_effector_pose.p[1] = pos_constraint.target_point_offset.y;
-  end_effector_pose.p[2] = pos_constraint.target_point_offset.z;
+
+  // some interfaces define position constraints as "target_point_offset" while others use "constraint_region"
+  if(pos_constraint.target_point_offset.x == pos_constraint.target_point_offset.y == pos_constraint.target_point_offset.z == 0.0)
+  {
+    if(pos_constraint.constraint_region.primitive_poses.empty())
+    {
+      end_effector_pose.p[0] = end_effector_pose.p[1] = end_effector_pose.p[2] = 0.0;
+    }
+    else
+    {
+      end_effector_pose.p[0] = pos_constraint.constraint_region.primitive_poses.front().position.x;
+      end_effector_pose.p[1] = pos_constraint.constraint_region.primitive_poses.front().position.y;
+      end_effector_pose.p[2] = pos_constraint.constraint_region.primitive_poses.front().position.z;
+    }
+  }
+  else
+  {
+    end_effector_pose.p[0] = pos_constraint.target_point_offset.x;
+    end_effector_pose.p[1] = pos_constraint.target_point_offset.y;
+    end_effector_pose.p[2] = pos_constraint.target_point_offset.z;
+  }
+
+
   end_effector_pose.M = KDL::Rotation::Quaternion(orient_constraint.orientation.x, orient_constraint.orientation.y,
                                                   orient_constraint.orientation.z, orient_constraint.orientation.w);
 
@@ -717,6 +734,7 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
   else
   {
     ROS_WARN("Failed to get IK");
+    ROS_WARN_STREAM(pos_constraint.constraint_region);
     ROS_WARN_STREAM(pos_constraint.target_point_offset);
     ROS_WARN_STREAM(orient_constraint.orientation);
     return false;
