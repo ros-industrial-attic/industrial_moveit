@@ -908,10 +908,21 @@ bool StompPlanner::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) 
     return false;
   }
 
-  // check that we have only joint constraints at the goal
-  if (req.goal_constraints[0].joint_constraints.size() == 0)
+  // make sure we have some constraints defined
+  if (req.goal_constraints[0].joint_constraints.size() == 0 and
+      req.goal_constraints[0].position_constraints.size() == 0 and
+      req.goal_constraints[0].orientation_constraints.size() == 0)
   {
-    ROS_ERROR("STOMP: Can only handle joint space goals.");
+    ROS_ERROR("STOMP: No constraints defined!");
+    return false;
+  }
+
+  // make sure we only have either joint constraints or cartesian constraints
+  if (req.goal_constraints[0].joint_constraints.size() > 0 and
+      req.goal_constraints[0].position_constraints.size() > 0 and
+      req.goal_constraints[0].orientation_constraints.size() > 0)
+  {
+    ROS_ERROR("STOMP: Too many constraints defined! Can only accept either joint or Cartesian constraints!");
     return false;
   }
 
