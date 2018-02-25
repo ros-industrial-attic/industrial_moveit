@@ -31,6 +31,7 @@
 #include <stomp_moveit/stomp_optimization_task.h>
 #include <boost/thread.hpp>
 #include <ros/ros.h>
+#include <trac_ik/trac_ik.hpp>
 
 namespace stomp_moveit
 {
@@ -167,6 +168,7 @@ protected:
                                   const moveit_msgs::OrientationConstraint& orient_constraint,
                                   const moveit::core::JointModelGroup* joint_group,
                                   Eigen::VectorXd& result,
+                                  TRAC_IK::TRAC_IK& tracik_solver,
                                   const Eigen::VectorXd &hint = Eigen::VectorXd()) const;
 
   bool isCartesianSeed() const;

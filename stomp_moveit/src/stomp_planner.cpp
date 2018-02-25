@@ -428,8 +428,14 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
 
       if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // checking cartesian
       {
+        const double eps = 1e-3;
+        const double timeout = 0.05;
+        const std::string urdf_param = "/robot_description";
+        const std::string base_frame = gc.position_constraints.front().header.frame_id;
+        const std::string end_eff_frame = gc.position_constraints.front().link_name;
+        TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps);
         if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
-                                      group, goal))
+                                      group, goal, tracik_solver))
         {
           found_goal = true;
           break;
@@ -577,6 +583,14 @@ bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanR
 
   int fail_count = 0;
 
+  const double eps = 1e-3;
+  const double timeout = 0.05;
+  const std::string urdf_param = "/robot_description";
+  const std::string base_frame = constraints[0].position_constraints[0].header.frame_id;
+  const std::string end_eff_frame = constraints[0].position_constraints[0].link_name;
+
+  TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps);
+
   Eigen::VectorXd joint_pos;
   for (size_t i = 0; i < constraints[0].position_constraints.size(); ++i)
   {
@@ -585,7 +599,10 @@ bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanR
 
     if(ikFromCartesianConstraints(constraints[0].position_constraints[i],
                                   constraints[0].orientation_constraints[i],
-                                  joint_group, joint_pos, joint_pos)) // passing the previous joint_pos as hint for the next one!
+                                  joint_group,
+                                  joint_pos,
+                                  tracik_solver,
+                                  joint_pos)) // passing the previous joint_pos as hint for the next one!
     {
       for(int j=0; j<joint_pos.size(); ++j)
         joint_pt.positions[j] = joint_pos(j);
@@ -659,25 +676,17 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
                                        const moveit_msgs::OrientationConstraint& orient_constraint,
                                        const moveit::core::JointModelGroup* joint_group,
                                        Eigen::VectorXd& result,
+                                       TRAC_IK::TRAC_IK& tracik_solver,
                                        const Eigen::VectorXd& hint) const
 {
   using namespace moveit::core;
   using namespace utils::kinematics;
-
-  const double eps = 1e-3;
-  const double timeout = 0.05;
-  const std::string urdf_param = "/robot_description";
 
 //  for(auto name : joint_group->getActiveJointModelNames())
 //    ROS_ERROR_STREAM("Joint name " << name);
 
   ROS_ASSERT(joint_group->getJointRoots().size() == 1);
 
-  const std::string base_frame = pos_constraint.header.frame_id;
-  const std::string end_eff_frame =  pos_constraint.link_name;
-
-  //ROS_ERROR_STREAM("Setting up IK from " << chain_start << " to " << chain_end);
-  TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps); //TODO: this should only be set up once per object, or use IK plugin?
   KDL::Chain chain;
   if(not tracik_solver.getKDLChain(chain))
     return false;
@@ -890,14 +899,23 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
       }
 
       if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // check cartesian
+      {
         // solving ik at goal
+        const double eps = 1e-3;
+        const double timeout = 0.05;
+        const std::string urdf_param = "/robot_description";
+        const std::string base_frame = gc.position_constraints.front().header.frame_id;
+        const std::string end_eff_frame = gc.position_constraints.front().link_name;
+
+        TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps);
+
         if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
-                                      joint_group, goal))
+                                      joint_group, goal, tracik_solver))
         {
           found_goal = true;
           break;
         }
-
+      }
       ROS_ERROR_COND(!found_goal,"%s was unable to retrieve the goal from the MotionPlanRequest",getName().c_str());
     }
   }
