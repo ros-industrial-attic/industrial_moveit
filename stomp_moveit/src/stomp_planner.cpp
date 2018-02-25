@@ -703,18 +703,11 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
   KDL::Frame end_effector_pose;
 
   // some interfaces define position constraints as "target_point_offset" while others use "constraint_region"
-  if(pos_constraint.target_point_offset.x == pos_constraint.target_point_offset.y == pos_constraint.target_point_offset.z == 0.0)
+  if(not pos_constraint.constraint_region.primitive_poses.empty())
   {
-    if(pos_constraint.constraint_region.primitive_poses.empty())
-    {
-      end_effector_pose.p[0] = end_effector_pose.p[1] = end_effector_pose.p[2] = 0.0;
-    }
-    else
-    {
-      end_effector_pose.p[0] = pos_constraint.constraint_region.primitive_poses.front().position.x;
-      end_effector_pose.p[1] = pos_constraint.constraint_region.primitive_poses.front().position.y;
-      end_effector_pose.p[2] = pos_constraint.constraint_region.primitive_poses.front().position.z;
-    }
+    end_effector_pose.p[0] = pos_constraint.constraint_region.primitive_poses.front().position.x;
+    end_effector_pose.p[1] = pos_constraint.constraint_region.primitive_poses.front().position.y;
+    end_effector_pose.p[2] = pos_constraint.constraint_region.primitive_poses.front().position.z;
   }
   else
   {
