@@ -624,6 +624,14 @@ bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanR
   ROS_YELLOW_STREAM("IK solver is using " << base_frame << " for base frame and " << end_eff_frame << " for end effector frame");
 
   seed.joint_names = joint_group->getActiveJointModelNames();
+
+  double fail_percent = fail_count * 100.0 /constraints[0].position_constraints.size();
+  if(fail_percent > 30)
+  {
+    ROS_ERROR_STREAM("Too many failed IK calls when converting!");
+    return false;
+  }
+
   return true;
 }
 
