@@ -621,6 +621,7 @@ bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanR
   }
 
   ROS_WARN_STREAM("Seed trajectory converted with a total of " << fail_count << "/" << seed.points.size() << " IK FAILURES");
+  ROS_YELLOW_STREAM("IK solver is using " << base_frame << " for base frame and " << end_eff_frame << " for end effector frame");
 
   seed.joint_names = joint_group->getActiveJointModelNames();
   return true;
@@ -742,10 +743,15 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
   }
   else
   {
-    ROS_WARN("Failed to get IK");
+    ROS_ERROR("Failed to get IK");
     ROS_WARN_STREAM(pos_constraint.constraint_region);
     ROS_WARN_STREAM(pos_constraint.target_point_offset);
     ROS_WARN_STREAM(orient_constraint.orientation);
+
+    ROS_WHITE_STREAM("IK queried EEF pose: (" <<
+                     end_effector_pose.p[0] << ", " <<
+                     end_effector_pose.p[1] << ", " <<
+                     end_effector_pose.p[2] << ")");
     return false;
   }
 }
