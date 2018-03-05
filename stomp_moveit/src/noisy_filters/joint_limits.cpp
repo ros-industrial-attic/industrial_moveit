@@ -108,7 +108,7 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
     return false;
   }
 
-  if(!start_state_->satisfiesBounds(robot_model_->getJointModelGroup(group_name_)))
+  if(!start_state_->satisfiesBounds(robot_model_->getJointModelGroup(group_name_), 0.01))
   {
     ROS_WARN("%s Requested Start State is out of bounds",getName().c_str());
   }
@@ -124,13 +124,14 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
         goal_state_->setVariablePosition(jc.joint_name,jc.position);
         goal_state_saved = true;
       }
-
-      if(!goal_state_->satisfiesBounds(robot_model_->getJointModelGroup(group_name_)))
+      if(not gc.joint_constraints.empty())
       {
-        ROS_WARN("%s Requested Goal State is out of bounds",getName().c_str());
+        if(!goal_state_->satisfiesBounds(robot_model_->getJointModelGroup(group_name_), 0.1))
+        {
+          ROS_WARN("%s Requested Goal State is out of bounds",getName().c_str());
+          break;
+        }
       }
-
-      break;
     }
 
     if(!goal_state_saved)
