@@ -681,6 +681,25 @@ moveit_msgs::TrajectoryConstraints StompPlanner::encodeSeedTrajectory(const traj
   return res;
 }
 
+KDL::Frame StompPlanner::positionConstraintsToKDLFrame(const moveit_msgs::PositionConstraint& c) const
+{
+  KDL::Frame result;
+    // some interfaces define position constraints as "target_point_offset" while others use "constraint_region"
+  if(not c.constraint_region.primitive_poses.empty())
+  {
+    result.p[0] = c.constraint_region.primitive_poses.front().position.x;
+    result.p[1] = c.constraint_region.primitive_poses.front().position.y;
+    result.p[2] = c.constraint_region.primitive_poses.front().position.z;
+  }
+  else
+  {
+    result.p[0] = c.target_point_offset.x;
+    result.p[1] = c.target_point_offset.y;
+    result.p[2] = c.target_point_offset.z;
+  }
+  return result;
+}
+
 bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstraint& pos_constraint,
                                        const moveit_msgs::OrientationConstraint& orient_constraint,
                                        const moveit::core::JointModelGroup* joint_group,
@@ -688,9 +707,6 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
                                        TRAC_IK::TRAC_IK& tracik_solver,
                                        const Eigen::VectorXd& hint) const
 {
-  using namespace moveit::core;
-  using namespace utils::kinematics;
-
 //  for(auto name : joint_group->getActiveJointModelNames())
 //    ROS_ERROR_STREAM("Joint name " << name);
 
@@ -700,22 +716,7 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
   if(not tracik_solver.getKDLChain(chain))
     return false;
 
-  KDL::Frame end_effector_pose;
-
-  // some interfaces define position constraints as "target_point_offset" while others use "constraint_region"
-  if(not pos_constraint.constraint_region.primitive_poses.empty())
-  {
-    end_effector_pose.p[0] = pos_constraint.constraint_region.primitive_poses.front().position.x;
-    end_effector_pose.p[1] = pos_constraint.constraint_region.primitive_poses.front().position.y;
-    end_effector_pose.p[2] = pos_constraint.constraint_region.primitive_poses.front().position.z;
-  }
-  else
-  {
-    end_effector_pose.p[0] = pos_constraint.target_point_offset.x;
-    end_effector_pose.p[1] = pos_constraint.target_point_offset.y;
-    end_effector_pose.p[2] = pos_constraint.target_point_offset.z;
-  }
-
+  KDL::Frame end_effector_pose = positionConstraintsToKDLFrame(pos_constraint);
 
   end_effector_pose.M = KDL::Rotation::Quaternion(orient_constraint.orientation.x, orient_constraint.orientation.y,
                                                   orient_constraint.orientation.z, orient_constraint.orientation.w);

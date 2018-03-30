@@ -179,6 +179,8 @@ protected:
 
   bool robotStateToEigen(const sensor_msgs::JointState& state, Eigen::VectorXd& target) const;
 
+  KDL::Frame positionConstraintsToKDLFrame(const moveit_msgs::PositionConstraint& pos_constraint) const;
+
 protected:
 
   // stomp optimization
