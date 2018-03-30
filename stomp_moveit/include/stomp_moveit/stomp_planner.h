@@ -177,6 +177,8 @@ protected:
 
   moveit_msgs::Constraints jointConstraintsFromEigen(const Eigen::MatrixXd& state, const std::vector<std::string>& state_joint_names) const;
 
+  bool robotStateToEigen(const sensor_msgs::JointState& state, Eigen::VectorXd& target) const;
+
 protected:
 
   // stomp optimization

@@ -828,6 +828,35 @@ moveit_msgs::Constraints StompPlanner::jointConstraintsFromEigen(const Eigen::Ma
   return result;
 }
 
+bool StompPlanner::robotStateToEigen(const sensor_msgs::JointState& state, Eigen::VectorXd& target) const
+{
+  if(state.name.empty() || state.position.empty())
+  {
+    ROS_ERROR_NAMED(getName().c_str(), "JointState message lacks names or positions");
+    return false;
+  }
+
+  moveit::core::RobotStatePtr tmp_state(new moveit::core::RobotState(robot_model_));
+  tmp_state->setVariableValues(state);  
+
+  if(!tmp_state->satisfiesBounds())
+  {
+    ROS_ERROR_NAMED(getName().c_str(), "Joint state is out of bounds");
+    return false;
+  }
+
+  // copying start joint values
+  const auto joint_names = tmp_state->getJointModelGroup(group_)->getActiveJointModelNames();
+  target.resize(joint_names.size());
+
+  for(auto j = 0; j < joint_names.size(); j++)
+  {
+    target(j) = tmp_state->getVariablePosition(joint_names[j]);
+  }
+
+  return true;
+}
+
 bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal)
 {
   using namespace moveit::core;
@@ -840,31 +869,15 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
 
   try
   {
-    // copying start state
-    if(!robotStateMsgToRobotState(request_.start_state,*state))
+    if(!robotStateToEigen(request_.start_state.joint_state, start))
     {
       ROS_ERROR("%s Failed to extract start state from MotionPlanRequest",getName().c_str());
       ROS_ERROR_STREAM("************* " << request_.start_state.joint_state.name.size());
-
       return false;
     }
 
-    // copying start joint values
-    const std::vector<std::string> joint_names= state->getJointModelGroup(group_)->getActiveJointModelNames();
-    start.resize(joint_names.size());
+    const auto joint_names = state->getJointModelGroup(group_)->getActiveJointModelNames();
     goal.resize(joint_names.size());
-
-    if(!state->satisfiesBounds())
-    {
-      ROS_ERROR("%s Start joint pose is out of bounds",getName().c_str());
-      return false;
-    }
-
-    for(auto j = 0u; j < joint_names.size(); j++)
-    {
-      start(j) = state->getVariablePosition(joint_names[j]);
-    }
-
     // check goal constraint
     if(request_.goal_constraints.empty())
     {
@@ -877,14 +890,12 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
     {
       if(!gc.joint_constraints.empty())
       {
-
         // copying goal values into state
         for(auto j = 0u; j < gc.joint_constraints.size() ; j++)
         {
           auto jc = gc.joint_constraints[j];
           state->setVariablePosition(jc.joint_name,jc.position);
         }
-
 
         if(!state->satisfiesBounds())
         {
