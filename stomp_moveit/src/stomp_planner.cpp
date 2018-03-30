@@ -592,6 +592,8 @@ bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanR
   TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps);
 
   Eigen::VectorXd joint_pos;
+  robotStateToEigen(req.start_state.joint_state, joint_pos);
+  
   for (size_t i = 0; i < constraints[0].position_constraints.size(); ++i)
   {
     trajectory_msgs::JointTrajectoryPoint joint_pt;
