@@ -684,7 +684,7 @@ moveit_msgs::TrajectoryConstraints StompPlanner::encodeSeedTrajectory(const traj
 KDL::Frame StompPlanner::positionConstraintsToKDLFrame(const moveit_msgs::PositionConstraint& c) const
 {
   KDL::Frame result;
-    // some interfaces define position constraints as "target_point_offset" while others use "constraint_region"
+  // some interfaces define position constraints as "target_point_offset" while others use "constraint_region"
   if(not c.constraint_region.primitive_poses.empty())
   {
     result.p[0] = c.constraint_region.primitive_poses.front().position.x;
@@ -745,11 +745,6 @@ bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstra
   }
   else
   {
-    ROS_ERROR("Failed to get IK");
-    ROS_WARN_STREAM(pos_constraint.constraint_region);
-    ROS_WARN_STREAM(pos_constraint.target_point_offset);
-    ROS_WARN_STREAM(orient_constraint.orientation);
-
     ROS_WHITE_STREAM("IK queried EEF pose: (" <<
                      end_effector_pose.p[0] << ", " <<
                      end_effector_pose.p[1] << ", " <<
@@ -798,12 +793,6 @@ moveit_msgs::RobotState StompPlanner::robotStateFromEigen(const Eigen::MatrixXd&
         result.joint_state.position[i] = state(j,0);
     }
   }
-
-//  ROS_GREEN_STREAM(result.joint_state.name);
-//  ROS_GREEN_STREAM(result.joint_state.position);
-
-//  ROS_CYAN_STREAM(state_joint_names);
-//  ROS_CYAN_STREAM(state);
 
   return result;
 }
