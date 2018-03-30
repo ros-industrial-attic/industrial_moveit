@@ -777,10 +777,9 @@ bool Stomp::computeOptimizedCost()
 
   // state costs
   if(task_->computeCosts(parameters_optimized_,
-                         0,config_.num_timesteps,current_iteration_,parameters_state_costs_,parameters_valid_))
+                         0,config_.num_timesteps,current_iteration_,
+                         parameters_state_costs_,parameters_valid_))
   {
-
-
     parameters_total_cost_ += parameters_state_costs_.sum();
   }
   else
