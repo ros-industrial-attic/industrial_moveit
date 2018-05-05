@@ -126,18 +126,23 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
     bool goal_state_saved = false;
     for(auto& gc: req.goal_constraints)
     {
+      if(gc.position_constraints.empty())
+      {
+          ROS_WARN_NAMED(getName().c_str(), "CANNOT LOCK GOAL: Goal State is not specified. Moving on as if lock_goal was false.");
+          lock_goal_ = false;
+          break;
+      }
+
+      if(!goal_state_->satisfiesBounds(robot_model_->getJointModelGroup(group_name_), 0.1))
+      {
+        ROS_WARN("%s Requested Goal State is out of bounds",getName().c_str());
+        break;
+      }
+
       for(auto& jc : gc.joint_constraints)
       {
         goal_state_->setVariablePosition(jc.joint_name,jc.position);
         goal_state_saved = true;
-      }
-      if(not gc.joint_constraints.empty())
-      {
-        if(!goal_state_->satisfiesBounds(robot_model_->getJointModelGroup(group_name_), 0.1))
-        {
-          ROS_WARN("%s Requested Goal State is out of bounds",getName().c_str());
-          break;
-        }
       }
     }
 
