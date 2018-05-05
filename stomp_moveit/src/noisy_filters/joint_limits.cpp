@@ -113,6 +113,13 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
     ROS_WARN("%s Requested Start State is out of bounds",getName().c_str());
   }
 
+
+  if(req.goal_constraints.empty())
+  {
+      ROS_WARN_NAMED(getName().c_str(), "CANNOT LOCK GOAL: Goal State is not specified. Moving on as if lock_goal was false.");
+      lock_goal_ = false;
+  }
+
   // saving goal state
   if(lock_goal_)
   {
