@@ -195,6 +195,7 @@ void publishTrajectory(const trajectory_msgs::JointTrajectory& traj, const ros::
 bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 {
   using namespace stomp_core;
+  using namespace utils::kinematics;
 
   // initializing response
   res.description_.resize(1,"");
@@ -433,10 +434,12 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
         const std::string urdf_param = "/robot_description";
         const std::string base_frame = gc.position_constraints.front().header.frame_id;
         const std::string end_eff_frame = gc.position_constraints.front().link_name;
-        TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps);
+        std::map<std::string, double> fixed_joints = getFixedJointsMap(urdf_param, base_frame, end_eff_frame, group, request_.start_state.joint_state);
+        TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps, fixed_joints);
         if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
                                       group, goal, tracik_solver))
         {
+          goal = filter(group, goal);
           found_goal = true;
           break;
         }
@@ -574,6 +577,7 @@ bool StompPlanner::extractSeedJointTrajectory(const moveit_msgs::MotionPlanReque
 bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const
 {
   using namespace moveit::core;
+  using namespace utils::kinematics;
   const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_);
   const auto& constraints = req.trajectory_constraints.constraints; // alias to keep names short
 
@@ -589,37 +593,41 @@ bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanR
   const std::string base_frame = constraints[0].position_constraints[0].header.frame_id;
   const std::string end_eff_frame = constraints[0].position_constraints[0].link_name;
 
-  TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps);
+  std::map<std::string, double> fixed_joints = getFixedJointsMap(urdf_param, base_frame, end_eff_frame, joint_group, request_.start_state.joint_state);
+  TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps, fixed_joints);
 
-  Eigen::VectorXd joint_pos;
-  robotStateToEigen(req.start_state.joint_state, joint_pos);
-  
-  for (size_t i = 0; i < constraints[0].position_constraints.size(); ++i)
+  Eigen::VectorXd start_state;
+  robotStateToEigen(req.start_state.joint_state, robot_model_, group_, start_state);
+
+  ROS_ERROR_STREAM("Position constraints: " << constraints[0].position_constraints.size());
+
+  for (auto i = 0; i < constraints[0].position_constraints.size(); ++i)
   {
     trajectory_msgs::JointTrajectoryPoint joint_pt;
     joint_pt.positions.resize(joint_group->getActiveJointModelNames().size(), 0.0);
 
+    Eigen::VectorXd joint_pos;
     if(ikFromCartesianConstraints(constraints[0].position_constraints[i],
                                   constraints[0].orientation_constraints[i],
                                   joint_group,
                                   joint_pos,
                                   tracik_solver,
-                                  joint_pos)) // passing the previous joint_pos as hint for the next one!
+                                  start_state))
     {
-      for(int j=0; j<joint_pos.size(); ++j)
-        joint_pt.positions[j] = joint_pos(j);
+      auto joint_pos2 = filter(joint_group, joint_pos);
+      for(auto j=0; j<joint_pos2.size(); ++j)
+        joint_pt.positions[j] = joint_pos2(j);
+      //ROS_ERROR_STREAM("Start state shape: " << shape(start_state));
+      //ROS_ERROR_STREAM("IK solution shape: " << shape(joint_pos2));
+      start_state = joint_pos; // passing the previous joint_pos as hint for the next one!
+      seed.points.push_back(joint_pt);
     }
     else
     {
       fail_count++;
-        // if IK fails on the seed we should die here...instead now only pruning
-        ROS_ERROR_STREAM("**** FAILED TO IK CARTESIAN SEED at step " << i << " ******");
-
-        for(int j=0; j<joint_pos.size(); ++j)
-          joint_pt.positions.push_back(joint_pos(j));
+      // if IK fails on the seed we should die here...instead now only pruningp
+      ROS_ERROR_STREAM("**** FAILED TO IK CARTESIAN SEED at step " << i << " ******");
     }
-
-    seed.points.push_back(joint_pt);
   }
 
   ROS_WARN_STREAM("Seed trajectory converted with a total of " << fail_count << "/" << seed.points.size() << " IK FAILURES");
@@ -628,7 +636,7 @@ bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanR
   seed.joint_names = joint_group->getActiveJointModelNames();
 
   double fail_percent = fail_count * 100.0 /constraints[0].position_constraints.size();
-  if(fail_percent > 30)
+  if(fail_percent > 20)
   {
     ROS_ERROR_STREAM("Too many failed IK calls when converting!");
     return false;
@@ -683,78 +691,6 @@ moveit_msgs::TrajectoryConstraints StompPlanner::encodeSeedTrajectory(const traj
   return res;
 }
 
-KDL::Frame StompPlanner::positionConstraintsToKDLFrame(const moveit_msgs::PositionConstraint& c) const
-{
-  KDL::Frame result;
-  // some interfaces define position constraints as "target_point_offset" while others use "constraint_region"
-  if(not c.constraint_region.primitive_poses.empty())
-  {
-    result.p[0] = c.constraint_region.primitive_poses.front().position.x;
-    result.p[1] = c.constraint_region.primitive_poses.front().position.y;
-    result.p[2] = c.constraint_region.primitive_poses.front().position.z;
-  }
-  else
-  {
-    result.p[0] = c.target_point_offset.x;
-    result.p[1] = c.target_point_offset.y;
-    result.p[2] = c.target_point_offset.z;
-  }
-  return result;
-}
-
-bool StompPlanner::ikFromCartesianConstraints(const moveit_msgs::PositionConstraint& pos_constraint,
-                                       const moveit_msgs::OrientationConstraint& orient_constraint,
-                                       const moveit::core::JointModelGroup* joint_group,
-                                       Eigen::VectorXd& result,
-                                       TRAC_IK::TRAC_IK& tracik_solver,
-                                       const Eigen::VectorXd& hint) const
-{
-//  for(auto name : joint_group->getActiveJointModelNames())
-//    ROS_ERROR_STREAM("Joint name " << name);
-
-  ROS_ASSERT(joint_group->getJointRoots().size() == 1);
-
-  KDL::Chain chain;
-  if(not tracik_solver.getKDLChain(chain))
-    return false;
-
-  KDL::Frame end_effector_pose = positionConstraintsToKDLFrame(pos_constraint);
-
-  end_effector_pose.M = KDL::Rotation::Quaternion(orient_constraint.orientation.x, orient_constraint.orientation.y,
-                                                  orient_constraint.orientation.z, orient_constraint.orientation.w);
-
-  // Create Nominal chain configuration midway between all joint limits
-  KDL::JntArray ik_result;
-  KDL::JntArray nominal(chain.getNrOfJoints());
-
-  if(hint.size() > 0)
-  {
-    //ROS_ERROR_STREAM("Using " << hint << " as IK hint");
-    nominal.data = hint;
-  }
-
-  KDL::Twist tolerance;
-  tolerance.rot.x(0.1);tolerance.rot.y(0.1);tolerance.rot.z(0.1);
-  tolerance.vel.x(0.05);tolerance.vel.y(0.05);tolerance.vel.z(0.05);
-
-  int rc=tracik_solver.CartToJnt(nominal,end_effector_pose,ik_result, tolerance);
-
-  if(rc >= 0)
-  {
-    //ROS_ERROR_STREAM("Shape of result is " << ik_result.data.rows() << " : " << ik_result.data.cols() << std::endl << ik_result.data);
-    result = ik_result.data;
-    return true;
-  }
-  else
-  {
-    ROS_WHITE_STREAM("IK queried EEF pose: (" <<
-                     end_effector_pose.p[0] << ", " <<
-                     end_effector_pose.p[1] << ", " <<
-                     end_effector_pose.p[2] << ")");
-    return false;
-  }
-}
-
 bool StompPlanner::isCartesianSeed() const
 {
   const auto& constraints = request_.trajectory_constraints.constraints; // alias to keep names short
@@ -773,81 +709,7 @@ bool StompPlanner::isCartesianSeed() const
   }
 }
 
-moveit_msgs::RobotState StompPlanner::robotStateFromEigen(const Eigen::MatrixXd& state,
-                                                          const std::vector<std::string>& state_joint_names,
-                                                          const std::vector<std::string>& all_joint_names) const
-{
-  ROS_GREEN_STREAM("Shape is " << shape(state));
 
-  //assert(state.size() == state_joint_names.size());
-
-  moveit_msgs::RobotState result;
-
-  result.is_diff = false;
-  result.joint_state.name = all_joint_names;
-  result.joint_state.position.resize(all_joint_names.size(), 0.0);
-
-  for(int i=0; i<all_joint_names.size(); ++i)
-  {
-    for(int j=0; j<state_joint_names.size(); ++j)
-    {
-      if(all_joint_names[i] == state_joint_names[j])
-        result.joint_state.position[i] = state(j,0);
-    }
-  }
-
-  return result;
-}
-
-moveit_msgs::Constraints StompPlanner::jointConstraintsFromEigen(const Eigen::MatrixXd& state, const std::vector<std::string>& state_joint_names) const
-{
-  ROS_GREEN_STREAM("Shape is " << shape(state));
-  assert(state.size() == state_joint_names.size());
-
-  moveit_msgs::Constraints result;
-
-  ROS_CYAN_STREAM(state_joint_names);
-  ROS_CYAN_STREAM(state);
-
-  for(int i=0; i<state_joint_names.size(); ++i)
-  {
-    moveit_msgs::JointConstraint joint_constraint;
-    joint_constraint.joint_name = state_joint_names[i];
-    joint_constraint.position = state(i,0);
-    result.joint_constraints.push_back(joint_constraint);
-  }
-
-  return result;
-}
-
-bool StompPlanner::robotStateToEigen(const sensor_msgs::JointState& state, Eigen::VectorXd& target) const
-{
-  if(state.name.empty() || state.position.empty())
-  {
-    ROS_ERROR_NAMED(getName().c_str(), "JointState message lacks names or positions");
-    return false;
-  }
-
-  moveit::core::RobotStatePtr tmp_state(new moveit::core::RobotState(robot_model_));
-  tmp_state->setVariableValues(state);  
-
-  if(!tmp_state->satisfiesBounds())
-  {
-    ROS_ERROR_NAMED(getName().c_str(), "Joint state is out of bounds");
-    return false;
-  }
-
-  // copying start joint values
-  const auto joint_names = tmp_state->getJointModelGroup(group_)->getActiveJointModelNames();
-  target.resize(joint_names.size());
-
-  for(auto j = 0; j < joint_names.size(); j++)
-  {
-    target(j) = tmp_state->getVariablePosition(joint_names[j]);
-  }
-
-  return true;
-}
 
 bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal)
 {
@@ -861,7 +723,7 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
 
   try
   {
-    if(!robotStateToEigen(request_.start_state.joint_state, start))
+    if(!robotStateToEigen(request_.start_state.joint_state, robot_model_, group_, start))
     {
       ROS_ERROR("%s Failed to extract start state from MotionPlanRequest",getName().c_str());
       ROS_ERROR_STREAM("************* " << request_.start_state.joint_state.name.size());
@@ -916,12 +778,12 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
         const std::string urdf_param = "/robot_description";
         const std::string base_frame = gc.position_constraints.front().header.frame_id;
         const std::string end_eff_frame = gc.position_constraints.front().link_name;
-
-        TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps);
-
+        std::map<std::string, double> fixed_joints = getFixedJointsMap(urdf_param, base_frame, end_eff_frame, joint_group, request_.start_state.joint_state);
+        TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps, fixed_joints);
         if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
                                       joint_group, goal, tracik_solver))
         {
+          goal = filter(joint_group, goal);
           found_goal = true;
           break;
         }

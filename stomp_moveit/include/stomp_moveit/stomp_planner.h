@@ -160,26 +160,7 @@ protected:
 
   bool extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const;
 
- /**
-  * @brief Populates a seed joint trajectory from the 'trajectory_constraints' moveit_msgs::Constraints[] array.
-  *  each entry in the array is considered to be joint values for that time step.
-  */
-  bool ikFromCartesianConstraints(const moveit_msgs::PositionConstraint& pos_constraint,
-                                  const moveit_msgs::OrientationConstraint& orient_constraint,
-                                  const moveit::core::JointModelGroup* joint_group,
-                                  Eigen::VectorXd& result,
-                                  TRAC_IK::TRAC_IK& tracik_solver,
-                                  const Eigen::VectorXd &hint = Eigen::VectorXd()) const;
-
   bool isCartesianSeed() const;
-
-  moveit_msgs::RobotState robotStateFromEigen(const Eigen::MatrixXd& state, const std::vector<std::string> &state_joint_names, const std::vector<std::string> &all_joint_names) const;
-
-  moveit_msgs::Constraints jointConstraintsFromEigen(const Eigen::MatrixXd& state, const std::vector<std::string>& state_joint_names) const;
-
-  bool robotStateToEigen(const sensor_msgs::JointState& state, Eigen::VectorXd& target) const;
-
-  KDL::Frame positionConstraintsToKDLFrame(const moveit_msgs::PositionConstraint& pos_constraint) const;
 
 protected:
 
