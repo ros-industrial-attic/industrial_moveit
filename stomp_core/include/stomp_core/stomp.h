@@ -93,6 +93,8 @@ public:
    */
   bool clear();
 
+  unsigned int getNumIterations(){return current_iteration_;}
+
 
 protected:
 

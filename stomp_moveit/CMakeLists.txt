@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   stomp_core
   cmake_modules
   pluginlib
+  trac_ik_lib
 )
 
 ###################################

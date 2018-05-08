@@ -170,11 +170,11 @@ bool CollisionCheck::setMotionPlanRequest(const planning_scene::PlanningSceneCon
 
   // storing robot state
   robot_state_.reset(new RobotState(robot_model_ptr_));
-  if(!robotStateMsgToRobotState(req.start_state,*robot_state_,true))
-  {
-    ROS_ERROR("%s Failed to get current robot state from request",getName().c_str());
-    return false;
-  }
+//  if(!robotStateMsgToRobotState(req.start_state,*robot_state_,true))
+//  {
+//    ROS_ERROR("%s Failed to get current robot state from request",getName().c_str());
+//    return false;
+//  }
 
   // copying into intermediate robot states
   for(auto& rs : intermediate_coll_states_)
@@ -367,7 +367,7 @@ bool CollisionCheck::configure(const XmlRpc::XmlRpcValue& config)
   {
     if(!config.hasMember(m))
     {
-      ROS_ERROR("%s failed to find one or more required parameters",getName().c_str());
+      ROS_ERROR_STREAM_NAMED(getName().c_str(), "failed to find required parameter:" << m);
       return false;
     }
   }

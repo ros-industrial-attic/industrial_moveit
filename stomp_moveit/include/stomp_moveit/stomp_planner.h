@@ -31,6 +31,7 @@
 #include <stomp_moveit/stomp_optimization_task.h>
 #include <boost/thread.hpp>
 #include <ros/ros.h>
+#include <trac_ik/trac_ik.hpp>
 
 namespace stomp_moveit
 {
@@ -155,6 +156,12 @@ protected:
    */
   bool extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const;
 
+  bool extractSeedJointTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const;
+
+  bool extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const;
+
+  bool isCartesianSeed() const;
+
 protected:
 
   // stomp optimization
@@ -168,6 +175,9 @@ protected:
 
   // ros tasks
   ros::NodeHandlePtr ph_;
+
+  bool publish_seed_trajectory_;
+  ros::Publisher seed_trajectory_publisher_;
 };
 
 

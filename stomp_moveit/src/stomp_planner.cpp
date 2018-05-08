@@ -32,6 +32,10 @@
 #include <stomp_moveit/utils/kinematics.h>
 #include <stomp_moveit/utils/polynomial.h>
 
+#include <trac_ik/trac_ik.hpp>
+#include <stomp_moveit/rosconsolecolours.h>
+#include <moveit_msgs/DisplayTrajectory.h>
+
 
 static const std::string DESCRIPTION = "STOMP";
 static const double TIMEOUT_INTERVAL = 0.05;
@@ -146,6 +150,14 @@ void StompPlanner::setup()
       throw std::logic_error(msg);
     }
 
+    publish_seed_trajectory_ = config_.hasMember("publish_seed_trajectory") and config_["publish_seed_trajectory"];
+
+    if(publish_seed_trajectory_)
+    {
+      ROS_INFO_STREAM("Publishing seed trajectory on " << ph_->getNamespace() << "/seed_trajectory");
+      seed_trajectory_publisher_ = ph_->advertise<moveit_msgs::DisplayTrajectory>("seed_trajectory", 1);
+    }
+
     stomp_.reset(new stomp_core::Stomp(stomp_config_,task_));
   }
   catch(XmlRpc::XmlRpcException& e)
@@ -171,9 +183,19 @@ bool StompPlanner::solve(planning_interface::MotionPlanResponse &res)
   return success;
 }
 
+void publishTrajectory(const trajectory_msgs::JointTrajectory& traj, const ros::Publisher& pub)
+{
+  moveit_msgs::DisplayTrajectory disp_traj;
+  disp_traj.trajectory.resize(1);
+  disp_traj.trajectory.front().joint_trajectory = traj;
+  pub.publish(disp_traj);
+  ROS_YELLOW_STREAM("Publishing seed trajectory...");
+}
+
 bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 {
   using namespace stomp_core;
+  using namespace utils::kinematics;
 
   // initializing response
   res.description_.resize(1,"");
@@ -211,10 +233,20 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
 
   },false);
 
+  ROS_YELLOW_STREAM("***********NOW " << (use_seed?"GOING":"NOT GOING") << " INTO SEEEDED MODE**********");
 
   if (use_seed)
   {
     ROS_INFO("%s Seeding trajectory from MotionPlanRequest",getName().c_str());
+    ROS_YELLOW_STREAM("Seed shape is (" << initial_parameters.rows() << "," << initial_parameters.cols() << ")");
+    if(isCartesianSeed())
+    {
+      moveit::core::RobotStatePtr state(new moveit::core::RobotState(robot_model_));
+      const std::vector<std::string> joint_names= state->getJointModelGroup(group_)->getActiveJointModelNames();
+      request_.start_state = robotStateFromEigen(initial_parameters.leftCols(1), joint_names, state->getVariableNames());
+      request_.goal_constraints.clear();
+      request_.goal_constraints.push_back(jointConstraintsFromEigen(initial_parameters.rightCols(1), joint_names));
+    }
 
     // updating time step in stomp configuraion
     config_copy.num_timesteps = initial_parameters.cols();
@@ -265,6 +297,10 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     }
 
     // creating request response
+    trajectory.header.seq=stomp_->getNumIterations(); //number of iterations
+    ROS_INFO_STREAM("Bruno this is your number of luck "<<trajectory.header.seq);
+    trajectory.points[0].effort.resize(trajectory.points[0].positions.size());
+    trajectory.points[0].effort[0]=stomp_->getNumIterations();
     moveit::core::RobotState robot_state(robot_model_);
     moveit::core::robotStateMsgToRobotState(request_.start_state,robot_state);
     res.trajectory_[0]= robot_trajectory::RobotTrajectoryPtr(new robot_trajectory::RobotTrajectory(
@@ -326,94 +362,102 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
    * Validating seed trajectory by ensuring that it does obey the
    * motion plan request constraints
    */
-  moveit::core::RobotState state (robot_model_);
-  const auto* group = state.getJointModelGroup(group_);
-  const auto& joint_names = group->getActiveJointModelNames();
-  const auto& tool_link = group->getLinkModelNames().back();
-  Eigen::VectorXd start, goal;
-
-  // We check to see if the start state in the request and the seed state are 'close'
-  if (moveit::core::robotStateMsgToRobotState(request_.start_state, state))
+  if(not isCartesianSeed())
   {
-    // copying start joint values
-    start.resize(joint_names.size());
-    for(auto j = 0u; j < joint_names.size(); j++)
-    {
-      start(j) = state.getVariablePosition(joint_names[j]);
-    }
-    state.enforceBounds(group);
+    moveit::core::RobotState state (robot_model_);
+    const auto* group = state.getJointModelGroup(group_);
+    const auto& joint_names = group->getActiveJointModelNames();
+    const auto& tool_link = group->getLinkModelNames().back();
+    Eigen::VectorXd start, goal;
 
-    if(within_tolerance(parameters.leftCols(1),start,MAX_START_DISTANCE_THRESH))
+    // We check to see if the start state in the request and the seed state are 'close'
+    if (moveit::core::robotStateMsgToRobotState(request_.start_state, state))
     {
-      parameters.leftCols(1) = start;
+      // copying start joint values
+      start.resize(joint_names.size());
+      for(auto j = 0u; j < joint_names.size(); j++)
+      {
+        start(j) = state.getVariablePosition(joint_names[j]);
+      }
+      state.enforceBounds(group);
+
+      if(within_tolerance(parameters.leftCols(1),start,MAX_START_DISTANCE_THRESH))
+      {
+        parameters.leftCols(1) = start;
+      }
+      else
+      {
+        ROS_ERROR("%s Start State is in discrepancy with the seed trajectory",getName().c_str());
+        return false;
+      }
     }
     else
     {
-      ROS_ERROR("%s Start State is in discrepancy with the seed trajectory",getName().c_str());
+      ROS_ERROR("%s Failed to get start state joints",getName().c_str());
       return false;
     }
-  }
-  else
-  {
-    ROS_ERROR("%s Failed to get start state joints",getName().c_str());
-    return false;
-  }
 
-  // We now extract the goal and make sure that the seed's goal obeys the goal constraints
-  bool found_goal = false;
-  goal = parameters.rightCols(1); // initializing goal;
-  for(auto& gc : request_.goal_constraints)
-  {
-    if(!gc.joint_constraints.empty())
+    // We now extract the goal and make sure that the seed's goal obeys the goal constraints
+    bool found_goal = false;
+    goal = parameters.rightCols(1); // initializing goal;
+    for(auto& gc : request_.goal_constraints)
     {
-      // copying goal values into state
-      for(auto j = 0u; j < gc.joint_constraints.size() ; j++)
+      if(!gc.joint_constraints.empty())
       {
-        auto jc = gc.joint_constraints[j];
-        state.setVariablePosition(jc.joint_name,jc.position);
-      }
-
-      // copying values into goal array
-      if(!state.satisfiesBounds(group))
-      {
-        ROS_ERROR("%s Requested Goal joint pose is out of bounds",getName().c_str());
-        continue;
-      }
-
-      for(auto j = 0u; j < joint_names.size(); j++)
-      {
-        goal(j) = state.getVariablePosition(joint_names[j]);
-      }
-
-      found_goal = true;
-      break;
-    }
-
-    if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // checking cartesian
-    {
-      // solving ik at goal
-      const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
-      const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
-
-      KinematicConfig kc;
-      if(createKinematicConfig(group,pos_constraint,orient_constraint,start,kc) )
-      {
-        if(solveIK(std::make_shared<moveit::core::RobotState>(state),group_,kc,goal))
+        // copying goal values into state
+        for(auto j = 0u; j < gc.joint_constraints.size() ; j++)
         {
+          auto jc = gc.joint_constraints[j];
+          state.setVariablePosition(jc.joint_name,jc.position);
+        }
+
+        // copying values into goal array
+        if(!state.satisfiesBounds(group))
+        {
+          ROS_ERROR("%s Requested Goal joint pose is out of bounds",getName().c_str());
+          continue;
+        }
+
+        for(auto j = 0u; j < joint_names.size(); j++)
+        {
+          goal(j) = state.getVariablePosition(joint_names[j]);
+        }
+
+        found_goal = true;
+        break;
+      }
+
+      if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // checking cartesian
+      {
+        const double eps = 1e-3;
+        const double timeout = 0.05;
+        const std::string urdf_param = "/robot_description";
+        const std::string base_frame = gc.position_constraints.front().header.frame_id;
+        const std::string end_eff_frame = gc.position_constraints.front().link_name;
+        std::map<std::string, double> fixed_joints = getFixedJointsMap(urdf_param, base_frame, end_eff_frame, group, request_.start_state.joint_state);
+        TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps, fixed_joints);
+        if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
+                                      group, goal, tracik_solver))
+        {
+          goal = filter(group, goal);
           found_goal = true;
           break;
         }
       }
     }
 
-  }
-
-  // forcing the goal into the seed trajectory
-  if(found_goal)
-  {
-    if(within_tolerance(parameters.rightCols(1),goal,MAX_START_DISTANCE_THRESH))
+    // forcing the goal into the seed trajectory
+    if(found_goal)
     {
-      parameters.rightCols(1) = goal;
+      if(within_tolerance(parameters.rightCols(1),goal,MAX_START_DISTANCE_THRESH))
+      {
+        parameters.rightCols(1) = goal;
+      }
+      else
+      {
+        ROS_ERROR("%s Goal in seed to far away from Goal requested",getName().c_str());
+        return false;
+      }
     }
     else
     {
@@ -421,16 +465,14 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
       return false;
     }
   }
-  else
-  {
-    ROS_ERROR("%s Goal in seed to far away from Goal requested",getName().c_str());
-    return false;
-  }
 
   if(!applyPolynomialSmoothing(robot_model_,group_,parameters,5,1e-5))
   {
     return false;
   }
+
+  if(publish_seed_trajectory_)
+    publishTrajectory(traj, seed_trajectory_publisher_);
 
   return true;
 }
@@ -485,7 +527,9 @@ bool StompPlanner::jointTrajectorytoParameters(const trajectory_msgs::JointTraje
   {
     for (size_t joint = 0; joint < dof; ++joint)
     {
-      mat(joint, step) = traj.points[step].positions[joint];
+      auto point = traj.points[step];
+      double val = point.positions[joint];
+      mat(joint, step) = val;
     }
   }
 
@@ -493,17 +537,13 @@ bool StompPlanner::jointTrajectorytoParameters(const trajectory_msgs::JointTraje
   return true;
 }
 
-bool StompPlanner::extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const
+bool StompPlanner::extractSeedJointTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const
 {
-  if (req.trajectory_constraints.constraints.empty())
-    return false;
-
   const auto* joint_group = robot_model_->getJointModelGroup(group_);
   const auto& names = joint_group->getActiveJointModelNames();
   const auto dof = names.size();
 
   const auto& constraints = req.trajectory_constraints.constraints; // alias to keep names short
-  // Test the first point to ensure that it has all of the joints required
   for (size_t i = 0; i < constraints.size(); ++i)
   {
     auto n = constraints[i].joint_constraints.size();
@@ -531,6 +571,95 @@ bool StompPlanner::extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& r
   }
 
   seed.joint_names = names;
+  return true;
+}
+
+bool StompPlanner::extractSeedCartesianTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const
+{
+  using namespace moveit::core;
+  using namespace utils::kinematics;
+  const JointModelGroup* joint_group = robot_model_->getJointModelGroup(group_);
+  const auto& constraints = req.trajectory_constraints.constraints; // alias to keep names short
+
+  ROS_ASSERT(constraints.size() == 1);
+  ROS_ASSERT(constraints.front().position_constraints.size() == constraints.front().orientation_constraints.size());
+  ROS_ASSERT(constraints.front().position_constraints.size() > 0);
+
+  int fail_count = 0;
+
+  const double eps = 1e-3;
+  const double timeout = 0.05;
+  const std::string urdf_param = "/robot_description";
+  const std::string base_frame = constraints[0].position_constraints[0].header.frame_id;
+  const std::string end_eff_frame = constraints[0].position_constraints[0].link_name;
+
+  std::map<std::string, double> fixed_joints = getFixedJointsMap(urdf_param, base_frame, end_eff_frame, joint_group, request_.start_state.joint_state);
+  TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps, fixed_joints);
+
+  Eigen::VectorXd start_state;
+  robotStateToEigen(req.start_state.joint_state, robot_model_, group_, start_state);
+
+  ROS_ERROR_STREAM("Position constraints: " << constraints[0].position_constraints.size());
+
+  for (auto i = 0; i < constraints[0].position_constraints.size(); ++i)
+  {
+    trajectory_msgs::JointTrajectoryPoint joint_pt;
+    joint_pt.positions.resize(joint_group->getActiveJointModelNames().size(), 0.0);
+
+    Eigen::VectorXd joint_pos;
+    if(ikFromCartesianConstraints(constraints[0].position_constraints[i],
+                                  constraints[0].orientation_constraints[i],
+                                  joint_group,
+                                  joint_pos,
+                                  tracik_solver,
+                                  start_state))
+    {
+      auto joint_pos2 = filter(joint_group, joint_pos);
+      for(auto j=0; j<joint_pos2.size(); ++j)
+        joint_pt.positions[j] = joint_pos2(j);
+      //ROS_ERROR_STREAM("Start state shape: " << shape(start_state));
+      //ROS_ERROR_STREAM("IK solution shape: " << shape(joint_pos2));
+      start_state = joint_pos; // passing the previous joint_pos as hint for the next one!
+      seed.points.push_back(joint_pt);
+    }
+    else
+    {
+      fail_count++;
+      // if IK fails on the seed we should die here...instead now only pruningp
+      ROS_ERROR_STREAM("**** FAILED TO IK CARTESIAN SEED at step " << i << " ******");
+    }
+  }
+
+  ROS_WARN_STREAM("Seed trajectory converted with a total of " << fail_count << "/" << seed.points.size() << " IK FAILURES");
+  ROS_YELLOW_STREAM("IK solver is using " << base_frame << " for base frame and " << end_eff_frame << " for end effector frame");
+
+  seed.joint_names = joint_group->getActiveJointModelNames();
+
+  double fail_percent = fail_count * 100.0 /constraints[0].position_constraints.size();
+  if(fail_percent > 20)
+  {
+    ROS_ERROR_STREAM("Too many failed IK calls when converting!");
+    return false;
+  }
+
+  return true;
+}
+
+bool StompPlanner::extractSeedTrajectory(const moveit_msgs::MotionPlanRequest& req, trajectory_msgs::JointTrajectory& seed) const
+{
+  if (req.trajectory_constraints.constraints.empty())
+    return false;
+
+  if(isCartesianSeed())
+  {
+    return extractSeedCartesianTrajectory(req, seed);
+  }
+  else
+  {
+    return extractSeedJointTrajectory(req, seed);
+  }
+
+
   return true;
 }
 
@@ -562,6 +691,26 @@ moveit_msgs::TrajectoryConstraints StompPlanner::encodeSeedTrajectory(const traj
   return res;
 }
 
+bool StompPlanner::isCartesianSeed() const
+{
+  const auto& constraints = request_.trajectory_constraints.constraints; // alias to keep names short
+  ROS_ERROR_STREAM("We have a total of " << constraints.size() << " constraints");
+  if (constraints[0].joint_constraints.size() > 0)
+  {
+    ROS_ERROR_STREAM("We have " << constraints[0].joint_constraints.size() << " joint constraints");
+    return false;
+  }
+
+  if (constraints[0].position_constraints.size() > 0 and constraints[0].orientation_constraints.size() > 0)
+  {
+    ROS_ERROR_STREAM("We have " << constraints[0].position_constraints.size() << "  POSITION constraints");
+    ROS_ERROR_STREAM("We have " << constraints[0].orientation_constraints.size() << "  ORIENTATION constraints");
+    return true;
+  }
+}
+
+
+
 bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal)
 {
   using namespace moveit::core;
@@ -574,29 +723,15 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
 
   try
   {
-    // copying start state
-    if(!robotStateMsgToRobotState(request_.start_state,*state))
+    if(!robotStateToEigen(request_.start_state.joint_state, robot_model_, group_, start))
     {
       ROS_ERROR("%s Failed to extract start state from MotionPlanRequest",getName().c_str());
+      ROS_ERROR_STREAM("************* " << request_.start_state.joint_state.name.size());
       return false;
     }
 
-    // copying start joint values
-    const std::vector<std::string> joint_names= state->getJointModelGroup(group_)->getActiveJointModelNames();
-    start.resize(joint_names.size());
+    const auto joint_names = state->getJointModelGroup(group_)->getActiveJointModelNames();
     goal.resize(joint_names.size());
-
-    if(!state->satisfiesBounds(state->getJointModelGroup(group_)))
-    {
-      ROS_ERROR("%s Start joint pose is out of bounds",getName().c_str());
-      return false;
-    }
-
-    for(auto j = 0u; j < joint_names.size(); j++)
-    {
-      start(j) = state->getVariablePosition(joint_names[j]);
-    }
-
     // check goal constraint
     if(request_.goal_constraints.empty())
     {
@@ -609,7 +744,6 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
     {
       if(!gc.joint_constraints.empty())
       {
-
         // copying goal values into state
         for(auto j = 0u; j < gc.joint_constraints.size() ; j++)
         {
@@ -617,8 +751,7 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
           state->setVariablePosition(jc.joint_name,jc.position);
         }
 
-
-        if(!state->satisfiesBounds(state->getJointModelGroup(group_)))
+        if(!state->satisfiesBounds())
         {
           ROS_ERROR("%s Requested Goal joint pose is out of bounds",getName().c_str());
           continue;
@@ -640,25 +773,23 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
       if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // check cartesian
       {
         // solving ik at goal
-        const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
-        const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
-
-        KinematicConfig kc;
-        if(createKinematicConfig(joint_group,pos_constraint,orient_constraint,start,kc) )
+        const double eps = 1e-3;
+        const double timeout = 0.05;
+        const std::string urdf_param = "/robot_description";
+        const std::string base_frame = gc.position_constraints.front().header.frame_id;
+        const std::string end_eff_frame = gc.position_constraints.front().link_name;
+        std::map<std::string, double> fixed_joints = getFixedJointsMap(urdf_param, base_frame, end_eff_frame, joint_group, request_.start_state.joint_state);
+        TRAC_IK::TRAC_IK tracik_solver(base_frame, end_eff_frame, urdf_param, timeout, eps, fixed_joints);
+        if(ikFromCartesianConstraints(gc.position_constraints.front(), gc.orientation_constraints.front(),
+                                      joint_group, goal, tracik_solver))
         {
-          if(solveIK(state,group_,kc,goal))
-          {
-            ROS_DEBUG("%s Found goal from IK ",getName().c_str());
-            found_goal = true;
-            break;
-          }
+          goal = filter(joint_group, goal);
+          found_goal = true;
+          break;
         }
       }
-
+      ROS_ERROR_COND(!found_goal,"%s was unable to retrieve the goal from the MotionPlanRequest",getName().c_str());
     }
-
-    ROS_ERROR_COND(!found_goal,"%s was unable to retrieve the goal from the MotionPlanRequest",getName().c_str());
-
   }
   catch(moveit::Exception &e)
   {
@@ -668,7 +799,6 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
 
   return found_goal;
 }
-
 
 bool StompPlanner::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) const
 {
@@ -686,10 +816,21 @@ bool StompPlanner::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) 
     return false;
   }
 
-  // check that we have only joint constraints at the goal
-  if (req.goal_constraints[0].joint_constraints.size() == 0)
+  // make sure we have some constraints defined
+  if (req.goal_constraints[0].joint_constraints.size() == 0 and
+      req.goal_constraints[0].position_constraints.size() == 0 and
+      req.goal_constraints[0].orientation_constraints.size() == 0)
   {
-    ROS_ERROR("STOMP: Can only handle joint space goals.");
+    ROS_ERROR("STOMP: No constraints defined!");
+    return false;
+  }
+
+  // make sure we only have either joint constraints or cartesian constraints
+  if (req.goal_constraints[0].joint_constraints.size() > 0 and
+      req.goal_constraints[0].position_constraints.size() > 0 and
+      req.goal_constraints[0].orientation_constraints.size() > 0)
+  {
+    ROS_ERROR("STOMP: Too many constraints defined! Can only accept either joint or Cartesian constraints!");
     return false;
   }
 

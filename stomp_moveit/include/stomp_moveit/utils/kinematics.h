@@ -33,24 +33,23 @@
 #include <moveit/robot_state/conversions.h>
 #include <pluginlib/class_list_macros.h>
 #include <XmlRpcException.h>
-#include <moveit_msgs/PositionConstraint.h>
-#include <moveit_msgs/OrientationConstraint.h>
+#include <moveit_msgs/Constraints.h>
+#include <stomp_moveit/rosconsolecolours.h>
+#include <trac_ik/trac_ik.hpp>
 
 
 namespace stomp_moveit
 {
+
 namespace utils
 {
 
-/**
- * @namespace stomp_moveit::utils::kinematics
- * @brief Utility functions related to finding Inverse Kinematics solutions
- */
 namespace kinematics
 {
 
   const static double EPSILON = 0.011;  /**< @brief Used in dampening the matrix pseudo inverse calculation */
   const static double LAMBDA = 0.01;    /**< @brief Used in dampening the matrix pseudo inverse calculation */
+  const static double default_position_tolerance_ = 0.1; /**< @brief Used in setting IK tolerance */
 
   /**
    * @struct stomp_moveit::utils::KinematicConfig
@@ -101,31 +100,48 @@ namespace kinematics
       return false;
     }
 
+    // POSITION constraints
+
     // tool pose position
     kc.tool_goal_pose.setIdentity();
-    auto& v = pc.constraint_region.primitive_poses[0].position;
-    kc.tool_goal_pose.translation() = Eigen::Vector3d(v.x,v.y,v.z);
+
+    // we may take position constraints from the "BoundingVolume  constraint_region" of the MotionPlanRequest message
+    if(pc.constraint_region.primitive_poses.size() > 0)
+    {
+      ROS_INFO("createKinematicConfig: Using constraint_region from message to determine tolerances");
+      const auto& v = pc.constraint_region.primitive_poses[0].position;
+      kc.tool_goal_pose.translation() = Eigen::Vector3d(v.x,v.y,v.z);
+
+      // position tolerance
+      const shape_msgs::SolidPrimitive& bv = pc.constraint_region.primitives[0];
+      if(bv.type != shape_msgs::SolidPrimitive::BOX || bv.dimensions.size() != 3)
+      {
+        ROS_ERROR("Position constraint incorrectly defined, a BOX region is expected");
+        return false;
+      }
+
+      using SP = shape_msgs::SolidPrimitive;
+      kc.cartesian_convergence_thresholds[0] = bv.dimensions[SP::BOX_X];
+      kc.cartesian_convergence_thresholds[1] = bv.dimensions[SP::BOX_Y];
+      kc.cartesian_convergence_thresholds[2] = bv.dimensions[SP::BOX_Z];
+    }
+    // or we use "target_point_offset" to define the 3DOF position
+    else
+    {
+      const auto& v = pc.target_point_offset;
+      kc.tool_goal_pose.translation() = Eigen::Vector3d(v.x,v.y,v.z);
+
+      ROS_INFO_STREAM("constraint_region not available in message, using default position tolerance of " << default_position_tolerance_);
+      kc.cartesian_convergence_thresholds[0] = default_position_tolerance_;
+      kc.cartesian_convergence_thresholds[1] = default_position_tolerance_;
+      kc.cartesian_convergence_thresholds[2] = default_position_tolerance_;
+    }
+    // ORIENTATION constraints
 
     // tool pose orientation
     Eigen::Quaterniond q;
     tf::quaternionMsgToEigen(oc.orientation,q);
     kc.tool_goal_pose.rotate(q);
-
-    // defining constraints
-    kc.constrained_dofs << 1, 1, 1, 1, 1, 1;
-
-    // position tolerance
-    const shape_msgs::SolidPrimitive& bv = pc.constraint_region.primitives[0];
-    if(bv.type != shape_msgs::SolidPrimitive::BOX || bv.dimensions.size() != 3)
-    {
-      ROS_ERROR("Position constraint incorrectly defined, a BOX region is expected");
-      return false;
-    }
-
-    using SP = shape_msgs::SolidPrimitive;
-    kc.cartesian_convergence_thresholds[0] = bv.dimensions[SP::BOX_X];
-    kc.cartesian_convergence_thresholds[1] = bv.dimensions[SP::BOX_Y];
-    kc.cartesian_convergence_thresholds[2] = bv.dimensions[SP::BOX_Z];
 
     // orientation tolerance
     kc.cartesian_convergence_thresholds[3] = oc.absolute_x_axis_tolerance;
@@ -143,6 +159,7 @@ namespace kinematics
     kc.joint_update_rates = Eigen::ArrayXd::Constant(num_joints,0.5f);
     kc.init_joint_pose = init_joint_pose;
     kc.max_iterations = 100;
+    kc.constrained_dofs << 1, 1, 1, 1, 1, 1;
 
     return true;
   }
@@ -324,6 +341,7 @@ namespace kinematics
     {
       if(joint_names.size() != joint_vals.size())
       {
+        ROS_ERROR("STOMP::solveIK: Mismatching number of joints");
         return false;
       }
 
@@ -564,6 +582,225 @@ namespace kinematics
             ArrayXd::Zero(joint_update_rates.size()),VectorXd::Zero(joint_update_rates.size()),max_iterations,
             tool_goal_pose,init_joint_pose,joint_pose);
   }
+
+
+  KDL::Frame positionConstraintsToKDLFrame(const moveit_msgs::PositionConstraint& c)
+  {
+    KDL::Frame result;
+    // some interfaces define position constraints as "target_point_offset" while others use "constraint_region"
+    if(not c.constraint_region.primitive_poses.empty())
+    {
+      result.p[0] = c.constraint_region.primitive_poses.front().position.x;
+      result.p[1] = c.constraint_region.primitive_poses.front().position.y;
+      result.p[2] = c.constraint_region.primitive_poses.front().position.z;
+    }
+    else
+    {
+      result.p[0] = c.target_point_offset.x;
+      result.p[1] = c.target_point_offset.y;
+      result.p[2] = c.target_point_offset.z;
+    }
+    return result;
+  }
+
+  moveit_msgs::Constraints jointConstraintsFromEigen(const Eigen::MatrixXd& state, 
+                                                     const std::vector<std::string>& state_joint_names)
+  {
+    //ROS_GREEN_STREAM("Shape is " << shape(state));
+    assert(state.size() == state_joint_names.size());
+
+    moveit_msgs::Constraints result;
+
+    ROS_CYAN_STREAM(state_joint_names);
+    ROS_CYAN_STREAM(state);
+
+    for(int i=0; i<state_joint_names.size(); ++i)
+    {
+      moveit_msgs::JointConstraint joint_constraint;
+      joint_constraint.joint_name = state_joint_names[i];
+      joint_constraint.position = state(i,0);
+      result.joint_constraints.push_back(joint_constraint);
+    }
+
+    return result;
+  }
+
+  moveit_msgs::RobotState robotStateFromEigen(const Eigen::MatrixXd& state,
+                                              const std::vector<std::string>& state_joint_names,
+                                              const std::vector<std::string>& all_joint_names)
+  {
+    //ROS_GREEN_STREAM("Shape is " << shape(state));
+
+    //assert(state.size() == state_joint_names.size());
+
+    moveit_msgs::RobotState result;
+
+    result.is_diff = false;
+    result.joint_state.name = all_joint_names;
+    result.joint_state.position.resize(all_joint_names.size(), 0.0);
+
+    for(int i=0; i<all_joint_names.size(); ++i)
+    {
+      for(int j=0; j<state_joint_names.size(); ++j)
+      {
+        if(all_joint_names[i] == state_joint_names[j])
+          result.joint_state.position[i] = state(j,0);
+      }
+    }
+
+    return result;
+  }
+
+  bool robotStateToEigen(const sensor_msgs::JointState& state,
+                         const moveit::core::RobotState& robot_model,
+                         const std::string& group_name,
+                         Eigen::VectorXd& target)
+  {
+    if(state.name.empty() || state.position.empty())
+    {
+      ROS_ERROR("JointState message lacks names or positions");
+      return false;
+    }
+
+    moveit::core::RobotStatePtr tmp_state(new moveit::core::RobotState(robot_model));
+    tmp_state->setVariableValues(state);  
+
+    if(!tmp_state->satisfiesBounds())
+    {
+      ROS_ERROR("Joint state is out of bounds");
+      return false;
+    }
+
+    // copying start joint values
+    const auto joint_names = tmp_state->getJointModelGroup(group_name)->getActiveJointModelNames();
+    target.resize(joint_names.size());
+
+    for(auto j = 0; j < joint_names.size(); j++)
+    {
+      target(j) = tmp_state->getVariablePosition(joint_names[j]);
+    }
+
+    return true;
+  }
+
+
+  Eigen::VectorXd filter(const moveit::core::JointModelGroup* jmg, const Eigen::VectorXd& vec)
+  {
+    Eigen::VectorXd filtered(jmg->getActiveJointModelNames().size());
+
+    ROS_CYAN_STREAM(jmg->getActiveJointModelNames());
+
+    const std::vector<unsigned int>& bij = jmg->getKinematicsSolverJointBijection();
+    //ROS_YELLOW_STREAM(bij);
+
+    for (std::size_t i = 0; i < bij.size(); ++i)
+      filtered[bij[i]] = vec[i];
+
+    return filtered;
+  }
+
+  std::map<std::string, double> 
+  getFixedJointsMap(const std::string& urdf_param, const std::string& base_frame, 
+                    const std::string& end_eff_frame, const moveit::core::JointModelGroup* jmg, 
+                    const sensor_msgs::JointState& start_state)
+  {
+    std::map<std::string, double> fixed_joints;
+
+    //  not going to use this solver, only need it to parse the urdf and gives us the chain
+    TRAC_IK::TRAC_IK solver(base_frame, end_eff_frame, urdf_param);
+    KDL::Chain chain;
+    if(not solver.getKDLChain(chain))
+    {
+      ROS_FATAL("Solver failed to set up, this shouldn't happen!");
+    }
+
+    const auto& activeJMGJoints = jmg->getActiveJointModelNames();
+
+    for(const KDL::Segment& s : chain.segments)
+    {
+      const KDL::Joint& joint = s.getJoint();
+      if(joint.getType() != KDL::Joint::None)
+      {
+        auto result = std::find(std::begin(activeJMGJoints), std::end(activeJMGJoints), joint.getName());
+        if(result != std::end(activeJMGJoints))
+        {
+          ROS_GREEN_STREAM(joint.getName());
+        }
+        else
+        {
+          ROS_RED_STREAM(joint.getName());
+          size_t idx = std::distance(start_state.name.begin(), find(start_state.name.begin(), start_state.name.end(), joint.getName()));
+          fixed_joints[joint.getName()] = start_state.position[idx];
+          //result.insert( std::pair<std::string, double>(joint.getName(), start_state.position[idx]));
+        }
+      }
+      else
+      {
+        ROS_YELLOW_STREAM(joint.getName());
+      }
+    }
+
+    ROS_WHITE_STREAM("Fixed joints:");
+    for(const auto& p : fixed_joints)
+      ROS_WHITE_STREAM("(" << p.first << ", " << p.second << ")");
+
+    return fixed_joints;
+  }
+
+  /**
+   * @brief Populates a seed joint trajectory from the 'trajectory_constraints' moveit_msgs::Constraints[] array.
+   *  each entry in the array is considered to be joint values for that time step.
+   */
+  bool ikFromCartesianConstraints(const moveit_msgs::PositionConstraint& pos_constraint,
+                                  const moveit_msgs::OrientationConstraint& orient_constraint,
+                                  const moveit::core::JointModelGroup* joint_group,
+                                  Eigen::VectorXd& result,
+                                  TRAC_IK::TRAC_IK& tracik_solver,
+                                  const Eigen::VectorXd& hint = Eigen::VectorXd())
+  {
+    ROS_ASSERT(joint_group->getJointRoots().size() == 1);
+
+    KDL::Chain chain;
+    if(not tracik_solver.getKDLChain(chain))
+      return false;
+
+    KDL::Frame end_effector_pose = positionConstraintsToKDLFrame(pos_constraint);
+
+    end_effector_pose.M = KDL::Rotation::Quaternion(orient_constraint.orientation.x, orient_constraint.orientation.y,
+                                                    orient_constraint.orientation.z, orient_constraint.orientation.w);
+
+    // Create Nominal chain configuration midway between all joint limits
+    KDL::JntArray ik_result;
+    KDL::JntArray nominal(chain.getNrOfJoints());
+
+    if(hint.size() > 0)
+    {
+      //ROS_ERROR_STREAM("Using " << hint << " as IK hint");
+      nominal.data = hint;
+    }
+
+    KDL::Twist tolerance;
+    tolerance.rot.x(0.1);tolerance.rot.y(0.1);tolerance.rot.z(0.1);
+    tolerance.vel.x(0.05);tolerance.vel.y(0.05);tolerance.vel.z(0.05);
+
+    int rc=tracik_solver.CartToJnt(nominal,end_effector_pose,ik_result, tolerance);
+
+    if(rc >= 0)
+    {
+      ROS_YELLOW_STREAM("IK done, shape is " << shape(result));
+      result = ik_result.data;
+      return true;
+    }
+    else
+    {
+      ROS_WHITE_STREAM("IK queried EEF pose: (" <<
+                       end_effector_pose.p[0] << ", " <<
+                       end_effector_pose.p[1] << ", " <<
+                       end_effector_pose.p[2] << ")");
+      return false;
+    }
+  }
+
 
 
 } // kinematics
