@@ -2,7 +2,7 @@
 
 <!--Generates a urdf from the macro in kr210_macro.xacro -->
 
-<robot xmlns:xacro="http://ros.org/wiki/xacro">
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
 
 <xacro:property name="rail_cross_section" value="0.1"/>
 <xacro:property name="workcell_width" value="5.0"/>

@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<robot xmlns:xacro="http://ros.org/wiki/xacro">
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
 	<!-- parameter list -->
 	<xacro:property name="gripper_length" value="0.24"/>
 	<xacro:property name="gripper_width" value="0.04"/>
