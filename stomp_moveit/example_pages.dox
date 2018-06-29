@@ -13,12 +13,14 @@
   @subsection  noise_generator_configuration Noise Generator Plugin Configuration 
     Adds random noise onto the trajectory in order to explore the workspace.  Only one can be loaded
     - @ref  normal_distribution_sampling_example
+    - @ref  goal_guided_mult_gaussian_example
   
   @subsection  cost_function_configuration Cost Function Plugins Configuration 
     Evaluate the state costs of each noisy trajectory.  The plugins are applied from top to bottom as listed
     in the stomp yaml file.
     - @ref  cost_function_collision_check_example
     - @ref  cost_function_obstacle_distance_example
+    - @ref  tool_goal_pose_example
   
   @subsection  noisy_filters_configuration Noisy Filters Plugins Configuration 
     Apply various filtering methods to the noisy trajectories. The plugins are applied from top to bottom 
@@ -124,6 +126,24 @@ The parameters are as follows:
   - stddev: The amplitude of the noise applied to each joint in the planning group.  Using
             larger values will produce larger motions for such joints.
 */
+/**
+@page goal_guided_mult_gaussian_example Goal Guided Multivariate Gaussian
+Generates noise that is applied onto the trajectory while keeping the goal pose within the task manifold.  The parameters are 
+as follows:
+@code
+  noise_generator:
+    - class: stomp_moveit/GoalGuidedMultivariateGaussian
+      stddev: [0.1, 0.05, 0.1, 0.05, 0.05, 0.05, 0.05] 
+      goal_stddev: [0.0, 0.0, 0.0, 0.0, 0.0, 2.0] 
+      constrained_dofs: [1, 1, 1, 1, 1, 0]
+@endcode
+  - class:            The class name.
+  - stddev:           The amplitude of the noise applied onto each joint.
+  - goal_stddev:      The amplitude of the noise applied onto each cartesian DOF at the goal.  The array has the following
+                      form [px, py, pz, rx, ry, rz].
+  - constrained_dofs: Indicates which cartesians DOF are fully constrained (1) or unconstrained (0).  This vector is of the form
+                      [x y z rx ry rz] where each entry can only take a value of 0 or 1.
+*/
 
 /**
 @page cost_function_collision_check_example CollisionCheck 
@@ -165,6 +185,31 @@ distances will lead to higher costs values for that state. Collisions will be se
                               points in a trajectory.  A smaller value could lead to more collision checks during 
                               large joint motions.
 */
+
+/**
+@page tool_goal_pose_example Tool Goal Pose 
+Evaluates the cost of the goal pose by determining how far it is from the underconstrained task manifold.  The parameters
+are as follow:
+@code
+  cost_functions:
+    - class: stomp_moveit/ToolGoalPose
+      constrained_dofs: [1, 1, 1, 1, 1, 0]
+      position_error_range: [0.01, 0.1]     #[min, max]
+      orientation_error_range: [0.01, 0.1]  #[min, max]
+      position_cost_weight: 0.5
+      orientation_cost_weight: 0.5
+@endcode
+  - class:                    The class name.
+  - constrained_dofs:         Indicates which cartesians DOF are fully constrained (1) or unconstrained (0).  This vector is of the form
+                              [x y z rx ry rz] where each entry can only take a value of 0 or 1.
+  - position_error_range:     Used in scaling the position error from 0 to 1.  Any error less than this range is set to 
+                              a cost of 0 and errors above this range are set to 1.
+  - orientation_error_range:  Used in scaling the orientation error from 0 to 1.  Any error less than this range is set to 
+                              a cost of 0 and errors above this range are set to 1.
+  - position_cost_weight:     Factor applied to the position error cost. The total cost = pos_cost * pos_weight + orient_cost * orient_weight
+  - orientation_cost_weight:  Factor applied to the orientation error cost.  The total cost = pos_cost * pos_weight + orient_cost * orient_weight
+*/
+
 
 /**
 @page joint_limits_example JointLimits 
@@ -256,3 +301,25 @@ The yaml configuration is as follows:
   - directory:  The directory relative to the ros package
   - filename:   The name of the file.
 */
+
+/**
+@page constrained_cart_goal_example Constrained Cartesian Goal
+Modifies the trajectory update such that the goal of the updated trajectory is within the task manifold
+@code
+  update_filters:
+      - class: stomp_moveit/ConstrainedCartesianGoal
+        constrained_dofs: [1, 1, 1, 1, 1, 0]
+        cartesian_convergence: [0.005, 0.005, 0.005, 0.01, 0.01, 1.00]
+        joint_update_rates: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+        max_ik_iterations: 100
+@endcode
+  - class:                  The class name.
+  - constrained_dofs:       Indicates which cartesians DOF are fully constrained (1) or unconstrained (0).  This vector is of the form
+                            [x y z rx ry rz] where each entry can only take a value of 0 or 1.
+  - cartesian_convergence:  A vector of convergence values for each cartesian DOF [vx vy vz wx wy wz].
+  - joint_update_rates:     The rates at which to update the joints during numerical ik computations.
+  - max_ik_iterations:      Limit on the number of iterations allowed for numerical ik computations.
+*/
+
+
+
