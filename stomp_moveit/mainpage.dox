@@ -18,9 +18,11 @@
  *      Evaluate the state costs of trajectories.  Inherit from StompCostFunction.
  *      - @ref  cost_function_collision_check_example
  *      - @ref  cost_function_obstacle_distance_example
+ *      - @ref  cost_function_tool_goal_pose_example
  *    - Noise Generator Plugins:
  *      Generate random noise to explore the workspace.  Inherit from StompNoiseGenerator
  *      - @ref  normal_distribution_sampling_example
+ *      - @ref  goal_guided_multivariate_gaussian_example
  *    - Noisy Filters:
  *      Apply filter methods to the noisy trajectories.  Inherit from StompNoisyFilter
  *      - @ref  joint_limits_example
@@ -32,6 +34,7 @@
  *      - @ref  polynomial_smoother_example
  *      - @ref  trajectory_visualization_example
  *      - @ref  update_logger_example 
+ *      - @ref  constrained_cartesian_goal_example
  * 
  * @section Examples
  * All examples are located here @ref stomp_moveit_examples
