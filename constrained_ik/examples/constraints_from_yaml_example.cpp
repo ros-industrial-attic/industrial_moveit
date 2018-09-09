@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
   kin.init(loader->getModel()->getJointModelGroup("manipulator"));
 
   // Add constraint/constraints from ros parameter server
-  std::string param = "example_namespace/constraints";
+  std::string param = "example_yaml/constraints";
   ik.addConstraintsFromParamServer(param);
 
   // Initialize Solver

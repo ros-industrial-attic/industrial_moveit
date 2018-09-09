@@ -2,7 +2,7 @@
     <arg name="use_yaml" />
     <arg name="example" />
 
-    <node if="$(arg use_yaml)" ns="examples" pkg="constrained_ik" name="$(arg use_yaml)" type="constraints_from_yaml_example" output="screen">
+    <node if="$(arg use_yaml)" ns="examples" pkg="constrained_ik" name="$(arg example)" type="$(arg example)" output="screen">
         <rosparam command="load" file="$(find constrained_ik)/examples/$(arg example).yaml" />
     </node>
 
