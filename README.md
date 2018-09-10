@@ -24,6 +24,7 @@ Status: [![Build Status](https://travis-ci.org/ros-industrial/industrial_moveit.
 ```
 catkin build
 ```
+Note: Currently the packages **constraint_ik** and **industrial_moveit_benchmarking** packages are temporarily disabled because with their presence, **industrial_moveit** does not build successfully.
 
 #### Unit Test
 - Run all of industrial_moveit unit tests:
