@@ -66,8 +66,12 @@ namespace collision_detection
     		const robot_state::RobotState &state,bool verbose = false) const;
     virtual double distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix &acm,
     		bool verbose = false) const;
+    virtual void distanceRobot(const DistanceRequest& req, DistanceResult& res, const CollisionRobot& robot,
+                                 const robot_state::RobotState& state) const;
+
     virtual double distanceWorld(const CollisionWorld &world,bool verbose = false) const;
     virtual double distanceWorld(const CollisionWorld &world, const AllowedCollisionMatrix &acm,bool verbose = false) const;
+    virtual void distanceWorld(const DistanceRequest& req, DistanceResult& res, const CollisionWorld& world) const;
 
     virtual void setWorld(const WorldPtr& world);
 

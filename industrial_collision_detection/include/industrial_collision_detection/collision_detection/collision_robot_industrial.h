@@ -82,6 +82,10 @@ namespace collision_detection
     virtual double distanceOther(const robot_state::RobotState &state, const CollisionRobot &other_robot,
                                  const robot_state::RobotState &other_state, const AllowedCollisionMatrix &acm) const;
 
+    virtual void distanceOther(const DistanceRequest& req, DistanceResult& res, const robot_state::RobotState& state,
+                               const CollisionRobot& other_robot, const robot_state::RobotState& other_state) const;
+
+
   protected:
 
     virtual void updatedPaddingOrScaling(const std::vector<std::string> &links);
