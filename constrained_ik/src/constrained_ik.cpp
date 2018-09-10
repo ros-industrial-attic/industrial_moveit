@@ -240,8 +240,8 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
       throw std::runtime_error(error_message.str());
     }
 
-    state.collision_robot = std::static_pointer_cast<const collision_detection::CollisionRobotIndustrial>(planning_scene->getCollisionRobot());
-    state.collision_world = std::static_pointer_cast<const collision_detection::CollisionWorldIndustrial>(planning_scene->getCollisionWorld());
+    state.collision_robot = planning_scene->getCollisionRobot();
+    state.collision_world = planning_scene->getCollisionWorld();
   }
 
   if (state.condition == initialization_state::NothingInitialized || state.condition == initialization_state::AuxiliaryOnly)

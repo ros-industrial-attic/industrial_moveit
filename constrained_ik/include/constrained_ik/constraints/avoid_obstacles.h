@@ -29,7 +29,7 @@
 
 #include "constrained_ik/constraint.h"
 #include "constrained_ik/constrained_ik.h"
-#include <industrial_collision_detection/collision_detection/collision_common.h>
+#include <moveit/collision_detection/collision_common.h>
 #include <vector>
 #include <algorithm>
 #include <kdl/chain.hpp>
@@ -39,6 +39,27 @@ namespace constrained_ik
 {
 namespace constraints
 {
+
+/** @brief Contains distance information in the planning frame queried from getDistanceInfo() */
+struct DistanceInfo
+{
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  std::string nearest_obsticle;     /**< The link name for nearest obsticle/link to request link. */
+  Eigen::Vector3d link_point;       /**< Point on request link */
+  Eigen::Vector3d obsticle_point;   /**< Point on nearest link to requested link */
+  Eigen::Vector3d avoidance_vector; /**< Normilized Vector created by nearest points */
+  double distance;                  /**< Distance between nearest points */
+};
+typedef std::map<std::string, DistanceInfo> DistanceInfoMap;
+
+/**
+ * @brief getDistanceInfo
+ * @param distance_detailed Detailed Distance Map
+ * @param distance_info_map Stores the distance information for each link in DistanceDetailedMap
+ * @param tf This allows for a transformation to be applied the distance data since it is always returned in the world frame from fcl.
+ * @return bool, true if succesfully converted DistanceDetailedMap to DistanceInfoMap
+ */
+bool getDistanceInfo(const collision_detection::DistanceMap &distance_detailed, DistanceInfoMap &distance_info_map, const Eigen::Affine3d &tf);
 
 /**
  * @class constrained_ik::constraints::AvoidObstacles
@@ -124,6 +145,7 @@ protected:
   }
 
 public:
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   /** @brief This structure stores constraint data */
   struct AvoidObstaclesData: public ConstraintData
@@ -132,7 +154,7 @@ public:
     const constraints::AvoidObstacles* parent_; /**< pointer to parent class AvoidObstacles */
     collision_detection::DistanceResult distance_res_; /**< stores the minimum distance results */
     collision_detection::DistanceMap distance_map_; /**< map of link names to its distance results */
-    collision_detection::DistanceInfoMap distance_info_map_; /**< map of link names to distance information */
+    DistanceInfoMap distance_info_map_; /**< map of link names to distance information */
 
     /** @brief See base class for documentation */
     AvoidObstaclesData(const constrained_ik::SolverState &state, const constraints::AvoidObstacles* parent);

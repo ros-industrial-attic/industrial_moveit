@@ -31,8 +31,8 @@
 #include <Eigen/Geometry>
 #include <constrained_ik/enum_types.h>
 #include <moveit/planning_scene/planning_scene.h>
-#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
-#include <industrial_collision_detection/collision_detection/collision_world_industrial.h>
+#include <moveit/collision_detection/collision_robot.h>
+#include <moveit/collision_detection/collision_world.h>
 
 namespace constrained_ik
 {
@@ -54,8 +54,8 @@ struct SolverState
   bool auxiliary_at_limit;                                               /**< This is set if auxiliary reached motion or iteration limit. */
   initialization_state::InitializationState condition;                   /**< State of the IK Solver */
   planning_scene::PlanningSceneConstPtr planning_scene;                  /**< Pointer to the planning scene, some constraints require it */
-  collision_detection::CollisionRobotIndustrialConstPtr collision_robot; /**< Pointer to the collision robot, some constraints require it */
-  collision_detection::CollisionWorldIndustrialConstPtr collision_world; /**< Pointer to the collision world, some constraints require it */
+  collision_detection::CollisionRobotConstPtr collision_robot;           /**< Pointer to the collision robot, some constraints require it */
+  collision_detection::CollisionWorldConstPtr collision_world;            /**< Pointer to the collision world, some constraints require it */
   moveit::core::RobotStatePtr robot_state;                               /**< Pointer to the current robot state */
   std::string group_name;                                                /**< Move group name */
 
