@@ -125,6 +125,11 @@ namespace collision_detection
     double dist_threshold = cdata->req->distance_threshold;
     std::map<std::string, DistanceResultsData>::iterator it1, it2;
 
+    /*
+     * FIXME: The old Distance Query Data structures that existed in this package were replaced by their counterparts in the
+     * MoveIt! library.  Unfortunately the legacy code here isn't fully compatible with the new structure types and  so for
+     * now the broken code below has been disabled until the discrepancies get amended.
+     */
     if (false /*!cdata->req->global*/)
     {
 /*      it1 = cdata->res->distance.find(cd1->ptr.obj->id_);
@@ -175,6 +180,11 @@ namespace collision_detection
 
       cdata->res->minimum_distance = dist_result;
 
+      /*
+        * FIXME: The old Distance Query Data structures that existed in this package were replaced by their counterparts in the
+        * MoveIt! library.  Unfortunately the legacy code here isn't fully compatible with the new structure types and  so for
+        * now the broken code below has been disabled until the discrepancies get amended.
+        */
       if (false /*!cdata->req->global*/)
       {
 /*        if (d <= 0 && !cdata->res->collision)
