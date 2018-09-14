@@ -22,7 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 find_package(cmake_modules REQUIRED)
 find_package(Boost REQUIRED)
-find_package(Eigen REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 catkin_package()
 
@@ -30,7 +30,7 @@ catkin_package()
 ## Build ##
 ###########
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
 
 ## Declare a C++ executable
 add_executable(stomp_benchmarking_node src/stomp_valgrind.cpp)

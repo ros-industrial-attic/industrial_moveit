@@ -130,7 +130,7 @@ namespace collision_detection
      * MoveIt! library.  Unfortunately the legacy code here isn't fully compatible with the new structure types and  so for
      * now the broken code below has been disabled until the discrepancies get amended.
      */
-    if (false /*!cdata->req->global*/)
+    if (cdata->req->type == DistanceRequestType::GLOBAL)
     {
 /*      it1 = cdata->res->distance.find(cd1->ptr.obj->id_);
       it2 = cdata->res->distance.find(cd2->ptr.obj->id_);
@@ -165,7 +165,7 @@ namespace collision_detection
     }
 
     fcl_result.min_distance = dist_threshold;
-    double d = fcl::distance(o1, o2, fcl::DistanceRequest(), fcl_result);
+    double d = fcl::distance(o1, o2, fcl::DistanceRequest{.enable_nearest_point = true}, fcl_result);
 
     // Check if either object is already in the map. If not add it or if present
     // check to see if the new distance is closer. If closer remove the existing
@@ -185,18 +185,19 @@ namespace collision_detection
         * MoveIt! library.  Unfortunately the legacy code here isn't fully compatible with the new structure types and  so for
         * now the broken code below has been disabled until the discrepancies get amended.
         */
-      if (false /*!cdata->req->global*/)
+      if (cdata->req->type == DistanceRequestType::GLOBAL)
       {
-/*        if (d <= 0 && !cdata->res->collision)
+        /*
+        if (d <= 0 && !cdata->res->collision)
         {
           cdata->res->collision = true;
         }
 
         if (active1)
         {
-          if (it1 == cdata->res->distance.end())
+          if (it1 == cdata->res->distances.end())
           {
-            cdata->res->distance.insert(std::make_pair(cd1->ptr.obj->id_, dist_result));
+            cdata->res->distances.insert(std::make_pair(cd1->ptr.obj->id_, dist_result));
           }
           else
           {
@@ -214,7 +215,8 @@ namespace collision_detection
           {
             it2->second.update(dist_result);
           }
-        }*/
+        }
+        */
       }
       else
       {

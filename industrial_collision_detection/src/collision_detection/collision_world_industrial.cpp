@@ -127,6 +127,7 @@ void collision_detection::CollisionWorldIndustrial::checkRobotCollisionHelper(co
     dreq.enable_nearest_points = false;
     dreq.enable_signed_distance = true;
     dreq.group_name = req.group_name;
+    dreq.type = DistanceRequestType::GLOBAL;
     dreq.acm = acm;
     DistanceResult dres;
 
