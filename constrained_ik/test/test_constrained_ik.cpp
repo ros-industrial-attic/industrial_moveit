@@ -124,7 +124,7 @@ protected:
 
     //Now assign collision detection plugin
     collision_detection::CollisionPluginLoader cd_loader;
-    std::string class_name = "IndustrialFCL";
+    std::string class_name = "FCL";
     ASSERT_TRUE(cd_loader.activate(class_name, planning_scene_, true));
   }
 };

@@ -33,7 +33,7 @@ static planning_scene::PlanningScenePtr getExampleRobotData(robot_model_loader::
   collision_detection::CollisionPluginLoader cd_loader;
   planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(loader->getModel()));
 
-  std::string class_name = "IndustrialFCL";
+  std::string class_name = "FCL";
   cd_loader.setupScene(nh, planning_scene);
   cd_loader.activate(class_name, planning_scene, true);
   return planning_scene;

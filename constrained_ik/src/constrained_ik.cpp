@@ -29,7 +29,7 @@
 #include <constrained_ik/constraint_results.h>
 #include <ros/ros.h>
 
-const std::vector<std::string> SUPPORTED_COLLISION_DETECTORS = {"IndustrialFCL", "CollisionDetectionOpenVDB"}; /**< Supported collision detector */
+const std::vector<std::string> SUPPORTED_COLLISION_DETECTORS = {"FCL"}; /**< Supported collision detector */
 
 namespace constrained_ik
 {

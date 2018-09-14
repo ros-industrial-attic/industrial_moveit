@@ -86,7 +86,7 @@ int main (int argc, char *argv[])
   planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(robot_model));
 
   //Now assign collision detection plugin
-  std::string class_name = "IndustrialFCL";
+  std::string class_name = "FCL";
   cd_loader.setupScene(pnh, planning_scene);
   cd_loader.activate(class_name, planning_scene, true);
 
