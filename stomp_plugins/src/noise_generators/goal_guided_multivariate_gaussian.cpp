@@ -208,14 +208,18 @@ bool GoalGuidedMultivariateGaussian::setupGoalConstraints(const planning_scene::
   for(const auto& g: goals)
   {
 
-    if(utils::kinematics::validateCartesianConstraints(g))
+    if(utils::kinematics::isCartesianConstraints(g))
     {
       // decoding goal
       state_->updateLinkTransforms();
       Eigen::Affine3d start_tool_pose = state_->getGlobalLinkTransform(tool_link_);
-      moveit_msgs::Constraints cartesian_constraints = utils::kinematics::constructCartesianConstraints(g,start_tool_pose);
-      Eigen::Affine3d tool_goal_pose;
-      found_valid = utils::kinematics::decodeCartesianConstraint(robot_model_,cartesian_constraints,tool_goal_pose,tool_goal_tolerance_,robot_model_->getRootLinkName());
+      boost::optional<moveit_msgs::Constraints> cartesian_constraints = utils::kinematics::curateCartesianConstraints(g,start_tool_pose);
+      if(cartesian_constraints.is_initialized())
+      {
+        Eigen::Affine3d tool_goal_pose;
+        found_valid = utils::kinematics::decodeCartesianConstraint(robot_model_,cartesian_constraints.get(),
+                                                                   tool_goal_pose,tool_goal_tolerance_,robot_model_->getRootLinkName());
+      }
     }
 
 

@@ -398,16 +398,20 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
     }
 
     // now check Cartesian constraint
-
-    // first construct proper Cartesian tool constraints
     state.updateLinkTransforms();
     Eigen::Affine3d start_tool_pose = state.getGlobalLinkTransform(tool_link);
-    moveit_msgs::Constraints tool_constraints = constructCartesianConstraints(gc,start_tool_pose);
+    boost::optional<moveit_msgs::Constraints> tool_constraints = curateCartesianConstraints(gc,start_tool_pose);
+    if(!tool_constraints.is_initialized())
+    {
+      ROS_WARN("Cartesian Goal could not be created from provided constraints");
+      found_goal = true;
+      break;
+    }
 
     Eigen::VectorXd solution;
     Eigen::VectorXd seed = start;
     ik_solver_->setKinematicState(state);
-    if(ik_solver_->solve(seed,tool_constraints,solution))
+    if(ik_solver_->solve(seed,tool_constraints.get(),solution))
     {
       goal = solution;
       found_goal = true;
@@ -415,7 +419,8 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
     }
     else
     {
-      ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"IK failed with goal constraint \n"<<tool_constraints);
+      ROS_ERROR("A valid ik solution for the given Cartesian constraints was not found ");
+      ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"IK failed with goal constraint \n"<<tool_constraints.get());
       ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"Reference Tool pose used was: \n"<<start_tool_pose.matrix());
     }
   }
@@ -429,13 +434,13 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
     }
     else
     {
-      ROS_ERROR("%s Goal in seed to far away from Goal requested",getName().c_str());
+      ROS_ERROR("%s Goal in seed is too far away from requested goal constraints",getName().c_str());
       return false;
     }
   }
   else
   {
-    ROS_ERROR("%s Goal in seed to far away from Goal requested",getName().c_str());
+    ROS_ERROR("%s requested goal constraint was invalid or unreachable, comparison with goal in seed isn't possible",getName().c_str());
     return false;
   }
 
@@ -657,17 +662,21 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
       }
 
       // now check cartesian constraint
-
-      // first construct proper cartesian tool constraints
       state->updateLinkTransforms();
       Eigen::Affine3d start_tool_pose = state->getGlobalLinkTransform(tool_link);
-      moveit_msgs::Constraints tool_constraints = constructCartesianConstraints(gc,start_tool_pose);
+      boost::optional<moveit_msgs::Constraints> tool_constraints = curateCartesianConstraints(gc,start_tool_pose);
+      if(!tool_constraints.is_initialized())
+      {
+        ROS_WARN("Cartesian Goal could not be created from provided constraints");
+        found_goal = true;
+        break;
+      }
 
       // now solve ik
       Eigen::VectorXd solution;
       Eigen::VectorXd seed = start;
       ik_solver_->setKinematicState(*state);
-      if(ik_solver_->solve(seed,tool_constraints,solution))
+      if(ik_solver_->solve(seed,tool_constraints.get(),solution))
       {
         goal = solution;
         found_goal = true;
@@ -675,10 +684,10 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
       }
       else
       {
-        ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"IK failed with goal constraint \n"<<tool_constraints);
+        ROS_ERROR("A valid ik solution for the given Cartesian constraints was not found ");
+        ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"IK failed with goal constraint \n"<<tool_constraints.get());
         ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"Reference Tool pose used was: \n"<<start_tool_pose.matrix());
       }
-
     }
 
     ROS_ERROR_COND(!found_goal,"%s was unable to retrieve the goal from the MotionPlanRequest",getName().c_str());
@@ -713,7 +722,7 @@ bool StompPlanner::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) 
   // check that we have joint or cartesian constraints at the goal
   const auto& gc = req.goal_constraints[0];
   if ((gc.joint_constraints.size() == 0) &&
-		  !utils::kinematics::validateCartesianConstraints(gc))
+		  !utils::kinematics::isCartesianConstraints(gc))
   {
     ROS_ERROR("STOMP couldn't find either a joint or cartesian goal.");
     return false;

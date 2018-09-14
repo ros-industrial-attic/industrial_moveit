@@ -37,6 +37,7 @@
 #include <moveit_msgs/PositionConstraint.h>
 #include <moveit_msgs/OrientationConstraint.h>
 #include <trac_ik/trac_ik.hpp>
+#include <boost/optional.hpp>
 
 
 namespace stomp_moveit
@@ -128,8 +129,13 @@ namespace kinematics
 
   };
 
-
-  bool validateCartesianConstraints(const moveit_msgs::Constraints& c);
+  /**
+   * @brief Checks if the constraint structured contains valid data from which a proper cartesian constraint can
+   *        be produced.
+   * @param c   The constraint object. It may define position, orientation or both constraint types.
+   * @return True when it is Cartesian, false otherwise.
+   */
+  bool isCartesianConstraints(const moveit_msgs::Constraints& c);
 
   /**
    * @brief Populates the missing parts of a Cartesian constraints in order to provide a constraint that can be used by the Ik solver.
@@ -137,9 +143,9 @@ namespace kinematics
    * @param ref_pose        If no orientation or position constraints are given then this pose will be use to fill the missing information.
    * @param default_pos_tol Used when no position tolerance is specified.
    * @param default_rot_tol Used when no rotation tolerance is specified
-   * @return
+   * @return  A constraint object
    */
-  moveit_msgs::Constraints constructCartesianConstraints(const moveit_msgs::Constraints& c,const Eigen::Affine3d& ref_pose,
+  boost::optional<moveit_msgs::Constraints> curateCartesianConstraints(const moveit_msgs::Constraints& c,const Eigen::Affine3d& ref_pose,
                                                                 double default_pos_tol = 0.0005, double default_rot_tol = M_PI);
 
   /**

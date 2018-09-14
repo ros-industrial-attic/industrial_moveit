@@ -204,42 +204,47 @@ bool IKSolver::solve(const Eigen::VectorXd& seed, const moveit_msgs::Constraints
   return solve(seed,tool_pose,solution,tolerance_eigen);
 }
 
-bool validateCartesianConstraints(const moveit_msgs::Constraints& c)
+bool isCartesianConstraints(const moveit_msgs::Constraints& c)
 {
-  std::string frame_id;
+  std::string pos_frame_id, orient_frame_id;
+  bool found_cart = false;
   if(c.position_constraints.empty() && c.orientation_constraints.empty())
   {
-    ROS_ERROR("Constraint is empty");
+    ROS_DEBUG("No cartesian constraints were found, failed validation");
     return false;
   }
 
   if(!c.position_constraints.empty())
   {
-    frame_id = c.position_constraints.front().header.frame_id;
+    pos_frame_id = c.position_constraints.front().header.frame_id;
+    found_cart = !pos_frame_id.empty();
   }
 
   if(!c.orientation_constraints.empty())
   {
-    std::string o_frame_id = c.orientation_constraints.front().header.frame_id;
-    if(frame_id != o_frame_id)
-    {
-      ROS_ERROR("Position and orientation frame_id are different");
-      return false;
-    }
+    orient_frame_id = c.orientation_constraints.front().header.frame_id;
+    found_cart = !orient_frame_id.empty();
   }
 
-  return true;
+  if(!pos_frame_id.empty() && !orient_frame_id.empty() && (pos_frame_id != orient_frame_id))
+  {
+    ROS_ERROR("Position frame id '%s' differs from orientation frame id '%s', invalid Cartesian constraint",
+              pos_frame_id.c_str(), orient_frame_id.c_str());
+    return false;
+  }
+
+  return found_cart;
 }
 
-moveit_msgs::Constraints constructCartesianConstraints(const moveit_msgs::Constraints& c,const Eigen::Affine3d& ref_pose,
+boost::optional<moveit_msgs::Constraints> curateCartesianConstraints(const moveit_msgs::Constraints& c,const Eigen::Affine3d& ref_pose,
                                                               double default_pos_tol , double default_rot_tol)
 {
   using namespace moveit_msgs;
 
-  moveit_msgs::Constraints cc;
-  if(!validateCartesianConstraints(c))
+  moveit_msgs::Constraints full_constraint;
+  if(!isCartesianConstraints(c))
   {
-    return cc;
+    return boost::none;
   }
 
   // obtaining defaults
@@ -250,54 +255,54 @@ moveit_msgs::Constraints constructCartesianConstraints(const moveit_msgs::Constr
 
 
   // creating default position constraint
-  PositionConstraint pc;
-  pc.header.frame_id = frame_id;
-  pc.constraint_region.primitive_poses.resize(1);
-  tf::poseEigenToMsg(Eigen::Affine3d::Identity(), pc.constraint_region.primitive_poses[0]);
-  pc.constraint_region.primitive_poses[0].position.x = ref_pose.translation().x();
-  pc.constraint_region.primitive_poses[0].position.y = ref_pose.translation().y();
-  pc.constraint_region.primitive_poses[0].position.z = ref_pose.translation().z();
+  PositionConstraint default_pos_constraint;
+  default_pos_constraint.header.frame_id = frame_id;
+  default_pos_constraint.constraint_region.primitive_poses.resize(1);
+  tf::poseEigenToMsg(Eigen::Affine3d::Identity(), default_pos_constraint.constraint_region.primitive_poses[0]);
+  default_pos_constraint.constraint_region.primitive_poses[0].position.x = ref_pose.translation().x();
+  default_pos_constraint.constraint_region.primitive_poses[0].position.y = ref_pose.translation().y();
+  default_pos_constraint.constraint_region.primitive_poses[0].position.z = ref_pose.translation().z();
   shape_msgs::SolidPrimitive shape;
   shape.type = shape.SPHERE;
   shape.dimensions.push_back(default_pos_tol);
-  pc.constraint_region.primitives.push_back(shape);
+  default_pos_constraint.constraint_region.primitives.push_back(shape);
 
   // creating default orientation constraint
-  OrientationConstraint oc;
-  oc.header.frame_id = frame_id;
-  oc.absolute_x_axis_tolerance = default_rot_tol;
-  oc.absolute_y_axis_tolerance = default_rot_tol;
-  oc.absolute_z_axis_tolerance = default_rot_tol;
-  oc.orientation.x = oc.orientation.y = oc.orientation.z = 0;
-  oc.orientation.w = 1;
+  OrientationConstraint default_orient_constraint;
+  default_orient_constraint.header.frame_id = frame_id;
+  default_orient_constraint.absolute_x_axis_tolerance = default_rot_tol;
+  default_orient_constraint.absolute_y_axis_tolerance = default_rot_tol;
+  default_orient_constraint.absolute_z_axis_tolerance = default_rot_tol;
+  default_orient_constraint.orientation.x = default_orient_constraint.orientation.y = default_orient_constraint.orientation.z = 0;
+  default_orient_constraint.orientation.w = 1;
 
 
-  cc.position_constraints.resize(num_entries);
-  cc.orientation_constraints.resize(num_entries);
+  full_constraint.position_constraints.resize(num_entries);
+  full_constraint.orientation_constraints.resize(num_entries);
   for(int i =0; i < num_entries; i++)
   {
     // populating position constraints
     if(c.position_constraints.size() >= num_entries)
     {
-      cc.position_constraints[i] = c.position_constraints[i];
+      full_constraint.position_constraints[i] = c.position_constraints[i];
     }
     else
     {
-      cc.position_constraints[i] = pc;
+      full_constraint.position_constraints[i] = default_pos_constraint;
     }
 
     // populating orientation constraints
     if(c.orientation_constraints.size() >= num_entries)
     {
-      cc.orientation_constraints[i] = c.orientation_constraints[i];
+      full_constraint.orientation_constraints[i] = c.orientation_constraints[i];
     }
     else
     {
-      cc.orientation_constraints[i] = oc;
+      full_constraint.orientation_constraints[i] = default_orient_constraint;
     }
   }
 
-  return cc;
+  return full_constraint;
 }
 
 bool decodeCartesianConstraint(moveit::core::RobotModelConstPtr model, const moveit_msgs::Constraints& constraints, Eigen::Affine3d& tool_pose,
