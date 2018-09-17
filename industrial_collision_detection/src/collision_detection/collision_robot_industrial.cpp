@@ -34,6 +34,7 @@
 
 /* Author: Ioan Sucan */
 
+#include <console_bridge/console.h>
 #include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
 
 collision_detection::CollisionRobotIndustrial::CollisionRobotIndustrial(const robot_model::RobotModelConstPtr &model, double padding, double scale)
@@ -157,12 +158,17 @@ void collision_detection::CollisionRobotIndustrial::checkSelfCollisionHelper(con
   manager.manager_->collide(&cd, &collisionCallback);
   if (req.distance)
   {
-    DistanceRequest dreq(false, true, req.group_name, acm);
+    DistanceRequest dreq;
+    dreq.enable_nearest_points = false;
+    dreq.enable_signed_distance = true;
+    dreq.type = DistanceRequestType::GLOBAL;
+    dreq.group_name = req.group_name;
+    dreq.acm = acm;
     DistanceResult dres;
 
     dreq.enableGroup(getRobotModel());
     distanceSelfHelper(dreq, dres, state);
-    res.distance = dres.minimum_distance.min_distance;
+    res.distance = dres.minimum_distance.distance;
   }
 }
 
@@ -297,6 +303,37 @@ double collision_detection::CollisionRobotIndustrial::distanceOtherHelper(const 
     manager.manager_->distance(other_fcl_obj.collision_objects_[i].get(), &cd, &distanceCallback);
 
   return res.distance;
+}
+
+void collision_detection::CollisionRobotIndustrial::distanceOther(const DistanceRequest& req, DistanceResult& res, const robot_state::RobotState& state,
+                           const CollisionRobot& other_robot, const robot_state::RobotState& other_state) const
+{
+  FCLManager manager;
+  allocSelfCollisionBroadPhase(state, manager);
+
+  try
+  {
+
+    const CollisionRobotIndustrial& fcl_rob = dynamic_cast<const CollisionRobotIndustrial&>(other_robot);
+    FCLObject other_fcl_obj;
+    fcl_rob.constructFCLObject(other_state, other_fcl_obj);
+
+    DistanceData drd(&req, &res);
+    for(auto& obj: other_fcl_obj.collision_objects_)
+    {
+      manager.manager_->distance(obj.get(),&drd,&distanceDetailedCallback);
+      if(drd.done)
+      {
+        break;
+      }
+    }
+  }
+  catch(const std::bad_cast& e)
+  {
+    std::string msg = "Dynamic casting to CollisionRobotIndustrial failed";
+    logError("%s",msg.c_str());
+    throw std::runtime_error(msg);
+  }
 }
 
 

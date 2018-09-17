@@ -21,8 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
               moveit_core
               dynamic_reconfigure
               tf_conversions
-              cmake_modules
-              industrial_collision_detection)
+              cmake_modules)
 
 ## System dependencies are found with CMake's conventions
 find_package(orocos_kdl REQUIRED)
@@ -66,7 +65,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS}
  LIBRARIES constrained_ik constrained_ik_constraints constrained_ik_moveit
- CATKIN_DEPENDS roscpp urdf eigen_conversions tf_conversions urdf moveit_ros_planning moveit_core dynamic_reconfigure kdl_parser cmake_modules industrial_collision_detection
+ CATKIN_DEPENDS roscpp urdf eigen_conversions tf_conversions urdf moveit_ros_planning moveit_core dynamic_reconfigure kdl_parser cmake_modules
  DEPENDS Boost EIGEN3 orocos_kdl
 )
 

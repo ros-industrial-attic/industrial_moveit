@@ -86,7 +86,7 @@ int main (int argc, char *argv[])
 
   //Now assign collision detection plugin
   collision_detection::CollisionPluginLoader cd_loader;
-  std::string class_name = "IndustrialFCL";
+  std::string class_name = "FCL";
   cd_loader.activate(class_name, planning_scene, true);
 
   req.allowed_planning_time = 10;

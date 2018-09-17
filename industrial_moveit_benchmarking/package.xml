@@ -20,7 +20,6 @@
   <run_depend>stomp_moveit</run_depend>
   <run_depend>moveit_core</run_depend>
   <run_depend>moveit_ros_planning</run_depend>
-  <run_depend>industrial_collision_detection</run_depend>
   <run_depend>pluginlib</run_depend>
   <run_depend>constrained_ik</run_depend>
 

@@ -40,6 +40,7 @@
 #include <fcl/traversal/traversal_node_bvhs.h>
 #include <fcl/traversal/traversal_node_setup.h>
 #include <fcl/collision_node.h>
+#include <console_bridge/console.h>
 
 collision_detection::CollisionWorldIndustrial::CollisionWorldIndustrial() :
   CollisionWorld()
@@ -122,12 +123,17 @@ void collision_detection::CollisionWorldIndustrial::checkRobotCollisionHelper(co
 
   if (req.distance)
   {
-    DistanceRequest dreq(false, true, req.group_name, acm);
+    DistanceRequest dreq;
+    dreq.enable_nearest_points = false;
+    dreq.enable_signed_distance = true;
+    dreq.group_name = req.group_name;
+    dreq.type = DistanceRequestType::GLOBAL;
+    dreq.acm = acm;
     DistanceResult dres;
 
     dreq.enableGroup(robot.getRobotModel());
     distanceRobotHelper(dreq, dres, robot, state);
-    res.distance = dres.minimum_distance.min_distance;
+    res.distance = dres.minimum_distance.distance;
   }
 }
 
@@ -295,6 +301,12 @@ void collision_detection::CollisionWorldIndustrial::distanceRobot(const Distance
   distanceRobotHelper(req, res, robot, state);
 }
 
+void collision_detection::CollisionWorldIndustrial::distanceRobot(const DistanceRequest& req, DistanceResult& res, const CollisionRobot& robot,
+                             const robot_state::RobotState& state) const
+{
+  distanceRobotHelper(req, res, robot, state);
+}
+
 double collision_detection::CollisionWorldIndustrial::distanceWorld(const CollisionWorld &world,bool verbose) const
 {
   return distanceWorldHelper(world, NULL);
@@ -304,6 +316,13 @@ double collision_detection::CollisionWorldIndustrial::distanceWorld(const Collis
 		bool verbose) const
 {
   return distanceWorldHelper(world, &acm);
+}
+
+void collision_detection::CollisionWorldIndustrial::distanceWorld(const DistanceRequest& req, DistanceResult& res, const CollisionWorld& world) const
+{
+  const CollisionWorldIndustrial& other_fcl_world = dynamic_cast<const CollisionWorldIndustrial&>(world);
+  DistanceData drd(&req,&res);
+  manager_->distance(other_fcl_world.manager_.get(), &drd, &distanceCallback);
 }
 
 double collision_detection::CollisionWorldIndustrial::distanceWorldHelper(const CollisionWorld &other_world, const AllowedCollisionMatrix *acm) const

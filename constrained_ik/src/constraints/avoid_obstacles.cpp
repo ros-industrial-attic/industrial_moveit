@@ -53,7 +53,56 @@ using Eigen::MatrixXd;
 using std::string;
 using std::vector;
 
-AvoidObstacles::LinkAvoidance::LinkAvoidance(): weight_(DEFAULT_WEIGHT), min_distance_(DEFAULT_MIN_DISTANCE), avoidance_distance_(DEFAULT_AVOIDANCE_DISTANCE), amplitude_(DEFAULT_AMPLITUDE), jac_solver_(NULL) {}
+bool getDistanceInfo(const collision_detection::DistanceMap &distance_detailed, DistanceInfoMap &distance_info_map, const Eigen::Affine3d &tf)
+{
+  bool status = true;
+  for (DistanceMap::const_iterator it = distance_detailed.begin(); it != distance_detailed.end(); ++it)
+  {
+    DistanceInfo dist_info;
+    DistanceResultsData dist = static_cast<const DistanceResultsData>(it->second.front());
+    if (dist.link_names[0] == it->first.first)
+    {
+      dist_info.nearest_obsticle = dist.link_names[1];
+      dist_info.link_point = tf * dist.nearest_points[0];
+      dist_info.obsticle_point = tf * dist.nearest_points[1];
+      dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
+      dist_info.avoidance_vector.normalize();
+      dist_info.distance = dist.distance;
+    }
+    else if (dist.link_names[1] == it->first.first)
+    {
+      dist_info.nearest_obsticle = dist.link_names[0];
+      dist_info.link_point = tf * dist.nearest_points[1];
+      dist_info.obsticle_point = tf * dist.nearest_points[0];
+      dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
+      dist_info.avoidance_vector.normalize();
+      dist_info.distance = dist.distance;
+    }
+    else
+    {
+      ROS_ERROR("getDistanceInfo was unable to find link after match!");
+      status &= false;
+    }
+
+    distance_info_map.insert(std::make_pair(it->first.first, dist_info));
+  }
+
+  return status;
+}
+
+AvoidObstacles::LinkAvoidance::LinkAvoidance():
+    weight_(DEFAULT_WEIGHT),
+    min_distance_(DEFAULT_MIN_DISTANCE),
+    avoidance_distance_(DEFAULT_AVOIDANCE_DISTANCE),
+    amplitude_(DEFAULT_AMPLITUDE),
+    jac_solver_(NULL),
+    num_inboard_joints_(0),
+    num_robot_joints_(0),
+    num_obstacle_joints_(0)
+{
+
+}
+
 AvoidObstacles::LinkAvoidance::LinkAvoidance(std::string link_name): LinkAvoidance() {link_name_ = link_name;}
 
 void AvoidObstacles::init(const Constrained_IK * ik)
@@ -187,7 +236,8 @@ ConstraintResults AvoidObstacles::evalConstraint(const SolverState &state) const
     DistanceInfoMap::const_iterator dit = cdata.distance_info_map_.find(it->second.link_name_);
     if (dit != cdata.distance_info_map_.end() && dit->second.distance > 0)
     {
-      dynamic_weight = std::exp(DYNAMIC_WEIGHT_FUNCTION_CONSTANT * (std::abs(dit->second.distance-cdata.distance_res_.minimum_distance.min_distance)/distance_threshold_));
+      dynamic_weight = std::exp(DYNAMIC_WEIGHT_FUNCTION_CONSTANT * (std::abs(
+          dit->second.distance-cdata.distance_res_.minimum_distance.distance)/distance_threshold_));
       constrained_ik::ConstraintResults tmp;
       tmp.error = calcError(cdata, it->second) * it->second.weight_ * dynamic_weight;
       tmp.jacobian = calcJacobian(cdata, it->second)  * it->second.weight_ * dynamic_weight;
@@ -274,7 +324,12 @@ bool AvoidObstacles::checkStatus(const AvoidObstacles::AvoidObstaclesData &cdata
 
 AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state, const AvoidObstacles *parent): ConstraintData(state), parent_(parent)
 {
-  DistanceRequest distance_req(true, false, parent_->link_models_, state_.planning_scene->getAllowedCollisionMatrix(), parent_->distance_threshold_);
+  DistanceRequest distance_req;
+  distance_req.enable_nearest_points = true;
+  distance_req.enable_signed_distance = true;
+  distance_req.active_components_only = &parent_->link_models_;
+  distance_req.acm = &state_.planning_scene->getAllowedCollisionMatrix();
+  distance_req.distance_threshold = parent_->distance_threshold_;
   distance_req.group_name = state.group_name;
   distance_res_.clear();
   
@@ -292,7 +347,7 @@ AvoidObstacles::AvoidObstaclesData::AvoidObstaclesData(const SolverState &state,
     state.collision_world->checkRobotCollision(collision_req, collision_res, *state.collision_robot, *state_.robot_state, state_.planning_scene->getAllowedCollisionMatrix());
   }
   Eigen::Affine3d tf = state_.robot_state->getGlobalLinkTransform(parent_->ik_->getKin().getRobotBaseLinkName()).inverse();
-  getDistanceInfo(distance_res_.distance, distance_info_map_, tf);
+  getDistanceInfo(distance_res_.distances, distance_info_map_, tf);
 }
 
 } // end namespace constraints

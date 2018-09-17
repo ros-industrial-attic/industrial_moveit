@@ -26,61 +26,10 @@
 #include <industrial_collision_detection/collision_detection/collision_common.h>
 #include <moveit/collision_detection_fcl/collision_common.h>
 #include <ros/ros.h>
+#include <console_bridge/console.h>
 
 namespace collision_detection
 {
-  bool getDistanceInfo(const DistanceMap &distance_detailed, DistanceInfoMap &distance_info_map)
-  {
-    Eigen::Affine3d tf;
-    tf.setIdentity();
-    return getDistanceInfo(distance_detailed, distance_info_map, tf);
-  }
-
-  bool getDistanceInfo(const DistanceMap &distance_detailed, DistanceInfoMap &distance_info_map, const Eigen::Affine3d &tf)
-  {
-    bool status = true;
-    for (DistanceMap::const_iterator it = distance_detailed.begin(); it != distance_detailed.end(); ++it)
-    {
-      DistanceInfo dist_info;
-      DistanceResultsData dist = static_cast<const DistanceResultsData>(it->second);
-      if (dist.link_name[0] == it->first)
-      {
-        dist_info.nearest_obsticle = dist.link_name[1];
-        dist_info.link_point = tf * dist.nearest_points[0];
-        dist_info.obsticle_point = tf * dist.nearest_points[1];
-        dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
-        dist_info.avoidance_vector.normalize();
-        dist_info.distance = dist.min_distance;
-      }
-      else if (dist.link_name[1] == it->first)
-      {
-        dist_info.nearest_obsticle = dist.link_name[0];
-        dist_info.link_point = tf * dist.nearest_points[1];
-        dist_info.obsticle_point = tf * dist.nearest_points[0];
-        dist_info.avoidance_vector = dist_info.link_point - dist_info.obsticle_point;
-        dist_info.avoidance_vector.normalize();
-        dist_info.distance = dist.min_distance;
-      }
-      else
-      {
-        ROS_ERROR("getDistanceInfo was unable to find link after match!");
-        status &= false;
-      }
-
-      distance_info_map.insert(std::make_pair(it->first, dist_info));
-    }
-
-    return status;
-  }
-
-  void DistanceRequest::enableGroup(const robot_model::RobotModelConstPtr &kmodel)
-  {
-    if (kmodel->hasJointModelGroup(group_name))
-      active_components_only = &kmodel->getJointModelGroup(group_name)->getUpdatedLinkModelsWithGeometrySet();
-    else
-      active_components_only = NULL;
-  }
-
   bool distanceDetailedCallback(fcl::CollisionObject* o1, fcl::CollisionObject* o2, void* data, double& min_dist)
   {
     DistanceData* cdata = reinterpret_cast<DistanceData*>(data);
@@ -176,9 +125,14 @@ namespace collision_detection
     double dist_threshold = cdata->req->distance_threshold;
     std::map<std::string, DistanceResultsData>::iterator it1, it2;
 
-    if (!cdata->req->global)
+    /*
+     * FIXME: The old Distance Query Data structures that existed in this package were replaced by their counterparts in the
+     * MoveIt! library.  Unfortunately the legacy code here isn't fully compatible with the new structure types and  so for
+     * now the broken code below has been disabled until the discrepancies get amended.
+     */
+    if (cdata->req->type == DistanceRequestType::GLOBAL)
     {
-      it1 = cdata->res->distance.find(cd1->ptr.obj->id_);
+/*      it1 = cdata->res->distance.find(cd1->ptr.obj->id_);
       it2 = cdata->res->distance.find(cd2->ptr.obj->id_);
 
       if (cdata->req->active_components_only)
@@ -203,31 +157,37 @@ namespace collision_detection
       {
         if (it1 != cdata->res->distance.end() && it2 != cdata->res->distance.end())
           dist_threshold = std::max(it1->second.min_distance, it2->second.min_distance);
-      }
+      }*/
     }
     else
     {
-        dist_threshold = cdata->res->minimum_distance.min_distance;
+        dist_threshold = cdata->res->minimum_distance.distance;
     }
 
     fcl_result.min_distance = dist_threshold;
-    double d = fcl::distance(o1, o2, fcl::DistanceRequest(cdata->req->detailed), fcl_result);
+    double d = fcl::distance(o1, o2, fcl::DistanceRequest{.enable_nearest_point = true}, fcl_result);
 
     // Check if either object is already in the map. If not add it or if present
     // check to see if the new distance is closer. If closer remove the existing
     // one and add the new distance information.
     if (d < dist_threshold)
     {
-      dist_result.min_distance = fcl_result.min_distance;
+      dist_result.distance = fcl_result.min_distance;
       dist_result.nearest_points[0] = Eigen::Vector3d(fcl_result.nearest_points[0].data.vs);
       dist_result.nearest_points[1] = Eigen::Vector3d(fcl_result.nearest_points[1].data.vs);
-      dist_result.link_name[0] = cd1->ptr.obj->id_;
-      dist_result.link_name[1] = cd2->ptr.obj->id_;
+      dist_result.link_names[0] = cd1->ptr.obj->id_;
+      dist_result.link_names[1] = cd2->ptr.obj->id_;
 
-      cdata->res->minimum_distance.update(dist_result);
+      cdata->res->minimum_distance = dist_result;
 
-      if (!cdata->req->global)
+      /*
+        * FIXME: The old Distance Query Data structures that existed in this package were replaced by their counterparts in the
+        * MoveIt! library.  Unfortunately the legacy code here isn't fully compatible with the new structure types and  so for
+        * now the broken code below has been disabled until the discrepancies get amended.
+        */
+      if (cdata->req->type == DistanceRequestType::GLOBAL)
       {
+        /*
         if (d <= 0 && !cdata->res->collision)
         {
           cdata->res->collision = true;
@@ -235,9 +195,9 @@ namespace collision_detection
 
         if (active1)
         {
-          if (it1 == cdata->res->distance.end())
+          if (it1 == cdata->res->distances.end())
           {
-            cdata->res->distance.insert(std::make_pair(cd1->ptr.obj->id_, dist_result));
+            cdata->res->distances.insert(std::make_pair(cd1->ptr.obj->id_, dist_result));
           }
           else
           {
@@ -256,6 +216,7 @@ namespace collision_detection
             it2->second.update(dist_result);
           }
         }
+        */
       }
       else
       {
