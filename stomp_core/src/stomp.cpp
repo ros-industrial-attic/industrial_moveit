@@ -366,8 +366,10 @@ bool Stomp::resetVariables()
   // generate finite difference matrix
   start_index_padded_ = FINITE_DIFF_RULE_LENGTH-1;
   num_timesteps_padded_ = config_.num_timesteps + 2*(FINITE_DIFF_RULE_LENGTH-1);
-  generateFiniteDifferenceMatrix(num_timesteps_padded_,DerivativeOrders::STOMP_ACCELERATION,
-                                 config_.delta_t,finite_diff_matrix_A_padded_);
+  generateFiniteDifferenceMatrix(num_timesteps_padded_,
+                                 static_cast<DerivativeOrders::DerivativeOrder>(config_.smoothing_derivative_order),
+                                 config_.delta_t,
+                                 finite_diff_matrix_A_padded_);
 
   /* control cost matrix (R = A_transpose * A):
    * Note: Original code multiplies the A product by the time interval.  However this is not
@@ -590,26 +592,25 @@ bool Stomp::computeNoisyRolloutsCosts()
 
 bool Stomp::computeRolloutsStateCosts()
 {
-
-  bool all_valid = true;
   bool proceed = true;
+
+  #pragma omp parallel for shared(proceed)
   for(auto r = 0u ; r < config_.num_rollouts; r++)
   {
-    if(!proceed_)
+    if(proceed)
     {
-      proceed = false;
-      break;
-    }
-
-    Rollout& rollout = noisy_rollouts_[r];
-    if(!task_->computeNoisyCosts(rollout.parameters_noise,0,
-                            config_.num_timesteps,
-                            current_iteration_,r,
-                            rollout.state_costs,all_valid))
-    {
-      ROS_ERROR("Trajectory cost computation failed for rollout %i.",r);
-      proceed = false;
-      break;
+      Rollout& rollout = noisy_rollouts_[r];
+      Eigen::VectorXd state_costs = rollout.state_costs;
+      bool validity = true;
+      if(!task_->computeNoisyCosts(rollout.parameters_noise,0,
+                                   config_.num_timesteps,
+                                   current_iteration_,r,
+                                   state_costs,validity))
+      {
+        ROS_ERROR("Trajectory cost computation failed for rollout %i.", r);
+        proceed = false;
+      }
+      rollout.state_costs = state_costs;
     }
   }
 

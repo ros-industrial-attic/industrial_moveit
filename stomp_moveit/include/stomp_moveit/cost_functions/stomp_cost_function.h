@@ -109,7 +109,7 @@ public:
                             int iteration_number,
                             int rollout_number,
                             Eigen::VectorXd& costs,
-                            bool& validity) = 0 ;
+                            bool& validity) const = 0 ;
 
   /**
    * @brief Called by STOMP at the end of each iteration.

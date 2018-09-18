@@ -87,6 +87,7 @@ struct StompConfiguration
   int num_dimensions;                    /**< @brief Parameter dimensionality */
   double delta_t;                        /**< @brief Time change between consecutive points */
   int initialization_method;             /**< @brief TrajectoryInitializations::TrajectoryInitialization */
+  int smoothing_derivative_order;        /**< @brief The derivative order used for smoothing */
 
   // Probability Calculation
   double exponentiated_cost_sensitivity; /**< @brief Default exponetiated cost sensitivity coefficient */
@@ -104,18 +105,18 @@ static const int FINITE_DIFF_RULE_LENGTH = 7;
 
 /** @brief Contains the coefficients for each of the finite central differentiation (position, velocity, acceleration, and jerk) */
 static const double FINITE_CENTRAL_DIFF_COEFFS[FINITE_DIFF_RULE_LENGTH][FINITE_DIFF_RULE_LENGTH] = {
-    {0, 0        , 0        , 1        , 0        , 0         , 0      }, // position
-    {0, 1.0/12.0 , -2.0/3.0 , 0        , 2.0/3.0  , -1.0/12.0 , 0      }, // velocity
-    {0, -1/12.0  , 16/12.0  , -30/12.0 , 16/12.0  , -1/12.0   , 0      }, // acceleration (five point stencil)
-    {0, 1/12.0   , -17/12.0 , 46/12.0  , -46/12.0 , 17/12.0   , -1/12.0}  // jerk
+    {0    , 0        , 0        , 1        , 0        , 0         , 0      }, // position
+    {0    , 1/12.0   , -2/3.0   , 0        , 2/3.0    , -1/12.0   , 0      }, // velocity
+    {0    , -1/12.0  , 16/12.0  , -30/12.0 , 16/12.0  , -1/12.0   , 0      }, // acceleration (five point stencil)
+    {1/8.0, -1       , 13/8.0   , 0        , -13/8.0  , 1         , -1/8.0 }  // jerk
 };
 
 /** @brief Contains the coefficients for each of the finite forward differentiation (position, velocity, acceleration, and jerk) */
 static const double FINITE_FORWARD_DIFF_COEFFS[FINITE_DIFF_RULE_LENGTH][FINITE_DIFF_RULE_LENGTH] = {
-    {1          , 0         , 0         , 0      , 0        , 0         , 0    }, // position
-    {-25.0/12.0 , 4.0       , -3.0      , 4.0/3.0, -1.0/4.0 , 0         , 0    }, // velocity
-    {15.0/4.0   , -77.0/6.0 , 107.0/6.0 , -13.0  , 61.0/12.0, -5.0/6.0  , 0    }, // acceleration (five point stencil)
-    {-49/8      , 29        , -461/8    , 62     , -307/8   , 13        , -15/8}  // jerk
+    {1          , 0         , 0         , 0      , 0        , 0         , 0      }, // position
+    {-25/12.0   , 4         , -3        , 4/3.0  , -1/4.0   , 0         , 0      }, // velocity
+    {15/4.0     , -77/6.0   , 107/6.0   , -13    , 61/12.0  , -5/6.0    , 0      }, // acceleration (five point stencil)
+    {-49/8.0    , 29        , -461/8.0  , 62     , -307/8.0 , 13        , -15/8.0}  // jerk
 };
 
 /**
@@ -141,10 +142,11 @@ void differentiate(const Eigen::VectorXd& parameters, DerivativeOrders::Derivati
 /**
  * @brief Generate a smoothing matrix M
  * @param num_time_steps       The number of timesteps
+ * @param order                The differentiation order
  * @param dt                   The timestep in seconds
  * @param projection_matrix_M  The smoothing matrix
  */
-void generateSmoothingMatrix(int num_time_steps, double dt, Eigen::MatrixXd& projection_matrix_M);
+void generateSmoothingMatrix(int num_time_steps, DerivativeOrders::DerivativeOrder order, double dt, Eigen::MatrixXd& projection_matrix_M);
 
 /**
  * @brief Convert a Eigen::MatrixXd to a std::vector<Eigen::VectorXd>

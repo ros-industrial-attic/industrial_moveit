@@ -96,7 +96,7 @@ public:
                             int iteration_number,
                             int rollout_number,
                             Eigen::VectorXd& costs,
-                            bool& validity) override;
+                            bool& validity) const override;
 
   virtual std::string getGroupName() const override
   {
@@ -121,7 +121,7 @@ protected:
    * @param longest_valid_joint_move  The maximum distance that the joints are allowed to move before checking for collisions.
    * @return  True if the interval is collision free, false otherwise.
    */
-  bool checkIntermediateCollisions(const Eigen::VectorXd& start, const Eigen::VectorXd& end,double longest_valid_joint_move);
+  bool checkIntermediateCollisions(const Eigen::VectorXd& start, const Eigen::VectorXd& end,double longest_valid_joint_move) const;
 
   std::string name_;
 
@@ -139,17 +139,10 @@ protected:
   double kernel_window_percentage_;     /**< @brief The value assigned to a collision state */
   double longest_valid_joint_move_;     /**< @brief how far can a joint move in between consecutive trajectory points */
 
-  // cost calculation
-  Eigen::VectorXd raw_costs_;
-  Eigen::ArrayXd intermediate_costs_slots_;
-
   // collision
   collision_detection::CollisionRequest collision_request_;
   collision_detection::CollisionRobotConstPtr collision_robot_;
   collision_detection::CollisionWorldConstPtr collision_world_;
-
-  // intermediate collision check support
-  std::array<moveit::core::RobotStatePtr,3 > intermediate_coll_states_;   /**< @brief Used in checking collisions between to consecutive poses*/
 
 };
 

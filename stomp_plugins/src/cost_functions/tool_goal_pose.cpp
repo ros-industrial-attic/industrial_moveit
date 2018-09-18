@@ -191,7 +191,7 @@ bool ToolGoalPose::computeCosts(const Eigen::MatrixXd& parameters,
                           int iteration_number,
                           int rollout_number,
                           Eigen::VectorXd& costs,
-                          bool& validity)
+                          bool& validity) const
 {
 
   using namespace Eigen;
@@ -222,14 +222,19 @@ bool ToolGoalPose::computeCosts(const Eigen::MatrixXd& parameters,
   costs.resize(parameters.cols());
   costs.setConstant(0.0);
 
-  last_joint_pose_ = parameters.rightCols(1);
-  state_->setJointGroupPositions(group_name_,last_joint_pose_);
-  last_tool_pose_ = state_->getGlobalLinkTransform(tool_link_);
+  Eigen::VectorXd last_joint_pose;
+  Eigen::Affine3d last_tool_pose;
+  Eigen::VectorXd tool_twist_error;
+  robot_state::RobotState robot_state(*state_);
 
-  computeTwist(last_tool_pose_,tool_goal_pose_,dof_nullity_,tool_twist_error_);
+  robot_state.setJointGroupPositions(group_name_, parameters.rightCols(1));
+  robot_state.update();
+  last_tool_pose = state_->getGlobalLinkTransform(tool_link_);
 
-  double pos_error = tool_twist_error_.segment(0,3).norm();
-  double orientation_error = tool_twist_error_.segment(3,3).norm();
+  computeTwist(last_tool_pose,tool_goal_pose_,dof_nullity_,tool_twist_error);
+
+  double pos_error = tool_twist_error.segment(0,3).norm();
+  double orientation_error = tool_twist_error.segment(3,3).norm();
 
 
   // scaling errors so that max total error  = pos_weight + orient_weight

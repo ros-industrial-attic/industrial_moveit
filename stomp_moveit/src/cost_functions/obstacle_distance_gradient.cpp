@@ -119,18 +119,12 @@ bool ObstacleDistanceGradient::setMotionPlanRequest(const planning_scene::Planni
     return false;
   }
 
-  // copying into intermediate robot states
-  for(auto& rs : intermediate_coll_states_)
-  {
-    rs.reset(new RobotState(*robot_state_));
-  }
-
   return true;
 }
 
 bool ObstacleDistanceGradient::computeCosts(const Eigen::MatrixXd& parameters, std::size_t start_timestep,
                                             std::size_t num_timesteps, int iteration_number, int rollout_number,
-                                            Eigen::VectorXd& costs, bool& validity)
+                                            Eigen::VectorXd& costs, bool& validity) const
 {
 
   if(!robot_state_)
@@ -160,13 +154,14 @@ bool ObstacleDistanceGradient::computeCosts(const Eigen::MatrixXd& parameters, s
 
     if(!skip_next_check)
     {
-      collision_result_.clear();
-      robot_state_->setJointGroupPositions(joint_group,parameters.col(t));
-      robot_state_->update();
-      collision_result_.distance = max_distance_;
+      collision_detection::CollisionResult collision_result;
+      robot_state::RobotState robot_state(*robot_state_);
+      robot_state.setJointGroupPositions(joint_group,parameters.col(t));
+      robot_state.update();
+      collision_result.distance = max_distance_;
 
-      planning_scene_->checkSelfCollision(collision_request_,collision_result_,*robot_state_,planning_scene_->getAllowedCollisionMatrix());
-      dist = collision_result_.collision ? -1.0 :collision_result_.distance ;
+      planning_scene_->checkSelfCollision(collision_request_, collision_result, robot_state, planning_scene_->getAllowedCollisionMatrix());
+      dist = collision_result.collision ? -1.0 :collision_result.distance ;
 
       if(dist >= max_distance_)
       {
@@ -207,7 +202,8 @@ bool ObstacleDistanceGradient::computeCosts(const Eigen::MatrixXd& parameters, s
 }
 
 bool ObstacleDistanceGradient::checkIntermediateCollisions(const Eigen::VectorXd& start,
-                                                           const Eigen::VectorXd& end,double longest_valid_joint_move)
+                                                           const Eigen::VectorXd& end,
+                                                           double longest_valid_joint_move) const
 {
   Eigen::VectorXd diff = end - start;
   int num_intermediate = std::ceil(((diff.cwiseAbs())/longest_valid_joint_move).maxCoeff()) - 1;
@@ -217,24 +213,18 @@ bool ObstacleDistanceGradient::checkIntermediateCollisions(const Eigen::VectorXd
     return true;
   }
 
-  // grabbing states
-  auto& start_state = intermediate_coll_states_[0];
-  auto& mid_state = intermediate_coll_states_[1];
-  auto& end_state = intermediate_coll_states_[2];
-
-  if(!start_state || !mid_state || !end_state)
-  {
-    ROS_ERROR("%s intermediate states not initialized",getName().c_str());
-    return false;
-  }
+  // states
+  robot_state::RobotState start_state(*robot_state_);
+  robot_state::RobotState mid_state(*robot_state_);
+  robot_state::RobotState end_state(*robot_state_);
 
   // setting up collision
-  auto req = collision_request_;
-  req.distance = false;
-  collision_detection::CollisionResult res;
   const moveit::core::JointModelGroup* joint_group = robot_model_ptr_->getJointModelGroup(group_name_);
-  start_state->setJointGroupPositions(joint_group,start);
-  end_state->setJointGroupPositions(joint_group,end);
+  start_state.setJointGroupPositions(joint_group,start);
+  start_state.update();
+
+  end_state.setJointGroupPositions(joint_group,end);
+  end_state.update();
 
   // checking intermediate states
   double dt = 1.0/static_cast<double>(num_intermediate);
@@ -242,8 +232,9 @@ bool ObstacleDistanceGradient::checkIntermediateCollisions(const Eigen::VectorXd
   for(std::size_t i = 1; i < num_intermediate;i++)
   {
     interval = i*dt;
-    start_state->interpolate(*end_state,interval,*mid_state) ;
-    if(planning_scene_->isStateColliding(*mid_state))
+    start_state.interpolate(end_state,interval,mid_state) ;
+    mid_state.update();
+    if(planning_scene_->isStateColliding(mid_state))
     {
       return false;
     }

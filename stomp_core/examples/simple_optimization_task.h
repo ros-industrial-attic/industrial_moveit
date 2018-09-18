@@ -53,7 +53,10 @@ public:
 
     // generate smoothing matrix
     int num_timesteps = parameters_bias.cols();
-    stomp_core::generateSmoothingMatrix(num_timesteps,1.0,smoothing_M_);
+    stomp_core::generateSmoothingMatrix(num_timesteps,
+                                        stomp_core::DerivativeOrders::STOMP_ACCELERATION,
+                                        1.0,
+                                        smoothing_M_);
     srand(time(0));
 
   }
@@ -131,7 +134,7 @@ public:
                          int iteration_number,
                          int rollout_number,
                          Eigen::VectorXd& costs,
-                         bool& validity) override
+                         bool& validity) const override
   {
     costs.setZero(num_timesteps);
     double diff;
