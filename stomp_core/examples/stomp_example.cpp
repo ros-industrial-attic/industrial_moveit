@@ -24,28 +24,35 @@
  * limitations under the License.
  */
 
-#include <iostream>
-#include <Eigen/Dense>
 #include "stomp_core/stomp.h"
 #include "simple_optimization_task.h"
+#include <Eigen/Dense>
+#include <iostream>
 
-using Trajectory = Eigen::MatrixXd;                              /**< Assign Type Trajectory to Eigen::MatrixXd Type */
+using Trajectory =
+    Eigen::MatrixXd; /**< Assign Type Trajectory to Eigen::MatrixXd Type */
 
 /**< Declaring optimization variables */
-static const std::size_t NUM_DIMENSIONS = 3;                            /**< Number of parameters to optimize */
-static const std::size_t NUM_TIMESTEPS = 20;                            /**< Number of timesteps */
-static const double DELTA_T = 0.1;                                      /**< Timestep in seconds */
-static const std::vector<double> START_POS = {1.4, 1.4, 0.5};           /**< Trajectory starting position */
-static const std::vector<double> END_POS = {-1.25, 1.0, -0.26};         /**< Trajectory ending posiiton */
-static const std::vector<double> BIAS_THRESHOLD = {0.050,0.050,0.050};  /**< Threshold to determine whether two trajectories are equal */
-static const std::vector<double> STD_DEV = {1.0, 1.0, 1.0};             /**< Standard deviation used for generating noisy parameters */
+static const std::size_t NUM_DIMENSIONS =
+    3; /**< Number of parameters to optimize */
+static const std::size_t NUM_TIMESTEPS = 20; /**< Number of timesteps */
+static const double DELTA_T = 0.1;           /**< Timestep in seconds */
+static const std::vector<double> START_POS = {
+    1.4, 1.4, 0.5}; /**< Trajectory starting position */
+static const std::vector<double> END_POS = {
+    -1.25, 1.0, -0.26}; /**< Trajectory ending posiiton */
+static const std::vector<double> BIAS_THRESHOLD = {
+    0.050, 0.050,
+    0.050}; /**< Threshold to determine whether two trajectories are equal */
+static const std::vector<double> STD_DEV = {
+    1.0, 1.0,
+    1.0}; /**< Standard deviation used for generating noisy parameters */
 
 /**
  * @brief Creates a STOMP configuration object with default parameters.
  * @return A STOMP configuration object
  */
-stomp_core::StompConfiguration create3DOFConfiguration()
-{
+stomp_core::StompConfiguration create3DOFConfiguration() {
   //! [Create Config]
   using namespace stomp_core;
 
@@ -65,23 +72,22 @@ stomp_core::StompConfiguration create3DOFConfiguration()
 }
 
 /**
- * @brief Compares whether two trajectories are close to each other within a threshold.
+ * @brief Compares whether two trajectories are close to each other within a
+ * threshold.
  * @param optimized optimized trajectory
  * @param desired desired trajectory
  * @param thresholds used to determine if two values are equal
- * @return True if the difference between the two is less than the threshold, otherwise false
+ * @return True if the difference between the two is less than the threshold,
+ * otherwise false
  */
-bool compareDiff(const Trajectory& optimized, const Trajectory& desired,
-                 const std::vector<double>& thresholds)
-{
+bool compareDiff(const Trajectory &optimized, const Trajectory &desired,
+                 const std::vector<double> &thresholds) {
   auto num_dimensions = optimized.rows();
-  Trajectory diff = Trajectory::Zero(num_dimensions,optimized.cols());
-  for(auto d = 0u;d < num_dimensions ; d++)
-  {
-    diff.row(d) = optimized.row(d)- desired.row(d);
+  Trajectory diff = Trajectory::Zero(num_dimensions, optimized.cols());
+  for (auto d = 0u; d < num_dimensions; d++) {
+    diff.row(d) = optimized.row(d) - desired.row(d);
     diff.row(d).cwiseAbs();
-    if((diff.row(d).array() > thresholds[d] ).any() )
-    {
+    if ((diff.row(d).array() > thresholds[d]).any()) {
       return false;
     }
   }
@@ -96,69 +102,57 @@ bool compareDiff(const Trajectory& optimized, const Trajectory& desired,
  * @param num_timesteps number of timesteps
  * @param traj returned linear interpolated trajectory
  */
-void interpolate(const std::vector<double>& start, const std::vector<double>& end,
-                 std::size_t num_timesteps, Trajectory& traj)
-{
+void interpolate(const std::vector<double> &start,
+                 const std::vector<double> &end, std::size_t num_timesteps,
+                 Trajectory &traj) {
   auto dimensions = start.size();
-  traj = Eigen::MatrixXd::Zero(dimensions,num_timesteps);
-  for(auto d = 0u; d < dimensions; d++)
-  {
-    double delta = (end[d] - start[d])/(num_timesteps - 1);
-    for(auto t = 0u; t < num_timesteps; t++)
-    {
-      traj(d,t) = start[d] + t*delta;
+  traj = Eigen::MatrixXd::Zero(dimensions, num_timesteps);
+  for (auto d = 0u; d < dimensions; d++) {
+    double delta = (end[d] - start[d]) / (num_timesteps - 1);
+    for (auto t = 0u; t < num_timesteps; t++) {
+      traj(d, t) = start[d] + t * delta;
     }
   }
 }
 
-int main(int argc,char** argv)
-{
+int main(int argc, char **argv) {
   using namespace stomp_core_examples;
   using namespace stomp_core;
 
   /**< Creating a Task with a trajectory bias **/
   Trajectory trajectory_bias;
-  interpolate(START_POS,END_POS,NUM_TIMESTEPS,trajectory_bias);
+  interpolate(START_POS, END_POS, NUM_TIMESTEPS, trajectory_bias);
 
   //! [Create Task Object]
-  TaskPtr task(new SimpleOptimizationTask(trajectory_bias,BIAS_THRESHOLD,STD_DEV));
+  TaskPtr task(
+      new SimpleOptimizationTask(trajectory_bias, BIAS_THRESHOLD, STD_DEV));
   //! [Create Task Object]
 
   //! [Create STOMP]
   /**< Creating STOMP to find a trajectory close enough to the bias **/
   StompConfiguration config = create3DOFConfiguration();
-  Stomp stomp(config,task);
+  Stomp stomp(config, task);
   //! [Create STOMP]
 
   //! [Solve]
   /**< Optimizing a trajectory close enough to the bias is produced **/
   Trajectory optimized;
-  if(stomp.solve(START_POS,END_POS,optimized))
-  {
-    std::cout<<"STOMP succeeded"<<std::endl;
-  }
-  else
-  {
-    std::cout<<"A valid solution was not found"<<std::endl;
+  Eigen::MatrixXd temp_original_trajectory;
+  if (stomp.solve(START_POS, END_POS, optimized, temp_original_trajectory)) {
+    std::cout << "STOMP succeeded" << std::endl;
+  } else {
+    std::cout << "A valid solution was not found" << std::endl;
     return -1;
   }
   //! [Solve]
 
   /**< Further verifying the results */
-  if(compareDiff(optimized,trajectory_bias,BIAS_THRESHOLD))
-  {
-    std::cout<<"The solution is within the expected thresholds"<<std::endl;
-  }
-  else
-  {
-    std::cout<<"The solution exceeded the required thresholds"<<std::endl;
+  if (compareDiff(optimized, trajectory_bias, BIAS_THRESHOLD)) {
+    std::cout << "The solution is within the expected thresholds" << std::endl;
+  } else {
+    std::cout << "The solution exceeded the required thresholds" << std::endl;
     return -1;
   }
 
   return 0;
-
 }
-
-
-
-

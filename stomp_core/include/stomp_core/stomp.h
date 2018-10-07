@@ -26,24 +26,22 @@
 #ifndef INDUSTRIAL_MOVEIT_STOMP_CORE_INCLUDE_STOMP_CORE_STOMP_H_
 #define INDUSTRIAL_MOVEIT_STOMP_CORE_INCLUDE_STOMP_CORE_STOMP_H_
 
+#include "stomp_core/task.h"
+#include <XmlRpc.h>
 #include <atomic>
 #include <stomp_core/utils.h>
-#include <XmlRpc.h>
-#include "stomp_core/task.h"
 
-namespace stomp_core
-{
+namespace stomp_core {
 
 /** @brief The Stomp class */
-class Stomp
-{
+class Stomp {
 public:
   /**
    * @brief Stomp Constructor
    * @param config Stomp configuration parameters
    * @param task The item to be optimized.
    */
-  Stomp(const StompConfiguration& config,TaskPtr task);
+  Stomp(const StompConfiguration &config, TaskPtr task);
 
   /**
    * @brief Find the optimal solution provided a start and end goal.
@@ -52,8 +50,9 @@ public:
    * @param parameters_optimized Optimized solution [parameters][timesteps]
    * @return True if solution was found, otherwise false.
    */
-  bool solve(const std::vector<double>& first,const std::vector<double>& last,
-             Eigen::MatrixXd& parameters_optimized);
+  bool solve(const std::vector<double> &first, const std::vector<double> &last,
+             Eigen::MatrixXd &parameters_optimized,
+             Eigen::MatrixXd temp_original_trajectory);
 
   /**
    * @brief Find the optimal solution provided a start and end goal.
@@ -62,8 +61,9 @@ public:
    * @param parameters_optimized Optimized solution [Parameters][timesteps]
    * @return True if solution was found, otherwise false.
    */
-  bool solve(const Eigen::VectorXd& first,const Eigen::VectorXd& last,
-             Eigen::MatrixXd& parameters_optimized);
+  bool solve(const Eigen::VectorXd &first, const Eigen::VectorXd &last,
+             Eigen::MatrixXd &parameters_optimized,
+             Eigen::MatrixXd temp_original_trajectory);
 
   /**
    * @brief Find the optimal solution provided an intial guess.
@@ -71,14 +71,14 @@ public:
    * @param parameters_optimized The optimized solution [Parameters][timesteps]
    * @return True if solution was found, otherwise false.
    */
-  bool solve(const Eigen::MatrixXd& initial_parameters,
-             Eigen::MatrixXd& parameters_optimized);
+  bool solve(const Eigen::MatrixXd &initial_parameters,
+             Eigen::MatrixXd &parameters_optimized);
 
   /**
    * @brief Sets the configuration and resets all internal variables
    * @param config Stomp Configuration struct
    */
-  void setConfig(const StompConfiguration& config);
+  void setConfig(const StompConfiguration &config);
 
   /**
    * @brief Cancel optimization in progress. (Thread-Safe)
@@ -93,9 +93,7 @@ public:
    */
   bool clear();
 
-
 protected:
-
   // initialization methods
   /**
    * @brief Reset all internal variables.
@@ -109,13 +107,17 @@ protected:
    * @param last Final state for the task
    * @return True if sucessful, otherwise false.
    */
-  bool computeInitialTrajectory(const std::vector<double>& first,const std::vector<double>& last);
+  bool computeInitialTrajectory(const std::vector<double> &first,
+                                const std::vector<double> &last,
+                                Eigen::MatrixXd original_trajectory);
 
   // optimization steps
   /**
    * @brief Run a single iteration of the stomp algorithm
-   * @return True if it was able to succesfully perform a single iteration. False
-   * is returned when an error is encounter at one of the many optimization steps.
+   * @return True if it was able to succesfully perform a single iteration.
+   * False
+   * is returned when an error is encounter at one of the many optimization
+   * steps.
    */
   bool runSingleIteration();
 
@@ -126,7 +128,8 @@ protected:
   bool generateNoisyRollouts();
 
   /**
-   * @brief Applies the optimization task's filter methods to the noisy trajectories.
+   * @brief Applies the optimization task's filter methods to the noisy
+   * trajectories.
    * @return True if sucessful, otherwise false.
    */
   bool filterNoisyRollouts();
@@ -153,7 +156,8 @@ protected:
   bool computeRolloutsControlCosts();
 
   /**
-   * @brief Computes the probability from the state cost at every timestep for each noisy rollout.
+   * @brief Computes the probability from the state cost at every timestep for
+   * each noisy rollout.
    * @return True if sucessful, otherwise false.
    */
   bool computeProbabilities();
@@ -173,36 +177,59 @@ protected:
   bool computeOptimizedCost();
 
 protected:
-
   // process control
-  std::atomic<bool> proceed_;                      /**< @brief Used to determine if the optimization has been cancelled. */
-  TaskPtr task_;                                   /**< @brief The task to be optimized. */
-  StompConfiguration config_;                      /**< @brief Configuration parameters. */
-  unsigned int current_iteration_;                 /**< @brief Current iteration for the optimization. */
+  std::atomic<bool>
+      proceed_;  /**< @brief Used to determine if the optimization has been
+                    cancelled. */
+  TaskPtr task_; /**< @brief The task to be optimized. */
+  StompConfiguration config_; /**< @brief Configuration parameters. */
+  unsigned int
+      current_iteration_; /**< @brief Current iteration for the optimization. */
 
   // optimized parameters
-  bool parameters_valid_;                          /**< @brief whether or not the optimized parameters are valid */
-  double parameters_total_cost_;                   /**< @brief Total cost of the optimized parameters */
-  double current_lowest_cost_;                     /**< @brief Hold the lowest cost of the optimized parameters */
-  Eigen::MatrixXd parameters_optimized_;           /**< @brief A matrix [dimensions][timesteps] of the optimized parameters. */
-  Eigen::MatrixXd parameters_updates_;             /**< @brief A matrix [dimensions][timesteps] of the parameter updates*/
-  Eigen::VectorXd parameters_state_costs_;         /**< @brief A vector [timesteps] of the parameters state costs */
-  Eigen::MatrixXd parameters_control_costs_;       /**< @brief A matrix [dimensions][timesteps] of the parameters control costs*/
+  bool parameters_valid_; /**< @brief whether or not the optimized parameters
+                             are valid */
+  double parameters_total_cost_; /**< @brief Total cost of the optimized
+                                    parameters */
+  double
+      current_lowest_cost_; /**< @brief Hold the lowest cost of the optimized
+                               parameters */
+  Eigen::MatrixXd parameters_optimized_;     /**< @brief A matrix
+                                                [dimensions][timesteps] of the
+                                                optimized parameters. */
+  Eigen::MatrixXd parameters_updates_;       /**< @brief A matrix
+                                                [dimensions][timesteps] of the
+                                                parameter updates*/
+  Eigen::VectorXd parameters_state_costs_;   /**< @brief A vector [timesteps] of
+                                                the parameters state costs */
+  Eigen::MatrixXd parameters_control_costs_; /**< @brief A matrix
+                                                [dimensions][timesteps] of the
+                                                parameters control costs*/
 
   // rollouts
-  std::vector<Rollout> noisy_rollouts_;            /**< @brief Holds the noisy rollouts */
-  std::vector<Rollout> reused_rollouts_;           /**< @brief Used for reordering arrays based on cost */
-  int num_active_rollouts_;                        /**< @brief Number of active rollouts */
+  std::vector<Rollout> noisy_rollouts_; /**< @brief Holds the noisy rollouts */
+  std::vector<Rollout>
+      reused_rollouts_; /**< @brief Used for reordering arrays based on cost */
+  int num_active_rollouts_; /**< @brief Number of active rollouts */
 
   // finite difference and optimization matrices
-  int num_timesteps_padded_;                       /**< @brief The number of timesteps to pad the optimization with: timesteps + 2*(FINITE_DIFF_RULE_LENGTH - 1) */
-  int start_index_padded_;                         /**< @brief The index corresponding to the start of the non-paded section in the padded arrays */
-  Eigen::MatrixXd finite_diff_matrix_A_padded_;    /**< @brief The finite difference matrix including padding */
-  Eigen::MatrixXd control_cost_matrix_R_padded_;   /**< @brief The control cost matrix including padding */
-  Eigen::MatrixXd control_cost_matrix_R_;          /**< @brief A matrix [timesteps][timesteps], Referred to as 'R = A x A_transpose' in the literature */
-  Eigen::MatrixXd inv_control_cost_matrix_R_;      /**< @brief A matrix [timesteps][timesteps], R^-1 ' matrix */
-
-
+  int num_timesteps_padded_; /**< @brief The number of timesteps to pad the
+                                optimization with: timesteps +
+                                2*(FINITE_DIFF_RULE_LENGTH - 1) */
+  int start_index_padded_;   /**< @brief The index corresponding to the start of
+                                the non-paded section in the padded arrays */
+  Eigen::MatrixXd finite_diff_matrix_A_padded_;  /**< @brief The finite
+                                                    difference matrix including
+                                                    padding */
+  Eigen::MatrixXd control_cost_matrix_R_padded_; /**< @brief The control cost
+                                                    matrix including padding */
+  Eigen::MatrixXd
+      control_cost_matrix_R_; /**< @brief A matrix [timesteps][timesteps],
+                                 Referred to as 'R = A x A_transpose' in the
+                                 literature */
+  Eigen::MatrixXd
+      inv_control_cost_matrix_R_; /**< @brief A matrix [timesteps][timesteps],
+                                     R^-1 ' matrix */
 };
 
 } /* namespace stomp */
