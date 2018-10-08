@@ -191,9 +191,8 @@ protected:
                              are valid */
   double parameters_total_cost_; /**< @brief Total cost of the optimized
                                     parameters */
-  double
-      current_lowest_cost_; /**< @brief Hold the lowest cost of the optimized
-                               parameters */
+  double current_lowest_cost_; /**< @brief Hold the lowest cost of the optimized
+                                  parameters */
   Eigen::MatrixXd parameters_optimized_;     /**< @brief A matrix
                                                 [dimensions][timesteps] of the
                                                 optimized parameters. */

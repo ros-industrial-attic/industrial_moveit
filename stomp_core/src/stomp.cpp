@@ -60,6 +60,21 @@ static void computeLinearInterpolation(const std::vector<double> &first,
   }
 }
 
+static void assignJointsInTrajectory(Eigen::MatrixXd &trajectory1,
+                                     Eigen::MatrixXd &trajectory2,
+                                     int trajectory_joint_index1,
+                                     int trajectory_joint_index2) {
+  // std::cout << trajectory1.rows() << " rows " << trajectory1.cols() << " cols
+  // " << std::endl;
+  // std::cout << trajectory2.rows() << " rows " << trajectory2.cols() << " cols
+  // " << std::endl;
+
+  for (int i = 0; i < trajectory2.cols(); i++) {
+    trajectory1(i, trajectory_joint_index1) =
+        trajectory2(trajectory_joint_index2, i);
+  }
+}
+
 /**
  * @brief Compute a replicated trajectory
  * @param first             The start position
@@ -74,14 +89,86 @@ static void fillFromTrajectory(const std::vector<double> &first,
                                int num_timesteps,
                                Eigen::MatrixXd &trajectory_joints,
                                Eigen::MatrixXd trajectory_joints2) {
-  trajectory_joints.setZero(first.size(), num_timesteps);
-  for (int unsigned i = 0; i < first.size(); i++) {
+
+  std::cout << "I am in fillTrajectory " << first.size() << " " << num_timesteps
+            << std::endl;
+  std::cout << "I am in fillTrajectory " << trajectory_joints2.rows() << " "
+            << trajectory_joints2.cols() << std::endl;
+  std::cout << "I am in fillTrajectory " << trajectory_joints.rows() << " "
+            << trajectory_joints.cols() << std::endl;
+  // trajectory_joints.setZero(first.size(), num_timesteps);
+  int num_rows_trajectory1 = trajectory_joints.cols();
+  int num_rows_trajectory2 = trajectory_joints2.rows();
+
+  int num_joints = trajectory_joints.rows();
+
+  std::cout << num_rows_trajectory1 << "rows1  " << std::endl;
+  std::cout << num_rows_trajectory2 << "rows2  " << std::endl;
+
+  /// NEED to change this part to make it work
+  if (num_rows_trajectory1 > num_rows_trajectory2) {
+    int response_point_id = 0;
+    // variables for populating the CHOMP trajectory with correct number of
+    // trajectory points
+    int repeated_factor = num_rows_trajectory1 / num_rows_trajectory2;
+    int repeated_balance_factor = num_rows_trajectory1 % num_rows_trajectory2;
+
+    std::cout << repeated_balance_factor << " repeated balance factor "
+              << std::endl;
+    std::cout << repeated_factor << " repeated factor " << std::endl;
+
+    for (int i = 0; i < num_rows_trajectory2; i++) {
+      for (int k = 0; k < repeated_factor; k++) {
+        assignJointsInTrajectory(trajectory_joints, trajectory_joints2,
+                                 response_point_id, i);
+        response_point_id++;
+
+        for (int m = 0; m < num_joints; m++)
+          std::cout << trajectory_joints(m, i) << " @ ";
+        std::cout << " response " << response_point_id << std::endl;
+      }
+      std::cout << repeated_balance_factor << " repeated balance factor "
+                << std::endl;
+      if (i < repeated_balance_factor) {
+        std::cout << "I am in repeated balance factor " << std::endl;
+        assignJointsInTrajectory(trajectory_joints, trajectory_joints2,
+                                 response_point_id, i);
+        response_point_id++;
+      }
+      // for(int m=0 ; m<num_joints ; m++)
+      //    std::cout << trajectory_joints(m,i) << std::endl;
+      // std::cout << std::endl;
+    }
+  }
+  /// The following else part works good
+  else if (num_rows_trajectory1 < num_rows_trajectory2) {
+    std::cout << "I am here when num_trajectory2 > num_trajectory1 "
+              << std::endl;
+
+    double decimation_sampling_factor =
+        ((double)num_rows_trajectory2 / (double)num_rows_trajectory1);
+
+    for (int i = 0; i < num_rows_trajectory1; i++) {
+      // std::cout << i << " " << num_rows_trajectory1 << std::endl;
+      int sampled_point = floor(i * decimation_sampling_factor);
+      assignJointsInTrajectory(trajectory_joints, trajectory_joints2, i,
+                               sampled_point);
+    }
+  } else {
+    for (int i = 0; i < num_rows_trajectory1; i++) {
+      assignJointsInTrajectory(trajectory_joints, trajectory_joints2, i, i);
+    }
+  }
+
+  /// OLDER CODE for populating the trajectory.
+  /*for (int unsigned i = 0; i < trajectory_joints2.rows(); i++) {
     // double dtheta = (last[i] - first[i])/(num_timesteps - 1);
-    for (unsigned int j = 0; j < num_timesteps; j++) {
+    for (unsigned int j = 0; j < trajectory_joints2.cols() ; j++) {
       trajectory_joints(i, j) = trajectory_joints2(i, j);
       // trajectory_joints(i,j) = first[i] + j * dtheta;
     }
-  }
+  }*/
+  std::cout << "successfully finished the foor loops" << std::endl;
 }
 
 /**
@@ -434,7 +521,8 @@ bool Stomp::computeInitialTrajectory(const std::vector<double> &first,
     break;
 
   case TrajectoryInitializations::FILL_TRAJECTORY:
-
+    // parameters_optimized_.resize(original_trajectory.rows(),
+    // original_trajectory.cols());
     fillFromTrajectory(first, last, config_.num_timesteps,
                        parameters_optimized_, original_trajectory);
     break;

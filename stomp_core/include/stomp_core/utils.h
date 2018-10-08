@@ -48,8 +48,7 @@ struct Rollout {
                                     [num_dimensions][num_time_steps] of the
                                     control cost for each parameter at every
                                     timestep */
-  Eigen::
-      MatrixXd total_costs;      /**< @brief A matrix
+  Eigen::MatrixXd total_costs;   /**< @brief A matrix
                                     [num_dimensions][num_time_steps] of the total
                                     cost, where total_cost[d] = state_costs_ +
                                     control_costs_[d]*/
