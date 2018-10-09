@@ -28,10 +28,8 @@
 
 #include "constrained_ik/constraint.h"
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 /**
  * @class constrained_ik::constraints::GoalMidJoint
  * @brief Constraint to push joint to center of its range
@@ -39,8 +37,7 @@ namespace constraints
  * @par Examples:
  * All examples are located here @ref goal_mid_joint_example
  */
-class GoalMidJoint : public Constraint
-{
+class GoalMidJoint : public Constraint {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   GoalMidJoint();
@@ -54,7 +51,8 @@ public:
   void init(const Constrained_IK *ik) override;
 
   /** @brief see base class for documentation*/
-  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+  constrained_ik::ConstraintResults
+  evalConstraint(const SolverState &state) const override;
 
   /** @brief see base class for documentation*/
   void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) override;
@@ -67,7 +65,8 @@ public:
   virtual Eigen::MatrixXd calcJacobian(const ConstraintData &cdata) const;
 
   /**
-   * @brief Desired joint velocity is difference between min-range and current position
+   * @brief Desired joint velocity is difference between min-range and current
+   * position
    * @param cdata The constraint specific data.
    * @return difference in joint position scaled by weight
    */
@@ -78,28 +77,28 @@ public:
    * @param cdata The constraint specific data.
    * @return True always (no termination criteria)
    */
-  virtual bool checkStatus(const ConstraintData &cdata) const { return true;} //always return true
+  virtual bool checkStatus(const ConstraintData &cdata) const {
+    return true;
+  } // always return true
 
   /**
    * @brief Getter for weight_
    * @return weight_
    */
-  virtual double getWeight() const {return weight_;}
+  virtual double getWeight() const { return weight_; }
 
   /**@brief setter for weight_
    * @param weight Value to set weight_ to
    */
-  virtual void setWeight(double weight) {weight_ = weight;}
+  virtual void setWeight(double weight) { weight_ = weight; }
 
 protected:
   double weight_; /**< @brief weights used to scale the jocabian and error */
-  Eigen::VectorXd mid_range_;   /**< @brief mid-range of each joint */
+  Eigen::VectorXd mid_range_; /**< @brief mid-range of each joint */
 
 }; // class GoalMidJoint
 
 } // namespace constraints
 } // namespace constrained_ik
 
-
 #endif // GOAL_MID_JOINT_H
-

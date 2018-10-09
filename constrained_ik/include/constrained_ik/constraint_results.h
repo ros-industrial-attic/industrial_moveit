@@ -26,103 +26,96 @@
 #ifndef CONSTRAINT_RESULTS
 #define CONSTRAINT_RESULTS
 
-#include <ros/ros.h>
 #include <Eigen/Core>
+#include <ros/ros.h>
 
-namespace constrained_ik
-{
-  /** @brief This class is used to store a constraints results. */
-  class ConstraintResults
-  {
-  public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+namespace constrained_ik {
+/** @brief This class is used to store a constraints results. */
+class ConstraintResults {
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    ConstraintResults():status(true){}
+  ConstraintResults() : status(true) {}
 
-    Eigen::VectorXd error;    /**< Error of the constraint */
+  Eigen::VectorXd error; /**< Error of the constraint */
 
-    Eigen::MatrixXd jacobian; /**< Jacobian of the constraint */
+  Eigen::MatrixXd jacobian; /**< Jacobian of the constraint */
 
-    bool status;              /**< Current status of the constraint, True Converged, False Not Converged */
+  bool
+      status; /**< Current status of the constraint, True Converged, False Not
+                 Converged */
 
-    /**
-     * @brief Append the provided result this result
-     * @param cdata ConstraintResults to append
-     */
-    virtual void append(const ConstraintResults &cdata)
-    {
-      appendError(cdata.error);
-      appendJacobian(cdata.jacobian);
-      status &= cdata.status;
+  /**
+   * @brief Append the provided result this result
+   * @param cdata ConstraintResults to append
+   */
+  virtual void append(const ConstraintResults &cdata) {
+    appendError(cdata.error);
+    appendJacobian(cdata.jacobian);
+    status &= cdata.status;
+  }
+
+  /**
+   * @brief Check if empty
+   * @return True if empty, otherwise false
+   */
+  virtual bool isEmpty() {
+    if (error.rows() == 0 || jacobian.rows() == 0)
+      return true;
+    else
+      return false;
+  }
+
+protected:
+  /**
+   * @brief This append an error vector to the current
+   *
+   * This method does a resize in-place, and may be inefficient if called many
+   * times
+   *
+   * @param addError error vector to be appended
+   */
+  virtual void appendError(const Eigen::VectorXd &addError) {
+    if (addError.rows() == 0) {
+      ROS_DEBUG("trying to add a Error with no data");
+      return;
     }
 
-    /**
-     * @brief Check if empty
-     * @return True if empty, otherwise false
-     */
-    virtual bool isEmpty()
-    {
-      if (error.rows() == 0 || jacobian.rows() == 0)
-        return true;
-      else
-        return false;
+    if (error.rows() == 0)
+      error = addError;
+    else {
+      size_t nAddRows = addError.rows();
+      error.conservativeResize(error.rows() + nAddRows);
+      error.tail(nAddRows) = addError;
     }
+  }
 
-  protected:
-    /**
-     * @brief This append an error vector to the current
-     *
-     * This method does a resize in-place, and may be inefficient if called many times
-     *
-     * @param addError error vector to be appended
-     */
-    virtual void appendError(const Eigen::VectorXd &addError)
-    {
-      if (addError.rows() == 0)
-      {
-        ROS_DEBUG("trying to add a Error with no data");
-        return;
-      }
-
-      if (error.rows() == 0)
-        error = addError;
-      else
-      {
-        size_t nAddRows = addError.rows();
-        error.conservativeResize(error.rows() + nAddRows);
-        error.tail(nAddRows) = addError;
-      }
+  /**
+   * @brief This appends a Jacobian to the current
+   *
+   * This method does a resize in-place, and may be inefficient if called many
+   * times
+   *
+   * @param addJacobian Jacobian to be appended
+   */
+  virtual void appendJacobian(const Eigen::MatrixXd &addJacobian) {
+    if (addJacobian.rows() == 0 || addJacobian.cols() == 0) {
+      ROS_DEBUG("trying to add a Jacobian with no data");
+      return;
     }
-
-    /**
-     * @brief This appends a Jacobian to the current
-     *
-     * This method does a resize in-place, and may be inefficient if called many times
-     *
-     * @param addJacobian Jacobian to be appended
-     */
-    virtual void appendJacobian(const Eigen::MatrixXd &addJacobian)
+    if (jacobian.rows() == 0) // first call gets to set size
     {
-      if(addJacobian.rows() == 0 || addJacobian.cols() == 0)
-      {
-        ROS_DEBUG("trying to add a Jacobian with no data");
-        return;
-      }
-      if (jacobian.rows() == 0) // first call gets to set size
-      {
-        size_t nAddRows = addJacobian.rows();
-        jacobian.conservativeResize(jacobian.rows() + nAddRows, addJacobian.cols());
-        jacobian.bottomRows(nAddRows) = addJacobian;
-      }
-      else
-      {
-        ROS_ASSERT(jacobian.cols() == addJacobian.cols());
-        size_t nAddRows = addJacobian.rows();
-        jacobian.conservativeResize(jacobian.rows() + nAddRows, Eigen::NoChange);
-        jacobian.bottomRows(nAddRows) = addJacobian;
-      }
+      size_t nAddRows = addJacobian.rows();
+      jacobian.conservativeResize(jacobian.rows() + nAddRows,
+                                  addJacobian.cols());
+      jacobian.bottomRows(nAddRows) = addJacobian;
+    } else {
+      ROS_ASSERT(jacobian.cols() == addJacobian.cols());
+      size_t nAddRows = addJacobian.rows();
+      jacobian.conservativeResize(jacobian.rows() + nAddRows, Eigen::NoChange);
+      jacobian.bottomRows(nAddRows) = addJacobian;
     }
-  };
+  }
+};
 }
 #endif // CONSTRAINT_RESULTS
-

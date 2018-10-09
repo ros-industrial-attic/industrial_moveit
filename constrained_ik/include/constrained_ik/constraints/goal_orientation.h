@@ -29,10 +29,8 @@
 #include "constrained_ik/constraint.h"
 #include <constrained_ik/solver_state.h>
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 /**
  * @class constrained_ik::constraints::GoalOrientation
  * @brief Constraint to specify Cartesian goal orientation (XYZ rotation)
@@ -40,15 +38,13 @@ namespace constraints
  * @par Examples:
  * All examples are located here @ref goal_orientation_example
  */
-class GoalOrientation : public Constraint
-{
+class GoalOrientation : public Constraint {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   /** @brief This structure stores constraint data */
-  struct GoalOrientationData: public ConstraintData
-  {
+  struct GoalOrientationData : public ConstraintData {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    double rot_err_;      /**< @brief current solution orientation error */
+    double rot_err_; /**< @brief current solution orientation error */
 
     /** @brief see base class for documentation*/
     GoalOrientationData(const constrained_ik::SolverState &state);
@@ -57,7 +53,8 @@ public:
   GoalOrientation();
 
   /** @brief see base class for documentation*/
-  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+  constrained_ik::ConstraintResults
+  evalConstraint(const SolverState &state) const override;
 
   /** @brief see base class for documentation*/
   void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) override;
@@ -89,17 +86,20 @@ public:
   static double calcAngle(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
 
   /**
-   * @brief Calculate 3-element rotation vector necessary to rotate pose p1 into pose p2
+   * @brief Calculate 3-element rotation vector necessary to rotate pose p1 into
+   * pose p2
    * @todo This should be moved to the utils class
    * @param p1 Current pose
    * @param p2 Goal pose
    * @return x,y,z rotation from p1 to p2
    */
-  static Eigen::Vector3d calcAngleError(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
+  static Eigen::Vector3d calcAngleError(const Eigen::Affine3d &p1,
+                                        const Eigen::Affine3d &p2);
 
   /**
    * @brief Checks termination criteria
-   * Termination criteria for this constraint is that angle error is below threshold
+   * Termination criteria for this constraint is that angle error is below
+   * threshold
    * @param cdata The constraint specific data.
    * @return True if angle error is below threshold
    */
@@ -109,35 +109,36 @@ public:
    * @brief Getter for weight_
    * @return weight_
    */
-  virtual Eigen::Vector3d getWeight() const {return weight_;}
+  virtual Eigen::Vector3d getWeight() const { return weight_; }
 
   /**
    * @brief Setter for weight_
    * @param weight Value to assign to weight_
    */
-  virtual void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;}
+  virtual void setWeight(const Eigen::Vector3d &weight) { weight_ = weight; }
 
   /**
    * @brief Getter for rot_err_tol_
    * @return rot_err_tol_
    */
-  virtual double getTolerance() const {return rot_err_tol_;}
+  virtual double getTolerance() const { return rot_err_tol_; }
 
   /**
    * @brief Setter for tolerance (termination criteria)
    * @param tol Value to assign to tol_
    */
-  virtual void setTolerance(double tol) {rot_err_tol_ = tol;}  //TODO turn tolerance into Vector3d
+  virtual void setTolerance(double tol) {
+    rot_err_tol_ = tol;
+  } // TODO turn tolerance into Vector3d
 
 protected:
-  double rot_err_tol_;  /**< @brief termination criteria */
-  Eigen::Vector3d weight_;    /**< @brief weights used to scale the jocabian and error */
+  double rot_err_tol_; /**< @brief termination criteria */
+  Eigen::Vector3d
+      weight_; /**< @brief weights used to scale the jocabian and error */
 
 }; // class GoalOrientation
 
 } // namespace constraints
 } // namespace constrained_ik
 
-
 #endif // GOAL_ORIENTATION_H
-

@@ -11,8 +11,7 @@ using namespace Eigen;
  * @brief This is an example shows how to add constraint/constraints
  * using a yaml file loaded to the ros param server.
  */
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   ros::init(argc, argv, "constraints_from_yaml_example");
   Constrained_IK ik;
   BasicKin kin;

@@ -1,6 +1,7 @@
 /**
  * @file tool_position.h
- * @brief Constraint to specify cartesian goal position in tool frame (XYZ rotation).
+ * @brief Constraint to specify cartesian goal position in tool frame (XYZ
+ * rotation).
  *
  * @author dsolomon
  * @date Sep 23, 2013
@@ -29,32 +30,32 @@
 #include "constrained_ik/constraint.h"
 #include "constrained_ik/constraints/goal_position.h"
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 /**
  * @class constrained_ik::constraints::ToolPosition
- * @brief Constraint to specify cartesian goal position in tool frame (XYZ rotation)
+ * @brief Constraint to specify cartesian goal position in tool frame (XYZ
+ * rotation)
  * @todo This class should be renamed to GoolToolPosition
  *
  * @par Examples:
  * All examples are located here @ref goal_tool_position_example
  */
-class ToolPosition : public GoalPosition
-{
+class ToolPosition : public GoalPosition {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   ToolPosition();
 
-  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+  constrained_ik::ConstraintResults
+  evalConstraint(const SolverState &state) const override;
 
   /**
    * @brief Jacobian is the first three rows of standard jacobian
    * expressed in tool frame coordinates.
    * Each row is scaled by the corresponding element of weight_
    * @param cdata The constraint specific data.
-   * @return First 3 rows of standard jacobian expressed in tool frame, scaled by weight_
+   * @return First 3 rows of standard jacobian expressed in tool frame, scaled
+   * by weight_
    */
   Eigen::MatrixXd calcJacobian(const GoalPositionData &cdata) const override;
 
@@ -63,7 +64,8 @@ public:
    * Resolve into primary vectors (x,y,z) of tool coordinate system
    * Each element is multiplied by corresponding element in weight_
    * @param cdata The constraint specific data.
-   * @return Vector from current to goal expressed in tool frame, scaled by weight_
+   * @return Vector from current to goal expressed in tool frame, scaled by
+   * weight_
    */
   Eigen::VectorXd calcError(const GoalPositionData &cdata) const override;
 
@@ -72,6 +74,4 @@ public:
 } // namespace constraints
 } // namespace constrained_ik
 
-
 #endif // GOAL_TOOL_ORIENTATION_H
-

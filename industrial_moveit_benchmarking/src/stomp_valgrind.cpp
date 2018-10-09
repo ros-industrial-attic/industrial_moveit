@@ -23,19 +23,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <fstream>
 #include <kdl_parser/kdl_parser.hpp>
-#include <ros/ros.h>
-#include <ros/package.h>
-#include <ros/console.h>
-#include <string.h>
-#include <moveit/robot_model_loader/robot_model_loader.h>
-#include <moveit/robot_model/joint_model_group.h>
-#include <moveit/robot_state/conversions.h>
+#include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <moveit/kinematic_constraints/kinematic_constraint.h>
 #include <moveit/kinematic_constraints/utils.h>
-#include <moveit/collision_plugin_loader/collision_plugin_loader.h>
+#include <moveit/robot_model/joint_model_group.h>
+#include <moveit/robot_model_loader/robot_model_loader.h>
+#include <moveit/robot_state/conversions.h>
+#include <ros/console.h>
+#include <ros/package.h>
+#include <ros/ros.h>
 #include <stomp_moveit/stomp_planner.h>
-#include <fstream>
+#include <string.h>
 
 using namespace ros;
 using namespace stomp_moveit;
@@ -43,14 +43,13 @@ using namespace Eigen;
 using namespace moveit::core;
 using namespace std;
 
-int main (int argc, char *argv[])
-{
-  ros::init(argc,argv,"stomp_valgrid");
+int main(int argc, char *argv[]) {
+  ros::init(argc, argv, "stomp_valgrid");
   ros::NodeHandle pnh;
 
-
-  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug))
-     ros::console::notifyLoggerLevelsChanged();
+  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
+                                     ros::console::levels::Debug))
+    ros::console::notifyLoggerLevelsChanged();
 
   sleep(3);
   map<string, XmlRpc::XmlRpcValue> config;
@@ -58,33 +57,37 @@ int main (int argc, char *argv[])
   robot_model::RobotModelPtr robot_model;
   string urdf_file_path, srdf_file_path;
 
-  urdf_file_path = package::getPath("stomp_test_support") + "/urdf/test_kr210l150_500K.urdf";
-  srdf_file_path = package::getPath("stomp_test_kr210_moveit_config") + "/config/test_kr210.srdf";
+  urdf_file_path =
+      package::getPath("stomp_test_support") + "/urdf/test_kr210l150_500K.urdf";
+  srdf_file_path = package::getPath("stomp_test_kr210_moveit_config") +
+                   "/config/test_kr210.srdf";
 
-  ifstream ifs1 (urdf_file_path.c_str());
-  string urdf_string((istreambuf_iterator<char>(ifs1)), (istreambuf_iterator<char>()));
+  ifstream ifs1(urdf_file_path.c_str());
+  string urdf_string((istreambuf_iterator<char>(ifs1)),
+                     (istreambuf_iterator<char>()));
 
-  ifstream ifs2 (srdf_file_path.c_str());
-  string srdf_string((istreambuf_iterator<char>(ifs2)), (istreambuf_iterator<char>()));
+  ifstream ifs2(srdf_file_path.c_str());
+  string srdf_string((istreambuf_iterator<char>(ifs2)),
+                     (istreambuf_iterator<char>()));
 
   robot_model_loader::RobotModelLoader::Options opts(urdf_string, srdf_string);
   loader.reset(new robot_model_loader::RobotModelLoader(opts));
   robot_model = loader->getModel();
 
-  if (!robot_model)
-  {
+  if (!robot_model) {
     ROS_ERROR_STREAM("Unable to load robot model from urdf and srdf.");
     return false;
   }
 
   StompPlanner::getConfigData(pnh, config);
-  planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(robot_model));
+  planning_scene::PlanningScenePtr planning_scene(
+      new planning_scene::PlanningScene(robot_model));
   planning_interface::MotionPlanRequest req;
   planning_interface::MotionPlanResponse res;
   string group_name = "manipulator_rail";
   StompPlanner stomp(group_name, config[group_name], robot_model);
 
-  //Now assign collision detection plugin
+  // Now assign collision detection plugin
   collision_detection::CollisionPluginLoader cd_loader;
   std::string class_name = "FCL";
   cd_loader.activate(class_name, planning_scene, true);
@@ -132,14 +135,13 @@ int main (int argc, char *argv[])
   t1 = ros::Time::now();
   const robot_state::JointModelGroup *jmg = goal.getJointModelGroup(group_name);
   int test_runs = 100;
-  for (int i = 0; i < test_runs; i++)
-  {
-    if (jmg)
-    {
+  for (int i = 0; i < test_runs; i++) {
+    if (jmg) {
       robot_state::RobotState new_goal = goal;
       new_goal.setToRandomPositionsNearBy(jmg, goal, dist);
       req.goal_constraints.resize(1);
-      req.goal_constraints[0] = kinematic_constraints::constructGoalConstraints(new_goal, jmg);
+      req.goal_constraints[0] =
+          kinematic_constraints::constructGoalConstraints(new_goal, jmg);
     }
 
     stomp.clear();
@@ -148,10 +150,10 @@ int main (int argc, char *argv[])
 
     if (!stomp.solve(res))
       ROS_ERROR_STREAM("STOMP Solver failed:" << res.error_code_);
-
   }
   t2 = ros::Time::now();
 
-  ROS_ERROR("Average time spent calculating trajectory: %4.10f seconds", (t2-t1).toSec()/test_runs);
+  ROS_ERROR("Average time spent calculating trajectory: %4.10f seconds",
+            (t2 - t1).toSec() / test_runs);
   return 0;
 }

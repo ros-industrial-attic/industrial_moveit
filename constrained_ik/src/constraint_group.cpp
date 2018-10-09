@@ -29,40 +29,34 @@
 #include "constrained_ik/constrained_ik.h"
 #include <ros/ros.h>
 
-namespace constrained_ik
-{
+namespace constrained_ik {
 
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-ConstraintGroup::ConstraintGroup() : Constraint()
-{
-}
+ConstraintGroup::ConstraintGroup() : Constraint() {}
 
-void ConstraintGroup::add(Constraint* constraint)
-{
+void ConstraintGroup::add(Constraint *constraint) {
   if (initialized_)
     constraint->init(ik_);
 
   constraints_.push_back(constraint);
 }
 
-constrained_ik::ConstraintResults ConstraintGroup::evalConstraint(const SolverState &state) const
-{
+constrained_ik::ConstraintResults
+ConstraintGroup::evalConstraint(const SolverState &state) const {
   constrained_ik::ConstraintResults output;
-  for (size_t i=0; i<constraints_.size(); ++i)
+  for (size_t i = 0; i < constraints_.size(); ++i)
     output.append(constraints_[i].evalConstraint(state));
 
   return output;
 }
 
-void ConstraintGroup::init(const Constrained_IK* ik)
-{
+void ConstraintGroup::init(const Constrained_IK *ik) {
   Constraint::init(ik);
 
-  for (size_t i=0; i<constraints_.size(); ++i)
+  for (size_t i = 0; i < constraints_.size(); ++i)
     constraints_[i].init(ik);
 }
 
 } // namespace constrained_ik
-

@@ -23,27 +23,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_minimize_change.h"
+#include "constrained_ik/constrained_ik.h"
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalMinimizeChange, constrained_ik::Constraint)
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalMinimizeChange,
+                       constrained_ik::Constraint)
 
 const double DEFAULT_WEIGHT = 1.0; /**< Default weight */
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalMinimizeChange::GoalMinimizeChange() : Constraint(), weight_(DEFAULT_WEIGHT)
-{
-}
+GoalMinimizeChange::GoalMinimizeChange()
+    : Constraint(), weight_(DEFAULT_WEIGHT) {}
 
-constrained_ik::ConstraintResults GoalMinimizeChange::evalConstraint(const SolverState &state) const
-{
+constrained_ik::ConstraintResults
+GoalMinimizeChange::evalConstraint(const SolverState &state) const {
   constrained_ik::ConstraintResults output;
   GoalMinimizeChange::ConstraintData cdata(state);
 
@@ -54,34 +52,33 @@ constrained_ik::ConstraintResults GoalMinimizeChange::evalConstraint(const Solve
   return output;
 }
 
-Eigen::VectorXd GoalMinimizeChange::calcError(const GoalMinimizeChange::ConstraintData &cdata) const
-{
-    VectorXd err = cdata.state_.joint_seed - cdata.state_.joints;
-    err *= weight_;
-    return err;
+Eigen::VectorXd GoalMinimizeChange::calcError(
+    const GoalMinimizeChange::ConstraintData &cdata) const {
+  VectorXd err = cdata.state_.joint_seed - cdata.state_.joints;
+  err *= weight_;
+  return err;
 }
 
-Eigen::MatrixXd GoalMinimizeChange::calcJacobian(const GoalMinimizeChange::ConstraintData &cdata) const
-{
-    size_t n = numJoints();    // number of joints
-    MatrixXd  J = MatrixXd::Identity(n,n) * weight_;
-    return J;
+Eigen::MatrixXd GoalMinimizeChange::calcJacobian(
+    const GoalMinimizeChange::ConstraintData &cdata) const {
+  size_t n = numJoints(); // number of joints
+  MatrixXd J = MatrixXd::Identity(n, n) * weight_;
+  return J;
 }
 
-void GoalMinimizeChange::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
-{
+void GoalMinimizeChange::loadParameters(
+    const XmlRpc::XmlRpcValue &constraint_xml) {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (!getParam(local_xml, "weights", weight_))
-  {
-    ROS_WARN("Goal Minimize Change: Unable to retrieve weights member, default parameter will be used.");
+  if (!getParam(local_xml, "weights", weight_)) {
+    ROS_WARN("Goal Minimize Change: Unable to retrieve weights member, default "
+             "parameter will be used.");
   }
 
-  if (!getParam(local_xml, "debug", debug_))
-  {
-    ROS_WARN("Goal Minimize Change: Unable to retrieve debug member, default parameter will be used.");
+  if (!getParam(local_xml, "debug", debug_)) {
+    ROS_WARN("Goal Minimize Change: Unable to retrieve debug member, default "
+             "parameter will be used.");
   }
 }
 
 } // namespace constraints
 } // namespace constrained_ik
-

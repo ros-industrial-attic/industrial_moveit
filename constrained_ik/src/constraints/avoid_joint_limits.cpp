@@ -29,25 +29,25 @@
  */
 #include "constrained_ik/constraints/avoid_joint_limits.h"
 #include "constrained_ik/constrained_ik.h"
-#include <ros/ros.h>
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::AvoidJointLimits, constrained_ik::Constraint)
+#include <ros/ros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::AvoidJointLimits,
+                       constrained_ik::Constraint)
 
 const double DEFAULT_THRESHOLD = 0.05; /**< Default threshold */
-const double DEFAULT_WEIGHT = 1.0; /**< Default weight */
+const double DEFAULT_WEIGHT = 1.0;     /**< Default weight */
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 
 using namespace Eigen;
 using namespace std;
 
-AvoidJointLimits::AvoidJointLimits(): Constraint(), weight_(DEFAULT_WEIGHT), threshold_(DEFAULT_THRESHOLD) {}
+AvoidJointLimits::AvoidJointLimits()
+    : Constraint(), weight_(DEFAULT_WEIGHT), threshold_(DEFAULT_THRESHOLD) {}
 
-constrained_ik::ConstraintResults AvoidJointLimits::evalConstraint(const SolverState &state) const
-{
+constrained_ik::ConstraintResults
+AvoidJointLimits::evalConstraint(const SolverState &state) const {
   constrained_ik::ConstraintResults output;
   AvoidJointLimits::AvoidJointLimitsData cdata(state, this);
 
@@ -58,47 +58,44 @@ constrained_ik::ConstraintResults AvoidJointLimits::evalConstraint(const SolverS
   return output;
 }
 
-Eigen::VectorXd AvoidJointLimits::calcError(const AvoidJointLimits::AvoidJointLimitsData &cdata) const
-{
+Eigen::VectorXd AvoidJointLimits::calcError(
+    const AvoidJointLimits::AvoidJointLimitsData &cdata) const {
   size_t nRows = cdata.limited_joints_.size();
   VectorXd error(nRows);
 
-  for (int ii=0; ii<nRows; ++ii)
-  {
+  for (int ii = 0; ii < nRows; ++ii) {
     size_t jntIdx = cdata.limited_joints_[ii];
     int velSign;
     const LimitsT &lim = limits_[jntIdx];
     double limit;
-    if (cdata.nearLowerLimit(jntIdx))
-    {
-        velSign = 1; // lower limit: positive velocity
-        limit = lim.min_pos;
-    }
-    else
-    {
-        velSign = -1;   //upper limit, negative velocity
-        limit = lim.max_pos;
+    if (cdata.nearLowerLimit(jntIdx)) {
+      velSign = 1; // lower limit: positive velocity
+      limit = lim.min_pos;
+    } else {
+      velSign = -1; // upper limit, negative velocity
+      limit = lim.max_pos;
     }
 
-    error(ii) = velSign * weight_ * lim.cubicVelRamp(cdata.state_.joints[jntIdx], limit);
+    error(ii) = velSign * weight_ *
+                lim.cubicVelRamp(cdata.state_.joints[jntIdx], limit);
 
-    if (debug_)
-    {
-        ROS_WARN_STREAM("iteration " << cdata.state_.iter << std::endl <<
-                         "Joint position: " << cdata.state_.joints(jntIdx) << " / " << limit << std::endl <<
-                         "velocity error: " << error(ii));
+    if (debug_) {
+      ROS_WARN_STREAM("iteration "
+                      << cdata.state_.iter << std::endl
+                      << "Joint position: " << cdata.state_.joints(jntIdx)
+                      << " / " << limit << std::endl
+                      << "velocity error: " << error(ii));
     }
   }
   return error;
 }
 
-Eigen::MatrixXd AvoidJointLimits::calcJacobian(const AvoidJointLimits::AvoidJointLimitsData &cdata) const
-{
+Eigen::MatrixXd AvoidJointLimits::calcJacobian(
+    const AvoidJointLimits::AvoidJointLimitsData &cdata) const {
   size_t nRows = cdata.limited_joints_.size();
   MatrixXd jacobian(nRows, numJoints());
 
-  for (int ii=0; ii<nRows; ++ii)
-  {
+  for (int ii = 0; ii < nRows; ++ii) {
     size_t jntIdx = cdata.limited_joints_[ii];
 
     VectorXd tmpRow = VectorXd::Zero(numJoints());
@@ -110,47 +107,41 @@ Eigen::MatrixXd AvoidJointLimits::calcJacobian(const AvoidJointLimits::AvoidJoin
   return jacobian;
 }
 
-void AvoidJointLimits::init(const Constrained_IK *ik)
-{
+void AvoidJointLimits::init(const Constrained_IK *ik) {
   Constraint::init(ik);
 
   // initialize joint/thresholding limits
   MatrixXd joint_limits = ik->getKin().getLimits();
-  for (size_t ii=0; ii<numJoints(); ++ii)
-    limits_.push_back( LimitsT(joint_limits(ii,0), joint_limits(ii,1), threshold_ ) );
+  for (size_t ii = 0; ii < numJoints(); ++ii)
+    limits_.push_back(
+        LimitsT(joint_limits(ii, 0), joint_limits(ii, 1), threshold_));
 }
 
-void AvoidJointLimits::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
-{
+void AvoidJointLimits::loadParameters(
+    const XmlRpc::XmlRpcValue &constraint_xml) {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
   double threshold;
-  if (getParam(local_xml, "threshold", threshold))
-  {
+  if (getParam(local_xml, "threshold", threshold)) {
     setThreshold(threshold);
-  }
-  else
-  {
-    ROS_WARN("Avoid Joint Limits: Unable to retrieve threshold member, default parameter will be used.");
+  } else {
+    ROS_WARN("Avoid Joint Limits: Unable to retrieve threshold member, default "
+             "parameter will be used.");
   }
 
   double weight;
-  if (getParam(local_xml, "weights", weight))
-  {
+  if (getParam(local_xml, "weights", weight)) {
     setWeight(weight);
-  }
-  else
-  {
-    ROS_WARN("Avoid Joint Limits: Unable to retrieve weights member, default parameter will be used.");
+  } else {
+    ROS_WARN("Avoid Joint Limits: Unable to retrieve weights member, default "
+             "parameter will be used.");
   }
 
   bool debug;
-  if (getParam(local_xml, "debug", debug))
-  {
+  if (getParam(local_xml, "debug", debug)) {
     setDebug(debug);
-  }
-  else
-  {
-    ROS_WARN("Avoid Joint Limits: Unable to retrieve debug member, default parameter will be used.");
+  } else {
+    ROS_WARN("Avoid Joint Limits: Unable to retrieve debug member, default "
+             "parameter will be used.");
   }
 }
 
@@ -158,69 +149,69 @@ void AvoidJointLimits::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
  * @brief Write std::vector to cout
  * @todo Move this to constrained_ik_utils.h
  */
-template<class T>
-std::ostream& operator<< (std::ostream& os, const std::vector<T>& v)
-{
-  if (!v.empty())
-  {
-    copy(v.begin(), v.end()-1, std::ostream_iterator<T>(os, ", "));
-    os << v.back();  // no comma after last element
+template <class T>
+std::ostream &operator<<(std::ostream &os, const std::vector<T> &v) {
+  if (!v.empty()) {
+    copy(v.begin(), v.end() - 1, std::ostream_iterator<T>(os, ", "));
+    os << v.back(); // no comma after last element
   }
   return os;
 }
 
-AvoidJointLimits::AvoidJointLimitsData::AvoidJointLimitsData(const SolverState &state, const constraints::AvoidJointLimits *parent): ConstraintData(state)
-{
-  if (!parent->initialized_) return;
+AvoidJointLimits::AvoidJointLimitsData::AvoidJointLimitsData(
+    const SolverState &state, const constraints::AvoidJointLimits *parent)
+    : ConstraintData(state) {
+  if (!parent->initialized_)
+    return;
   parent_ = parent;
 
   // check for limited joints
-  for (size_t ii=0; ii<parent_->numJoints(); ++ii)
-    if ( nearLowerLimit(ii) || nearUpperLimit(ii) )
+  for (size_t ii = 0; ii < parent_->numJoints(); ++ii)
+    if (nearLowerLimit(ii) || nearUpperLimit(ii))
       limited_joints_.push_back(ii);
 
   // print debug message, if enabled
   if (parent_->debug_ && !limited_joints_.empty())
-    ROS_WARN_STREAM(limited_joints_.size() << " joint limits active: " << limited_joints_);
+    ROS_WARN_STREAM(limited_joints_.size() << " joint limits active: "
+                                           << limited_joints_);
 }
 
-bool AvoidJointLimits::AvoidJointLimitsData::nearLowerLimit(size_t idx) const
-{
-  if (idx >= state_.joints.size() || idx >= parent_->limits_.size() )
+bool AvoidJointLimits::AvoidJointLimitsData::nearLowerLimit(size_t idx) const {
+  if (idx >= state_.joints.size() || idx >= parent_->limits_.size())
     return false;
 
   return state_.joints(idx) < parent_->limits_[idx].lower_thresh;
 }
 
-bool AvoidJointLimits::AvoidJointLimitsData::nearUpperLimit(size_t idx) const
-{
-  if (idx >= state_.joints.size() || idx >= parent_->limits_.size() )
+bool AvoidJointLimits::AvoidJointLimitsData::nearUpperLimit(size_t idx) const {
+  if (idx >= state_.joints.size() || idx >= parent_->limits_.size())
     return false;
 
   return state_.joints(idx) > parent_->limits_[idx].upper_thresh;
 }
 
-
-AvoidJointLimits::LimitsT::LimitsT(double minPos, double maxPos, double threshold)
-{
+AvoidJointLimits::LimitsT::LimitsT(double minPos, double maxPos,
+                                   double threshold) {
   min_pos = minPos;
   max_pos = maxPos;
 
-  //threshold given as a percentage of range. Translate to actual joint distance
-  e = threshold * (maxPos - minPos); //range;
+  // threshold given as a percentage of range. Translate to actual joint
+  // distance
+  e = threshold * (maxPos - minPos); // range;
   lower_thresh = minPos + e;
   upper_thresh = maxPos - e;
 
-  /* For d = distance from limit: velocity v = k(d-e)^3, where e is distance from threshold to limit.
+  /* For d = distance from limit: velocity v = k(d-e)^3, where e is distance
+   * from threshold to limit.
    * k is chosen such that v_max = v[d=0] = e/2 --> k = 1/(2e^2)
    */
-  k3 = 1.0/(2 * e * e);
+  k3 = 1.0 / (2 * e * e);
 }
 
-double AvoidJointLimits::LimitsT::cubicVelRamp(double angle, double limit) const
-{
-    double d = std::abs(angle - limit); // distance from limit
-    return k3 * std::pow(e-d,3);
+double AvoidJointLimits::LimitsT::cubicVelRamp(double angle,
+                                               double limit) const {
+  double d = std::abs(angle - limit); // distance from limit
+  return k3 * std::pow(e - d, 3);
 }
 
 } /* namespace constraint */

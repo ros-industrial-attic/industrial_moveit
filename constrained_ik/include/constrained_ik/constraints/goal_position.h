@@ -29,10 +29,8 @@
 #include "constrained_ik/constraint.h"
 #include <constrained_ik/solver_state.h>
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 /**
  * @class constrained_ik::constraints::GoalPosition
  * @brief Constraint to specify cartesian goal position (XYZ)
@@ -40,16 +38,14 @@ namespace constraints
  * @par Examples:
  * All examples are located here @ref goal_position_example
  */
-class GoalPosition : public Constraint
-{
+class GoalPosition : public Constraint {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   /** @brief This structure stores constraint data */
-  struct GoalPositionData: public ConstraintData
-  {
+  struct GoalPositionData : public ConstraintData {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    double pos_err_;      /**< @brief current solutions positional error */
+    double pos_err_; /**< @brief current solutions positional error */
 
     /** @brief see base class for documentation*/
     GoalPositionData(const constrained_ik::SolverState &state);
@@ -58,7 +54,8 @@ public:
   GoalPosition();
 
   /** @brief see base class for documentation*/
-  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+  constrained_ik::ConstraintResults
+  evalConstraint(const SolverState &state) const override;
 
   /** @brief see base class for documentation*/
   void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) override;
@@ -70,11 +67,13 @@ public:
    * @param p2 Goal frame
    * @return Cartesian distance between p1 and p2
    */
-  static double calcDistance(const Eigen::Affine3d &p1, const Eigen::Affine3d &p2);
+  static double calcDistance(const Eigen::Affine3d &p1,
+                             const Eigen::Affine3d &p2);
 
   /**
    * @brief Jacobian is first three rows of standard jacobian
-   * (expressed in base frame). Equivalent to each axis of rotation crossed with vector from joint to chain tip.
+   * (expressed in base frame). Equivalent to each axis of rotation crossed with
+   * vector from joint to chain tip.
    * Each row is scaled by the corresponding element of weight_
    * @param cdata The constraint specific data.
    * @return First 3 rows of standard jacobian scaled by weight_
@@ -92,7 +91,8 @@ public:
 
   /**
    * @brief Checks termination criteria
-   * Termination criteria for this constraint is that positional error is below threshold
+   * Termination criteria for this constraint is that positional error is below
+   * threshold
    * @param cdata The constraint specific data.
    * @return True if positional error is below threshold
    */
@@ -102,35 +102,34 @@ public:
    * @brief Getter for weight_
    * @return weight_
    */
-  virtual Eigen::Vector3d getWeight() const {return weight_;}
+  virtual Eigen::Vector3d getWeight() const { return weight_; }
 
   /**
    * @brief Setter for weight_
    * @param weight Value to assign to weight_
    */
-  virtual void setWeight(const Eigen::Vector3d &weight) {weight_ = weight;}
+  virtual void setWeight(const Eigen::Vector3d &weight) { weight_ = weight; }
 
   /**
    * @brief Getter for the positional convergance tolerance
    * @return pos_err_tol
    */
-  virtual double getTolerance() const {return pos_err_tol_;}
+  virtual double getTolerance() const { return pos_err_tol_; }
 
   /**
    * @brief Setter for positional convergance tolerance
    * @param tol Value to assign to pos_err_tol
    */
-  virtual void setTolerance(const double &tol) {pos_err_tol_ = tol;}
+  virtual void setTolerance(const double &tol) { pos_err_tol_ = tol; }
 
 protected:
-  double pos_err_tol_;  /**< @brief termination criteria */
-  Eigen::Vector3d weight_; /**< @brief weights used to scale the jocabian and error */
+  double pos_err_tol_; /**< @brief termination criteria */
+  Eigen::Vector3d
+      weight_; /**< @brief weights used to scale the jocabian and error */
 
 }; // class GoalPosition
 
 } // namespace constraints
 } // namespace constrained_ik
 
-
 #endif // GOAL_POSITION_H
-

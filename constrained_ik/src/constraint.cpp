@@ -31,12 +31,8 @@
 
 using namespace Eigen;
 
-namespace constrained_ik
-{
+namespace constrained_ik {
 
-int Constraint::numJoints() const
-{
-  return ik_->getKin().numJoints();
-}
+int Constraint::numJoints() const { return ik_->getKin().numJoints(); }
 
 } // namespace constrained_ik

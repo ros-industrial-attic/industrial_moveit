@@ -26,38 +26,53 @@
 #ifndef SOLVER_STATE_H
 #define SOLVER_STATE_H
 
-#include <vector>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <constrained_ik/enum_types.h>
-#include <moveit/planning_scene/planning_scene.h>
 #include <moveit/collision_detection/collision_robot.h>
 #include <moveit/collision_detection/collision_world.h>
+#include <moveit/planning_scene/planning_scene.h>
+#include <vector>
 
-namespace constrained_ik
-{
+namespace constrained_ik {
 
 /** @brief Internal state of Constrained_IK solver */
-struct SolverState
-{
+struct SolverState {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  Eigen::Affine3d goal;                                                  /**< Desired goal position to solve IK about */
-  Eigen::VectorXd joint_seed;                                            /**< Joint position (initial guess) to seed the IK solver with */
+  Eigen::Affine3d goal; /**< Desired goal position to solve IK about */
+  Eigen::
+      VectorXd joint_seed; /**< Joint position (initial guess) to seed the IK
+                              solver with */
 
-  int iter;                                                              /**< Current number of solver iterations */
-  Eigen::VectorXd joints;                                                /**< Updated joint positions */
-  Eigen::VectorXd joints_delta;                                          /**< The joint delta between this state and the previous state */
-  Eigen::Affine3d pose_estimate;                                         /**< The pose for the updated joint position from the solver */
-  std::vector<Eigen::VectorXd> iteration_path;                           /**< Store the joint position for each iteration of the solver */
-  double primary_sum;                                                    /**< The absolute sum of the cumulative primary motion */
-  double auxiliary_sum;                                                  /**< The absolute sum of the cumulative auxiliary motion */
-  bool auxiliary_at_limit;                                               /**< This is set if auxiliary reached motion or iteration limit. */
-  initialization_state::InitializationState condition;                   /**< State of the IK Solver */
-  planning_scene::PlanningSceneConstPtr planning_scene;                  /**< Pointer to the planning scene, some constraints require it */
-  collision_detection::CollisionRobotConstPtr collision_robot;           /**< Pointer to the collision robot, some constraints require it */
-  collision_detection::CollisionWorldConstPtr collision_world;            /**< Pointer to the collision world, some constraints require it */
-  moveit::core::RobotStatePtr robot_state;                               /**< Pointer to the current robot state */
-  std::string group_name;                                                /**< Move group name */
+  int iter;               /**< Current number of solver iterations */
+  Eigen::VectorXd joints; /**< Updated joint positions */
+  Eigen::VectorXd
+      joints_delta; /**< The joint delta between this state and the previous
+                       state */
+  Eigen::Affine3d pose_estimate; /**< The pose for the updated joint position
+                                    from the solver */
+  std::vector<Eigen::VectorXd>
+      iteration_path; /**< Store the joint position for each iteration of the
+                         solver */
+  double primary_sum; /**< The absolute sum of the cumulative primary motion */
+  double
+      auxiliary_sum; /**< The absolute sum of the cumulative auxiliary motion */
+  bool auxiliary_at_limit; /**< This is set if auxiliary reached motion or
+                              iteration limit. */
+  initialization_state::InitializationState
+      condition; /**< State of the IK Solver */
+  planning_scene::PlanningSceneConstPtr
+      planning_scene; /**< Pointer to the planning scene, some constraints
+                         require it */
+  collision_detection::CollisionRobotConstPtr
+      collision_robot; /**< Pointer to the collision robot, some constraints
+                          require it */
+  collision_detection::CollisionWorldConstPtr
+      collision_world; /**< Pointer to the collision world, some constraints
+                          require it */
+  moveit::core::RobotStatePtr
+      robot_state;        /**< Pointer to the current robot state */
+  std::string group_name; /**< Move group name */
 
   /**
    * @brief SolverState Constructor
@@ -65,7 +80,7 @@ struct SolverState
    * @param joint_seed joint position (initial guess) to seed the IK solver with
    */
   SolverState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
-  SolverState(){}
+  SolverState() {}
 
   /**
    * @brief Reset the current state to default state
@@ -73,10 +88,8 @@ struct SolverState
    * @param joint_seed joint position (initial guess) to seed the IK solver with
    */
   void reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed);
-
 };
 
 } // namespace constrained_ik
 
 #endif // SOLVER_STATE_H
-

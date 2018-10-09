@@ -37,67 +37,107 @@
 #ifndef COLLISION_DETECTION_COLLISION_WORLD_INDUSTRIAL_H_
 #define COLLISION_DETECTION_COLLISION_WORLD_INDUSTRIAL_H_
 
-#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
-#include <fcl/broadphase/broadphase.h>
 #include <boost/scoped_ptr.hpp>
+#include <fcl/broadphase/broadphase.h>
+#include <industrial_collision_detection/collision_detection/collision_robot_industrial.h>
 
-namespace collision_detection
-{
+namespace collision_detection {
 
-  class CollisionWorldIndustrial : public CollisionWorld
-  {
-  public:
+class CollisionWorldIndustrial : public CollisionWorld {
+public:
+  CollisionWorldIndustrial();
+  explicit CollisionWorldIndustrial(const WorldPtr &world);
+  CollisionWorldIndustrial(const CollisionWorldIndustrial &other,
+                           const WorldPtr &world);
+  virtual ~CollisionWorldIndustrial();
 
-    CollisionWorldIndustrial();
-    explicit CollisionWorldIndustrial(const WorldPtr& world);
-    CollisionWorldIndustrial(const CollisionWorldIndustrial &other, const WorldPtr& world);
-    virtual ~CollisionWorldIndustrial();
+  virtual void checkRobotCollision(const CollisionRequest &req,
+                                   CollisionResult &res,
+                                   const CollisionRobot &robot,
+                                   const robot_state::RobotState &state) const;
+  virtual void checkRobotCollision(const CollisionRequest &req,
+                                   CollisionResult &res,
+                                   const CollisionRobot &robot,
+                                   const robot_state::RobotState &state,
+                                   const AllowedCollisionMatrix &acm) const;
+  virtual void checkRobotCollision(const CollisionRequest &req,
+                                   CollisionResult &res,
+                                   const CollisionRobot &robot,
+                                   const robot_state::RobotState &state1,
+                                   const robot_state::RobotState &state2) const;
+  virtual void checkRobotCollision(const CollisionRequest &req,
+                                   CollisionResult &res,
+                                   const CollisionRobot &robot,
+                                   const robot_state::RobotState &state1,
+                                   const robot_state::RobotState &state2,
+                                   const AllowedCollisionMatrix &acm) const;
+  virtual void checkWorldCollision(const CollisionRequest &req,
+                                   CollisionResult &res,
+                                   const CollisionWorld &other_world) const;
+  virtual void checkWorldCollision(const CollisionRequest &req,
+                                   CollisionResult &res,
+                                   const CollisionWorld &other_world,
+                                   const AllowedCollisionMatrix &acm) const;
 
+  virtual double distanceRobot(const CollisionRobot &robot,
+                               const robot_state::RobotState &state,
+                               bool verbose = false) const;
+  virtual void distanceRobot(const DistanceRequest &req, DistanceResult &res,
+                             const collision_detection::CollisionRobot &robot,
+                             const robot_state::RobotState &state,
+                             bool verbose = false) const;
+  virtual double distanceRobot(const CollisionRobot &robot,
+                               const robot_state::RobotState &state,
+                               const AllowedCollisionMatrix &acm,
+                               bool verbose = false) const;
+  virtual void distanceRobot(const DistanceRequest &req, DistanceResult &res,
+                             const CollisionRobot &robot,
+                             const robot_state::RobotState &state) const;
 
-    virtual void checkRobotCollision(const CollisionRequest &req, CollisionResult &res, const CollisionRobot &robot, const robot_state::RobotState &state) const;
-    virtual void checkRobotCollision(const CollisionRequest &req, CollisionResult &res, const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix &acm) const;
-    virtual void checkRobotCollision(const CollisionRequest &req, CollisionResult &res, const CollisionRobot &robot, const robot_state::RobotState &state1, const robot_state::RobotState &state2) const;
-    virtual void checkRobotCollision(const CollisionRequest &req, CollisionResult &res, const CollisionRobot &robot, const robot_state::RobotState &state1, const robot_state::RobotState &state2, const AllowedCollisionMatrix &acm) const;
-    virtual void checkWorldCollision(const CollisionRequest &req, CollisionResult &res, const CollisionWorld &other_world) const;
-    virtual void checkWorldCollision(const CollisionRequest &req, CollisionResult &res, const CollisionWorld &other_world, const AllowedCollisionMatrix &acm) const;
+  virtual double distanceWorld(const CollisionWorld &world,
+                               bool verbose = false) const;
+  virtual double distanceWorld(const CollisionWorld &world,
+                               const AllowedCollisionMatrix &acm,
+                               bool verbose = false) const;
+  virtual void distanceWorld(const DistanceRequest &req, DistanceResult &res,
+                             const CollisionWorld &world) const;
 
-    virtual double distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state, bool verbose = false) const;
-    virtual void distanceRobot(const DistanceRequest &req, DistanceResult &res, const collision_detection::CollisionRobot &robot,
-    		const robot_state::RobotState &state,bool verbose = false) const;
-    virtual double distanceRobot(const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix &acm,
-    		bool verbose = false) const;
-    virtual void distanceRobot(const DistanceRequest& req, DistanceResult& res, const CollisionRobot& robot,
-                                 const robot_state::RobotState& state) const;
+  virtual void setWorld(const WorldPtr &world);
 
-    virtual double distanceWorld(const CollisionWorld &world,bool verbose = false) const;
-    virtual double distanceWorld(const CollisionWorld &world, const AllowedCollisionMatrix &acm,bool verbose = false) const;
-    virtual void distanceWorld(const DistanceRequest& req, DistanceResult& res, const CollisionWorld& world) const;
+protected:
+  void checkWorldCollisionHelper(const CollisionRequest &req,
+                                 CollisionResult &res,
+                                 const CollisionWorld &other_world,
+                                 const AllowedCollisionMatrix *acm) const;
+  void checkRobotCollisionHelper(const CollisionRequest &req,
+                                 CollisionResult &res,
+                                 const CollisionRobot &robot,
+                                 const robot_state::RobotState &state,
+                                 const AllowedCollisionMatrix *acm) const;
+  double distanceRobotHelper(const CollisionRobot &robot,
+                             const robot_state::RobotState &state,
+                             const AllowedCollisionMatrix *acm) const;
+  void distanceRobotHelper(const DistanceRequest &req, DistanceResult &res,
+                           const collision_detection::CollisionRobot &robot,
+                           const robot_state::RobotState &state) const;
+  double distanceWorldHelper(const CollisionWorld &world,
+                             const AllowedCollisionMatrix *acm) const;
 
-    virtual void setWorld(const WorldPtr& world);
+  void constructFCLObject(const World::Object *obj, FCLObject &fcl_obj) const;
+  void updateFCLObject(const std::string &id);
 
-  protected:
+  boost::scoped_ptr<fcl::BroadPhaseCollisionManager> manager_;
+  std::map<std::string, FCLObject> fcl_objs_;
 
-    void checkWorldCollisionHelper(const CollisionRequest &req, CollisionResult &res, const CollisionWorld &other_world, const AllowedCollisionMatrix *acm) const;
-    void checkRobotCollisionHelper(const CollisionRequest &req, CollisionResult &res, const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix *acm) const;
-    double distanceRobotHelper(const CollisionRobot &robot, const robot_state::RobotState &state, const AllowedCollisionMatrix *acm) const;
-    void distanceRobotHelper(const DistanceRequest &req, DistanceResult &res, const collision_detection::CollisionRobot &robot, const robot_state::RobotState &state) const;
-    double distanceWorldHelper(const CollisionWorld &world, const AllowedCollisionMatrix *acm) const;
+private:
+  void initialize();
+  void notifyObjectChange(const ObjectConstPtr &obj, World::Action action);
+  World::ObserverHandle observer_handle_;
+};
 
-    void constructFCLObject(const World::Object *obj, FCLObject &fcl_obj) const;
-    void updateFCLObject(const std::string &id);
-
-
-    boost::scoped_ptr<fcl::BroadPhaseCollisionManager> manager_;
-    std::map<std::string, FCLObject >                  fcl_objs_;
-
-  private:
-    void initialize();
-    void notifyObjectChange(const ObjectConstPtr& obj, World::Action action);
-    World::ObserverHandle observer_handle_;
-  };
-
-  typedef std::shared_ptr<CollisionWorldIndustrial> CollisionWorldIndustrialPtr;
-  typedef std::shared_ptr<const CollisionWorldIndustrial> CollisionWorldIndustrialConstPtr;
+typedef std::shared_ptr<CollisionWorldIndustrial> CollisionWorldIndustrialPtr;
+typedef std::shared_ptr<const CollisionWorldIndustrial>
+    CollisionWorldIndustrialConstPtr;
 }
 
 #endif

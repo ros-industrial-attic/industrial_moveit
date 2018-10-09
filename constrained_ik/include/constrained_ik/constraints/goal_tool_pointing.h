@@ -29,10 +29,8 @@
 #include "constrained_ik/constraint.h"
 #include <constrained_ik/solver_state.h>
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 /**
  * @class constrained_ik::constraints::GoalToolPointing
  * @brief Constraint to specify cartesian tool goal pointing (XYZRP)
@@ -40,16 +38,14 @@ namespace constraints
  * @par Examples:
  * All examples are located here @ref goal_tool_pointing_example
  */
-class GoalToolPointing : public Constraint
-{
+class GoalToolPointing : public Constraint {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   /** @brief This structure stores constraint data */
-  struct GoalToolPointingData: public ConstraintData
-  {
+  struct GoalToolPointingData : public ConstraintData {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    double pos_err_;      /**< @brief current solution positional error */
-    double rot_err_;      /**< @brief current solution rotational error */
+    double pos_err_; /**< @brief current solution positional error */
+    double rot_err_; /**< @brief current solution rotational error */
 
     /** @brief see base class for documentation*/
     GoalToolPointingData(const constrained_ik::SolverState &state);
@@ -58,14 +54,16 @@ public:
   GoalToolPointing();
 
   /** @brief see base class for documentation*/
-  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+  constrained_ik::ConstraintResults
+  evalConstraint(const SolverState &state) const override;
 
   /** @brief see base class for documentation*/
   void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) override;
 
   /**
    * @brief Jacobian is first five rows of tool jacobian
-   * (expressed in tool frame). Equivalent to each axis of rotation crossed with vector from joint to chain tip.
+   * (expressed in tool frame). Equivalent to each axis of rotation crossed with
+   * vector from joint to chain tip.
    * Each row is scaled by the corresponding element of weight_
    * @param cdata The constraint specific data.
    * @return First 5 rows of tool jacobian scaled by weight_
@@ -83,7 +81,8 @@ public:
 
   /**
    * @brief Checks termination criteria
-   * Termination criteria for this constraint is that positional and rotational error is below threshold
+   * Termination criteria for this constraint is that positional and rotational
+   * error is below threshold
    * @param cdata The constraint specific data.
    * @return True if positional and rotational error is below threshold
    */
@@ -93,42 +92,51 @@ public:
    * @brief Getter for weight_
    * @return weight_
    */
-  virtual Eigen::Matrix<double, 5, 1> getWeight() const {return weight_.diagonal();}
+  virtual Eigen::Matrix<double, 5, 1> getWeight() const {
+    return weight_.diagonal();
+  }
 
   /**
    * @brief Setter for weight_
    * @param weight Value to assign to weight_
    */
-  virtual void setWeight(const Eigen::Matrix<double, 5, 1> &weight) {weight_ = weight.asDiagonal();}
+  virtual void setWeight(const Eigen::Matrix<double, 5, 1> &weight) {
+    weight_ = weight.asDiagonal();
+  }
 
   /**
    * @brief Getter for pos_err_tol_
    * @return pos_err_tol_
    */
-  virtual double getPositionTolerance() const {return pos_err_tol_;}
+  virtual double getPositionTolerance() const { return pos_err_tol_; }
 
   /**
    * @brief Setter for pos_err_tol_
    * @param position_tolerance Value to assign to pos_err_tol_
    */
-  virtual void setPositionTolerance(const double &position_tolerance) {pos_err_tol_ = position_tolerance;}
+  virtual void setPositionTolerance(const double &position_tolerance) {
+    pos_err_tol_ = position_tolerance;
+  }
 
   /**
    * @brief Getter for rot_err_tol_
    * @return rot_err_tol_
    */
-  virtual double getOrientationTolerance() const {return rot_err_tol_;}
+  virtual double getOrientationTolerance() const { return rot_err_tol_; }
 
   /**
    * @brief Setter for rot_err_tol_
    * @param orientation_tolerance Value to assign to rot_err_tol_
    */
-  virtual void setOrientationTolerance(const double &orientation_tolerance) {rot_err_tol_ = orientation_tolerance;}
+  virtual void setOrientationTolerance(const double &orientation_tolerance) {
+    rot_err_tol_ = orientation_tolerance;
+  }
 
 protected:
-  double pos_err_tol_;  /**< @brief termination criteria */
-  double rot_err_tol_;  /**< @brief termination criteria */
-  Eigen::Matrix<double, 5, 5> weight_; /**< @brief weights used to scale the jocabian and error */
+  double pos_err_tol_; /**< @brief termination criteria */
+  double rot_err_tol_; /**< @brief termination criteria */
+  Eigen::Matrix<double, 5, 5>
+      weight_; /**< @brief weights used to scale the jocabian and error */
 
 }; // class GoalToolPointing
 
@@ -136,4 +144,3 @@ protected:
 } // namespace constrained_ik
 
 #endif // GOAL_TOOL_POINTING_H
-

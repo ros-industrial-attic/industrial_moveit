@@ -28,10 +28,8 @@
 
 #include "constrained_ik/constraint.h"
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 /**
  * @class constrained_ik::constraints::GoalMinimizeChange
  * @brief Constraint to pushes joints back towards their starting position
@@ -39,14 +37,14 @@ namespace constraints
  * @par Examples:
  * All examples are located here @ref goal_minimize_change_example
  */
-class GoalMinimizeChange : public Constraint
-{
+class GoalMinimizeChange : public Constraint {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   GoalMinimizeChange();
 
   /** @brief see base class for documentation*/
-  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+  constrained_ik::ConstraintResults
+  evalConstraint(const SolverState &state) const override;
 
   /** @brief see base class for documentation*/
   void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) override;
@@ -59,7 +57,8 @@ public:
   virtual Eigen::MatrixXd calcJacobian(const ConstraintData &cdata) const;
 
   /**
-   * @brief Joint velocity is difference between starting position and current position
+   * @brief Joint velocity is difference between starting position and current
+   * position
    * @param cdata The constraint specific data.
    * @return Joint difference scaled by weight_
    */
@@ -70,19 +69,19 @@ public:
    * @param cdata The constraint specific data.
    * @return True always (no termination criteria)
    */
-  virtual bool checkStatus(const ConstraintData &cdata) const { return true;}
+  virtual bool checkStatus(const ConstraintData &cdata) const { return true; }
 
   /**
    * @brief Getter for weight_
    * @return weight_
    */
-  virtual double getWeight() const {return weight_;}
+  virtual double getWeight() const { return weight_; }
 
   /**
    * @brief setter for weight_
    * @param weight Value to set weight_ to
    */
-  virtual void setWeight(double weight) {weight_ = weight;}
+  virtual void setWeight(double weight) { weight_ = weight; }
 
 protected:
   double weight_; /**< @brief weights used to scale the jocabian and error */
@@ -92,6 +91,4 @@ protected:
 } // namespace constraints
 } // namespace constrained_ik
 
-
 #endif // GOAL_MINIMIZE_CHANGE_H
-

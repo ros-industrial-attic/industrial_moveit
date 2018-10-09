@@ -28,16 +28,14 @@
 #ifndef CONSTRAINT_GROUP_H
 #define CONSTRAINT_GROUP_H
 
+#include <boost/ptr_container/ptr_vector.hpp>
 #include <constrained_ik/constraint.h>
 #include <constrained_ik/constraint_results.h>
-#include <boost/ptr_container/ptr_vector.hpp>
 
-namespace constrained_ik
-{
+namespace constrained_ik {
 
 /** @brief Group of constraints for use in iterative constrained_IK solver */
-class ConstraintGroup : public Constraint
-{
+class ConstraintGroup : public Constraint {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -47,13 +45,13 @@ public:
   ConstraintResults evalConstraint(const SolverState &state) const override;
 
   /** @brief See base clase for documentation */
-  void init(const Constrained_IK* ik) override;
+  void init(const Constrained_IK *ik) override;
 
   /**
    * @brief Add a constrainte to the group
    * @param constraint to be added
    */
-  virtual void add(Constraint* constraint);
+  virtual void add(Constraint *constraint);
 
   /** @brief Remove all constraints from the group */
   virtual void clear() { constraints_.clear(); }
@@ -65,12 +63,11 @@ public:
   virtual bool empty() const { return constraints_.empty(); }
 
 protected:
-  boost::ptr_vector<Constraint> constraints_; /**< Vector of constaints in the group */
+  boost::ptr_vector<Constraint>
+      constraints_; /**< Vector of constaints in the group */
 
 }; // class ConstraintGroup
 
 } // namespace constrained_ik
 
-
 #endif // CONSTRAINT_GROUP_H
-

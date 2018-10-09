@@ -30,16 +30,17 @@
 #ifndef COLLISION_DETECTION_COLLISION_COMMON_H_
 #define COLLISION_DETECTION_COLLISION_COMMON_H_
 
-#include <moveit/collision_detection/world.h>
-#include <moveit/collision_detection/collision_world.h>
 #include <fcl/broadphase/broadphase.h>
 #include <fcl/collision.h>
 #include <fcl/distance.h>
+#include <moveit/collision_detection/collision_world.h>
+#include <moveit/collision_detection/world.h>
 #include <set>
 
-namespace collision_detection
-{
-  bool distanceDetailedCallback(fcl::CollisionObject* o1, fcl::CollisionObject* o2, void *data, double& min_dist);
+namespace collision_detection {
+bool distanceDetailedCallback(fcl::CollisionObject *o1,
+                              fcl::CollisionObject *o2, void *data,
+                              double &min_dist);
 }
 
 #endif

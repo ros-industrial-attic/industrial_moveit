@@ -29,10 +29,8 @@
 #include "constrained_ik/constraint.h"
 #include "constrained_ik/constraints/goal_orientation.h"
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 /**
  * @class constrained_ik::constraints::GoalToolOrientation
  * @brief Constraint to specify cartesian goal tool orientation (XYZ rotation)
@@ -40,21 +38,23 @@ namespace constraints
  * @par Examples:
  * All examples are located here @ref goal_tool_orientation_example
  */
-class GoalToolOrientation : public GoalOrientation
-{
+class GoalToolOrientation : public GoalOrientation {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   GoalToolOrientation();
 
   /** @brief see base class for documentation*/
-  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+  constrained_ik::ConstraintResults
+  evalConstraint(const SolverState &state) const override;
 
   /**
    * @brief Jacobian is the last three rows of standard jacobian
-   * (in tool frame). Equivalent to each axis of rotation expressed in tool frame coordinates.
+   * (in tool frame). Equivalent to each axis of rotation expressed in tool
+   * frame coordinates.
    * Each row is scaled by the corresponding element of weight_
    * @param cdata The constraint specific data.
-   * @return Last 3 rows of standard jacobian expressed in tool frame, scaled by weight_
+   * @return Last 3 rows of standard jacobian expressed in tool frame, scaled by
+   * weight_
    */
   Eigen::MatrixXd calcJacobian(const GoalOrientationData &cdata) const override;
 
@@ -63,7 +63,8 @@ public:
    * Resolve into primary vectors (x,y,z) of tool coordinate system
    * Each element is multiplied by corresponding element in weight_
    * @param cdata The constraint specific data.
-   * @return Rotation from current to goal expressed in tool frame, scaled by weight_
+   * @return Rotation from current to goal expressed in tool frame, scaled by
+   * weight_
    */
   Eigen::VectorXd calcError(const GoalOrientationData &cdata) const override;
 
@@ -72,6 +73,4 @@ public:
 } // namespace constraints
 } // namespace constrained_ik
 
-
 #endif // GOAL_TOOL_ORIENTATION_H
-

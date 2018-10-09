@@ -23,27 +23,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/goal_mid_joint.h"
+#include "constrained_ik/constrained_ik.h"
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalMidJoint, constrained_ik::Constraint)
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::GoalMidJoint,
+                       constrained_ik::Constraint)
 
 const double DEFAULT_WEIGHT = 1.0; /**< Default weight */
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-GoalMidJoint::GoalMidJoint() : Constraint(), weight_(DEFAULT_WEIGHT)
-{
-}
+GoalMidJoint::GoalMidJoint() : Constraint(), weight_(DEFAULT_WEIGHT) {}
 
-constrained_ik::ConstraintResults GoalMidJoint::evalConstraint(const SolverState &state) const
-{
+constrained_ik::ConstraintResults
+GoalMidJoint::evalConstraint(const SolverState &state) const {
   constrained_ik::ConstraintResults output;
   GoalMidJoint::ConstraintData cdata(state);
 
@@ -54,22 +51,21 @@ constrained_ik::ConstraintResults GoalMidJoint::evalConstraint(const SolverState
   return output;
 }
 
-Eigen::VectorXd GoalMidJoint::calcError(const GoalMidJoint::ConstraintData &cdata) const
-{
-    VectorXd err = mid_range_ - cdata.state_.joints;
-    err *= weight_;
-    return err;
+Eigen::VectorXd
+GoalMidJoint::calcError(const GoalMidJoint::ConstraintData &cdata) const {
+  VectorXd err = mid_range_ - cdata.state_.joints;
+  err *= weight_;
+  return err;
 }
 
-Eigen::MatrixXd GoalMidJoint::calcJacobian(const GoalMidJoint::ConstraintData &cdata) const
-{
-    size_t n = cdata.state_.joints.size();    // number of joints
-    MatrixXd  J = MatrixXd::Identity(n,n) * weight_;
-    return J;
+Eigen::MatrixXd
+GoalMidJoint::calcJacobian(const GoalMidJoint::ConstraintData &cdata) const {
+  size_t n = cdata.state_.joints.size(); // number of joints
+  MatrixXd J = MatrixXd::Identity(n, n) * weight_;
+  return J;
 }
 
-void GoalMidJoint::init(const Constrained_IK *ik)
-{
+void GoalMidJoint::init(const Constrained_IK *ik) {
   Constraint::init(ik);
 
   // initialize joint/thresholding limits
@@ -78,20 +74,18 @@ void GoalMidJoint::init(const Constrained_IK *ik)
   mid_range_ += joint_limits.col(0);
 }
 
-void GoalMidJoint::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml)
-{
+void GoalMidJoint::loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) {
   XmlRpc::XmlRpcValue local_xml = constraint_xml;
-  if (!getParam(local_xml, "weights", weight_))
-  {
-    ROS_WARN("Goal Mid Joint: Unable to retrieve weights member, default parameter will be used.");
+  if (!getParam(local_xml, "weights", weight_)) {
+    ROS_WARN("Goal Mid Joint: Unable to retrieve weights member, default "
+             "parameter will be used.");
   }
 
-  if (!getParam(local_xml, "debug", debug_))
-  {
-    ROS_WARN("Goal Mid Joint: Unable to retrieve debug member, default parameter will be used.");
+  if (!getParam(local_xml, "debug", debug_)) {
+    ROS_WARN("Goal Mid Joint: Unable to retrieve debug member, default "
+             "parameter will be used.");
   }
 }
 
 } // namespace constraints
 } // namespace constrained_ik
-

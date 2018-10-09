@@ -32,89 +32,103 @@
 #include <boost/assign/list_of.hpp>
 #include <map>
 
-namespace constrained_ik
-{
-  namespace constraint_types
-  {
-    /** @brief Enum that identifies a constraint type. */
-    enum ConstraintTypes
-    {
-      Primary, /**< These constraints must be satisfied .*/
-      Auxiliary, /**< These constraints try to manipulate the null space to be satisfied. */
-      Inactive, /**< These constraints have been disabled */
-    };
+namespace constrained_ik {
+namespace constraint_types {
+/** @brief Enum that identifies a constraint type. */
+enum ConstraintTypes {
+  Primary,   /**< These constraints must be satisfied .*/
+  Auxiliary, /**< These constraints try to manipulate the null space to be
+                satisfied. */
+  Inactive,  /**< These constraints have been disabled */
+};
 
-    /**
-     * @brief A structure for ConstraintTypes enum providing addition functionality
-     * like enumToString and stringToEnum.
-     */
-    struct ConstraintType
-    {
-      /**
-       * @brief ConstraintType constructor
-       * @param constraint_type enumerator value (Primary, Auxiliary, Inactive)
-       */
-      ConstraintType(ConstraintTypes constraint_type):type_(constraint_type) {}
-      ConstraintType() {}
+/**
+ * @brief A structure for ConstraintTypes enum providing addition functionality
+ * like enumToString and stringToEnum.
+ */
+struct ConstraintType {
+  /**
+   * @brief ConstraintType constructor
+   * @param constraint_type enumerator value (Primary, Auxiliary, Inactive)
+   */
+  ConstraintType(ConstraintTypes constraint_type) : type_(constraint_type) {}
+  ConstraintType() {}
 
-      /**
-       * @brief A string representation of the enumerator
-       * @return std::string
-       */
-      inline std::string toString() const { return names_[type_]; }
+  /**
+   * @brief A string representation of the enumerator
+   * @return std::string
+   */
+  inline std::string toString() const { return names_[type_]; }
 
-      /**
-       * @brief Gets the enumerator
-       * @return ConstraintTypes
-       */
-      inline ConstraintTypes getType() const { return type_; }
+  /**
+   * @brief Gets the enumerator
+   * @return ConstraintTypes
+   */
+  inline ConstraintTypes getType() const { return type_; }
 
-      /**
-       * @brief Sets the enumerator type
-       * @param constraint_type enumerator value (Primary, Auxiliary, Inactive)
-       */
-      inline void setType(ConstraintTypes constraint_type) { type_ = constraint_type; }
+  /**
+   * @brief Sets the enumerator type
+   * @param constraint_type enumerator value (Primary, Auxiliary, Inactive)
+   */
+  inline void setType(ConstraintTypes constraint_type) {
+    type_ = constraint_type;
+  }
 
-      /**
-       * @brief Sets the enumerator type given the string representation.
-       * @param constraint_type_name enumerator string value (Primary, Auxiliary, Inactive)
-       */
-      inline void setType(std::string constraint_type_name) { type_ = stringToEnum(constraint_type_name); }
+  /**
+   * @brief Sets the enumerator type given the string representation.
+   * @param constraint_type_name enumerator string value (Primary, Auxiliary,
+   * Inactive)
+   */
+  inline void setType(std::string constraint_type_name) {
+    type_ = stringToEnum(constraint_type_name);
+  }
 
-      /**
-       * @brief Coverts ConstraintTypes value to its string representation.
-       * @param constraint_type type enumerator value (Primary, Auxiliary, Inactive)
-       * @return std::string
-       */
-      inline static std::string enumToString(ConstraintTypes constraint_type) { return names_[constraint_type]; }
+  /**
+   * @brief Coverts ConstraintTypes value to its string representation.
+   * @param constraint_type type enumerator value (Primary, Auxiliary, Inactive)
+   * @return std::string
+   */
+  inline static std::string enumToString(ConstraintTypes constraint_type) {
+    return names_[constraint_type];
+  }
 
-      /**
-       * @brief Converts string to ConstraintTypes value
-       * @param constraint_type_name enumerator string value (Primary, Auxiliary, Inactive)
-       * @return ConstraintTypes
-       */
-      static ConstraintTypes stringToEnum(std::string constraint_type_name);
+  /**
+   * @brief Converts string to ConstraintTypes value
+   * @param constraint_type_name enumerator string value (Primary, Auxiliary,
+   * Inactive)
+   * @return ConstraintTypes
+   */
+  static ConstraintTypes stringToEnum(std::string constraint_type_name);
 
-    protected:
-      ConstraintTypes type_; /**< constraint type */
-      static const std::string names_[]; /**< list of string names for ConstraintTypes */
-      static const std::map<std::string, ConstraintTypes> name_to_enum_map_; /**< Map of ConstraintTypes string name to ConstraintType */
-    };
-  }// namespace constraint_types
+protected:
+  ConstraintTypes type_; /**< constraint type */
+  static const std::string
+      names_[]; /**< list of string names for ConstraintTypes */
+  static const std::map<std::string, ConstraintTypes>
+      name_to_enum_map_; /**< Map of ConstraintTypes string name to
+                            ConstraintType */
+};
+} // namespace constraint_types
 
-  namespace initialization_state
-  {
-    /** @brief Enum that identifies the state of the solver. */
-    enum InitializationState
-    {
-      PrimaryOnly,         /**< Solver is initialized and only contains primary constraints */
-      AuxiliaryOnly,       /**< Solver is initialized and only contains auxiliary constraints */
-      PrimaryAndAuxiliary, /**< Solver is initialized and contain both primary and auxiliary constraints */
-      NothingInitialized,  /**< Solver is not initialized */
-    };
-  }// namespace initialization_state
+namespace initialization_state {
+/** @brief Enum that identifies the state of the solver. */
+enum InitializationState {
+  PrimaryOnly, /**< Solver is initialized and only contains primary constraints
+                  */
+  AuxiliaryOnly,       /**< Solver is initialized and only contains auxiliary
+                          constraints */
+  PrimaryAndAuxiliary, /**< Solver is initialized and contain both primary and
+                          auxiliary constraints */
+  NothingInitialized,  /**< Solver is not initialized */
+};
+} // namespace initialization_state
 
-  typedef constraint_types::ConstraintTypes ConstraintTypes;             /**< Typedef for ConstraintTypes in constrained_ik namespace */
-  typedef initialization_state::InitializationState InitializationState; /**< Typedef for InitializationState in constrained_ik namespace */
-}// namespace constrained_ik
+typedef constraint_types::ConstraintTypes
+    ConstraintTypes; /**< Typedef for ConstraintTypes in constrained_ik
+                        namespace */
+typedef initialization_state::
+    InitializationState InitializationState; /**< Typedef for
+                                                InitializationState in
+                                                constrained_ik namespace */
+} // namespace constrained_ik
 #endif // ENUM_TYPES_H

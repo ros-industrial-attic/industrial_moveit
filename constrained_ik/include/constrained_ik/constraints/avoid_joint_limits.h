@@ -33,10 +33,8 @@
 #include "constrained_ik/constraint.h"
 #include <vector>
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 
 /**
  * @class constrained_ik::constraints::AvoidJointLimits
@@ -49,21 +47,19 @@ namespace constraints
  * @par Examples:
  * All examples are located here @ref avoid_joint_limits_example
  */
-class AvoidJointLimits: public Constraint
-{
+class AvoidJointLimits : public Constraint {
 protected:
   /**
    * @brief Stores joint limit constraint data for a single joint.
    */
-  struct LimitsT
-  {
+  struct LimitsT {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    double min_pos;       /**< @brief minimum joint position */
-    double max_pos;       /**< @brief maximum joint position */
-    double lower_thresh;  /**< @brief lower threshold at which limiting begins */
-    double upper_thresh;  /**< @brief upper threshold at which limiting begins */
-    double e;             /**< @brief threshold as a distance from limit */
-    double k3;            /**< @brief factor used in cubic velocity ramp */
+    double min_pos;      /**< @brief minimum joint position */
+    double max_pos;      /**< @brief maximum joint position */
+    double lower_thresh; /**< @brief lower threshold at which limiting begins */
+    double upper_thresh; /**< @brief upper threshold at which limiting begins */
+    double e;            /**< @brief threshold as a distance from limit */
+    double k3;           /**< @brief factor used in cubic velocity ramp */
 
     /**
      * @brief Constructor for LimitsT
@@ -75,7 +71,8 @@ protected:
 
     /**
      * @brief Calculates velocity for joint position avoidance
-     * Uses cubic function v = y-y0 = k(x-x0)^3 where k=max_vel/(joint_range/2)^3
+     * Uses cubic function v = y-y0 = k(x-x0)^3 where
+     * k=max_vel/(joint_range/2)^3
      * @param angle Angle to calculate velocity for
      * @param limit Angle limit
      * @return joint velocity to avoid joint limits
@@ -84,20 +81,24 @@ protected:
   };
 
   std::vector<LimitsT> limits_; /**< @brief vector holding joint limit data */
-  double weight_;  /**< @brief weights used to scale the jocabian and error */
-  double threshold_;   /**< @brief threshold (% of range) at which to engage limit avoidance */
+  double weight_; /**< @brief weights used to scale the jocabian and error */
+  double
+      threshold_; /**< @brief threshold (% of range) at which to engage limit
+                     avoidance */
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   /** @brief This structure stores constraint data */
-  struct AvoidJointLimitsData: public ConstraintData
-  {
+  struct AvoidJointLimitsData : public ConstraintData {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    std::vector<int> limited_joints_;  /**< @brief list of joints that will be constrained */
-    const constraints::AvoidJointLimits* parent_; /**< @brief pointer to parent class object */
+    std::vector<int>
+        limited_joints_; /**< @brief list of joints that will be constrained */
+    const constraints::AvoidJointLimits
+        *parent_; /**< @brief pointer to parent class object */
 
     /** @brief See base class for documentation */
-    AvoidJointLimitsData(const constrained_ik::SolverState &state, const constraints::AvoidJointLimits* parent);
+    AvoidJointLimitsData(const constrained_ik::SolverState &state,
+                         const constraints::AvoidJointLimits *parent);
 
     /**
      * @brief Check if a given joint is near its lower limit
@@ -122,16 +123,18 @@ public:
    * Should be called before using class.
    * @param ik Pointer to Constrained_IK used for base-class init
    */
-  void init(const Constrained_IK* ik) override;
+  void init(const Constrained_IK *ik) override;
 
   /** @brief see base class for documentation*/
-  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+  constrained_ik::ConstraintResults
+  evalConstraint(const SolverState &state) const override;
 
   /** @brief see base class for documentation */
   void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) override;
 
   /**
-   * @brief Creates jacobian rows corresponding to joint velocity limit avoidance
+   * @brief Creates jacobian rows corresponding to joint velocity limit
+   * avoidance
    * Each limited joint gets a 0 row with a 1 in that joint's column
    * @param cdata The constraint specific data
    * @return Pseudo-Identity scaled by weight_
@@ -152,31 +155,33 @@ public:
    * @param cdata The constraint specific data.
    * @return True
    */
-  virtual bool checkStatus(const AvoidJointLimitsData &cdata) const {return true;}
+  virtual bool checkStatus(const AvoidJointLimitsData &cdata) const {
+    return true;
+  }
 
   /**
    * @brief getter for weight_
    * @return weight_
    */
-  virtual double getWeight() const {return weight_;}
+  virtual double getWeight() const { return weight_; }
 
   /**
    * @brief setter for weight_
    * @param weight Value to set weight_ to
    */
-  virtual void setWeight(const double &weight) {weight_ = weight;}
-  
+  virtual void setWeight(const double &weight) { weight_ = weight; }
+
   /**
    * @brief getter for threshold_
    * @return threshold_
    */
-  virtual double getThreshold() const {return threshold_;}
+  virtual double getThreshold() const { return threshold_; }
 
   /**
    * @brief setter for threshold_
    * @param threshold Value to set threshold_ to
    */
-  virtual void setThreshold(const double &threshold) {threshold_ = threshold;}
+  virtual void setThreshold(const double &threshold) { threshold_ = threshold; }
 };
 
 } /* namespace constraints */

@@ -28,25 +28,24 @@
 
 #include "constrained_ik/constraint.h"
 #include "constrained_ik/constraint_group.h"
-#include "constrained_ik/constraints/goal_position.h"
 #include "constrained_ik/constraints/goal_orientation.h"
+#include "constrained_ik/constraints/goal_position.h"
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 
- /**
- * @brief Constraint to specify cartesian goal pose (XYZ+orientation)
- * Convenience class, built from goal_position and goal_orientation constraints
- * @todo This should not be a ConstraintGroup because it has to calculate a jacobian twice.
- */
-class GoalPose : public ConstraintGroup
-{
+/**
+* @brief Constraint to specify cartesian goal pose (XYZ+orientation)
+* Convenience class, built from goal_position and goal_orientation constraints
+* @todo This should not be a ConstraintGroup because it has to calculate a
+* jacobian twice.
+*/
+class GoalPose : public ConstraintGroup {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  GoalPose() : ConstraintGroup(), position_(new GoalPosition()), orientation_(new GoalOrientation())
-  {
+  GoalPose()
+      : ConstraintGroup(), position_(new GoalPosition()),
+        orientation_(new GoalOrientation()) {
     this->add(position_);
     this->add(orientation_);
   }
@@ -54,22 +53,25 @@ public:
    * @brief Setter for the orientation weights
    * @param weight_orientation values to set the orientation weights
    */
-  void setWeightOrientation(const Eigen::Vector3d &weight_orientation) {orientation_->setWeight(weight_orientation);}
+  void setWeightOrientation(const Eigen::Vector3d &weight_orientation) {
+    orientation_->setWeight(weight_orientation);
+  }
 
   /**
    * @brief Setter for the position weights
    * @param weight_position value to set the position weights
    */
-  void setWeightPosition(const Eigen::Vector3d &weight_position) {position_->setWeight(weight_position);}
+  void setWeightPosition(const Eigen::Vector3d &weight_position) {
+    position_->setWeight(weight_position);
+  }
+
 protected:
-  GoalPosition* position_; /**< Positional Constraint */
-  GoalOrientation* orientation_; /**< Orientation Constraint */
+  GoalPosition *position_;       /**< Positional Constraint */
+  GoalOrientation *orientation_; /**< Orientation Constraint */
 
 }; // class GoalPose
 
 } // namespace constraints
 } // namespace constrained_ik
 
-
 #endif // GOAL_POSE_H
-

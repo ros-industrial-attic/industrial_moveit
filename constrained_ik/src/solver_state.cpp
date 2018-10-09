@@ -29,20 +29,20 @@
 
 using namespace Eigen;
 
-namespace constrained_ik
-{
+namespace constrained_ik {
 
-SolverState::SolverState(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed)
-{
+SolverState::SolverState(const Eigen::Affine3d &goal,
+                         const Eigen::VectorXd &joint_seed) {
   reset(goal, joint_seed);
 }
 
-void SolverState::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &joint_seed)
-{
+void SolverState::reset(const Eigen::Affine3d &goal,
+                        const Eigen::VectorXd &joint_seed) {
   this->goal = goal;
   this->joint_seed = joint_seed;
   this->iter = 0;
-  this->joints = VectorXd::Constant(joint_seed.size(), std::numeric_limits<double>::max());
+  this->joints =
+      VectorXd::Constant(joint_seed.size(), std::numeric_limits<double>::max());
   this->joints_delta = VectorXd::Zero(joint_seed.size());
   this->primary_sum = 0.0;
   this->auxiliary_sum = 0.0;
@@ -52,4 +52,3 @@ void SolverState::reset(const Eigen::Affine3d &goal, const Eigen::VectorXd &join
 }
 
 } // namespace constrained_ik
-

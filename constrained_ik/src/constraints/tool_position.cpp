@@ -1,6 +1,7 @@
 /**
  * @file tool_position.cpp
- * @brief Constraint to specify cartesian goal position in tool frame (XYZ rotation).
+ * @brief Constraint to specify cartesian goal position in tool frame (XYZ
+ * rotation).
  *
  * @author dsolomon
  * @date Sep 23, 2013
@@ -23,26 +24,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "constrained_ik/constrained_ik.h"
 #include "constrained_ik/constraints/tool_position.h"
-#include <ros/ros.h>
+#include "constrained_ik/constrained_ik.h"
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::ToolPosition, constrained_ik::Constraint)
+#include <ros/ros.h>
+PLUGINLIB_EXPORT_CLASS(constrained_ik::constraints::ToolPosition,
+                       constrained_ik::Constraint)
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 
 using namespace Eigen;
 
 // initialize limits/tolerances to default values
-ToolPosition::ToolPosition() : GoalPosition()
-{
-}
+ToolPosition::ToolPosition() : GoalPosition() {}
 
-constrained_ik::ConstraintResults ToolPosition::evalConstraint(const SolverState &state) const
-{
+constrained_ik::ConstraintResults
+ToolPosition::evalConstraint(const SolverState &state) const {
   constrained_ik::ConstraintResults output;
   GoalPosition::GoalPositionData cdata(state);
 
@@ -53,28 +51,30 @@ constrained_ik::ConstraintResults ToolPosition::evalConstraint(const SolverState
   return output;
 }
 
-Eigen::VectorXd ToolPosition::calcError(const GoalPosition::GoalPositionData &cdata) const
-{
-  //rotate jacobian into tool frame by premultiplying by otR.transpose()
-  Vector3d err = cdata.state_.pose_estimate.rotation().transpose() * GoalPosition::calcError(cdata);
+Eigen::VectorXd
+ToolPosition::calcError(const GoalPosition::GoalPositionData &cdata) const {
+  // rotate jacobian into tool frame by premultiplying by otR.transpose()
+  Vector3d err = cdata.state_.pose_estimate.rotation().transpose() *
+                 GoalPosition::calcError(cdata);
 
   ROS_ASSERT(err.rows() == 3);
   return err;
 }
 
 // translate cartesian errors into joint-space errors
-Eigen::MatrixXd ToolPosition::calcJacobian(const GoalPosition::GoalPositionData &cdata) const
-{
+Eigen::MatrixXd
+ToolPosition::calcJacobian(const GoalPosition::GoalPositionData &cdata) const {
   MatrixXd tmpJ;
   if (!ik_->getKin().calcJacobian(cdata.state_.joints, tmpJ))
     throw std::runtime_error("Failed to calculate Jacobian");
 
-  //rotate jacobian into tool frame by premultiplying by otR.transpose()
-  MatrixXd J = cdata.state_.pose_estimate.rotation().transpose() * tmpJ.topRows(3);
+  // rotate jacobian into tool frame by premultiplying by otR.transpose()
+  MatrixXd J =
+      cdata.state_.pose_estimate.rotation().transpose() * tmpJ.topRows(3);
 
   // weight each row of J
-  for (size_t ii=0; ii<3; ++ii)
-      J.row(ii) *= weight_(ii);
+  for (size_t ii = 0; ii < 3; ++ii)
+    J.row(ii) *= weight_(ii);
 
   ROS_ASSERT(J.rows() == 3);
   return J;
@@ -82,4 +82,3 @@ Eigen::MatrixXd ToolPosition::calcJacobian(const GoalPosition::GoalPositionData 
 
 } // namespace constraints
 } // namespace constrained_ik
-

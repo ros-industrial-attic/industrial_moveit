@@ -1,6 +1,7 @@
 /**
  * @file goal_zero_jvel.h
- * @brief Constraint to dampen movement by driving joint velocity to zero in each iteration
+ * @brief Constraint to dampen movement by driving joint velocity to zero in
+ * each iteration
  *
  * @author dsolomon
  * @date Sep 23, 2013
@@ -28,26 +29,26 @@
 
 #include "constrained_ik/constraint.h"
 
-namespace constrained_ik
-{
-namespace constraints
-{
+namespace constrained_ik {
+namespace constraints {
 /**
  * @class constrained_ik::constraints::GoalZeroJVel
- * @brief Constraint to dampen movement by driving joint velocity to zero in each iteration
- * @todo Need to fix this constraint, it does not appear to be fully implemented.
+ * @brief Constraint to dampen movement by driving joint velocity to zero in
+ * each iteration
+ * @todo Need to fix this constraint, it does not appear to be fully
+ * implemented.
  *
  * @par Examples:
  * All examples are located here @ref goal_zero_jvel_example
  */
-class GoalZeroJVel: public Constraint
-{
+class GoalZeroJVel : public Constraint {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   GoalZeroJVel();
 
   /** @brief see base class for documentation*/
-  constrained_ik::ConstraintResults evalConstraint(const SolverState &state) const override;
+  constrained_ik::ConstraintResults
+  evalConstraint(const SolverState &state) const override;
 
   /** @brief see base class for documentation*/
   void loadParameters(const XmlRpc::XmlRpcValue &constraint_xml) override;
@@ -71,19 +72,21 @@ public:
    * @param cdata The constraint specific data.
    * @return True always (no termination criteria)
    */
-  virtual bool checkStatus(const ConstraintData &cdata) const {return true;}  //always return true
+  virtual bool checkStatus(const ConstraintData &cdata) const {
+    return true;
+  } // always return true
 
   /**
    * @brief Getter for weight_
    * @return weight_
    */
-  virtual double getWeight() const {return weight_;}
+  virtual double getWeight() const { return weight_; }
 
   /**
    * @brief setter for weight_
    * @param weight Value to set weight_ to
    */
-  virtual void setWeight(double weight) {weight_ = weight;}
+  virtual void setWeight(double weight) { weight_ = weight; }
 
 protected:
   double weight_; /**< @brief weights used to scale the jocabian and error */
@@ -93,6 +96,4 @@ protected:
 } // namespace constraints
 } // namespace constrained_ik
 
-
 #endif // GOAL_ZERO_JVEL_H
-

@@ -32,84 +32,86 @@
 #ifndef JOINT_INTERPOLATION_PLANNER_H
 #define JOINT_INTERPOLATION_PLANNER_H
 
+#include <boost/atomic.hpp>
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene/planning_scene.h>
-#include <boost/atomic.hpp>
 
-namespace constrained_ik
-{
+namespace constrained_ik {
 
-  const double DEFAULT_JOINT_DISCRETIZATION_STEP = 0.02;
+const double DEFAULT_JOINT_DISCRETIZATION_STEP = 0.02;
+
+/**
+ * @brief Joint interpolation planner for moveit.
+ *
+ * This class is used to represent a joint interpolated path planner for
+ * moveit.  This planner does not have the inherent ability to avoid
+ * collision. It does check if the path created is collision free before it
+ * returns a trajectory.  If a collision is found it returns an empty
+ * trajectory and moveit error.
+ */
+class JointInterpolationPlanner : public planning_interface::PlanningContext {
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   /**
-   * @brief Joint interpolation planner for moveit.
-   *
-   * This class is used to represent a joint interpolated path planner for
-   * moveit.  This planner does not have the inherent ability to avoid
-   * collision. It does check if the path created is collision free before it
-   * returns a trajectory.  If a collision is found it returns an empty
-   * trajectory and moveit error.
+   * @brief JointInterpolationPlanner Constructor
+   * @param name of planner
+   * @param group of the planner
    */
-  class JointInterpolationPlanner : public planning_interface::PlanningContext
-  {
-  public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  JointInterpolationPlanner(const std::string &name, const std::string &group)
+      : planning_interface::PlanningContext(name, group), terminate_(false) {
+    resetPlannerConfiguration();
+  }
 
-    /**
-     * @brief JointInterpolationPlanner Constructor
-     * @param name of planner
-     * @param group of the planner
-     */
-    JointInterpolationPlanner(const std::string &name, const std::string &group) : planning_interface::PlanningContext(name, group), terminate_(false) { resetPlannerConfiguration(); }
+  /**
+   * @brief JointInterpolationPlanner Copy Constructor
+   * @param other joint interpolation planner
+   */
+  JointInterpolationPlanner(const JointInterpolationPlanner &other)
+      : planning_interface::PlanningContext(other), terminate_(false) {}
 
-    /**
-     * @brief JointInterpolationPlanner Copy Constructor
-     * @param other joint interpolation planner
-     */
-    JointInterpolationPlanner(const JointInterpolationPlanner &other) : planning_interface::PlanningContext(other), terminate_(false) {}
+  /** @brief Clear planner data */
+  void clear() override { terminate_ = false; }
 
-    /** @brief Clear planner data */
-    void clear() override { terminate_ = false; }
+  /**
+   * @brief Terminate the active planner solve
+   * @return True if successfully terminated, otherwise false
+   */
+  bool terminate() override {
+    terminate_ = true;
+    return true;
+  }
 
-    /**
-     * @brief Terminate the active planner solve
-     * @return True if successfully terminated, otherwise false
-     */
-    bool terminate() override
-    {
-      terminate_ = true;
-      return true;
-    }
+  /**
+   * @brief Generate a joint interpolated trajectory
+   * @param res planner response
+   * @return
+   */
+  bool solve(planning_interface::MotionPlanResponse &res) override;
 
-    /**
-     * @brief Generate a joint interpolated trajectory
-     * @param res planner response
-     * @return
-     */
-    bool solve(planning_interface::MotionPlanResponse &res) override;
+  /**
+   * @brief Generate a joint interpolated trajectory
+   * @param res planner detailed response
+   * @return
+   */
+  bool solve(planning_interface::MotionPlanDetailedResponse &res) override;
 
-    /**
-     * @brief Generate a joint interpolated trajectory
-     * @param res planner detailed response
-     * @return
-     */
-    bool solve(planning_interface::MotionPlanDetailedResponse &res) override;
+  /**
+   * @brief Set the planners configuration
+   * @param joint_discretization_step Max joint discretization step
+   * @param debug_mode Set debug state
+   */
+  void setPlannerConfiguration(double joint_discretization_step,
+                               bool debug_mode = false);
 
-    /**
-     * @brief Set the planners configuration
-     * @param joint_discretization_step Max joint discretization step
-     * @param debug_mode Set debug state
-     */
-    void setPlannerConfiguration(double joint_discretization_step, bool debug_mode = false);
+  /** @brief Reset the planners configuration to it default settings */
+  void resetPlannerConfiguration();
 
-    /** @brief Reset the planners configuration to it default settings */
-    void resetPlannerConfiguration();
-
-  private:
-    double joint_discretization_step_; /**< Joint discretization step */
-    bool debug_mode_;                  /**< Debug state */
-    boost::atomic<bool> terminate_;    /**< Termination flag */
-  };
-} //namespace constrained_ik
+private:
+  double joint_discretization_step_; /**< Joint discretization step */
+  bool debug_mode_;                  /**< Debug state */
+  boost::atomic<bool> terminate_;    /**< Termination flag */
+};
+} // namespace constrained_ik
 
 #endif // JOINT_INTERPOLATION_PLANNER_H
