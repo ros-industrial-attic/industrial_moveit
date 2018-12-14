@@ -142,7 +142,7 @@ bool IKSolver::solve(const Eigen::VectorXd& seed,const Eigen::Affine3d& tool_pos
   }
 
   solution.resize(solution_.size());
-  solution = VectorXd::Map(solution_.data(),solution.size());
+  solution = VectorXd::Map(solution_.data(),solution_.size());
   return true;
 }
 
@@ -174,7 +174,7 @@ bool IKSolver::solve(const std::vector<double>& seed, const Eigen::Affine3d& too
   }
 
   solution.resize(solution_kdl.rows());
-  VectorXd::Map(&solution.front(),solution.size()) = solution_kdl.data;
+  VectorXd::Map(&solution[0],solution.size()) = solution_kdl.data;
   return true;
 }
 

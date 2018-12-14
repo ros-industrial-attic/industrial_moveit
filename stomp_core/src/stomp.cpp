@@ -803,25 +803,18 @@ bool Stomp::computeOptimizedCost()
   if(current_lowest_cost_ > parameters_total_cost_)
   {
     current_lowest_cost_ = parameters_total_cost_;
+    parameters_valid_prev_ = parameters_valid_;
   }
   else
   {
-    if(parameters_valid_)
-    {
-      if(parameters_valid_prev_)
-      {
-        // reverting updates as no improvement was made
-        parameters_optimized_ -= parameters_updates_;
-      }
-    }
-    else
+    if(parameters_valid_prev_)
     {
       // reverting updates as no improvement was made
       parameters_optimized_ -= parameters_updates_;
+      parameters_valid_ = parameters_valid_prev_;
+
     }
   }
-
-  parameters_valid_prev_ = parameters_valid_;
 
   return true;
 }

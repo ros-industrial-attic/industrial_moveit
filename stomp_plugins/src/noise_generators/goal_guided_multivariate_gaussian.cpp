@@ -207,7 +207,6 @@ bool GoalGuidedMultivariateGaussian::setupGoalConstraints(const planning_scene::
   bool found_valid = false;
   for(const auto& g: goals)
   {
-
     if(utils::kinematics::isCartesianConstraints(g))
     {
       // decoding goal
@@ -222,22 +221,24 @@ bool GoalGuidedMultivariateGaussian::setupGoalConstraints(const planning_scene::
       }
     }
 
-
-    if(!found_valid)
+    if(found_valid)
     {
-      ROS_DEBUG("%s a cartesian goal pose in MotionPlanRequest was not provided,using default cartesian tolerance",getName().c_str());
-
-      // creating default cartesian tolerance
-      tool_goal_tolerance_.resize(CARTESIAN_DOF_SIZE);
-      double ptol = DEFAULT_POS_TOLERANCE;
-      double rtol = DEFAULT_ROT_TOLERANCE;
-      tool_goal_tolerance_ << ptol, ptol, ptol, rtol, rtol, rtol;
+      ROS_DEBUG_STREAM(getName()<< " using tool tolerances of "<< tool_goal_tolerance_.transpose());
+      break;
     }
-
-    break;
   }
 
-  ROS_DEBUG("%s using '%s' tool link",getName().c_str(),tool_link_.c_str());
+  if(!found_valid)
+  {
+    ROS_DEBUG("%s a cartesian goal pose in MotionPlanRequest was not provided,using default cartesian tolerance",getName().c_str());
+
+    // creating default cartesian tolerance
+    tool_goal_tolerance_.resize(CARTESIAN_DOF_SIZE);
+    double ptol = DEFAULT_POS_TOLERANCE;
+    double rtol = DEFAULT_ROT_TOLERANCE;
+    tool_goal_tolerance_ << ptol, ptol, ptol, rtol, rtol, rtol;
+  }
+
   error_code.val = error_code.SUCCESS;
 
   return true;

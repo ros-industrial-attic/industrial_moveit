@@ -98,11 +98,10 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
     return false;
   }
 
-  // storing tool goal pose
+  // save tool goal pose and constraints
   bool found_goal = false;
   for(const auto& g: goals)
   {
-
     if(utils::kinematics::isCartesianConstraints(g))
     {
       // tool cartesian goal data
@@ -114,20 +113,27 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
         found_goal = utils::kinematics::decodeCartesianConstraint(robot_model_,cartesian_constraints.get(),tool_goal_pose_,tool_goal_tolerance_,
                                                                   robot_model_->getRootLinkName());
       }
-      break;
+
+      if(found_goal)
+      {
+        break;  // a Cartesian goal was found, done
+      }
     }
+  }
 
 
-    if(!found_goal)
+  // compute the tool goal pose from the goal joint configuration if there exists any
+  if(!found_goal)
+  {
+    ROS_DEBUG("%s a cartesian goal pose in MotionPlanRequest was not provided,calculating it from FK",getName().c_str());
+
+    for(const auto& g: goals)
     {
-      ROS_DEBUG("%s a cartesian goal pose in MotionPlanRequest was not provided,calculating it from FK",getName().c_str());
-
       // check joint constraints
       if(g.joint_constraints.empty())
       {
-        ROS_ERROR_STREAM("No joint values for the goal were found");
-        error_code.val = error_code.INVALID_GOAL_CONSTRAINTS;
-        return false;
+        ROS_WARN_STREAM("No joint values for the goal were found");
+        continue;
       }
 
       // compute FK to obtain tool pose

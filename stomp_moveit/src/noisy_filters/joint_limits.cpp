@@ -37,15 +37,15 @@ namespace noisy_filters
 
 JointLimits::JointLimits():
     lock_start_(true),
-    lock_goal_(true)
+    lock_goal_(true),
+    has_goal_constraints_(false)
 {
-  // TODO Auto-generated constructor stub
 
 }
 
 JointLimits::~JointLimits()
 {
-  // TODO Auto-generated destructor stub
+
 }
 
 bool JointLimits::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
@@ -117,23 +117,29 @@ bool JointLimits::setMotionPlanRequest(const planning_scene::PlanningSceneConstP
   if(lock_goal_)
   {
     bool goal_state_saved = false;
+    has_goal_constraints_ = false;
     for(auto& gc: req.goal_constraints)
     {
+      has_goal_constraints_ = !gc.joint_constraints.empty();
       for(auto& jc : gc.joint_constraints)
       {
         goal_state_->setVariablePosition(jc.joint_name,jc.position);
-        goal_state_saved = true;
       }
 
       if(!goal_state_->satisfiesBounds(robot_model_->getJointModelGroup(group_name_)))
       {
         ROS_WARN("%s Requested Goal State is out of bounds",getName().c_str());
+        continue;
       }
 
-      break;
+      if(has_goal_constraints_)
+      {
+        goal_state_saved = true;
+        break;
+      }
     }
 
-    if(!goal_state_saved)
+    if(has_goal_constraints_ && !goal_state_saved)
     {
       ROS_ERROR_STREAM("Failed to save goal state");
       return false;
@@ -168,7 +174,7 @@ bool JointLimits::filter(std::size_t start_timestep,std::size_t num_timesteps,
     filtered = true;
   }
 
-  if(lock_goal_)
+  if(has_goal_constraints_ && lock_goal_)
   {
     auto last_index = parameters.cols()-1;
     for(auto j = 0u; j < num_joints; j++)
