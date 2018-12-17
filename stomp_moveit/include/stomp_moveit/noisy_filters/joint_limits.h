@@ -99,6 +99,7 @@ protected:
   // options
   bool lock_start_;
   bool lock_goal_;
+  bool has_goal_constraints_;  /** @brief  True if a joint constraint for the goal was provided*/
 
   // start and goal
   moveit::core::RobotStatePtr start_state_;

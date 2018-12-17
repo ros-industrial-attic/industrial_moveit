@@ -182,9 +182,11 @@ protected:
 
   // optimized parameters
   bool parameters_valid_;                          /**< @brief whether or not the optimized parameters are valid */
+  bool parameters_valid_prev_;                     /**< @brief whether or not the optimized parameters from the previous iteration are valid */
   double parameters_total_cost_;                   /**< @brief Total cost of the optimized parameters */
   double current_lowest_cost_;                     /**< @brief Hold the lowest cost of the optimized parameters */
   Eigen::MatrixXd parameters_optimized_;           /**< @brief A matrix [dimensions][timesteps] of the optimized parameters. */
+
   Eigen::MatrixXd parameters_updates_;             /**< @brief A matrix [dimensions][timesteps] of the parameter updates*/
   Eigen::VectorXd parameters_state_costs_;         /**< @brief A vector [timesteps] of the parameters state costs */
   Eigen::MatrixXd parameters_control_costs_;       /**< @brief A matrix [dimensions][timesteps] of the parameters control costs*/

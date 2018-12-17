@@ -30,6 +30,7 @@
 #include <moveit/robot_model/robot_model.h>
 #include <moveit/collision_detection_fcl/collision_world_fcl.h>
 #include <moveit/collision_detection_fcl/collision_robot_fcl.h>
+#include <stomp_moveit/utils/kinematics.h>
 #include "stomp_moveit/cost_functions/stomp_cost_function.h"
 
 namespace stomp_moveit
@@ -120,7 +121,7 @@ public:
    * @param final_cost        The cost value after optimizing.
    * @param parameters        The parameters generated at the end of current iteration[num_dimensions x num_timesteps]
    */
-  virtual void done(bool success,int total_iterations,double final_cost,const Eigen::MatrixXd& parameters) override{}
+  virtual void done(bool success,int total_iterations,double final_cost,const Eigen::MatrixXd& parameters) override;
 
 protected:
 
@@ -138,18 +139,19 @@ protected:
 
   // goal pose
   Eigen::Affine3d tool_goal_pose_;                    /**< @brief The desired goal pose for the active plan request **/
+  Eigen::VectorXd tool_goal_tolerance_;
+  Eigen::VectorXd min_twist_error_;
+  Eigen::VectorXd max_twist_error_;
 
   // ros parameters
-  Eigen::ArrayXi dof_nullity_;                        /**< @brief Indicates which cartesian DOF's are unconstrained (0) and fully constrained (1)*/
-  std::pair<double,double> position_error_range_;     /**< @brief The allowed position error range, [2 x 1] */
-  std::pair<double,double> orientation_error_range_;  /**< @brief The allowed orientation error range as euler angles, [2 x 1] **/
   double position_cost_weight_;                       /**< @brief factor multiplied to the scaled position error **/
   double orientation_cost_weight_;                    /**< @brief factor multiplied to the scaled orientation error **/
 
-  // support variables
+  // partial results variables
   Eigen::VectorXd last_joint_pose_;
   Eigen::Affine3d last_tool_pose_;
   Eigen::VectorXd tool_twist_error_;
+
 
 
 };

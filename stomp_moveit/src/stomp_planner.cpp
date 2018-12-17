@@ -32,11 +32,11 @@
 #include <stomp_moveit/utils/kinematics.h>
 #include <stomp_moveit/utils/polynomial.h>
 
-
+static const std::string DEBUG_NS = "stomp_planner";
 static const std::string DESCRIPTION = "STOMP";
-static const double TIMEOUT_INTERVAL = 0.05;
-static int const IK_ATTEMPTS = 10;
-static int const IK_TIMEOUT = 0.05;
+static const double TIMEOUT_INTERVAL = 0.5;
+static int const IK_ATTEMPTS = 4;
+static int const IK_TIMEOUT = 0.005;
 const static double MAX_START_DISTANCE_THRESH = 0.5;
 
 /**
@@ -44,7 +44,7 @@ const static double MAX_START_DISTANCE_THRESH = 0.5;
  * @param config        The XmlRpcValue of stomp configuration parameters
  * @param group         The moveit planning group
  * @param stomp_config  The stomp configuration structure
- * @return True if sucessfully parsed, otherwise false.
+ * @return True if successfully parsed, otherwise false.
  */
 bool parseConfig(XmlRpc::XmlRpcValue config,const moveit::core::JointModelGroup* group,stomp_core::StompConfiguration& stomp_config)
 {
@@ -107,6 +107,7 @@ StompPlanner::StompPlanner(const std::string& group,const XmlRpc::XmlRpcValue& c
     PlanningContext(DESCRIPTION,group),
     config_(config),
     robot_model_(model),
+    ik_solver_(new utils::kinematics::IKSolver(model,group)),
     ph_(new ros::NodeHandle("~"))
 {
   setup();
@@ -201,12 +202,14 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
   ROS_WARN_COND(TIMEOUT_INTERVAL > request_.allowed_planning_time,
                 "%s allowed planning time %f is less than the minimum planning time value of %f",
                 getName().c_str(),request_.allowed_planning_time,TIMEOUT_INTERVAL);
+  std::atomic<bool> terminating(false);
   ros::Timer timeout_timer = ph_->createTimer(ros::Duration(TIMEOUT_INTERVAL), [&](const ros::TimerEvent& evnt)
   {
-    if((ros::WallTime::now() - start_time) > allowed_time)
+    if(((ros::WallTime::now() - start_time) > allowed_time))
     {
-      ROS_ERROR("%s exceeded allowed time of %f , terminating",getName().c_str(),allowed_time.toSec());
+      ROS_ERROR_COND(!terminating,"%s exceeded allowed time of %f , terminating",getName().c_str(),allowed_time.toSec());
       this->terminate();
+      terminating = true;
     }
 
   },false);
@@ -237,7 +240,6 @@ bool StompPlanner::solve(planning_interface::MotionPlanDetailedResponse &res)
     if(!getStartAndGoal(start,goal))
     {
       res.error_code_.val = moveit_msgs::MoveItErrorCodes::INVALID_MOTION_PLAN;
-      ROS_ERROR("STOMP failed to get the start and goal positions");
       return false;
     }
 
@@ -335,13 +337,19 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
   // We check to see if the start state in the request and the seed state are 'close'
   if (moveit::core::robotStateMsgToRobotState(request_.start_state, state))
   {
+
+    if(!state.satisfiesBounds(group))
+    {
+      ROS_ERROR("Start state is out of bounds");
+      return false;
+    }
+
     // copying start joint values
     start.resize(joint_names.size());
     for(auto j = 0u; j < joint_names.size(); j++)
     {
       start(j) = state.getVariablePosition(joint_names[j]);
     }
-    state.enforceBounds(group);
 
     if(within_tolerance(parameters.leftCols(1),start,MAX_START_DISTANCE_THRESH))
     {
@@ -389,23 +397,32 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
       break;
     }
 
-    if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // checking cartesian
+    // now check Cartesian constraint
+    state.updateLinkTransforms();
+    Eigen::Affine3d start_tool_pose = state.getGlobalLinkTransform(tool_link);
+    boost::optional<moveit_msgs::Constraints> tool_constraints = curateCartesianConstraints(gc,start_tool_pose);
+    if(!tool_constraints.is_initialized())
     {
-      // solving ik at goal
-      const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
-      const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
-
-      KinematicConfig kc;
-      if(createKinematicConfig(group,pos_constraint,orient_constraint,start,kc) )
-      {
-        if(solveIK(std::make_shared<moveit::core::RobotState>(state),group_,kc,goal))
-        {
-          found_goal = true;
-          break;
-        }
-      }
+      ROS_WARN("Cartesian Goal could not be created from provided constraints");
+      found_goal = true;
+      break;
     }
 
+    Eigen::VectorXd solution;
+    Eigen::VectorXd seed = start;
+    ik_solver_->setKinematicState(state);
+    if(ik_solver_->solve(seed,tool_constraints.get(),solution))
+    {
+      goal = solution;
+      found_goal = true;
+      break;
+    }
+    else
+    {
+      ROS_ERROR("A valid ik solution for the given Cartesian constraints was not found ");
+      ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"IK failed with goal constraint \n"<<tool_constraints.get());
+      ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"Reference Tool pose used was: \n"<<start_tool_pose.matrix());
+    }
   }
 
   // forcing the goal into the seed trajectory
@@ -417,13 +434,13 @@ bool StompPlanner::getSeedParameters(Eigen::MatrixXd& parameters) const
     }
     else
     {
-      ROS_ERROR("%s Goal in seed to far away from Goal requested",getName().c_str());
+      ROS_ERROR("%s Goal in seed is too far away from requested goal constraints",getName().c_str());
       return false;
     }
   }
   else
   {
-    ROS_ERROR("%s Goal in seed to far away from Goal requested",getName().c_str());
+    ROS_ERROR("%s requested goal constraint was invalid or unreachable, comparison with goal in seed isn't possible",getName().c_str());
     return false;
   }
 
@@ -456,7 +473,11 @@ bool StompPlanner::parametersToJointTrajectory(const Eigen::MatrixXd& parameters
   trajectory_processing::IterativeParabolicTimeParameterization time_generator;
   robot_trajectory::RobotTrajectory traj(robot_model_,group_);
   moveit::core::RobotState robot_state(robot_model_);
-  moveit::core::robotStateMsgToRobotState(request_.start_state,robot_state);
+  if(!moveit::core::robotStateMsgToRobotState(request_.start_state,robot_state))
+  {
+    return false;
+  }
+
   traj.setRobotTrajectoryMsg(robot_state,trajectory);
 
   // converting to msg
@@ -575,6 +596,7 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
   try
   {
     // copying start state
+    state->setToDefaultValues();
     if(!robotStateMsgToRobotState(request_.start_state,*state))
     {
       ROS_ERROR("%s Failed to extract start state from MotionPlanRequest",getName().c_str());
@@ -607,6 +629,8 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
     // extracting goal joint values
     for(const auto& gc : request_.goal_constraints)
     {
+
+      // check joint constraints first
       if(!gc.joint_constraints.empty())
       {
 
@@ -637,24 +661,33 @@ bool StompPlanner::getStartAndGoal(Eigen::VectorXd& start, Eigen::VectorXd& goal
 
       }
 
-      if(!gc.position_constraints.empty() && !gc.orientation_constraints.empty()) // check cartesian
+      // now check cartesian constraint
+      state->updateLinkTransforms();
+      Eigen::Affine3d start_tool_pose = state->getGlobalLinkTransform(tool_link);
+      boost::optional<moveit_msgs::Constraints> tool_constraints = curateCartesianConstraints(gc,start_tool_pose);
+      if(!tool_constraints.is_initialized())
       {
-        // solving ik at goal
-        const moveit_msgs::PositionConstraint& pos_constraint = gc.position_constraints.front();
-        const moveit_msgs::OrientationConstraint& orient_constraint = gc.orientation_constraints.front();
-
-        KinematicConfig kc;
-        if(createKinematicConfig(joint_group,pos_constraint,orient_constraint,start,kc) )
-        {
-          if(solveIK(state,group_,kc,goal))
-          {
-            ROS_DEBUG("%s Found goal from IK ",getName().c_str());
-            found_goal = true;
-            break;
-          }
-        }
+        ROS_WARN("Cartesian Goal could not be created from provided constraints");
+        found_goal = true;
+        break;
       }
 
+      // now solve ik
+      Eigen::VectorXd solution;
+      Eigen::VectorXd seed = start;
+      ik_solver_->setKinematicState(*state);
+      if(ik_solver_->solve(seed,tool_constraints.get(),solution))
+      {
+        goal = solution;
+        found_goal = true;
+        break;
+      }
+      else
+      {
+        ROS_ERROR("A valid ik solution for the given Cartesian constraints was not found ");
+        ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"IK failed with goal constraint \n"<<tool_constraints.get());
+        ROS_DEBUG_STREAM_NAMED(DEBUG_NS,"Reference Tool pose used was: \n"<<start_tool_pose.matrix());
+      }
     }
 
     ROS_ERROR_COND(!found_goal,"%s was unable to retrieve the goal from the MotionPlanRequest",getName().c_str());
@@ -686,10 +719,12 @@ bool StompPlanner::canServiceRequest(const moveit_msgs::MotionPlanRequest &req) 
     return false;
   }
 
-  // check that we have only joint constraints at the goal
-  if (req.goal_constraints[0].joint_constraints.size() == 0)
+  // check that we have joint or cartesian constraints at the goal
+  const auto& gc = req.goal_constraints[0];
+  if ((gc.joint_constraints.size() == 0) &&
+		  !utils::kinematics::isCartesianConstraints(gc))
   {
-    ROS_ERROR("STOMP: Can only handle joint space goals.");
+    ROS_ERROR("STOMP couldn't find either a joint or cartesian goal.");
     return false;
   }
 

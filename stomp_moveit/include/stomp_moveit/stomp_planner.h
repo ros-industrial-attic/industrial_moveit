@@ -29,6 +29,7 @@
 #include <moveit/planning_interface/planning_interface.h>
 #include <stomp_core/stomp.h>
 #include <stomp_moveit/stomp_optimization_task.h>
+#include <stomp_moveit/utils/kinematics.h>
 #include <boost/thread.hpp>
 #include <ros/ros.h>
 
@@ -163,8 +164,9 @@ protected:
   XmlRpc::XmlRpcValue config_;
   stomp_core::StompConfiguration stomp_config_;
 
-  // robot environment
+  // robot model
   moveit::core::RobotModelConstPtr robot_model_;
+  utils::kinematics::IKSolverPtr ik_solver_;
 
   // ros tasks
   ros::NodeHandlePtr ph_;

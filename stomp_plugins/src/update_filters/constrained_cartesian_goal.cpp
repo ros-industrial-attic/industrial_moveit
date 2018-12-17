@@ -37,8 +37,8 @@
 PLUGINLIB_EXPORT_CLASS(stomp_moveit::update_filters::ConstrainedCartesianGoal,stomp_moveit::update_filters::StompUpdateFilter);
 
 static int CARTESIAN_DOF_SIZE = 6;
-static int const IK_ATTEMPTS = 10;
-static int const IK_TIMEOUT = 0.05;
+static const double DEFAULT_POS_TOLERANCE = 0.001;
+static const double DEFAULT_ROT_TOLERANCE = 0.01;
 
 namespace stomp_moveit
 {
@@ -48,13 +48,12 @@ namespace update_filters
 ConstrainedCartesianGoal::ConstrainedCartesianGoal():
     name_("ConstrainedCartesianGoal")
 {
-  // TODO Auto-generated constructor stub
 
 }
 
 ConstrainedCartesianGoal::~ConstrainedCartesianGoal()
 {
-  // TODO Auto-generated destructor stub
+
 }
 
 bool ConstrainedCartesianGoal::initialize(moveit::core::RobotModelConstPtr robot_model_ptr,
@@ -62,6 +61,7 @@ bool ConstrainedCartesianGoal::initialize(moveit::core::RobotModelConstPtr robot
 {
   group_name_ = group_name;
   robot_model_ = robot_model_ptr;
+  ik_solver_.reset(new stomp_moveit::utils::kinematics::IKSolver(robot_model_ptr,group_name));
 
   return configure(config);
 }
@@ -69,49 +69,6 @@ bool ConstrainedCartesianGoal::initialize(moveit::core::RobotModelConstPtr robot
 bool ConstrainedCartesianGoal::configure(const XmlRpc::XmlRpcValue& config)
 {
   using namespace XmlRpc;
-
-  try
-  {
-    XmlRpcValue params = config;
-
-    XmlRpcValue dof_nullity_param = params["constrained_dofs"];
-    XmlRpcValue dof_thresholds_param = params["cartesian_convergence"];
-    XmlRpcValue joint_updates_param = params["joint_update_rates"];
-    if((dof_nullity_param.getType() != XmlRpcValue::TypeArray) ||
-        dof_nullity_param.size() < CARTESIAN_DOF_SIZE ||
-        dof_thresholds_param.getType() != XmlRpcValue::TypeArray ||
-        dof_thresholds_param.size() < CARTESIAN_DOF_SIZE  ||
-        joint_updates_param.getType() != XmlRpcValue::TypeArray ||
-        joint_updates_param.size() == 0)
-    {
-      ROS_ERROR("UnderconstrainedGoal received invalid array parameters");
-      return false;
-    }
-
-    for(auto i = 0u; i < dof_nullity_param.size(); i++)
-    {
-      kc_.constrained_dofs(i) = static_cast<int>(dof_nullity_param[i]);
-    }
-
-    for(auto i = 0u; i < dof_thresholds_param.size(); i++)
-    {
-      kc_.cartesian_convergence_thresholds(i) = static_cast<double>(dof_thresholds_param[i]);
-    }
-
-    kc_.joint_update_rates.resize(joint_updates_param.size());
-    for(auto i = 0u; i < joint_updates_param.size(); i++)
-    {
-      kc_.joint_update_rates(i) = static_cast<double>(joint_updates_param[i]);
-    }
-
-    kc_.max_iterations = static_cast<int>(params["max_ik_iterations"]);
-  }
-  catch(XmlRpc::XmlRpcException& e)
-  {
-    ROS_ERROR("%s failed to load parameters, %s",getName().c_str(),e.getMessage().c_str());
-    return false;
-  }
-
   return true;
 }
 
@@ -130,6 +87,9 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
   state_.reset(new RobotState(robot_model_));
   robotStateMsgToRobotState(req.start_state,*state_);
 
+  // update kinematic model
+  ik_solver_->setKinematicState(*state_);
+
   const std::vector<moveit_msgs::Constraints>& goals = req.goal_constraints;
   if(goals.empty())
   {
@@ -138,36 +98,36 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
     return false;
   }
 
-  // storing tool goal pose
+  // save tool goal pose and constraints
   bool found_goal = false;
   for(const auto& g: goals)
   {
-
-    if(!g.position_constraints.empty() &&
-        !g.orientation_constraints.empty()) // check cartesian pose constraints first
+    if(utils::kinematics::isCartesianConstraints(g))
     {
-
-      // storing cartesian goal pose using ik
-      const moveit_msgs::PositionConstraint& pos_constraint = g.position_constraints.front();
-      const moveit_msgs::OrientationConstraint& orient_constraint = g.orientation_constraints.front();
-
-      KinematicConfig kc;
-      Eigen::VectorXd joint_pose;
-      if(createKinematicConfig(joint_group,pos_constraint,orient_constraint,req.start_state,kc))
+      // tool cartesian goal data
+      state_->updateLinkTransforms();
+      Eigen::Affine3d start_tool_pose = state_->getGlobalLinkTransform(tool_link_);
+      boost::optional<moveit_msgs::Constraints> cartesian_constraints = utils::kinematics::curateCartesianConstraints(g,start_tool_pose);
+      if(cartesian_constraints.is_initialized())
       {
-        kc_.tool_goal_pose = kc.tool_goal_pose;
-        if(!solveIK(state_,group_name_,kc,joint_pose))
-        {
-          ROS_WARN("%s failed calculating ik for cartesian goal pose in the MotionPlanRequest",getName().c_str());
-        }
-
-        found_goal = true;
-        break;
+        found_goal = utils::kinematics::decodeCartesianConstraint(robot_model_,cartesian_constraints.get(),tool_goal_pose_,tool_goal_tolerance_,
+                                                                  robot_model_->getRootLinkName());
       }
 
+      if(found_goal)
+      {
+        break;  // a Cartesian goal was found, done
+      }
     }
+  }
 
-    if(!found_goal )
+
+  // compute the tool goal pose from the goal joint configuration if there exists any
+  if(!found_goal)
+  {
+    ROS_DEBUG("%s a cartesian goal pose in MotionPlanRequest was not provided,calculating it from FK",getName().c_str());
+
+    for(const auto& g: goals)
     {
       // check joint constraints
       if(g.joint_constraints.empty())
@@ -176,9 +136,7 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
         continue;
       }
 
-      ROS_WARN("%s a cartesian goal pose in MotionPlanRequest was not provided,calculating it from FK",getName().c_str());
-
-      // compute FK to obtain cartesian goal pose
+      // compute FK to obtain tool pose
       const std::vector<moveit_msgs::JointConstraint>& joint_constraints = g.joint_constraints;
 
       // copying goal values into state
@@ -187,12 +145,15 @@ bool ConstrainedCartesianGoal::setMotionPlanRequest(const planning_scene::Planni
         state_->setVariablePosition(jc.joint_name,jc.position);
       }
 
-      // storing reference goal position tool and pose
+      // storing tool goal pose and tolerance
       state_->update(true);
-      kc_.tool_goal_pose = state_->getGlobalLinkTransform(tool_link_);
+      tool_goal_pose_ = state_->getGlobalLinkTransform(tool_link_);
+      tool_goal_tolerance_.resize(CARTESIAN_DOF_SIZE);
+      double ptol = DEFAULT_POS_TOLERANCE;
+      double rtol = DEFAULT_ROT_TOLERANCE;
+      tool_goal_tolerance_ << ptol, ptol, ptol, rtol, rtol, rtol;
       found_goal = true;
       break;
-
     }
   }
 
@@ -220,32 +181,21 @@ bool ConstrainedCartesianGoal::filter(std::size_t start_timestep,
 
 
   filtered = false;
-  kc_.init_joint_pose = parameters.rightCols(1);
-  VectorXd joint_pose;
-  MatrixXd jacb_nullspace;
+  VectorXd goal_joint_pose;
+  VectorXd seed = parameters.rightCols(1) + updates.rightCols(1);
 
-  // projecting update into nullspace
-  if(kinematics::computeJacobianNullSpace(state_,group_name_,tool_link_,kc_.constrained_dofs,kc_.init_joint_pose,jacb_nullspace))
-  {
-    kc_.init_joint_pose  += jacb_nullspace*(updates.rightCols(1));
-  }
-  else
-  {
-    ROS_WARN("%s failed to project into the nullspace of the jacobian",getName().c_str());
-  }
-
-  if(kinematics::solveIK(state_,group_name_,kc_,joint_pose))
+  // solve kinematics
+  if(ik_solver_->solve(seed,tool_goal_pose_,goal_joint_pose,tool_goal_tolerance_))
   {
     filtered = true;
-    updates.rightCols(1) = joint_pose - parameters.rightCols(1);
+    updates.rightCols(1) = goal_joint_pose - parameters.rightCols(1);
   }
   else
   {
-    ROS_DEBUG("%s failed to update under-constrained tool goal pose due to ik error",getName().c_str());
+    ROS_DEBUG("%s failed failed to solve ik using noisy goal pose as seed, zeroing updates",getName().c_str());
     filtered = true;
     updates.rightCols(1) = Eigen::VectorXd::Zero(updates.rows());
   }
-
 
   return true;
 }

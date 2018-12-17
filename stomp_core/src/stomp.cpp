@@ -248,6 +248,7 @@ bool Stomp::solve(const Eigen::MatrixXd& initial_parameters,
     return false;
   }
 
+  parameters_valid_prev_ = parameters_valid_;
   while(current_iteration_ <= config_.num_iterations && runSingleIteration())
   {
 
@@ -511,6 +512,11 @@ bool Stomp::generateNoisyRollouts()
   // generate new noisy rollouts
   for(auto r = 0u; r < rollouts_generate; r++)
   {
+    if(!proceed_)
+    {
+      return false;
+    }
+
     if(!task_->generateNoisyParameters(parameters_optimized_,
                                       0,config_.num_timesteps,
                                       current_iteration_,r,
@@ -535,6 +541,11 @@ bool Stomp::filterNoisyRollouts()
   bool filtered = false;
   for(auto r = 0u ; r < config_.num_rollouts; r++)
   {
+    if(!proceed_)
+    {
+      return false;
+    }
+
     if(!task_->filterNoisyParameters(0,config_.num_timesteps,current_iteration_,r,noisy_rollouts_[r].parameters_noise,filtered))
     {
       ROS_ERROR_STREAM("Failed to filter noisy parameters");
@@ -788,14 +799,21 @@ bool Stomp::computeOptimizedCost()
     return false;
   }
 
+  // stop optimizing when valid solution is found
   if(current_lowest_cost_ > parameters_total_cost_)
   {
     current_lowest_cost_ = parameters_total_cost_;
+    parameters_valid_prev_ = parameters_valid_;
   }
   else
   {
-    // reverting updates as no improvement was made
-    parameters_optimized_ -= parameters_updates_;
+    if(parameters_valid_prev_)
+    {
+      // reverting updates as no improvement was made
+      parameters_optimized_ -= parameters_updates_;
+      parameters_valid_ = parameters_valid_prev_;
+
+    }
   }
 
   return true;
