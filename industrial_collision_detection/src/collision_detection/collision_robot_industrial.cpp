@@ -61,7 +61,7 @@ collision_detection::CollisionRobotIndustrial::CollisionRobotIndustrial(const ro
         fcl_objs_[index] = FCLCollisionObjectConstPtr(new fcl::CollisionObject(g->collision_geometry_));
       }
       else
-        logError("Unable to construct collision geometry for link '%s'", links[i]->getName().c_str());
+        CONSOLE_BRIDGE_logError("Unable to construct collision geometry for link '%s'", links[i]->getName().c_str());
     }
 }
 
@@ -104,7 +104,7 @@ void collision_detection::CollisionRobotIndustrial::constructFCLObject(const rob
   {
     std::vector<FCLGeometryConstPtr> objs;
     getAttachedBodyObjects(ab[j], objs);
-    const EigenSTL::vector_Affine3d &ab_t = ab[j]->getGlobalCollisionBodyTransforms();
+    const auto &ab_t = ab[j]->getGlobalCollisionBodyTransforms();
     for (std::size_t k = 0 ; k < objs.size() ; ++k)
       if (objs[k]->collision_geometry_)
       {
@@ -140,12 +140,12 @@ void collision_detection::CollisionRobotIndustrial::checkSelfCollision(const Col
 
 void collision_detection::CollisionRobotIndustrial::checkSelfCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state1, const robot_state::RobotState &state2) const
 {
-  logError("FCL continuous collision checking not yet implemented");
+  CONSOLE_BRIDGE_logError("FCL continuous collision checking not yet implemented");
 }
 
 void collision_detection::CollisionRobotIndustrial::checkSelfCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state1, const robot_state::RobotState &state2, const AllowedCollisionMatrix &acm) const
 {
-  logError("FCL continuous collision checking not yet implemented");
+  CONSOLE_BRIDGE_logError("FCL continuous collision checking not yet implemented");
 }
 
 void collision_detection::CollisionRobotIndustrial::checkSelfCollisionHelper(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state,
@@ -188,14 +188,14 @@ void collision_detection::CollisionRobotIndustrial::checkOtherCollision(const Co
 void collision_detection::CollisionRobotIndustrial::checkOtherCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state1, const robot_state::RobotState &state2,
                                                                  const CollisionRobot &other_robot, const robot_state::RobotState &other_state1, const robot_state::RobotState &other_state2) const
 {
-  logError("FCL continuous collision checking not yet implemented");
+  CONSOLE_BRIDGE_logError("FCL continuous collision checking not yet implemented");
 }
 
 void collision_detection::CollisionRobotIndustrial::checkOtherCollision(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state1, const robot_state::RobotState &state2,
                                                                  const CollisionRobot &other_robot, const robot_state::RobotState &other_state1, const robot_state::RobotState &other_state2,
                                                                  const AllowedCollisionMatrix &acm) const
 {
-  logError("FCL continuous collision checking not yet implemented");
+  CONSOLE_BRIDGE_logError("FCL continuous collision checking not yet implemented");
 }
 
 void collision_detection::CollisionRobotIndustrial::checkOtherCollisionHelper(const CollisionRequest &req, CollisionResult &res, const robot_state::RobotState &state,
@@ -237,7 +237,7 @@ void collision_detection::CollisionRobotIndustrial::updatedPaddingOrScaling(cons
       }
     }
     else
-      logError("Updating padding or scaling for unknown link: '%s'", links[i].c_str());
+      CONSOLE_BRIDGE_logError("Updating padding or scaling for unknown link: '%s'", links[i].c_str());
   }
 }
 
@@ -331,7 +331,7 @@ void collision_detection::CollisionRobotIndustrial::distanceOther(const Distance
   catch(const std::bad_cast& e)
   {
     std::string msg = "Dynamic casting to CollisionRobotIndustrial failed";
-    logError("%s",msg.c_str());
+    CONSOLE_BRIDGE_logError("%s",msg.c_str());
     throw std::runtime_error(msg);
   }
 }
