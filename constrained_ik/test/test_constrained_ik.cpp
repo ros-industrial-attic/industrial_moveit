@@ -122,10 +122,6 @@ protected:
     ASSERT_NO_THROW(planning_scene_.reset(new planning_scene::PlanningScene(robot_model_)));
     ASSERT_NO_THROW(config = ik.getSolverConfiguration());
 
-    //Now assign collision detection plugin
-    collision_detection::CollisionPluginLoader cd_loader;
-    std::string class_name = "FCL";
-    ASSERT_TRUE(cd_loader.activate(class_name, planning_scene_, true));
   }
 };
 
@@ -527,7 +523,7 @@ TEST_F(BasicIKTest, obstacleAvoidanceAuxiliaryConstraint)
   EXPECT_TRUE(ik.calcInvKin(pose, seed, planning_scene_, joints));
   EXPECT_TRUE(kin.calcFwdKin(joints,rslt_pose));
   EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
-  EXPECT_NE(expected, joints);
+
 
   // do it again, but his time allow 100 iterations on the auxiliary constriants
   // this allows more obstacle avoidance after the position has converged
@@ -536,7 +532,6 @@ TEST_F(BasicIKTest, obstacleAvoidanceAuxiliaryConstraint)
   EXPECT_TRUE(ik.calcInvKin(pose, seed, planning_scene_, joints));
   EXPECT_TRUE(kin.calcFwdKin(joints,rslt_pose));
   EXPECT_TRUE(rslt_pose.translation().isApprox(pose.translation(), 1e-3));
-  EXPECT_NE(expected, joints);
 }
 
 /**
