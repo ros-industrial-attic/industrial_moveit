@@ -23,7 +23,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <class_loader/class_loader.h>
+#include <class_loader/class_loader.hpp>
 #include <stomp_moveit/stomp_planner_manager.h>
 #include <stomp_moveit/stomp_planner.h>
 
