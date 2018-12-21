@@ -17,7 +17,6 @@ find_package(catkin REQUIRED COMPONENTS
   cmake_modules
   pluginlib
   moveit_core
-  pcl_ros
 )
 
 ###################################
@@ -32,8 +31,8 @@ catkin_package(
  INCLUDE_DIRS include ${catkin_INCLUDE_DIRS}
  LIBRARIES
    ${PROJECT_NAME}
- CATKIN_DEPENDS roscpp moveit_core cmake_modules pluginlib pcl_ros
- DEPENDS Boost EIGEN3
+ CATKIN_DEPENDS roscpp moveit_core cmake_modules pluginlib
+ DEPENDS Boost EIGEN3 LIBFCL
 )
 
 ## Specify additional locations of header files

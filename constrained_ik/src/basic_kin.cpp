@@ -185,7 +185,7 @@ bool BasicKin::init(const moveit::core::JointModelGroup* group)
   }
 
   const robot_model::RobotModel& r  = group->getParentModel();
-  const boost::shared_ptr<const urdf::ModelInterface> urdf = group->getParentModel().getURDF();
+  const urdf::ModelInterfaceSharedPtr urdf = group->getParentModel().getURDF();
   base_name_ = group->getLinkModels().front()->getParentLinkModel()->getName();
   tip_name_ = group->getLinkModels().back()->getName();
 

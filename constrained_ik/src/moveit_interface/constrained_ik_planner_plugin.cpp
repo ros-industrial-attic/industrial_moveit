@@ -79,7 +79,7 @@ namespace constrained_ik
 
     if (req.group_name.empty())
     {
-      logError("No group specified to plan for");
+      ROS_ERROR("No group specified to plan for");
       error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_GROUP_NAME;
       return planning_interface::PlanningContextPtr();
     }
@@ -88,7 +88,7 @@ namespace constrained_ik
 
     if (!planning_scene)
     {
-      logError("No planning scene supplied as input");
+      ROS_ERROR("No planning scene supplied as input");
       return planning_interface::PlanningContextPtr();
     }
 
@@ -101,7 +101,7 @@ namespace constrained_ik
 
     if (it == planners_.end())
     {
-      logError("No planner for specified group");
+      ROS_ERROR("No planner for specified group");
       error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_GROUP_NAME;
       return planning_interface::PlanningContextPtr();
     }

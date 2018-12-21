@@ -28,6 +28,7 @@
 #include <kdl_parser/kdl_parser.hpp>
 #include <eigen_conversions/eigen_kdl.h>
 #include <math.h>
+#include <random>
 
 static const std::string DEBUG_NS = "stomp_moveit_kinematics";
 

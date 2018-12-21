@@ -26,7 +26,7 @@
 #include <ros/ros.h>
 #include <moveit/robot_state/conversions.h>
 #include <stomp_moveit/stomp_planner.h>
-#include <class_loader/class_loader.h>
+#include <class_loader/class_loader.hpp>
 #include <stomp_core/utils.h>
 #include <moveit/trajectory_processing/iterative_time_parameterization.h>
 #include <stomp_moveit/utils/kinematics.h>

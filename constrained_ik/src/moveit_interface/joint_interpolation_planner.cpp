@@ -63,7 +63,11 @@ namespace constrained_ik
     const robot_model::JointModelGroup *group_model = rob_model->getJointModelGroup(request_.group_name);
     std::vector<std::string> joint_names = group_model->getActiveJointModelNames();
     std::vector<std::string> link_names = group_model->getLinkModelNames();
-    Eigen::Affine3d goal_pose;
+    #if ROS_VERSION_MINIMUM(1, 14, 0) //melodic
+      Eigen::Isometry3d goal_pose;
+    #else
+      Eigen::Affine3d goal_pose;
+    #endif
     std::vector<double> pos(1);
     robot_trajectory::RobotTrajectoryPtr traj(new robot_trajectory::RobotTrajectory(rob_model, request_.group_name));
 
