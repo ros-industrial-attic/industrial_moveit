@@ -24,7 +24,7 @@
  * limitations under the License.
  */
 #include <constrained_ik/moveit_interface/constrained_ik_planner_plugin.h>
-#include <class_loader/class_loader.h>
+#include <class_loader/class_loader.hpp>
 
 const std::string JOINT_INTERP_PLANNER = "JointInterpolation"; /**< Joint interpolation planner name */
 const std::string CARTESIAN_PLANNER = "Cartesian"; /**< Cartesian plannner name */
