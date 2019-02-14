@@ -58,7 +58,7 @@ bool ConstrainedIKPlugin::initialize(const std::string& robot_description,
                                      const std::string& tip_name,
                                      double search_discretization)
 {
-  setValues(robot_description, group_name, base_name, tip_name, search_discretization);
+  setValues(robot_description, group_name, base_name, std::vector<std::string>{tip_name}, search_discretization);
 
   // init robot model
   rdf_loader::RDFLoader rdf_loader(robot_description_);

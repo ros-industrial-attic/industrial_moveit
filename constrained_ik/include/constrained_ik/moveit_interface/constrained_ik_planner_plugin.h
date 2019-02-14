@@ -27,7 +27,7 @@
 #define CONSTRAINED_IK_PLANNER_PLUGIN_H
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene/planning_scene.h>
-#include <class_loader/class_loader.h>
+#include <class_loader/class_loader.hpp>
 #include <ros/ros.h>
 #include <constrained_ik/moveit_interface/joint_interpolation_planner.h>
 #include <constrained_ik/moveit_interface/cartesian_planner.h>
