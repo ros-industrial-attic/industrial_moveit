@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   pluginlib
   kdl_parser
   trac_ik_lib
+  eigen_conversions
 )
 find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
