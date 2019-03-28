@@ -29,7 +29,7 @@
 #include <constrained_ik/constraint_results.h>
 #include <ros/ros.h>
 
-const std::vector<std::string> SUPPORTED_COLLISION_DETECTORS = {"FCL"}; /**< Supported collision detector */
+const std::vector<std::string> SUPPORTED_COLLISION_DETECTORS = {}; /**< Supported collision detector */
 
 namespace constrained_ik
 {
@@ -226,18 +226,21 @@ bool Constrained_IK::calcInvKin(const Eigen::Affine3d &goal,
     state.robot_state = robot_state::RobotStatePtr(new moveit::core::RobotState(planning_scene->getCurrentState()));
 
     //Check and make sure the correct collision detector is loaded.
-    auto pos = std::find(SUPPORTED_COLLISION_DETECTORS.begin(),SUPPORTED_COLLISION_DETECTORS.end(),
-                         planning_scene->getActiveCollisionDetectorName());
-    if (pos == SUPPORTED_COLLISION_DETECTORS.end())
+    if(!SUPPORTED_COLLISION_DETECTORS.empty())
     {
-      std::stringstream error_message;
-      error_message<<" Constrained IK requires the use of collision detectors: ";
-      for(auto& d : SUPPORTED_COLLISION_DETECTORS)
+      auto pos = std::find(SUPPORTED_COLLISION_DETECTORS.begin(),SUPPORTED_COLLISION_DETECTORS.end(),
+                           planning_scene->getActiveCollisionDetectorName());
+      if (pos == SUPPORTED_COLLISION_DETECTORS.end())
       {
-        error_message<<"'"<< d<<"' ";
+        std::stringstream error_message;
+        error_message<<" Constrained IK requires the use of collision detectors: ";
+        for(auto& d : SUPPORTED_COLLISION_DETECTORS)
+        {
+          error_message<<"'"<< d<<"' ";
+        }
+        error_message<<".\nSet or add the 'collision_detector' parameter to an allowed collision detector in the move_group.launch file"<<std::endl;
+        throw std::runtime_error(error_message.str());
       }
-      error_message<<".\nSet or add the 'collision_detector' parameter to an allowed collision detector in the move_group.launch file"<<std::endl;
-      throw std::runtime_error(error_message.str());
     }
 
     state.collision_robot = planning_scene->getCollisionRobot();

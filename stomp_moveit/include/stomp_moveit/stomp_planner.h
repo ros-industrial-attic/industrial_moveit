@@ -86,7 +86,7 @@ public:
    * @brief Convenience method to load extract the parameters for each supported planning group.
    * @param nh      A ros node handle.
    * @param config  A map containing the configuration data for each planning group found.
-   * @param param   The parameter name containing the confuration data for all planning groups.
+   * @param param   The parameter name containing the configuration data for all planning groups.
    * @return  true if succeeded, false otherwise.
    */
   static bool getConfigData(ros::NodeHandle &nh, std::map<std::string, XmlRpc::XmlRpcValue> &config, std::string param = std::string("stomp"));

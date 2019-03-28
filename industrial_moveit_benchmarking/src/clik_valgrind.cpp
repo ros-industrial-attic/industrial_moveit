@@ -47,6 +47,8 @@ using namespace Eigen;
 using namespace moveit::core;
 using namespace std;
 
+static const std::string RESOURCES_PACKAGE_NAME="industrial_moveit_benchmarking";
+
 typedef boost::shared_ptr<collision_detection::CollisionPlugin> CollisionPluginPtr;
 
 int main (int argc, char *argv[])
@@ -63,8 +65,8 @@ int main (int argc, char *argv[])
   robot_model::RobotModelPtr robot_model;
   string urdf_file_path, srdf_file_path;
 
-  urdf_file_path = package::getPath("stomp_test_support") + "/urdf/test_kr210l150_500K.urdf";
-  srdf_file_path = package::getPath("stomp_test_kr210_moveit_config") + "/config/test_kr210.srdf";
+  urdf_file_path = package::getPath(RESOURCES_PACKAGE_NAME) + "/resources/urdf/test_kr210l150_500K.urdf";
+  srdf_file_path = package::getPath(RESOURCES_PACKAGE_NAME) + "/resources/config/test_kr210.srdf";
 
   ifstream ifs1 (urdf_file_path.c_str());
   string urdf_string((istreambuf_iterator<char>(ifs1)), (istreambuf_iterator<char>()));
@@ -84,11 +86,6 @@ int main (int argc, char *argv[])
 
   collision_detection::CollisionPluginLoader cd_loader;
   planning_scene::PlanningScenePtr planning_scene(new planning_scene::PlanningScene(robot_model));
-
-  //Now assign collision detection plugin
-  std::string class_name = "FCL";
-  cd_loader.setupScene(pnh, planning_scene);
-  cd_loader.activate(class_name, planning_scene, true);
 
   planning_interface::MotionPlanRequest req;
   planning_interface::MotionPlanResponse res;
