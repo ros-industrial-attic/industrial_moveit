@@ -35,6 +35,7 @@
 #include <moveit/kinematic_constraints/utils.h>
 #include <moveit/collision_plugin_loader/collision_plugin_loader.h>
 #include <stomp_moveit/stomp_planner.h>
+#include <boost/format.hpp>
 #include <fstream>
 
 using namespace ros;
@@ -42,6 +43,8 @@ using namespace stomp_moveit;
 using namespace Eigen;
 using namespace moveit::core;
 using namespace std;
+
+static const std::string RESOURCES_PACKAGE_NAME="industrial_moveit_benchmarking";
 
 int main (int argc, char *argv[])
 {
@@ -58,8 +61,10 @@ int main (int argc, char *argv[])
   robot_model::RobotModelPtr robot_model;
   string urdf_file_path, srdf_file_path;
 
-  urdf_file_path = package::getPath("stomp_test_support") + "/urdf/test_kr210l150_500K.urdf";
-  srdf_file_path = package::getPath("stomp_test_kr210_moveit_config") + "/config/test_kr210.srdf";
+  urdf_file_path = package::getPath(RESOURCES_PACKAGE_NAME) + "/resources/urdf/test_kr210l150_500K.urdf";
+  srdf_file_path = package::getPath(RESOURCES_PACKAGE_NAME) + "/resources/config/test_kr210.srdf";
+  ROS_INFO_STREAM(urdf_file_path);
+  ROS_INFO_STREAM(srdf_file_path);
 
   ifstream ifs1 (urdf_file_path.c_str());
   string urdf_string((istreambuf_iterator<char>(ifs1)), (istreambuf_iterator<char>()));
@@ -83,11 +88,6 @@ int main (int argc, char *argv[])
   planning_interface::MotionPlanResponse res;
   string group_name = "manipulator_rail";
   StompPlanner stomp(group_name, config[group_name], robot_model);
-
-  //Now assign collision detection plugin
-  collision_detection::CollisionPluginLoader cd_loader;
-  std::string class_name = "FCL";
-  cd_loader.activate(class_name, planning_scene, true);
 
   req.allowed_planning_time = 10;
   req.num_planning_attempts = 1;
@@ -152,6 +152,7 @@ int main (int argc, char *argv[])
   }
   t2 = ros::Time::now();
 
-  ROS_ERROR("Average time spent calculating trajectory: %4.10f seconds", (t2-t1).toSec()/test_runs);
+  std::string summary = boost::str(boost::format("Average time spent calculating trajectory: %4.10f seconds") % ((t2-t1).toSec()/test_runs));
+  std::cout<<summary<<std::endl;
   return 0;
 }

@@ -1,7 +1,0 @@
-<launch>
-  <arg name="profile" default="false" />
-  <arg unless="$(arg profile)" name="launch_prefix" value="" />
-  <arg     if="$(arg profile)" name="launch_prefix" value="valgrind --tool=callgrind" />
-
-  <node name="static_distance_field_benchmarking_node" pkg="industrial_moveit_benchmarking" type="static_distance_field_benchmarking_node" launch-prefix="$(arg launch_prefix)"/>
-</launch>
