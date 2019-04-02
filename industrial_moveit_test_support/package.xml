@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>stomp_test_support</name>
+  <name>industrial_moveit_test_support</name>
   <version>0.1.1</version>
-  <description>The stomp_test_support package</description>
+  <description>The industrial_moveit_test_support package</description>
   <maintainer email="jnicho@swri.org">Jorge Nicho</maintainer>
   <license>TODO</license>
   <author email="jnicho@swri.org">Jorge Nicho</author>

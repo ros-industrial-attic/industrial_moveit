@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(stomp_test_support)
+project(industrial_moveit_test_support)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED)

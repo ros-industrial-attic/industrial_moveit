@@ -20,8 +20,8 @@
   <run_depend>joint_state_publisher</run_depend>
   <run_depend>robot_state_publisher</run_depend>
   <run_depend>xacro</run_depend>
-  <build_depend>stomp_test_support</build_depend>
-  <run_depend>stomp_test_support</run_depend>
+  <build_depend>industrial_moveit_test_support</build_depend>
+  <run_depend>industrial_moveit_test_support</run_depend>
 
 
   <buildtool_depend>catkin</buildtool_depend>

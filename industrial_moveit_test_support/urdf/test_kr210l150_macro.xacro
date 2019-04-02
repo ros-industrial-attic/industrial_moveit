@@ -158,7 +158,7 @@
       <visual>
         <origin xyz="0 0 0"/>
         <geometry>
-          <mesh filename="package://stomp_test_support/meshes/cube/visual/menger_sponge.stl"/>
+          <mesh filename="package://industrial_moveit_test_support/meshes/cube/visual/menger_sponge.stl"/>
         </geometry>
        <material name="red">
          <color rgba="1.0 0.4 0.4 1.0"/>
@@ -167,7 +167,7 @@
       <collision>
         <origin xyz="0 0 0"/>
         <geometry>
-          <mesh filename="package://stomp_test_support/meshes/cube/visual/menger_sponge.stl"/>
+          <mesh filename="package://industrial_moveit_test_support/meshes/cube/visual/menger_sponge.stl"/>
         </geometry>
        <material name="red">
          <color rgba="1.0 0.4 0.4 1.0"/>
