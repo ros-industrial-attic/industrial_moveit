@@ -5,5 +5,5 @@
   <param name="moveit_controller_manager"
          value="$(arg moveit_controller_manager)"/>
 
-  <rosparam file="$(find stomp_test_kr210_moveit_config)/config/controllers.yaml"/>
+  <rosparam file="$(find industrial_moveit_test_moveit_config)/config/controllers.yaml"/>
 </launch>

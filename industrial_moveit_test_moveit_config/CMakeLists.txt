@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(stomp_test_kr210_moveit_config)
+project(industrial_moveit_test_moveit_config)
 
 find_package(catkin REQUIRED)
 

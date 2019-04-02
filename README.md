@@ -41,7 +41,7 @@ catkin run_tests stomp_core
 - Run the demo
   - Run the demo.launch file
   ```
-  roslaunch stomp_test_kr210_moveit_config demo.launch
+  roslaunch industrial_moveit_test_moveit_config demo.launch
   ```
 
   - In the Rviz Motion Planning planel, select **rail_start_pose** from the dropdown menu under "Select Start State" and click **Update**
@@ -50,7 +50,7 @@ catkin run_tests stomp_core
 
 #### Configure Stomp
 - Locate the the stomp planner configuration file
-  - **roscd** into the **stomp_test_kr210_moveit_config** package and locate the "stomp_config.yaml" file under the config directory
+  - **roscd** into the **industrial_moveit_test_moveit_config** package and locate the "stomp_config.yaml" file under the config directory
 - Rerun demo.launch file and plan once again to see how the changes affect the planner's behavior.
 
 #### Seeding Stomp

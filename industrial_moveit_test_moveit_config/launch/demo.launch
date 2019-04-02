@@ -11,7 +11,7 @@
   <arg name="pipeline" default="stomp"/>
 
   <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
-  <include file="$(find stomp_test_kr210_moveit_config)/launch/planning_context.launch">
+  <include file="$(find industrial_moveit_test_moveit_config)/launch/planning_context.launch">
     <arg name="load_robot_description" value="true"/>
   </include>
 
@@ -28,7 +28,7 @@
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
 
   <!-- Run the main MoveIt executable without trajectory execution (we do not have controllers configured by default) -->
-  <include file="$(find stomp_test_kr210_moveit_config)/launch/move_group.launch">
+  <include file="$(find industrial_moveit_test_moveit_config)/launch/move_group.launch">
     <arg name="pipeline" value="$(arg pipeline)"/>
     <arg name="allow_trajectory_execution" value="true"/>  
     <arg name="fake_execution" value="true"/>
@@ -37,12 +37,12 @@
   </include>
 
   <!-- Run Rviz and load the default config to see the state of the move_group node -->
-  <include if="$(arg rviz)" file="$(find stomp_test_kr210_moveit_config)/launch/moveit_rviz.launch">
+  <include if="$(arg rviz)" file="$(find industrial_moveit_test_moveit_config)/launch/moveit_rviz.launch">
     <arg name="config" value="true"/>
     <arg name="debug" value="$(arg debug)"/>
   </include>
 
   <!-- If database loading was enabled, start mongodb as well -->
-  <include file="$(find stomp_test_kr210_moveit_config)/launch/default_warehouse_db.launch" if="$(arg db)"/>
+  <include file="$(find industrial_moveit_test_moveit_config)/launch/default_warehouse_db.launch" if="$(arg db)"/>
 
 </launch>

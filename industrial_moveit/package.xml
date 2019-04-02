@@ -27,7 +27,7 @@
   <run_depend>stomp_plugins</run_depend>
   <run_depend>industrial_collision_detection</run_depend>
   <run_depend>stomp_test_support</run_depend>
-  <run_depend>stomp_test_kr210_moveit_config</run_depend>
+  <run_depend>industrial_moveit_test_moveit_config</run_depend>
 
   <export>
     <metapackage/>

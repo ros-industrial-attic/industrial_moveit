@@ -1,6 +1,6 @@
 <package>
 
-  <name>stomp_test_kr210_moveit_config</name>
+  <name>industrial_moveit_test_moveit_config</name>
   <version>0.1.1</version>
   <description>
      An automatically generated package with all the configuration and launch files for using the test_kr210 with the MoveIt Motion Planning Framework

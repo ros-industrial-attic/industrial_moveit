@@ -3,8 +3,8 @@
   <arg name="reset" default="false"/>
 
   <!-- Launch the warehouse with a default database location -->  
-  <include file="$(find stomp_test_kr210_moveit_config)/launch/warehouse.launch">
-    <arg name="moveit_warehouse_database_path" value="$(find stomp_test_kr210_moveit_config)/default_warehouse_mongo_db" />
+  <include file="$(find industrial_moveit_test_moveit_config)/launch/warehouse.launch">
+    <arg name="moveit_warehouse_database_path" value="$(find industrial_moveit_test_moveit_config)/default_warehouse_mongo_db" />
   </include>
 
   <!-- If we want to reset the database, run this node -->
