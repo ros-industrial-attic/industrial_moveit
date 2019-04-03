@@ -26,7 +26,7 @@
         rpy="${-pi/2} 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/visual/base_link.dae" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/base_link.dae" />
       </geometry>
       <material
         name="">
@@ -40,7 +40,7 @@
         rpy="${-pi/2} 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/collision/base_link.stl" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/base_link.stl" />
       </geometry>
     </collision>
   </link>
@@ -66,7 +66,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/visual/link_1.dae" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_1.dae" />
       </geometry>
       <material
         name="">
@@ -80,7 +80,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/collision/link_1.stl" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_1.stl" />
       </geometry>
     </collision>
   </link>
@@ -121,7 +121,7 @@
         rpy="${-pi/2} 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/visual/link_2.dae" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_2.dae" />
       </geometry>
       <material
         name="">
@@ -135,7 +135,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/collision/link_2.stl" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_2.stl" />
       </geometry>
     </collision>
   </link>
@@ -175,7 +175,7 @@
         rpy="${-pi/2} 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/visual/link_3.dae" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_3.dae" />
       </geometry>
       <material
         name="">
@@ -189,7 +189,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/collision/link_3.stl" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_3.stl" />
       </geometry>
     </collision>
   </link>
@@ -229,7 +229,7 @@
         rpy="${-pi/2} 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/visual/link_4.dae" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_4.dae" />
       </geometry>
       <material
         name="">
@@ -243,7 +243,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/collision/link_4.stl" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_4.stl" />
       </geometry>
     </collision>
   </link>
@@ -283,7 +283,7 @@
         rpy="${-pi/2} 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/visual/link_5.dae" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_5.dae" />
       </geometry>
       <material
         name="">
@@ -297,7 +297,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/collision/link_5.stl" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_5.stl" />
       </geometry>
     </collision>
   </link>
@@ -337,7 +337,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/visual/link_6.dae" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_6.dae" />
       </geometry>
       <material
         name="">
@@ -351,7 +351,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://stomp_test_support/meshes/kr210l150/collision/link_6.stl" />
+          filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_6.stl" />
       </geometry>
     </collision>
   </link>

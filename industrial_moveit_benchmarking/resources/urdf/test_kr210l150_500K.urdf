@@ -14,7 +14,7 @@
     <visual>
       <origin rpy="-1.570796327 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/visual/base_link.dae"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/base_link.dae"/>
       </geometry>
       <material name="">
         <color rgba="0.75294 0.75294 0.75294 1"/>
@@ -23,7 +23,7 @@
     <collision>
       <origin rpy="-1.570796327 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/collision/base_link.stl"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/base_link.stl"/>
       </geometry>
     </collision>
   </link>
@@ -36,7 +36,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/visual/link_1.dae"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_1.dae"/>
       </geometry>
       <material name="">
         <color rgba="0.75294 0.75294 0.75294 1"/>
@@ -45,7 +45,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/collision/link_1.stl"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_1.stl"/>
       </geometry>
     </collision>
   </link>
@@ -65,7 +65,7 @@
     <visual>
       <origin rpy="-1.570796327 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/visual/link_2.dae"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_2.dae"/>
       </geometry>
       <material name="">
         <color rgba="0.75294 0.75294 0.75294 1"/>
@@ -74,7 +74,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/collision/link_2.stl"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_2.stl"/>
       </geometry>
     </collision>
   </link>
@@ -94,7 +94,7 @@
     <visual>
       <origin rpy="-1.570796327 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/visual/link_3.dae"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_3.dae"/>
       </geometry>
       <material name="">
         <color rgba="0.75294 0.75294 0.75294 1"/>
@@ -103,7 +103,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/collision/link_3.stl"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_3.stl"/>
       </geometry>
     </collision>
   </link>
@@ -123,7 +123,7 @@
     <visual>
       <origin rpy="-1.570796327 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/visual/link_4.dae"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_4.dae"/>
       </geometry>
       <material name="">
         <color rgba="0.75294 0.75294 0.75294 1"/>
@@ -132,7 +132,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/collision/link_4.stl"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_4.stl"/>
       </geometry>
     </collision>
   </link>
@@ -152,7 +152,7 @@
     <visual>
       <origin rpy="-1.570796327 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/visual/link_5.dae"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_5.dae"/>
       </geometry>
       <material name="">
         <color rgba="0.75294 0.75294 0.75294 1"/>
@@ -161,7 +161,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/collision/link_5.stl"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_5.stl"/>
       </geometry>
     </collision>
   </link>
@@ -181,7 +181,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/visual/link_6.dae"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/visual/link_6.dae"/>
       </geometry>
       <material name="">
         <color rgba="0.75294 0.75294 0.75294 1"/>
@@ -190,7 +190,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://stomp_test_support/meshes/kr210l150/collision/link_6.stl"/>
+        <mesh filename="package://industrial_moveit_test_support/meshes/kr210l150/collision/link_6.stl"/>
       </geometry>
     </collision>
   </link>
