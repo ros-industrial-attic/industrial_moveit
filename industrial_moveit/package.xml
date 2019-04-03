@@ -23,6 +23,7 @@
 
   <run_depend>constrained_ik</run_depend>
   <run_depend>industrial_collision_detection</run_depend>
+  <run_depend>industrial_moveit_benchmarking</run_depend>
   <run_depend>industrial_moveit_test_support</run_depend>
   <run_depend>industrial_moveit_test_moveit_config</run_depend>
 
