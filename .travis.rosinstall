@@ -1,0 +1,3 @@
+- git:
+    uri: https://github.com/ros-industrial/stomp_ros.git
+    local-name: ros-industrial/stomp_ros
