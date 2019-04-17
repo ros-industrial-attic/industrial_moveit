@@ -1,5 +1,8 @@
 # Industrial MoveIt
 
+**Note:**: the STOMP packages were recently removed from this repository. They are hosted over at [ros-industrial/stomp_ros](https://github.com/ros-industrial/stomp_ros) now.
+
+
 ## ROS Distro Support
 
 |         | Indigo | Jade | Kinetic |
