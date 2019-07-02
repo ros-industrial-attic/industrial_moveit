@@ -4,7 +4,7 @@
   <version>0.1.1</version>
   <description>The industrial_moveit_test_support package</description>
   <maintainer email="jnicho@swri.org">Jorge Nicho</maintainer>
-  <license>TODO</license>
+  <license>Apache 2.0</license>
   <author email="jnicho@swri.org">Jorge Nicho</author>
 
   <buildtool_depend>catkin</buildtool_depend>
