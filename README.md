@@ -13,7 +13,7 @@
 
 ## Travis - Continuous Integration
 
-Status: [![Build Status](https://travis-ci.org/ros-industrial/industrial_moveit.svg?branch=kinetic-devel)](https://travis-ci.org/ros-industrial/industrial_moveit)
+Status: [![Build Status](https://travis-ci.com/ros-industrial/industrial_moveit.svg?branch=kinetic-devel)](https://travis-ci.com/ros-industrial/industrial_moveit)
 
 ## License
 
