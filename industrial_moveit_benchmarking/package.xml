@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package>
+<package format="2">
   <name>industrial_moveit_benchmarking</name>
   <version>0.1.1</version>
   <description>This package contains tools used to benchmark both constrianed_ik and stomp.</description>
@@ -9,19 +9,12 @@
   <author email="levi.armstrong@gmail.com"> Levi Armstrong</author>
 
   <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>roscpp</build_depend>
-  <build_depend>stomp_moveit</build_depend>
-  <build_depend>moveit_core</build_depend>
-  <build_depend>moveit_ros_planning</build_depend>
-  <build_depend>pluginlib</build_depend>
-  <build_depend>constrained_ik</build_depend>
-
-  <run_depend>roscpp</run_depend>
-  <run_depend>stomp_moveit</run_depend>
-  <run_depend>moveit_core</run_depend>
-  <run_depend>moveit_ros_planning</run_depend>
-  <run_depend>pluginlib</run_depend>
-  <run_depend>constrained_ik</run_depend>
+  <depend>roscpp</depend>
+  <depend>stomp_moveit</depend>
+  <depend>moveit_core</depend>
+  <depend>moveit_ros_planning</depend>
+  <depend>pluginlib</depend>
+  <depend>constrained_ik</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

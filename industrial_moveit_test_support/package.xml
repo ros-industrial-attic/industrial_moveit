@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package>
+<package format="2">
   <name>industrial_moveit_test_support</name>
   <version>0.1.1</version>
   <description>The industrial_moveit_test_support package</description>

@@ -1,4 +1,5 @@
-<package>
+<?xml version="1.0"?>
+<package format="2">
   <name>industrial_moveit</name>
   <version>0.1.1</version>
   <description>ROS Industrial MoveIt packages.</description>
@@ -21,11 +22,11 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <run_depend>constrained_ik</run_depend>
-  <run_depend>industrial_collision_detection</run_depend>
-  <run_depend>industrial_moveit_benchmarking</run_depend>
-  <run_depend>industrial_moveit_test_support</run_depend>
-  <run_depend>industrial_moveit_test_moveit_config</run_depend>
+  <exec_depend>constrained_ik</exec_depend>
+  <exec_depend>industrial_collision_detection</exec_depend>
+  <exec_depend>industrial_moveit_benchmarking</exec_depend>
+  <exec_depend>industrial_moveit_test_support</exec_depend>
+  <exec_depend>industrial_moveit_test_moveit_config</exec_depend>
 
   <export>
     <metapackage/>
