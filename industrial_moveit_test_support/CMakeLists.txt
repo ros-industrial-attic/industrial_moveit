@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.0.2)
 project(industrial_moveit_test_support)
 
 ## Find catkin macros and libraries
